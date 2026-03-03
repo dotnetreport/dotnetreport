@@ -2379,6 +2379,79 @@ namespace ReportBuilder.Web.Models
             return (dt, qry, sqlFields);
         }
 
+        private static void WriteGroupedExcel(
+            DataTable dt,
+            ExcelWorksheet ws,
+            int rowstart,
+            int colstart,
+            List<ReportHeaderColumn> columns,
+            bool includeSubtotal,
+            bool loadHeader,
+            string chartData,
+            bool isSubReport)
+        {
+            var outerGroupColumns = columns?
+                .Where(c => c.aggregateFunction == "Outer Group")
+                .Select(c => c.fieldName)
+                .ToList() ?? new List<string>();
+
+            if (!outerGroupColumns.Any())
+            {
+                FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal, loadHeader, chartData, false, isSubReport);
+                return;
+            }
+
+            // Sort by group columns
+            var sortedRows = dt.AsEnumerable()
+                .OrderBy(r => string.Join("|", outerGroupColumns.Select(gc => r[gc]?.ToString() ?? "")))
+                .ToList();
+
+            int currentRow = rowstart;
+
+            // Write header once
+            if (loadHeader)
+            {
+                ws.Cells[rowstart, colstart].LoadFromDataTable(dt.Clone(), true);
+                currentRow++;
+            }
+
+            string lastGroupKey = null;
+
+            foreach (var row in sortedRows)
+            {
+                string groupKey = string.Join("|", outerGroupColumns.Select(gc => row[gc]?.ToString() ?? ""));
+
+                bool isNewGroup = groupKey != lastGroupKey;
+
+                int colIndex = colstart;
+
+                foreach (DataColumn dc in dt.Columns)
+                {
+                    var cell = ws.Cells[currentRow, colIndex];
+
+                    if (outerGroupColumns.Contains(dc.ColumnName))
+                    {
+                        // Only write group column value once
+                        if (isNewGroup)
+                            cell.Value = row[dc];
+                        else
+                            cell.Value = null; // leave blank
+                    }
+                    else
+                    {
+                        cell.Value = row[dc];
+                    }
+
+                    colIndex++;
+                }
+
+                lastGroupKey = groupKey;
+                currentRow++;
+            }
+
+            ws.Cells[ws.Dimension.Address].AutoFitColumns();
+        }
+
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
                 string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null, bool isSubReport = false)
         {
@@ -2435,7 +2508,7 @@ namespace ReportBuilder.Web.Models
                 rowstart += 2;
                 rowend = rowstart + dt.Rows.Count;
 
-                FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal, true, chartData, isSubReport: isSubReport);
+                WriteGroupedExcel(dt, ws, rowstart, colstart, columns, includeSubtotal, true, chartData, isSubReport);
 
                 if (allExpanded && dt.Rows.Count > 0)
                 {
@@ -2843,19 +2916,47 @@ namespace ReportBuilder.Web.Models
                 }
                 
                 AddNewPageWithHeaders(true);
+                var outerGroupIndexes = new HashSet<int>();
+
+                if (columns != null)
+                {
+                    for (int i = 0; i < columns.Count; i++)
+                    {
+                        if (columns[i].aggregateFunction == "Outer Group")
+                            outerGroupIndexes.Add(i);
+                    }
+                }
+
+                string lastGroupKey = null;
 
                 for (int i = 0; i < dt.Rows.Count; i++)
                 {
                     currentXPosition = leftMargin;
+
+                    // Build group key using outer group columns
+                    string groupKey = "";
+                    foreach (int idx in outerGroupIndexes)
+                    {
+                        groupKey += dt.Rows[i][idx]?.ToString() + "|";
+                    }
+
+                    bool isNewGroup = groupKey != lastGroupKey;
+
                     int maxLines = 1;
+
+                    // Measure row height first
                     for (int j = 0; j < dt.Columns.Count; j++)
                     {
-                        var value = dt.Rows[i][j].ToString();
-                        var dc = dt.Columns[j];
-                        var tempVal = value;
-                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidths[j], 9999), fontNormal, XStringFormats.Center);
-                        maxLines = Math.Max(maxLines, lines.Count);
+                        string value = dt.Rows[i][j]?.ToString() ?? "";
+                        if (outerGroupIndexes.Contains(j) && !isNewGroup)
+                            value = ""; // blank grouped columns for repeated rows
 
+                        var lines = WrapText(gfx, value,
+                            new XRect(0, 0, columnWidths[j], 9999),
+                            fontNormal,
+                            XStringFormats.Center);
+
+                        maxLines = Math.Max(maxLines, lines.Count);
                     }
 
                     int rowHeight = (int)((fontNormal.Height + cellPadding * 2) * maxLines);
@@ -2866,34 +2967,44 @@ namespace ReportBuilder.Web.Models
                     }
 
                     currentXPosition = leftMargin;
+
                     for (int j = 0; j < dt.Columns.Count; j++)
                     {
-                        var value = dt.Rows[i][j].ToString();
                         var dc = dt.Columns[j];
-                        var tempVal = GetFormattedValue(dc, dt.Rows[i], null, false);
+                        var rawValue = dt.Rows[i][j]?.ToString() ?? "";
+
+                        // Blank grouped columns unless first occurrence
+                        if (outerGroupIndexes.Contains(j) && !isNewGroup)
+                            rawValue = "";
+
+                        var tempVal = rawValue;
                         var formatColumn = GetColumnFormatting(dc, columns, ref tempVal);
-                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidths[j], 9999), fontNormal, XStringFormats.Center);
-                        
+
+                        var lines = WrapText(gfx, tempVal,
+                            new XRect(0, 0, columnWidths[j], 9999),
+                            fontNormal,
+                            XStringFormats.Center);
+
                         if (formatColumn.isNumeric && !formatColumn.dontSubTotal)
                         {
-                            if (decimal.TryParse(value, out decimal decVal))
+                            if (decimal.TryParse(dt.Rows[i][j]?.ToString(), out decimal decVal))
                                 subTotals[j] += decVal;
                         }
 
                         rect = new XRect(currentXPosition, currentYPosition, columnWidths[j], rowHeight);
                         gfx.DrawRectangle(XPens.WhiteSmoke, rect);
 
-                        var horizontalAlignment = XStringFormats.Center;
-                        if (formatColumn != null)
-                        {
-                            horizontalAlignment = formatColumn.fieldAlign == "Right" || (formatColumn.isNumeric && (formatColumn.fieldAlign == "Auto" || string.IsNullOrEmpty(formatColumn.fieldAlign)))
+                        var horizontalAlignment =
+                            formatColumn.fieldAlign == "Right" ||
+                            (formatColumn.isNumeric &&
+                            (formatColumn.fieldAlign == "Auto" || string.IsNullOrEmpty(formatColumn.fieldAlign)))
                                 ? XStringFormats.CenterRight
                                 : formatColumn.fieldAlign == "Center"
                                     ? XStringFormats.Center
                                     : XStringFormats.CenterLeft;
-                        }
 
                         var yPosition = currentYPosition + 1;
+
                         foreach (string l in lines)
                         {
                             XRect lineRect = new XRect(rect.Left, yPosition, rect.Width, fontNormal.Height);
@@ -2902,10 +3013,11 @@ namespace ReportBuilder.Web.Models
                             yPosition += fontNormal.Height;
                         }
 
-                        currentXPosition += (int) columnWidths[j];
+                        currentXPosition += (int)columnWidths[j];
                     }
 
                     currentYPosition += rowHeight;
+                    lastGroupKey = groupKey;
                 }
 
                 if (includeSubtotal)
