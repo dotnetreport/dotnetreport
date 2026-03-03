@@ -4255,7 +4255,6 @@ var reportViewModel = function (options) {
 								remove: function () {
 									e.outerGroup(false);
 									self.OuterGroupColumns.remove(this);
-									col.selectedAggregate = ko.observable("Group");
 								}
 							});
 						}
