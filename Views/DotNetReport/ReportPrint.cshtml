@@ -135,10 +135,10 @@
                       </div>
                       <div class="form-inline">
                           <div class="small" data-bind="with: pager">
-                              <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
+                              <div class="form-group float-start total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
                                   <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
                               </div>
-                              <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
+                              <div class="form-group float-end" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
                                   <div data-bind="template: 'pager-template', data: $data"></div>
                               </div>
                           </div>
@@ -160,7 +160,7 @@
         <div data-bind="template: {name: 'report-render', data: $data }"></div>
         <!-- /ko -->
         <!-- ko if: $parent.ReportType() != 'Pivot' && $parent.ReportType() != 'Html' && (!$parent.isChart() || $parent.ShowDataWithGraph()) -->
-        <div class="pull-right" data-bind="if: $parent.OuterGroupColumns().length > 0">
+        <div class="float-end" data-bind="if: $parent.OuterGroupColumns().length > 0">
             <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
                 Manage Groups <span class="fa fa-ellipsis-v"></span>
             </a>
@@ -355,10 +355,10 @@
                                     </div>
                                     <div class="form-inline">
                                         <div class="small" data-bind="with: pager">
-                                            <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
+                                            <div class="form-group float-start total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
                                                 <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
                                             </div>
-                                            <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
+                                            <div class="form-group float-end" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
                                                 <div data-bind="template: 'pager-template', data: $data"></div>
                                             </div>
                                         </div>

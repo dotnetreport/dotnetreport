@@ -146,7 +146,7 @@
             </li>
             <li role="presentation" class="nav-item">
                 <a class="nav-link" href="#schedules" aria-controls="schedules" role="tab" data-bs-toggle="tab">
-                    <i class="fa fa-clock-o"></i> Schedules
+                    <i class="fa fa-clock"></i> Schedules
                 </a>
             </li>
             <li role="presentation" class="nav-item" data-bind="visible: settings.useFunctions">
@@ -392,7 +392,7 @@
                     <div class="menu g-3" data-bind="foreach: pagedTables">
                         <div class="menu-category card">
                             <div class="card-header clearfix">
-                                <div class="checkbox pull-left">
+                                <div class="checkbox float-start">
                                     <label>
                                         <input type="checkbox" data-bind="checked: Selected" title="Check to use in Dotnet Report, uncheck to Remove">
                                         <span data-bind="text: TableName, attr: { title: TableName }, click: function() { $root.activeTable($data); }" class="table-name-label" style="cursor: pointer"></span>
@@ -400,13 +400,13 @@
                                         <span data-bind="visible: IsView" class="label label-sm">(view)</span>
                                     </label>
                                     <button class="btn btn-sm" title="Save this Table" data-bind="click: function() { saveTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
-                                        <i class="fa fa-floppy-o"></i>
+                                        <i class="fas fa-save"></i>
                                     </button>
                                     <button class="btn btn-sm" title="Preview this Table" data-bind="click: function() { previewTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
                                         <i class="fa fa-table"></i>
                                     </button>
                                 </div>
-                                <a class="pull-right" data-bind="click: function() { $root.activeTable($data); }">
+                                <a class="float-end" data-bind="click: function() { $root.activeTable($data); }">
                                     <span class="fa fa-chevron-right" style="cursor: pointer"></span>
                                 </a>
                             </div>
@@ -443,7 +443,7 @@
                                     <span data-bind="visible: IsView" class="label-sm">(view)</span>
                                 </h5>
                                 <button class="btn btn-sm" title="Save this Table" data-bind="click: function() { saveTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
-                                    <i class="fa fa-floppy-o"></i> Save Changes
+                                    <i class="fas fa-save"></i> Save Changes
                                 </button>
                                 <button class="btn btn-sm" title="Preview this Table" data-bind="click: function() { previewTable($root.keys.AccountApiKey, $root.keys.DatabaseApiKey); }">
                                     <i class="fa fa-table"></i> Preview Data
@@ -453,7 +453,7 @@
                                 </button>
                             </div>
                             <div class="card-body">
-                                <p class="pull-right">
+                                <p class="float-end">
                                     <button class="btn btn-sm" title="Manage Category" data-bs-toggle="modal" data-bs-target="#category-manage-modal" data-bind="click: $root.selectedCategory">
                                         <i class="fa fa-gear"></i>
                                     </button>
@@ -513,8 +513,8 @@
                                             <label data-bind="visible: ForeignKey" class="badge text-bg-info text-white">Foreign</label>
                                             <label class="badge text-bg-warning" data-bind="visible: isNew">New</label>
                                         </label>
-                                        <button class="btn btn-sm pull-right" data-bs-toggle="modal" data-bs-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, false)">...</button>
-                                        <div class="btn btn-sm pull-right sortable">
+                                        <button class="btn btn-sm float-end" data-bs-toggle="modal" data-bs-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, false)">...</button>
+                                        <div class="btn btn-sm float-end sortable">
                                             <span class="fa fa-arrows" aria-hidden="true" title="Drag to reorder"></span>
                                         </div>
                                     </div>
@@ -684,7 +684,7 @@
                     <div class="menu g-3" data-bind="foreach: Procedures.savedProcedures"">
                         <div class="menu-category card">
                             <div class="card-header clearfix">
-                                <div class="pull-left">
+                                <div class="float-start">
                                     <label>
                                         <span data-bind="text: TableName, click: function() { $root.activeProcedure($data); }" style="cursor: pointer"></span>
                                     </label>
@@ -696,7 +696,7 @@
                                     </button>
                                 </div>
                                 <!-- Click to activate procedure -->
-                                <a class="pull-right" data-bind="click: function() { $root.activeProcedure($data); }">
+                                <a class="float-end" data-bind="click: function() { $root.activeProcedure($data); }">
                                     <span class="fa fa-chevron-right" style="cursor: pointer"></span>
                                 </a>
                             </div>
@@ -718,7 +718,7 @@
                                 </button>
                             </div>
                             <div class="card-body">
-                                <p class="pull-right">
+                                <p class="float-end">
                                     <button class="btn btn-sm" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
                                         <i class="fa fa-user"></i>
                                     </button>
@@ -741,7 +741,7 @@
                                             <span data-bind="editable: DisplayName, attr: { title: 'DB field is ' + ColumnName() }"></span>
                                             <span class="badge text-bg-info text-white" data-bind="text: FieldType"></span>
                                         </label>
-                                        <button class="btn btn-sm pull-right" data-bs-toggle="modal" data-bs-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, true)">...</button>
+                                        <button class="btn btn-sm float-end" data-bs-toggle="modal" data-bs-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, true)">...</button>
                                     </div>
                                 </div>
                                 <label class="small">Parameters</label>
@@ -751,7 +751,7 @@
                                             <span data-bind="editable: DisplayName, attr: { title: 'DB field is ' + ParameterName() }"></span>
                                             <span class="badge text-bg-info text-white" data-bind="text: ParameterDataTypeString"></span>
                                             &nbsp;&nbsp;
-                                            <button class="btn btn-sm btn-primary pull-right" data-bs-toggle="modal" data-bs-target="#parameter-modal" title="All Parameter options" data-bind="click: $root.editParameter">...</button>
+                                            <button class="btn btn-sm btn-primary float-end" data-bs-toggle="modal" data-bs-target="#parameter-modal" title="All Parameter options" data-bind="click: $root.editParameter">...</button>
                                         </label>
                                     </div>
                                 </div>
@@ -1043,7 +1043,7 @@
 
                             <!-- Inner schedule items -->
                             <div class="row fw-bold bg-light py-2 d-none d-md-flex">
-                                <div class="col-md"><i class="fa fa-clock-o"></i> Schedule</div>
+                                <div class="col-md"><i class="fa fa-clock"></i> Schedule</div>
                                 <div class="col-md"><i class="fa fa-envelope"></i> Email To</div>
                                 <div class="col-md"><i class="fa fa-file"></i> Format</div>
                                 <div class="col-md"><i class="fa fa-history"></i> Last Run</div>
@@ -1450,7 +1450,7 @@
                 <div class="menu g-3" style="margin-left: 20px;" data-bind="foreach: foundProcedures">
                     <div class="menu-category card" style="float:left">
                         <div class="card-header clearfix" style="">
-                            <div class="pull-left">
+                            <div class="float-start">
                                 <label>
                                     <span data-bind="text: TableName"></span>
                                     <span class="label-xs">Procedure</span>
@@ -1459,7 +1459,7 @@
                                     <span class="fa fa-save"></span>
                                 </button>
                             </div>
-                            <a class="pull-right" data-bs-toggle="collapse" data-bind="attr: {'data-bs-target': '#sp_'+$index()}">
+                            <a class="float-end" data-bs-toggle="collapse" data-bind="attr: {'data-bs-target': '#sp_'+$index()}">
                                 <span class="fa fa-chevron-down"></span>
                             </a>
                         </div>
@@ -1820,7 +1820,7 @@
         <div class="modal-content" data-bind="with: previewData">
             <div class="modal-header">
                 <h4 class="modal-title">Preview Table</h4>
-                <button type="button" class="btn-close pull-right" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close float-end" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">

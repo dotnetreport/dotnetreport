@@ -85,7 +85,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             </li>
                             <li class="nav-item" data-bind="visible: CanManageFolders() || adminMode()">
                                 <a href="#" class="nav-link" data-bind="click: ManageFolder.newFolder">
-                                    <span class="fa fa-folder-o"></span> Add Folder
+                                    <span class="fa fa-folder-open"></span> Add Folder
                                 </a>
                             </li>
                             <li class="nav-item dropdown" data-bind="visible: (CanManageFolders() || adminMode()) && SelectedFolder()!=null && (SelectedFolder().canEdit || SelectedFolder().canDelete || adminMode())">
@@ -215,8 +215,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         </div>
                         <div data-bind="visible: SelectedFolder() || searchReports()">
                             <div class="clearfix">
-                                <p class="pull-left">Please choose a Report from this Folder</p>
-                                <div class="pull-right">
+                                <p class="float-start">Please choose a Report from this Folder</p>
+                                <div class="float-end">
                                     <a href="#" class="btn btn-light" data-bind="click: function(){ SelectedFolder(null); searchReports(''); $('#search-report').val([]).trigger('change');}">
                                         ..back to Folders
                                     </a>
@@ -255,9 +255,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <div class="list-group-item">
                                         <div class="row">
                                             <div class="col-sm-7">
-                                                <input type="checkbox" data-bind="visible: $root.selectMode, checked: isSelected" class="pull-left me-2" />
-                                                <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType.indexOf('Map')==0, 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot', 'fa-window-restore': reportType=='Treemap', 'fa-signal': reportType == 'Combo', 'fa-code': reportType == 'Html', 'fa-map': reportType == 'HeatMap'}"></div>
-                                                <div class="pull-left">
+                                                <input type="checkbox" data-bind="visible: $root.selectMode, checked: isSelected" class="float-start me-2" />
+                                                <div class="fa fa-2x float-start" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType.indexOf('Map')==0, 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot', 'fa-window-restore': reportType=='Treemap', 'fa-signal': reportType == 'Combo', 'fa-code': reportType == 'Html', 'fa-map': reportType == 'HeatMap'}"></div>
+                                                <div class="float-start">
                                                     <h4>
                                                         <a data-bind="click: runReport" style="cursor: pointer">
                                                             <span data-bind="highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }"></span>
@@ -306,13 +306,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         </button>
                                                         <div class="dropdown-menu dropdown-menu-right">
                                                             <a class="dropdown-item" href="#" data-bind="click: function() { exportReport($root.appSettings.useAltPdf ? 'pdfalt' : 'pdf');}">
-                                                                <span class="fa fa-file-pdf-o"></span> Download PDF
+                                                                <span class="fas fa-file-pdf"></span> Download PDF
                                                             </a>
                                                             <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('excel');}">
-                                                                <span class="fa fa-file-excel-o"></span> Download Excel
+                                                                <span class="fas fa-file-excel"></span> Download Excel
                                                             </a>
                                                             <a class="dropdown-item" href="#" data-bind="visible: hasDrilldown, click: function() {exportReport('excel-sub');}">
-                                                                <span class="fa fa-file-excel-o"></span> Download Excel (Expanded)
+                                                                <span class="fas fa-file-excel"></span> Download Excel (Expanded)
                                                             </a>
                                                         </div>
                                                     </div>
@@ -341,10 +341,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         </button>
                                                         <div class="dropdown-menu">
                                                             <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('excel');}">
-                                                                <span class="fa fa-file-excel-o"></span> Download Excel
+                                                                <span class="fas fa-file-excel"></span> Download Excel
                                                             </a>
                                                             <a class="dropdown-item" href="#" data-bind="visible: hasDrilldown, click: function() {exportReport('excel-sub');}">
-                                                                <span class="fa fa-file-excel-o"></span> Download Excel with inner rows
+                                                                <span class="fas fa-file-excel"></span> Download Excel with inner rows
                                                             </a>
                                                         </div>
                                                     </div>
@@ -527,12 +527,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                     </li>
                                                                     <li>
                                                                         <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('excel');}">
-                                                                            <span class="fa fa-file-excel-o"></span> Download Excel
+                                                                            <span class="fas fa-file-excel"></span> Download Excel
                                                                         </a>
                                                                     </li>
                                                                     <li>
                                                                         <a class="dropdown-item" href="#" data-bind="visible: hasDrilldown, click: function() {exportReport('excel-sub');}">
-                                                                            <span class="fa fa-file-excel-o"></span> Download Excel (Expanded)
+                                                                            <span class="fas fa-file-excel"></span> Download Excel (Expanded)
                                                                         </a>
                                                                     </li>
                                                                 </ul>
@@ -650,34 +650,34 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     </li>
                                     <li>
                                         <a href="#" class="dropdown-item" data-bind="click: downloadExcel">
-                                            <i class="fa fa-file-excel-o"></i> Excel
+                                            <i class="fas fa-file-excel"></i> Excel
                                         </a>
                                     </li>
                                     <li data-bind="visible: canDrilldown">
                                         <a class="dropdown-item" href="#" data-bind="click: downloadExcelWithDrilldown">
-                                            <i class="fa fa-file-excel-o"></i> Excel (Expanded)
+                                            <i class="fas fa-file-excel"></i> Excel (Expanded)
                                         </a>
                                     </li>
                                     <li data-bind="hidden: appSettings.dontWordExport">
                                         <a class="dropdown-item" data-bind="click: appSettings.showPageSize
                                             ? function() { $('#wordOptionsModal').modal('show'); }
                                             : function() { downloadWord(); }">
-                                            <span class="fa fa-file-word-o"></span> Word
+                                            <span class="fas fa-file-word"></span> Word
                                         </a>
                                     </li>
                                     <li>
                                         <a href="#" class="dropdown-item" data-bind="click: downloadCsv">
-                                            <i class="fa fa-file-excel-o"></i> Csv
+                                            <i class="fas fa-file-excel"></i> Csv
                                         </a>
                                     </li>
                                     <li data-bind="hidden: appSettings.dontXmlExport">
                                         <a href="#" class="dropdown-item" data-bind="click: downloadXml">
-                                            <i class="fa fa-file-code-o"></i> Xml
+                                            <i class="fa fa-file-code"></i> Xml
                                         </a>
                                     </li>
                                     <li>
                                         <a href="#" class="dropdown-item" data-bind="click: printReportPage">
-                                            <i class="fa fa-print"></i> Print
+                                            <i class="fas fa-print"></i> Print
                                         </a>
                                     </li>
                                 </ul>
@@ -728,12 +728,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <div class="report-menubar bg-light" data-bind="hidden: DontExecuteOnRun() && !reportRan()">
                                     <div class="col-xs-12 col-centered d-flex justify-content-between flex-wrap" data-bind="with: pager">
                                         <div class="form-inline d-flex" data-bind="visible: pages()">
-                                            <div class="form-group pull-left total-records">
+                                            <div class="form-group float-start total-records">
                                                 <span data-bind="text: ' Total Records: ' + totalRecords()"></span><br />
                                             </div>
-                                            <div class="pull-left">
+                                            <div class="float-start">
                                                 <button class="btn btn-secondary btn-sm" data-bind="visible: !$root.isChart() || $root.ShowDataWithGraph(), click: $root.downloadExcel" title="Export to Excel">
-                                                    <span class="fa fa-file-excel-o"></span>
+                                                    <span class="fas fa-file-excel"></span>
                                                 </button>
                                                 <button class="btn btn-secondary btn-sm" data-bind="click: $parent.toggleExpand">
                                                     <span class="fa" data-bind="css: {'fa-expand': !$parent.isExpanded(), 'fa-compress': $parent.isExpanded() }"></span>
@@ -747,7 +747,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <button class="btn btn-secondary btn-sm" title="Re-run Report" data-bind="click: function() { $root.RunReport(false, true);}">
                                                     <i class="fa fa-play"></i> 
                                                 </button>
-                                                <div data-bind="with: $parent" class="pull-left">
+                                                <div data-bind="with: $parent" class="float-start">
                                                     <div class="dropdown-selected" data-bind="click: toggleDropdown">
                                                         <div data-bind="with: selectedTableStyle" class="btn btn-sm btn-secondary" title="Format Table">
                                                             <span class="fa fa- fa-paint-brush"></span>
