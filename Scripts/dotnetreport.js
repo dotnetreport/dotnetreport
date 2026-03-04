@@ -1011,6 +1011,7 @@ var reportViewModel = function (options) {
 
 	self.IncludeSubTotal = ko.observable(false);
 	self.totalRowFormat = ko.observable('row');
+	self.subTotalPerGroup = ko.observable(false);
 	self.IncludeColumnTotal = ko.observable(false);
 	self.ShowUniqueRecords = ko.observable(false);
 	self.ShowExpandOption = ko.observable(false);
@@ -1325,7 +1326,77 @@ var reportViewModel = function (options) {
 		return finalList;
 	}
 
+	function computeAggregateValue(aggregate, fieldName, rows) {
+		var values = [], strValues = [];
+		_.forEach(rows, function (row) {
+			var item = _.find(row.Items, function (i) {
+				return (i.Column.ColumnName || i.Column.fieldName) === fieldName;
+			});
+			if (item) {
+				var n = parseFloat(item.Value);
+				if (!isNaN(n)) values.push(n);
+				strValues.push(item.Value);
+			}
+		});
+		switch (aggregate) {
+			case 'Count': return rows.length;
+			case 'Count Distinct': return _.uniq(strValues).length;
+			case 'Average': return values.length ? _.mean(values) : 0;
+			case 'Max': return values.length ? _.max(values) : '';
+			case 'Min': return values.length ? _.min(values) : '';
+			default: return _.sum(values);
+		}
+	}
+
 	self.outerGroupData = ko.observableArray();
+	self.perGroupSubTotals = ko.computed(function () {
+		if (!self.subTotalPerGroup() || !self.IncludeSubTotal()) return [];
+		var groups = self.outerGroupData();
+		var subTotalTemplate = self.ReportResult().SubTotals();
+		if (subTotalTemplate.length === 0 || groups.length === 0) return [];
+		var templateItems = subTotalTemplate[0].Items;
+		return _.map(groups, function (group) {
+			return _.filter(_.map(templateItems, function (templateItem) {
+				var emptyItem = { Column: templateItem.Column, Value: '', formattedVal: '', _showInTotalRow: false, _dontSubtotal: false, outerGroup: templateItem.outerGroup };
+				if ((templateItem.outerGroup && templateItem.outerGroup()) || templateItem.aggregateFunction == 'Outer Group') return null;
+				if (templateItem._showInTotalRow === false) return emptyItem;
+				var colName = templateItem.Column.ColumnName;
+				var field = _.find(self.SelectedFields(), function (f) {
+					return (f.fieldDbName || f.fieldName) === colName;
+				});
+				if (field && field.dontSubTotal && field.dontSubTotal()) return emptyItem;
+				var agg = (field && field.totalRowAggregate) ? field.totalRowAggregate() : 'Sum';
+				var value = computeAggregateValue(agg, colName, group.rows);
+				// Apply field formatting
+				var formattedValue = value;
+				if (field) {
+					var fmt = field.fieldFormat ? field.fieldFormat() : null;
+					var decimals = field.decimalPlaces ? (parseInt(field.decimalPlaces()) || 2) : 2;
+					var currSym = field.currencyFormat ? (field.currencyFormat() || '$') : '$';
+					var numVal = parseFloat(value);
+					if (!isNaN(numVal)) {
+						if (fmt === 'Currency') {
+							formattedValue = currSym + numVal.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+						} else if (fmt === 'Decimal') {
+							formattedValue = numVal.toFixed(decimals);
+						} else if (fmt === 'Integer') {
+							formattedValue = Math.round(numVal).toString();
+						} else if (fmt === 'Number' || fmt === 'Double') {
+							formattedValue = numVal.toLocaleString();
+						}
+					}
+				}
+				return {
+					Column: templateItem.Column,
+					Value: value,
+					formattedVal: formattedValue,
+					_showInTotalRow: true,
+					outerGroup: templateItem.outerGroup
+				};
+			}), function (x) { return x !== null; });
+		});
+	});
+
 	self.ReportResult = ko.observable({
 		HasError: ko.observable(false),
 		ReportDebug: ko.observable(false),
@@ -1336,6 +1407,9 @@ var reportViewModel = function (options) {
 		SubTotals: ko.observableArray([]),
 		outerGroupData: ko.computed(function () {
 			return self.outerGroupData();
+		}),
+		perGroupSubTotals: ko.computed(function () {
+			return self.perGroupSubTotals ? self.perGroupSubTotals() : [];
 		})
 	});
 
@@ -1382,6 +1456,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.OuterGroupData.subscribe(function (x) {
+		_.forEach(x, function (g, i) { g.groupIndex = i; });
 		self.outerGroupData(x);
 	});
 
@@ -3736,6 +3811,7 @@ var reportViewModel = function (options) {
 				kpiSettings: ko.toJS(self.kpiSettings()),
 				includeColumnTotal: self.IncludeColumnTotal(),
 				totalRowFormat: self.totalRowFormat(),
+				subTotalPerGroup: self.subTotalPerGroup(),
 			}),
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -5409,28 +5485,7 @@ var reportViewModel = function (options) {
 			google.charts.setOnLoadCallback(self.DrawChart);
 		}
 
-		function computeAggregateValue(aggregate, fieldName, rows) {
-			var values = [], strValues = [];
-			_.forEach(rows, function(row) {
-				var item = _.find(row.Items(), function(i) {
-					return (i.Column.ColumnName || i.Column.fieldName) === fieldName;
-				});
-				if (item) {
-					var n = parseFloat(item.Value);
-					if (!isNaN(n)) values.push(n);
-					strValues.push(item.Value);
-				}
-			});
-			switch (aggregate) {
-				case 'Count':          return rows.length;
-				case 'Count Distinct': return _.uniq(strValues).length;
-				case 'Average':        return values.length ? _.mean(values) : 0;
-				case 'Max':            return values.length ? _.max(values) : '';
-				case 'Min':            return values.length ? _.min(values) : '';
-				default:               return _.sum(values);
-			}
-		}
-
+		
 		if (self.IncludeSubTotal() && self.hasPivotColumn()==false) {
 			ajaxcall({
 				url: options.runReportApiUrl,
@@ -6748,6 +6803,17 @@ var reportViewModel = function (options) {
 		e._outerGroup = e.fieldSettings.outerGroup
 		e.outerGroup = ko.observable(e.fieldSettings.outerGroup == true);
 		e.totalRowAggregate = ko.observable(e.fieldSettings.totalRowAggregate || 'Sum');
+		var _numericFormats = ['Int', 'Decimal', 'Currency', 'Double', 'Integer', 'Number', 'Days', 'Hours', 'Minutes', 'Seconds'];
+		e.totalRowAggregateOptions = ko.computed(function () {
+			return _numericFormats.indexOf(e.fieldFormat() && e.fieldFormat() != 'Auto' ? e.fieldFormat() : e.fieldType) >= 0
+				? ['Sum', 'Count', 'Count Distinct', 'Avg', 'Max', 'Min']
+				: ['Count', 'Count Distinct', 'Avg', 'Max', 'Min'];
+		});
+		e.totalRowAggregateOptions.subscribe(function (newOptions) {
+			if (newOptions.indexOf(e.totalRowAggregate()) < 0) {
+				e.totalRowAggregate(newOptions[0]);
+			}
+		});
 
 		e.applyAllHeaderFontColor = ko.observable(false);
 		e.applyAllHeaderBackColor = ko.observable(false);
@@ -7010,6 +7076,7 @@ var reportViewModel = function (options) {
 		}
 		self.IncludeColumnTotal(reportSettings.includeColumnTotal);
 		self.totalRowFormat(reportSettings.totalRowFormat || 'row');
+		self.subTotalPerGroup(reportSettings.subTotalPerGroup === true);
 		self.noHeaderRow(reportSettings.noHeaderRow);
 		self.noDashboardBorders(reportSettings.noDashboardBorders);
 		self.showPriorInKpi(reportSettings.showPriorInKpi);
@@ -7850,6 +7917,7 @@ var reportViewModel = function (options) {
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			includeColumnTotal: self.IncludeColumnTotal(),
+			subTotalPerGroup: self.subTotalPerGroup(),
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
@@ -7915,6 +7983,8 @@ var reportViewModel = function (options) {
 			columnDetails: self.getColumnDetails(),
 			includeSubTotal: self.IncludeSubTotal(),
 			includeColumnTotal: self.IncludeColumnTotal(),
+			subTotalPerGroup: self.subTotalPerGroup(),
+			totalRowFormat: self.totalRowFormat(),
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,

@@ -1139,8 +1139,8 @@ namespace ReportBuilder.Web.Controllers
         public async Task<IActionResult> DownloadExcel(
             [FromForm] string reportSql,
             [FromForm] string connectKey,
-            [FromForm] string reportName, 
-            [FromForm] bool allExpanded, 
+            [FromForm] string reportName,
+            [FromForm] bool allExpanded,
             [FromForm] string expandSqls,
             [FromForm] string chartData = null,
             [FromForm] string columnDetails = null,
@@ -1151,16 +1151,18 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string onlyAndGroupInColumnDetail = null,
             [FromForm] bool isSubReport = false,
             [FromForm] string userId = "",
-            [FromForm] bool adminMode = false)
+            [FromForm] bool adminMode = false,
+            [FromForm] bool subTotalPerGroup = false,
+            [FromForm] string totalRowFormat = "row")
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql, adminMode: adminMode);            
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(onlyAndGroupInColumnDetail));
 
-            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport);
+            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport, subTotalPerGroup, totalRowFormat);
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".xlsx");
             Response.ContentType = "application/vnd.ms-excel";
 
@@ -1219,16 +1221,17 @@ namespace ReportBuilder.Web.Controllers
            [FromForm] string pageSize = "",
            [FromForm] string pageOrientation = "",
            [FromForm] string userId = "",
-           [FromForm] bool adminMode = false)
+           [FromForm] bool adminMode = false,
+           [FromForm] bool subTotalPerGroup = false)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql, adminMode: adminMode);            
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             reportName = HttpUtility.UrlDecode(reportName);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
-            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation);
+            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, subTotalPerGroup);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }

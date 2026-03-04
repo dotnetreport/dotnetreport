@@ -520,8 +520,26 @@
                 </tr>
             </tfoot>
             <!-- /ko -->
+            <!-- ko if: $parentContext.$parentContext.$parent.subTotalPerGroup() && $parentContext.$parent.perGroupSubTotals().length > 0 && $parentContext.$parentContext.$parent.totalRowFormat() == 'row' -->
+            <!-- ko if: $parentContext.$parent.perGroupSubTotals()[$parentContext.$data.groupIndex] && $parentContext.$parent.perGroupSubTotals()[$parentContext.$data.groupIndex].length > 0 -->
+            <tfoot>
+                <tr class="sub-total" style="border-top: 2px solid #dee2e6;">
+                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && IsDrillDown() && CanExpandOption() -->
+                    <td></td>
+                    <!-- /ko -->
+                    <!-- ko foreach: $parentContext.$parent.perGroupSubTotals()[$parentContext.$data.groupIndex] -->
+                    <td data-bind="style: {'text-align': Column.IsNumeric ? 'right' : 'left', 'font-weight': 'bold'}">
+                        <div data-bind="style: {'width': Column.fieldWidth}">
+                            <span data-bind="text: formattedVal"></span>
+                        </div>
+                    </td>
+                    <!-- /ko -->
+                </tr>
+            </tfoot>
+            <!-- /ko -->
+            <!-- /ko -->
         </table>
-        <!-- ko if: $parentContext.$parent.SubTotals().length > 0 && $parentContext.$parentContext.$parent.totalRowFormat() == 'table' -->
+        <!-- ko if: $parentContext.$parent.SubTotals().length > 0 && $parentContext.$parentContext.$parent.totalRowFormat() == 'table' && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
         <div class="mt-3" style="max-width: 450px;">
             <table class="table table-bordered table-sm">
                 <thead>
@@ -536,7 +554,7 @@
                     <tr>
                         <td data-bind="text: (Column.fieldLabel() || Column.ColumnName) + '(' + _aggregate + ')'"></td>
                         <td class="text-end">
-                            <span data-bind="html: formattedVal"></span>                            
+                            <span data-bind="html: formattedVal"></span>
                         </td>
                     </tr>
                     <!-- /ko -->
@@ -544,6 +562,32 @@
                 </tbody>
             </table>
         </div>
+        <!-- /ko -->
+        <!-- ko if: $parentContext.$parent.SubTotals().length > 0 && $parentContext.$parentContext.$parent.totalRowFormat() == 'table' && $parentContext.$parentContext.$parent.OuterGroupColumns().length > 0 && $parentContext.$parentContext.$parent.subTotalPerGroup() -->
+        <!-- ko if: $parentContext.$parent.perGroupSubTotals()[$parentContext.$data.groupIndex] && $parentContext.$parent.perGroupSubTotals()[$parentContext.$data.groupIndex].length > 0 -->
+        <div class="mt-3" style="max-width: 450px;">
+            <table class="table table-bordered table-sm">
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th class="text-end">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- ko foreach: $parentContext.$parent.perGroupSubTotals()[$parentContext.$data.groupIndex] -->
+                    <!-- ko if: _showInTotalRow != false -->
+                    <tr>
+                        <td data-bind="text: Column.fieldLabel() || Column.ColumnName"></td>
+                        <td class="text-end">
+                            <span data-bind="text: formattedVal"></span>
+                        </td>
+                    </tr>
+                    <!-- /ko -->
+                    <!-- /ko -->
+                </tbody>
+            </table>
+        </div>
+        <!-- /ko -->
         <!-- /ko -->
     </div>
 </script>
@@ -625,6 +669,58 @@
         <!-- /ko -->
         <!-- /ko -->
     </div>
+    <!-- ko if: SubTotals().length > 0 && $parent.hasOuterGroupFields() && $parent.IncludeSubTotal() && $parent.totalRowFormat() == 'row' -->
+    <table class="table table-bordered table-sm mt-0" style="border-top: 2px double #dee2e6; margin-bottom: 5px;">
+         <thead>
+            <tr>
+                <th data-bind="attr: { colspan: SubTotals()[0].Items.length }">Grand Total</th>                        
+            </tr>
+        </thead>
+        <tfoot>
+            <tr class="sub-total">
+                <!-- ko if: $parent.canDrilldown() && IsDrillDown() && CanExpandOption() -->
+                <td style="width: 30px;"></td>
+                <!-- /ko -->
+                <!-- ko foreach: SubTotals()[0].Items -->
+                <td data-bind="style: {'text-align': Column.IsNumeric ? 'right' : 'left', 'font-weight': 'bold'}">
+                    <div data-bind="style: {'width': Column.fieldWidth}">
+                        <!-- ko if: _showInTotalRow != false -->
+                        <span data-bind="html: formattedVal"></span>
+                        <!-- /ko -->
+                    </div>
+                </td>
+                <!-- /ko -->
+            </tr>
+        </tfoot>
+    </table>
+    <!-- /ko -->
+    <!-- Grand Total: Table mode — Field/Total summary table -->
+    <!-- ko if: SubTotals().length > 0 && $parent.hasOuterGroupFields() && $parent.IncludeSubTotal() && $parent.totalRowFormat() != 'row' -->
+    <div class="mt-3">
+        <!-- ko if: $parent.subTotalPerGroup() --><strong>Grand Total</strong><!-- /ko -->
+        <!-- ko ifnot: $parent.subTotalPerGroup() --><strong>Total</strong><!-- /ko -->
+        <table class="table table-bordered table-sm mt-2" style="max-width: 450px;">
+            <thead>
+                <tr>
+                    <th>Field</th>
+                    <th class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- ko foreach: SubTotals()[0].Items -->
+                <!-- ko if: _showInTotalRow != false && Value != 'NA' && Value != 'NaN' -->
+                <tr>
+                    <td data-bind="text: (Column.fieldLabel() || Column.ColumnName) + '(' + _aggregate + ')'"></td>
+                    <td class="text-end">
+                        <span data-bind="html: formattedVal"></span>
+                    </td>
+                </tr>
+                <!-- /ko -->
+                <!-- /ko -->
+            </tbody>
+        </table>
+    </div>
+    <!-- /ko -->
     <!-- /ko -->
 </script>
 <script type="text/html" id="admin-mode-template">
@@ -1262,7 +1358,7 @@
                     <div class="form-group row" data-bind="visible: $parents[1].IncludeSubTotal() && !dontSubTotal()">
                         <label class="col-sm-5 col-md-5 control-label">Total Row Aggregate</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-select" data-bind="options: ['Sum','Count','Count Distinct','Average','Max','Min'], value: totalRowAggregate"></select>
+                            <select class="form-select" data-bind="options: totalRowAggregateOptions, value: totalRowAggregate"></select>
                         </div>
                     </div>
                 </div>
@@ -1967,27 +2063,37 @@
 <script type="text/html" id="designer-options">
     <div class="row">
         <div class="col-md-5">
-            <div class="checkbox" data-bind="visible: ReportType()!='Pivot'">
-                <label>
-                    <input type="checkbox" data-bind="checked: IncludeSubTotal" />
-                    Include Total Row
-                </label>
-            </div>
-            <div data-bind="visible: IncludeSubTotal() && ReportType()!='Pivot'" style="padding-left: 20px; margin-top: 4px; margin-bottom: 4px;">
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" data-bind="checked: totalRowFormat" value="row" />
-                    <label class="form-check-label">As Total Row</label>
+            <div data-bind="visible: ReportType()!='Pivot' && ReportType()!='Custom'">
+                <div class="checkbox">
+                    <label>
+                        <input type="checkbox" data-bind="checked: IncludeSubTotal" />
+                        Include Total Row
+                    </label>
                 </div>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" data-bind="checked: totalRowFormat" value="table" />
-                    <label class="form-check-label">As Total Table</label>
+                <div data-bind="visible: IncludeSubTotal()" style="padding-left: 20px; margin-top: 4px; margin-bottom: 4px;">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" data-bind="checked: totalRowFormat" value="row" />
+                        <label class="form-check-label">As Total Row</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" data-bind="checked: totalRowFormat" value="table" />
+                        <label class="form-check-label">As Total Table</label>
+                    </div>
                 </div>
-            </div>
-            <div class="checkbox" data-bind="visible: ReportType()!='Pivot' && hasPivotColumn()">
-                <label>
-                    <input type="checkbox" data-bind="checked: IncludeColumnTotal" />
-                    Include Total Column
-                </label>
+                <div data-bind="visible: IncludeSubTotal() && hasOuterGroupFields()" style="padding-left: 20px; margin-top: 2px; margin-bottom: 4px;">
+                    <div class="checkbox" style="margin-top: 0;">
+                        <label>
+                            <input type="checkbox" data-bind="checked: subTotalPerGroup" />
+                            Sub Total Per Group
+                        </label>
+                    </div>
+                </div>
+                <div class="checkbox" data-bind="visible: hasPivotColumn()">
+                    <label>
+                        <input type="checkbox" data-bind="checked: IncludeColumnTotal" />
+                        Include Total Column
+                    </label>
+                </div>            
             </div>
             <div class="checkbox" data-bind="hidden: AggregateReport">
                 <label>
