@@ -511,7 +511,7 @@
                     <!-- ko foreach: Items -->
                     <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
                     <td data-bind="style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : 'right'}">
-                        <div data-bind="style: {'width': fieldWidth }, attr: {'title': _aggregate }">
+                        <div data-bind="style: {'width': fieldWidth }, attr: {'title': (Column.fieldLabel() || Column.ColumnName) + ' - ' +_aggregate }, visible:  _showInTotalRow != false">
                         <span data-bind="html: formattedVal"></span>
                         </div>
                     </td>
@@ -552,7 +552,7 @@
                     <!-- ko foreach: $parentContext.$parent.SubTotals()[0].Items -->
                     <!-- ko if: _showInTotalRow != false && Value != 'NA' && Value != 'NaN' -->
                     <tr>
-                        <td data-bind="text: (Column.fieldLabel() || Column.ColumnName) + '(' + _aggregate + ')'"></td>
+                        <td data-bind="text: (Column.fieldLabel() || Column.ColumnName) + ' (' + _aggregate + ')'"></td>
                         <td class="text-end">
                             <span data-bind="html: formattedVal"></span>
                         </td>
