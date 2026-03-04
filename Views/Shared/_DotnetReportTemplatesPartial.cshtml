@@ -676,22 +676,33 @@
                 <th data-bind="attr: { colspan: SubTotals()[0].Items.length }">Grand Total</th>                        
             </tr>
         </thead>
-        <tfoot>
-            <tr class="sub-total">
-                <!-- ko if: $parent.canDrilldown() && IsDrillDown() && CanExpandOption() -->
+        <tbody></tbody>
+            <tr>
+                <!-- ko if: $parent.canDrilldown() -->
                 <td style="width: 30px;"></td>
                 <!-- /ko -->
                 <!-- ko foreach: SubTotals()[0].Items -->
+                <!-- ko if: _showInTotalRow != false -->
+                 <td data-bind="text: (Column.fieldLabel() || Column.ColumnName) + ' (' + _aggregate + ')'"></td>
+                <!-- /ko -->
+                <!-- /ko -->
+            </tr>
+        
+            <tr class="sub-total">
+                <!-- ko if: $parent.canDrilldown() -->
+                <td style="width: 30px;"></td>
+                <!-- /ko -->
+                <!-- ko foreach: SubTotals()[0].Items -->
+                <!-- ko if: _showInTotalRow != false -->
                 <td data-bind="style: {'text-align': Column.IsNumeric ? 'right' : 'left', 'font-weight': 'bold'}">
-                    <div data-bind="style: {'width': Column.fieldWidth}">
-                        <!-- ko if: _showInTotalRow != false -->
-                        <span data-bind="html: formattedVal"></span>
-                        <!-- /ko -->
+                    <div data-bind="style: {'width': Column.fieldWidth}">                        
+                        <span data-bind="html: formattedVal"></span>                        
                     </div>
                 </td>
                 <!-- /ko -->
+                <!-- /ko -->
             </tr>
-        </tfoot>
+        </tbody>
     </table>
     <!-- /ko -->
     <!-- Grand Total: Table mode — Field/Total summary table -->
@@ -710,7 +721,7 @@
                 <!-- ko foreach: SubTotals()[0].Items -->
                 <!-- ko if: _showInTotalRow != false && Value != 'NA' && Value != 'NaN' -->
                 <tr>
-                    <td data-bind="text: (Column.fieldLabel() || Column.ColumnName) + '(' + _aggregate + ')'"></td>
+                    <td data-bind="text: (Column.fieldLabel() || Column.ColumnName) + ' (' + _aggregate + ')'"></td>
                     <td class="text-end">
                         <span data-bind="html: formattedVal"></span>
                     </td>
