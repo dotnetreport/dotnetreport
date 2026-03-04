@@ -1073,7 +1073,8 @@ var textQuery = function (options) {
                 }
             },
             values: function (token, callback) {
-                if (self.disabled) return;
+                if (!token || !token.trim()) return;
+
                 if (options.searchLookupFilter === true) {
                     self.SearchLookup(token, "").done(function (results) {
                         if (results.d) results = results.d;
@@ -1133,40 +1134,76 @@ var textQuery = function (options) {
 
      self.patchTributeForSpaces = function (tribute) {
         tribute.allowSpaces = true;
+        tribute._noMatch = false;
+
         tribute.range.getLastWordInText = function (text) {
-            return text.replace(/\u00A0/g, ' ').trim();
-        };
-        tribute.range.getTextPrecedingCurrentSelection = function () {
-            var element = this.tribute.current.element;
-            if (!element) return '';
-            if (element.nodeName === 'INPUT' || element.nodeName === 'TEXTAREA') {
-                var start = element.selectionStart;
-                return element.value ? element.value.substring(0, start) : '';
+            text = text.replace(/\u00A0/g, ' ');
+
+            if (tribute._noMatch) {
+                var gtIndex = text.lastIndexOf('>');
+                if (gtIndex !== -1) {
+                    var beforeGt = text.substring(0, gtIndex).replace(/\s+$/, '');
+                    var tableStart = beforeGt.search(/\S+\s*$/);
+                    if (tableStart === -1) tableStart = 0;
+                    var raw = text.substring(tableStart).trim();
+                    return raw.replace(/^[^\w]+/, '');
+                }
+                var words = text.split(' ');
+                var last = words[words.length - 1];
+                return last.replace(/^[^\w]+/, '').trim();
             }
-            var sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) return '';
-            var range = sel.getRangeAt(0).cloneRange();
-            range.setStart(element, 0);
-            return range.toString();
+
+            var segments = text.split(/  +/);
+            var last = segments[segments.length - 1].trim();
+            return last.replace(/^[^\w]+/, '');
         };
     }
 
     self.setupHints = function () {
+        var hintInputs = Array.from(document.querySelectorAll(".hint-input"));
+        if (self._hintsTribute) {
+            hintInputs.forEach(function (el) {
+                try { self._hintsTribute.detach(el); } catch (e) {}
+                el.removeAttribute('data-tribute'); // detach uses setTimeout; clear synchronously
+            });
+            self._hintsTribute = null;
+        }
+
         var tributeAttributes = self.getTributeAttributes({ concatFilterAndQuery: false, wrapText: true });
-        var tribute = new Tribute(tributeAttributes);
-        self.patchTributeForSpaces(tribute);
+        self._hintsTribute = new Tribute(tributeAttributes);
+        self.patchTributeForSpaces(self._hintsTribute);
 
-        var hintInputs = document.querySelectorAll(".hint-input");
         hintInputs.forEach(function (inputElement) {
-            tribute.attach(inputElement);
+            inputElement.removeAttribute('data-tribute'); // guard against any lingering attribute
+            inputElement._currentTribute = self._hintsTribute;
+            self._hintsTribute.attach(inputElement);
 
-            inputElement.addEventListener("tribute-replaced", function (e) {
-                self.addQueryItem(e.detail.item.original, true);
-            });
+            if (!inputElement._tributeEventsAdded) {
+                inputElement._tributeEventsAdded = true;
 
-            inputElement.addEventListener("menuItemRemoved", function (e) {
-                self.queryItems.remove(e.detail.item.original);
-            });
+                inputElement.addEventListener('tribute-no-match', function () {
+                    if (inputElement._currentTribute) inputElement._currentTribute._noMatch = true;
+                });
+
+                inputElement.addEventListener("tribute-replaced", function (e) {
+                    if (inputElement._currentTribute) inputElement._currentTribute._noMatch = false;
+                    self.addQueryItem(e.detail.item.original, true);
+                });
+
+                inputElement.addEventListener("menuItemRemoved", function (e) {
+                    self.queryItems.remove(e.detail.item.original);
+                });
+
+                inputElement.addEventListener('keydown', function (e) {
+                    if (e.ctrlKey && e.keyCode === 32) {
+                        var t = inputElement._currentTribute;
+                        if (!t) return;
+                        e.preventDefault();
+                        t._noMatch = true;
+                        inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                });
+            }
         });
 
     }
@@ -1262,51 +1299,94 @@ var textQuery = function (options) {
         });
     }
 
+    self._lookupTributes = self._lookupTributes || {};
+
     self.setupLookup = function (field, filter) {
-        var tributeAttributes = self.getTributeAttributes({ searchLookupFilter: true });
-        var tribute = new Tribute(tributeAttributes);
-        self.patchTributeForSpaces(tribute);
+        var uiId = field.uiId;
         var prefixes = ['C', 'F', 'M', 'P'];
         var filterInputs = [];
         prefixes.forEach(function (p) {
-            var el = document.getElementById('ctl-' + p + '-' + field.uiId);
+            var el = document.getElementById('ctl-' + p + '-' + uiId);
             if (el) filterInputs.push(el);
         });
 
+        // Detach the previous tribute for this field so its keyboard/input handlers are removed
+        // before we create a fresh instance (e.g. when the data operation changes).
+        if (self._lookupTributes[uiId]) {
+            filterInputs.forEach(function (el) {
+                try { self._lookupTributes[uiId].detach(el); } catch (e) {}
+                el.removeAttribute('data-tribute');
+            });
+            delete self._lookupTributes[uiId];
+        }
+
         if (filterInputs.length > 0) {
+            var tributeAttributes = self.getTributeAttributes({ searchLookupFilter: true });
+            var tribute = new Tribute(tributeAttributes);
+            self.patchTributeForSpaces(tribute);
+            self._lookupTributes[uiId] = tribute;
+
             tribute.attach(filterInputs);
 
+            // initLookupQuery is per-field, not per-element — call it once.
+            self.initLookupQuery(field);
+
             filterInputs.forEach(function (filterInput) {
-                self.initLookupQuery(field);
+                // Always keep current references on the element so the single set of listeners
+                // (added only once via _tributeEventsAdded) uses up-to-date instances when
+                // the data operation changes.
+                filterInput._lookupFilter = filter;
+                filterInput._currentTribute = tribute;
 
-                filterInput.addEventListener("tribute-replaced", function (e) {
-                    self.addQueryItem(e.detail.item.original);
-                });
+                if (!filterInput._tributeEventsAdded) {
+                    filterInput._tributeEventsAdded = true;
 
-                filterInput.addEventListener("menuItemRemoved", function (e) {
-                    self.queryItems.remove(e.detail.item.original);
-                });
+                    filterInput.addEventListener('tribute-no-match', function () {
+                        if (filterInput._currentTribute) filterInput._currentTribute._noMatch = true;
+                    });
 
-                filterInput.addEventListener('blur', function () {
-                    if (self.queryItems.length > 0) {
-                        filter.Value(self.queryItems.map(x => x.text).join(','));
-                    }
-                });
+                    // NOTE: tribute-active-true intentionally not handled — see setupHints
+                    // for full explanation of the race condition it causes.
 
-                filterInput.addEventListener("input", function () {
-                    if (!filterInput.value.trim()) {
-                        self.queryItems = [];
-                        filter.Value("");
-                        return;
-                    }
-                });
+                    filterInput.addEventListener("tribute-replaced", function (e) {
+                        if (filterInput._currentTribute) filterInput._currentTribute._noMatch = false;
+                        self.addQueryItem(e.detail.item.original);
+                    });
 
-                filterInput.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        filterInput.blur();
-                    }
-                });
+                    filterInput.addEventListener("menuItemRemoved", function (e) {
+                        self.queryItems.remove(e.detail.item.original);
+                    });
+
+                    filterInput.addEventListener('blur', function () {
+                        var f = filterInput._lookupFilter;
+                        if (f && self.queryItems.length > 0) {
+                            f.Value(self.queryItems.map(x => x.text).join(','));
+                        }
+                    });
+
+                    filterInput.addEventListener("input", function () {
+                        if (!filterInput.value.trim()) {
+                            self.queryItems = [];
+                            var f = filterInput._lookupFilter;
+                            if (f) f.Value("");
+                        }
+                    });
+
+                    filterInput.addEventListener('keydown', function (e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            filterInput.blur();
+                        }
+                        // Ctrl+Space: re-trigger search for the word at cursor.
+                        if (e.ctrlKey && e.keyCode === 32) {
+                            var t = filterInput._currentTribute;
+                            if (!t) return;
+                            e.preventDefault();
+                            t._noMatch = true;
+                            filterInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    });
+                }
             });
         }
     }

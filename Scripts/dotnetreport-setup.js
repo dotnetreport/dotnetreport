@@ -1350,8 +1350,8 @@ var manageViewModel = function (options) {
 
 							const tableMatch = _.some(self.Tables.model(), t => t.TableName() === tableName);
 
-							const processAndSave = () => {
-								table.Id = 0;
+							const processAndSave = (existingId) => {
+								table.Id = existingId || 0;
 								const mapped = ko.mapping.fromJS(table);
 								self.Tables.model.push(self.Tables.processTable(mapped));
 								const newTable = self.Tables.model()[self.Tables.model().length - 1];
@@ -1369,8 +1369,10 @@ var manageViewModel = function (options) {
 							if (tableMatch) {
 								handleOverwriteConfirmation(tableName, function (action) {
 									if (action === 'overwrite') {
-										self.Tables.model.remove(_.find(self.Tables.model(), e => e.TableName() === tableName));
-										processAndSave();
+										const existingTable = _.find(self.Tables.model(), e => e.TableName() === tableName);
+										const existingId = existingTable ? existingTable.Id() : 0;
+										self.Tables.model.remove(existingTable);
+										processAndSave(existingId);
 									} else {
 										toastr.info('Upload canceled for ' + tableName + '.');
 										resolve();
@@ -2606,13 +2608,14 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 						})
 					})
 				}).done(function (x) {
-					if (x.success && x.tableId) {
-						t.Id(x.tableId);
+					if (x && x.d) x = x.d;
+					if (x.success) {
+						if (x.tableId) t.Id(x.tableId);
 						if (silent !== true) toastr.success("Saved table " + e.DisplayName);
-						resolve(true); 
+						resolve(true);
 					} else {
 						toastr.error("Error saving table " + e.DisplayName);
-						resolve(false); 
+						resolve(false);
 					}
 				}).fail(function () {
 					toastr.error("Error saving table " + e.DisplayName);
@@ -2621,6 +2624,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 			});
 		};
 
+		t.SchemaName(t.SchemaName() ?? "");
 		return t;
     }
 
