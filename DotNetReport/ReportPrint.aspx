@@ -95,12 +95,17 @@
         </div>
         <!-- /ko -->
         <!-- ko if: HasError -->
+        <h2>@Model.ReportName</h2>
+        <p>
+            @Model.ReportDescription
+        </p>
+
         <h3>An unexpected error occured while running the Report</h3>
         <hr />
         <b>Error Details</b>
-        <div class="report-inner" style="display: none;">
+        <p class="report-inner" style="display: none;">
             <div data-bind="text: Exception"></div>
-        </div>
+        </p>
 
         <!-- /ko -->
 
@@ -108,10 +113,42 @@
 
     <script type="text/html" id="report-render">
         <div data-bind="with: ReportData">
-            <div data-bind="foreach: Rows">
-                <div data-bind="html: renderedHtml"></div>
-            </div>
+              <div data-bind="foreach: Rows">
+          <div data-bind="html: renderedHtml, css: { 'card-view': $parents[$parents.length-1].cardView }"></div>
+
+          <div data-bind="foreach: subReportsRan">
+              <div class="">
+                  <div class="" style="padding-bottom: 20px;" >
+                      <h2 data-bind="text: ReportName"></h2>
+
+                      <div class="clearfix"></div>
+                      <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
+                          <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+
+                          <div data-bind="with: ReportResult" class="small">
+                              <div data-bind="visible: !ReportData()">
+                                  <div class="report-spinner"></div>
+                              </div>
+                              <div data-bind="template: 'report-template', data: $data"></div>
+                          </div>
+                      </div>
+                      <div class="form-inline">
+                          <div class="small" data-bind="with: pager">
+                              <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
+                                  <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                              </div>
+                              <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
+                                  <div data-bind="template: 'pager-template', data: $data"></div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+
+              </div>
+          </div>
         </div>
+        </div>
+        <div class="clearfix"></div>
     </script>
 
     <script type="text/html" id="report-template">
@@ -245,10 +282,7 @@
         <div class="table-responsive">
             <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">
                 <thead style="position: sticky; top: -1px; z-index: 2;" data-bind="if: !$parents[2].noHeaderRow(), attr: {id: 'report-table-head' + $parents[2].ReportID()}">
-                    <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">
-                        <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() && !CanExpandOption() && (!$parents[2].hasPivotColumn() || ($parents[2].hasPivotColumn() && $parents[2].appSettings.useAltPivot)) -->
-                        <th style="width: 30px; border-left: 1px solid;" data-bind="style: {'background-color': Columns[0].headerBackColor}"></th>
-                        <!-- /ko -->
+                    <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">                        
                         <!-- ko template: 'report-column-header', data: $data -->
                         <!-- /ko-->
                     </tr>
@@ -262,12 +296,7 @@
 
                     <!-- ko if: !$parents[2].useRenderTable() -->
                     <!-- ko foreach: $parent.rows  -->
-                    <tr>
-                        <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() && $parentContext.$parentContext.$parentContext.$parent.ReportType() != 'Single' -->
-                            <td style="width: 30px; vertical-align: middle;" data-bind="style: {'background-color': Items[0]._backColor ?? Items[0].backColor(), 'color': Items[0]._fontColor ?? Items[0].fontColor()}">
-                                <a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a>
-                            </td>
-                        <!-- /ko -->
+                    <tr>                        
                         <!-- ko template: 'report-column', data: $data -->
                         <!-- /ko-->
                     </tr>
@@ -304,6 +333,42 @@
                         </td>
                     </tr>
                     <!-- /ko -->
+                     <!-- ko if: subReportsRan().length > 0 -->
+                <tr>
+                    <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
+                        <div data-bind="foreach: subReportsRan">
+                            <div class="">
+                                <div class="" style="padding-bottom: 20px;" >
+                                    <h2 data-bind="text: ReportName"></h2>
+
+                                    <div class="clearfix"></div>
+                                    <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
+                                        <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+
+                                        <div data-bind="with: ReportResult" class="small">
+                                            <div data-bind="visible: !ReportData()">
+                                                <div class="report-spinner"></div>
+                                            </div>
+                                            <div data-bind="template: 'report-template', data: $data"></div>
+                                        </div>
+                                    </div>
+                                    <div class="form-inline">
+                                        <div class="small" data-bind="with: pager">
+                                            <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
+                                                <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                                            </div>
+                                            <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
+                                                <div data-bind="template: 'pager-template', data: $data"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <!-- /ko -->
                     <!-- /ko -->
                     <!-- /ko-->
                 </tbody>
@@ -328,6 +393,7 @@
             </table>
         </div>
     </script>
+    <input type="hidden" id="exportId" value="<%= Model.UserId %>" />
 
     <script src="../Scripts/jquery-3.7.1.min.js"></script>
     <script src="../Scripts/bootstrap.bundle.min.js"></script>
@@ -395,6 +461,44 @@
             });
             vm.pager.pageSize(10000);
             ko.applyBindings(vm);
+            function checkReportsLoaded() {
+                var allReportsLoaded = true;
+
+                if (vm.ReportResult && vm.ReportResult() && vm.ReportResult().ReportData) {
+                    var reportData = vm.ReportResult().ReportData;
+
+                    if (reportData && reportData() && reportData().Rows) {
+                        var rows = ko.unwrap(reportData().Rows);
+
+                        _.forEach(rows, function (row) {
+                            if (row.subReportsRan) {
+                                var subReports = ko.unwrap(row.subReportsRan);
+                                _.forEach(subReports, function (subReport) {
+                                    if (subReport.ReportResult && subReport.ReportResult()) {
+                                        if (!subReport.ReportResult().ReportData || !subReport.ReportResult().ReportData()) {
+                                            allReportsLoaded = false;
+                                        }
+                                    } else {
+                                        allReportsLoaded = false;
+                                    }
+                                });
+                            }
+                        });
+                    }
+                }
+
+                return allReportsLoaded;
+            }
+
+            var checkInterval;
+            function showReportWhenReady() {
+                if (checkReportsLoaded()) {
+                    $('.report-inner').show();
+                    if (checkInterval) {
+                        clearInterval(checkInterval);
+                    }
+                }
+            }
             vm.LoadReport(<%= Model.ReportId %>, true,'<%= Model.ReportSeries %>').done(function () {
                 if (vm.useReportHeader()) {
                     vm.headerDesigner.init();
@@ -407,14 +511,14 @@
                 } else {
                     vm.printReport();
                 }
+                checkInterval = setInterval(showReportWhenReady, 500);
 
                 setTimeout(function () {
                     $('.report-inner').show();
-                }, 1500);
-
-                setTimeout(function () {
-                    $('.report-inner').show();
-                }, 15000);
+                    if (checkInterval) {
+                        clearInterval(checkInterval);
+                    }
+                }, 1000);
             });
 
             $(window).resize(function () {
@@ -425,7 +529,7 @@
 
     </script>
 
-    <script type="text/html" id="fly-filter-template">
+       <script type="text/html" id="fly-filter-template">
         <div data-bind="visible: FlyFilters().length>0" style="padding-left: 30px; padding-right: 30px; padding-top: 20px">
             <b>Filters</b>
             <div class="">

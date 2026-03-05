@@ -655,17 +655,15 @@ function pagerViewModel(args) {
 }
 
 var manageAccess = function (options) {
+    var buildList = function (array) { return _.map(array || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x, category: x.category || null }; }) };
     var access = {
         clientId: ko.observable(),
-        groupedUsers: ko.observableArray(),
-        groupedViewOnlyUsers: ko.observableArray(),
-        groupedDeleteOnlyUsers: ko.observableArray(),
-        users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x,category: x.category || null }; }),
-        userRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-        viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x, category: x.category || null }; }),
-        viewOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-        deleteOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x,category: x.category || null }; }),
-        deleteOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+        users: ko.observableArray(buildList(options.users)),
+        userRoles: ko.observableArray(buildList(options.userRoles)),
+        viewOnlyUsers: ko.observableArray(buildList(options.users)),
+        viewOnlyUserRoles: ko.observableArray(buildList(options.userRoles)),
+        deleteOnlyUsers: ko.observableArray(buildList(options.users)),
+        deleteOnlyUserRoles: ko.observableArray(buildList(options.userRoles)),
         showManageUsers: ko.observable(false),
         showViewUsers: ko.observable(false),
         showDeleteUsers: ko.observable(false),
@@ -680,16 +678,52 @@ var manageAccess = function (options) {
         toggleDeleteRoles: function () { this.showDeleteRoles(!this.showDeleteRoles()); },
         getAsList: function (x) {
             var list = '';
-            _.forEach(x, function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
+            _.forEach(x(), function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
             return list;
         },
         setupList: function (x, value) {
-            _.forEach(x, function (e) { if (value.indexOf(e.value()) >= 0) e.selected(true); else e.selected(false); });
+            _.forEach(x(), function (e) { e.selected(false); });
+
+            var valueArray = value ? value.split(',').filter(function(v) { return v.trim(); }) : [];
+
+            _.forEach(valueArray, function (id) {
+                var existingItem = _.find(x(), function (e) { return e.value() === id; });
+
+                if (existingItem) {
+                    existingItem.selected(true);
+                } else {
+                    var newItem = {
+                        selected: ko.observable(true),
+                        value: ko.observable(id),
+                        text: id,
+                        category: null
+                    };
+                    x.push(newItem);
+                }
+            });
         },
         matchAndSelect: function (items, ids) {
-            _.forEach(items, function (item) {
+            _.forEach(items(), function (item) {
                 if (ids.indexOf(item.value()) >= 0) {
                     item.selected(true);
+                }
+            });
+        },
+        addMissingAndSelect: function (items, ids, category) {
+            _.forEach(items(), function (e) { e.selected(false); });
+            _.forEach(ids, function (id) {
+                var existingItem = _.find(items(), function (item) { return item.value() === id; });
+
+                if (!existingItem) {
+                    var newItem = {
+                        selected: ko.observable(true),
+                        value: ko.observable(id),
+                        text: id,
+                        category: category || null
+                    };
+                    items.push(newItem);
+                } else {
+                    existingItem.selected(true);
                 }
             });
         },
@@ -705,49 +739,59 @@ var manageAccess = function (options) {
             var editUserRoles = userSettings.newReportEditUserRoles ? userSettings.newReportEditUserRoles.split(',') : [];
             var viewUserRoles = userSettings.newReportViewUserRoles ? userSettings.newReportViewUserRoles.split(',') : [];
 
-            access.matchAndSelect(access.users, editUserIds);
-            access.matchAndSelect(access.deleteOnlyUsers, editUserIds);
-            access.matchAndSelect(access.userRoles, editUserRoles);
-            access.matchAndSelect(access.deleteOnlyUserRoles, editUserRoles);
-            access.matchAndSelect(access.viewOnlyUsers, viewUserIds);
-            access.matchAndSelect(access.viewOnlyUserRoles, viewUserRoles);
+            access.addMissingAndSelect(access.users, editUserIds);
+            access.addMissingAndSelect(access.deleteOnlyUsers, editUserIds);
+            access.addMissingAndSelect(access.userRoles, editUserRoles);
+            access.addMissingAndSelect(access.deleteOnlyUserRoles, editUserRoles);
+            access.addMissingAndSelect(access.viewOnlyUsers, viewUserIds);
+            access.addMissingAndSelect(access.viewOnlyUserRoles, viewUserRoles);
         }
     }
 
     access.applyDefaultSettings();
-    var hasCategory = access.users.some(function (u) { return u.category; });
-    if (hasCategory) {
-        var groupedUsers = _.groupBy(access.users, 'category');
-        access.groupedUsers(
-            Object.keys(groupedUsers).map(function (cat) {
-                return {
-                    category: cat || 'Uncategorized',
-                    show: ko.observable(false),
-                    users: ko.observableArray(groupedUsers[cat])
-                };
-            })
-        );
-        var groupedViewOnlyUsers = _.groupBy(access.viewOnlyUsers, 'category');
-        access.groupedViewOnlyUsers(
-            Object.keys(groupedViewOnlyUsers).map(function (cat) {
-                return {
-                    category: cat || 'Uncategorized',
-                    show: ko.observable(false),
-                    viewOnlyUsers: ko.observableArray(groupedViewOnlyUsers[cat])
-                };
-            })
-        );
-        var groupedDeleteOnlyUsers = _.groupBy(access.deleteOnlyUsers, 'category');
-        access.groupedDeleteOnlyUsers(
-            Object.keys(groupedDeleteOnlyUsers).map(function (cat) {
-                return {
-                    category: cat || 'Uncategorized',
-                    show: ko.observable(false),
-                    deleteOnlyUsers: ko.observableArray(groupedDeleteOnlyUsers[cat])
-                };
-            })
-        );
-    }
+
+    access.groupedUsers = ko.computed(function () {
+        var hasCategory = access.users().some(function (u) { return u.category; });
+        if (!hasCategory) return [];
+
+        var groupedUsers = _.groupBy(access.users(), 'category');
+        return Object.keys(groupedUsers).map(function (cat) {
+            return {
+                category: cat || 'Uncategorized',
+                show: ko.observable(false),
+                users: ko.observableArray(groupedUsers[cat])
+            };
+        });
+    });
+
+    access.groupedViewOnlyUsers = ko.computed(function () {
+        var hasCategory = access.viewOnlyUsers().some(function (u) { return u.category; });
+        if (!hasCategory) return [];
+
+        var groupedViewOnlyUsers = _.groupBy(access.viewOnlyUsers(), 'category');
+        return Object.keys(groupedViewOnlyUsers).map(function (cat) {
+            return {
+                category: cat || 'Uncategorized',
+                show: ko.observable(false),
+                viewOnlyUsers: ko.observableArray(groupedViewOnlyUsers[cat])
+            };
+        });
+    });
+
+    access.groupedDeleteOnlyUsers = ko.computed(function () {
+        var hasCategory = access.deleteOnlyUsers().some(function (u) { return u.category; });
+        if (!hasCategory) return [];
+
+        var groupedDeleteOnlyUsers = _.groupBy(access.deleteOnlyUsers(), 'category');
+        return Object.keys(groupedDeleteOnlyUsers).map(function (cat) {
+            return {
+                category: cat || 'Uncategorized',
+                show: ko.observable(false),
+                deleteOnlyUsers: ko.observableArray(groupedDeleteOnlyUsers[cat])
+            };
+        });
+    });
+
     return access;
 };
 
@@ -1050,7 +1094,8 @@ var textQuery = function (options) {
                 }
             },
             values: function (token, callback) {
-                if (self.disabled) return;
+                if (!token || !token.trim()) return;
+
                 if (options.searchLookupFilter === true) {
                     self.SearchLookup(token, "").done(function (results) {
                         if (results.d) results = results.d;
@@ -1108,21 +1153,78 @@ var textQuery = function (options) {
         return tributeAttributes;
     }
 
+     self.patchTributeForSpaces = function (tribute) {
+        tribute.allowSpaces = true;
+        tribute._noMatch = false;
+
+        tribute.range.getLastWordInText = function (text) {
+            text = text.replace(/\u00A0/g, ' ');
+
+            if (tribute._noMatch) {
+                var gtIndex = text.lastIndexOf('>');
+                if (gtIndex !== -1) {
+                    var beforeGt = text.substring(0, gtIndex).replace(/\s+$/, '');
+                    var tableStart = beforeGt.search(/\S+\s*$/);
+                    if (tableStart === -1) tableStart = 0;
+                    var raw = text.substring(tableStart).trim();
+                    return raw.replace(/^[^\w]+/, '');
+                }
+                var words = text.split(' ');
+                var last = words[words.length - 1];
+                return last.replace(/^[^\w]+/, '').trim();
+            }
+
+            var segments = text.split(/  +/);
+            var last = segments[segments.length - 1].trim();
+            return last.replace(/^[^\w]+/, '');
+        };
+    }
+
     self.setupHints = function () {
+        var hintInputs = Array.from(document.querySelectorAll(".hint-input"));
+        if (self._hintsTribute) {
+            hintInputs.forEach(function (el) {
+                try { self._hintsTribute.detach(el); } catch (e) {}
+                el.removeAttribute('data-tribute'); // detach uses setTimeout; clear synchronously
+            });
+            self._hintsTribute = null;
+        }
+
         var tributeAttributes = self.getTributeAttributes({ concatFilterAndQuery: false, wrapText: true });
-        var tribute = new Tribute(tributeAttributes);
+        self._hintsTribute = new Tribute(tributeAttributes);
+        self.patchTributeForSpaces(self._hintsTribute);
 
-        var hintInputs = document.querySelectorAll(".hint-input");
         hintInputs.forEach(function (inputElement) {
-            tribute.attach(inputElement);
+            inputElement.removeAttribute('data-tribute'); // guard against any lingering attribute
+            inputElement._currentTribute = self._hintsTribute;
+            self._hintsTribute.attach(inputElement);
 
-            inputElement.addEventListener("tribute-replaced", function (e) {
-                self.addQueryItem(e.detail.item.original, true);
-            });
+            if (!inputElement._tributeEventsAdded) {
+                inputElement._tributeEventsAdded = true;
 
-            inputElement.addEventListener("menuItemRemoved", function (e) {
-                self.queryItems.remove(e.detail.item.original);
-            });
+                inputElement.addEventListener('tribute-no-match', function () {
+                    if (inputElement._currentTribute) inputElement._currentTribute._noMatch = true;
+                });
+
+                inputElement.addEventListener("tribute-replaced", function (e) {
+                    if (inputElement._currentTribute) inputElement._currentTribute._noMatch = false;
+                    self.addQueryItem(e.detail.item.original, true);
+                });
+
+                inputElement.addEventListener("menuItemRemoved", function (e) {
+                    self.queryItems.remove(e.detail.item.original);
+                });
+
+                inputElement.addEventListener('keydown', function (e) {
+                    if (e.ctrlKey && e.keyCode === 32) {
+                        var t = inputElement._currentTribute;
+                        if (!t) return;
+                        e.preventDefault();
+                        t._noMatch = true;
+                        inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                });
+            }
         });
 
     }
@@ -1140,6 +1242,7 @@ var textQuery = function (options) {
 
         var tributeAttributes = self.getTributeAttributes({ concatFilterAndQuery: true });
         var tribute = new Tribute(tributeAttributes);
+        self.patchTributeForSpaces(tribute);
         tribute.attach(inputEl);
 
         inputEl.addEventListener("tribute-replaced", function (e) {
@@ -1217,50 +1320,94 @@ var textQuery = function (options) {
         });
     }
 
+    self._lookupTributes = self._lookupTributes || {};
+
     self.setupLookup = function (field, filter) {
-        var tributeAttributes = self.getTributeAttributes({ searchLookupFilter: true });
-        var tribute = new Tribute(tributeAttributes);
+        var uiId = field.uiId;
         var prefixes = ['C', 'F', 'M', 'P'];
         var filterInputs = [];
         prefixes.forEach(function (p) {
-            var el = document.getElementById('ctl-' + p + '-' + field.uiId);
+            var el = document.getElementById('ctl-' + p + '-' + uiId);
             if (el) filterInputs.push(el);
         });
 
+        // Detach the previous tribute for this field so its keyboard/input handlers are removed
+        // before we create a fresh instance (e.g. when the data operation changes).
+        if (self._lookupTributes[uiId]) {
+            filterInputs.forEach(function (el) {
+                try { self._lookupTributes[uiId].detach(el); } catch (e) {}
+                el.removeAttribute('data-tribute');
+            });
+            delete self._lookupTributes[uiId];
+        }
+
         if (filterInputs.length > 0) {
+            var tributeAttributes = self.getTributeAttributes({ searchLookupFilter: true });
+            var tribute = new Tribute(tributeAttributes);
+            self.patchTributeForSpaces(tribute);
+            self._lookupTributes[uiId] = tribute;
+
             tribute.attach(filterInputs);
 
+            // initLookupQuery is per-field, not per-element — call it once.
+            self.initLookupQuery(field);
+
             filterInputs.forEach(function (filterInput) {
-                self.initLookupQuery(field);
+                // Always keep current references on the element so the single set of listeners
+                // (added only once via _tributeEventsAdded) uses up-to-date instances when
+                // the data operation changes.
+                filterInput._lookupFilter = filter;
+                filterInput._currentTribute = tribute;
 
-                filterInput.addEventListener("tribute-replaced", function (e) {
-                    self.addQueryItem(e.detail.item.original);
-                });
+                if (!filterInput._tributeEventsAdded) {
+                    filterInput._tributeEventsAdded = true;
 
-                filterInput.addEventListener("menuItemRemoved", function (e) {
-                    self.queryItems.remove(e.detail.item.original);
-                });
+                    filterInput.addEventListener('tribute-no-match', function () {
+                        if (filterInput._currentTribute) filterInput._currentTribute._noMatch = true;
+                    });
 
-                filterInput.addEventListener('blur', function () {
-                    if (self.queryItems.length > 0) {
-                        filter.Value(self.queryItems.map(x => x.text).join(','));
-                    }
-                });
+                    // NOTE: tribute-active-true intentionally not handled — see setupHints
+                    // for full explanation of the race condition it causes.
 
-                filterInput.addEventListener("input", function () {
-                    if (!filterInput.value.trim()) {
-                        self.queryItems = [];
-                        filter.Value("");
-                        return;
-                    }
-                });
+                    filterInput.addEventListener("tribute-replaced", function (e) {
+                        if (filterInput._currentTribute) filterInput._currentTribute._noMatch = false;
+                        self.addQueryItem(e.detail.item.original);
+                    });
 
-                filterInput.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        filterInput.blur();
-                    }
-                });
+                    filterInput.addEventListener("menuItemRemoved", function (e) {
+                        self.queryItems.remove(e.detail.item.original);
+                    });
+
+                    filterInput.addEventListener('blur', function () {
+                        var f = filterInput._lookupFilter;
+                        if (f && self.queryItems.length > 0) {
+                            f.Value(self.queryItems.map(x => x.text).join(','));
+                        }
+                    });
+
+                    filterInput.addEventListener("input", function () {
+                        if (!filterInput.value.trim()) {
+                            self.queryItems = [];
+                            var f = filterInput._lookupFilter;
+                            if (f) f.Value("");
+                        }
+                    });
+
+                    filterInput.addEventListener('keydown', function (e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            filterInput.blur();
+                        }
+                        // Ctrl+Space: re-trigger search for the word at cursor.
+                        if (e.ctrlKey && e.keyCode === 32) {
+                            var t = filterInput._currentTribute;
+                            if (!t) return;
+                            e.preventDefault();
+                            t._noMatch = true;
+                            filterInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    });
+                }
             });
         }
     }
@@ -1300,7 +1447,8 @@ window.toastr = (function () {
     return {
         success: (msg) => show(msg, 'success'),
         error: (msg) => show(msg, 'danger'),
-        info: (msg) => show(msg, 'info')
+        info: (msg) => show(msg, 'info'),
+        warning: (msg) => show(msg, 'warning')
     };
 })();
 

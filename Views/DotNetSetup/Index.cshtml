@@ -268,6 +268,20 @@
                                         Allow non admin users to export and import Reports in the system.
                                     </small>
                                 </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: canCopyReport">
+                                    <label class="form-check-label">Always allow users to copy reports</label>
+                                    <small class="text-muted d-block">
+                                        Allow users with View Only access to copy Reports in the system.
+                                    </small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showScheduling">
+                                    <label class="form-check-label">Hide Report/Dashboard Scheduling</label>
+                                    <small class="text-muted d-block">
+                                        Removes scheduling in reports and dashboard, select only if you don't want to use scheduling feature.
+                                    </small>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <h6 class="mt-2 mb-2">Folder Options</h6>
@@ -476,6 +490,10 @@
                                 </div>
 
                                 <div class="d-flex align-items-center justify-content-end gap-2">
+                                    <button class="btn btn-sm btn-primary"
+                                            data-bind="click: addNewColumn, visible: false">
+                                        <i class="fa fa-plus"></i> Add Column
+                                    </button>
                                     <label class="label-sm m-0"><span data-bind="text: Columns().length"></span> Columns</label>
                                     <button class="btn btn-sm btn-outline-secondary" data-bind="click: autoFormat, visible: Selected">Auto Format</button>
                                     <button class="btn btn-sm btn-outline-secondary" data-bind="click: unselectAllColumns, visible: Selected">Unselect All</button>
@@ -495,6 +513,7 @@
                                             <span class="badge text-bg-info text-white" data-bind="text: FieldType"></span>
                                             <label data-bind="visible: PrimaryKey" class="badge text-bg-primary">Primary</label>
                                             <label data-bind="visible: ForeignKey" class="badge text-bg-info text-white">Foreign</label>
+                                            <label class="badge text-bg-warning" data-bind="visible: isNew">New</label>
                                         </label>
                                         <button class="btn btn-sm pull-right" data-bs-toggle="modal" data-bs-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, false)">...</button>
                                         <div class="btn btn-sm pull-right sortable">
@@ -1386,7 +1405,7 @@
                         <button class="btn btn-secondary" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
                             <i class="fa fa-user"></i>Manage Role Access
                         </button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-bind="click: function(){$root.saveColumn()}">Done</button>
                     </div>
                 </div>
             </div>

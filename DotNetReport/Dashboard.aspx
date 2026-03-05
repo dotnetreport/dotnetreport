@@ -47,98 +47,90 @@
                 var dashboardId = parseInt(queryParams.id || 0);
                 if (!dashboardId && dashboards.length > 0) { dashboardId = dashboards[0].id; }
 
-                ajaxcall({ url: svc + 'LoadSavedDashboard', data: { id: dashboardId || null, adminMode: adminMode } }).done(function (reportsData) {
-                    if (reportsData.d) { reportsData = reportsData.d; }
-                    _.forEach(reportsData, function (r) {
-                        reports.push({ reportSql: r.ReportSql, reportId: r.ReportId, reportFilter: r.ReportFilter, connectKey: r.ConnectKey, x: r.X, y: r.Y, width: r.Width, height: r.Height });
+                ajaxcall({ url: svc + 'GetUsersAndRoles' }).done(function (data) {
+                    if (data.d) { data = data.d; }
+
+                    var vm = new dashboardViewModel({
+                        runReportUrl: svc + "Report",
+                        execReportUrl: svc + "RunReport",
+                        runLinkReportUrl: svc + "RunReportLink",
+                        lookupListUrl: svc + "GetLookupList",
+                        reportWizard: $("#filter-panel"),
+                        apiUrl: svc + "CallReportApi",
+                        runReportApiUrl: svc + "RunReportApi",
+                        getSchemaFromSql: svc + "GetSchemaFromSql",
+                        reportMode: "execute",
+                        reportWizard: $("#modal-reportbuilder"),
+                        linkModal: $("#linkModal"),
+                        fieldOptionsModal: $("#fieldOptionsModal"),
+                        dashboards: dashboards,
+                        users: data.users,
+                        userRoles: data.userRoles,
+                        currentUserId: data.currentUserId,
+                        allowAdmin: data.allowAdminMode,
+                        dataFilters: data.dataFilters,
+                        dashboardId: dashboardId,
+                        runExportUrl: svc,
+                        printReportUrl: window.location.protocol + "//" + window.location.host + "/DotnetReport/ReportPrint.aspx",
+                        getTimeZonesUrl: svc + "GetAllTimezones",
+                        getDashbordsUrl: svc + 'GetDashboards',
+                        loadSavedDashbordUrl: svc + 'LoadSavedDashboard'
                     });
+                    vm.init().done(function () {
+                        vm.loadDashboard(dashboardId).done(function () {
+                            if ($.unblockUI) {
+                                $.unblockUI();
+                            }
+                            ko.applyBindings(vm);
+                            setTimeout(() => {
+                                $('.grid-stack').show();
+                                const grid = GridStack.init({
+                                    cellHeight: 60,
+                                    margin: 10,
+                                    resizable: {
+                                        handles: 'se, sw, ne, nw, n, e, s, w'
+                                    },
+                                    oneColumnSize: 768
+                                });
 
-                    ajaxcall({ url: svc + 'GetUsersAndRoles' }).done(function (data) {
-                        if (data.d) { data = data.d; }
-
-                        var vm = new dashboardViewModel({
-                            runReportUrl: svc + "Report",
-                            execReportUrl: svc + "RunReport",
-                            runLinkReportUrl: svc + "RunReportLink",
-                            lookupListUrl: svc + "GetLookupList",
-                            reportWizard: $("#filter-panel"),
-                            apiUrl: svc + "CallReportApi",
-                            runReportApiUrl: svc + "RunReportApi",
-                            getSchemaFromSql: svc + "GetSchemaFromSql",
-                            reportMode: "execute",
-                            reportWizard: $("#modal-reportbuilder"),
-                            linkModal: $("#linkModal"),
-                            fieldOptionsModal: $("#fieldOptionsModal"),
-                            reports: reports,
-                            dashboards: dashboards,
-                            users: data.users,
-                            userRoles: data.userRoles,
-                            currentUserId: data.currentUserId,
-                            allowAdmin: data.allowAdminMode,
-                            dataFilters: data.dataFilters,
-                            dashboardId: dashboardId,
-                            runExportUrl: svc,
-                            printReportUrl: window.location.protocol + "//" + window.location.host + "/DotnetReport/ReportPrint.aspx",
-                            getTimeZonesUrl: svc + "GetAllTimezones",
-                            getDashbordsUrl: svc + 'GetDashboards',
-                            loadSavedDashbordUrl: svc + 'LoadSavedDashboard'
-                        });
-
-                        vm.init().done(function () {
-                            vm.loadDashboard(dashboardId).done(function () {
-                                if ($.unblockUI) {
-                                    $.unblockUI();
-                                }
-                                ko.applyBindings(vm);
-                                setTimeout(() => {
-                                    $('.grid-stack').show();
-                                    const grid = GridStack.init({
-                                        cellHeight: 60,
-                                        margin: 10,
-                                        resizable: {
-                                            handles: 'se, sw, ne, nw, n, e, s, w'
-                                        },
-                                        oneColumnSize: 768
+                                grid.on('change', function (event, items) {
+                                    if (!vm.arrangeDashboard()) return;
+                                    items.forEach(function (x) {
+                                        const el = x.el;
+                                        const type = el.getAttribute("data-type");
+                                        x.type = type;
+                                        vm.updatePosition(x);
                                     });
+                                });
 
-                                    grid.on('change', function (event, items) {
-                                        if (!vm.arrangeDashboard()) return;
-                                        items.forEach(function (x) {
-                                            const el = x.el;
-                                            const type = el.getAttribute("data-type");
-                                            x.type = type;
-                                            vm.updatePosition(x);
-                                        });
-                                    });
-
-                                    grid.on('resizestop', function (event, el) {
-                                        const e = el.querySelector('.report-chart');
-                                        if (e) {
-                                            vm.drawChart();
-                                        }
-                                    });
-
-                                    setTimeout(() => {
+                                grid.on('resizestop', function (event, el) {
+                                    const e = el.querySelector('.report-chart');
+                                    if (e) {
                                         vm.drawChart();
-                                        grid.enableMove(false);
-                                        grid.enableResize(false);
-                                        vm.gridResponsive();
-                                    }, 1000);
-                                }, 10);
+                                    }
+                                });
 
-                            });
+                                setTimeout(() => {
+                                    vm.drawChart();
+                                    grid.enableMove(false);
+                                    grid.enableResize(false);
+                                    vm.gridResponsive();
+                                }, 1000);
+                            }, 10);
 
-                            window.addEventListener('resize', function () {
-                                vm.gridResponsive();
-                                vm.drawChart();
-                            });
                         });
+
                         window.addEventListener('resize', function () {
                             vm.gridResponsive();
                             vm.drawChart();
                         });
                     });
+                    window.addEventListener('resize', function () {
+                        vm.gridResponsive();
+                        vm.drawChart();
+                    });
                 });
+
             });
         });
     </script>
@@ -157,15 +149,15 @@
                 </h2>
             </li>
         </ul>
-        <div class="d-flex flex-wrap align-items-end gap-2 mt-2 mt-md-0 border-bottom" style="padding-top: 21px;">            
+        <div class="d-flex flex-wrap align-items-end gap-2 mt-2 mt-md-0 border-bottom" style="padding-top: 21px;">
             <div class="dropdown">
                 <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fa fa-pencil-square"></i>
                     <span>Manage</span>
                 </button>
                 <ul class="dropdown-menu">
-                    <li class="dropdown dropdown-hover">
-                        <a href="#" class="dropdown-toggle dropdown-item" data-bs-toggle="dropdown" role="button" aria-expanded="false" data-bind="click: function() { newReport(true) }, visible: currentDashboard().canManage || adminMode()">
+                    <li class="dropdown dropdown-hover" data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
+                        <a href="#" class="dropdown-toggle dropdown-item" data-bs-toggle="dropdown" role="button" aria-expanded="false" data-bind="click: function() { newReport(true) }">
                             <span class="fa fa-plus"></span> Add New Report
                         </a>
                         <ul class="dropdown-menu">
@@ -181,8 +173,8 @@
                             </li>
                         </ul>
                     </li>
-                    <li>
-                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard, visible: currentDashboard().canManage || adminMode()">
+                    <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
+                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
                             <i class="fa fa-pencil"></i>
                             <span>Edit Dashboard</span>
                         </button>
@@ -193,19 +185,19 @@
                             <span>Add a New Dashboard</span>
                         </button>
                     </li>
-                    <li>
+                    <li data-bind="visible: hasDashboard()">
                         <button class="dropdown-item" data-bind="click: RefreshAllReports">
                             <i class="fa fa-refresh"></i>
                             <span>Refresh</span>
                         </button>
                     </li>
-                    <li>
+                    <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
                         <button class="dropdown-item" data-bind="click: addLineSeparator">
                             <i class="fa fa-minus"></i>
                             <span>Add Line Separator</span>
                         </button>
                     </li>
-                    <li>
+                    <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
                         <button class="dropdown-item" data-bind="click: openAddTextModal">
                             <i class="fa fa-font"></i>
                             <span>Add Text</span>
@@ -356,7 +348,7 @@
                     </div>
 
                 </div>
-                <div class="card card-body mb-3">
+                <div data-bind="visible:!$parent.appSettings.showScheduling" class="card card-body mb-3">
                     <h5><i class="fa fa-hourglass"></i>&nbsp;Choose Schedule</h5>
                     <div data-bind="template: {name: 'report-schedule'}"></div>
                 </div>
@@ -379,7 +371,7 @@
     <!-- ko if: type === 'report' -->
     <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-id': ReportID,'data-type':'report'}">
         <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }, style: { border: noDashboardBorders() ? 'none' : '', 'box-shadow': noDashboardBorders() ? 'none' : '','background-color': $parent.getCardBackground($data) }" style="overflow-y: hidden;">
-            <div class="padded-div" style="padding-bottom: 0; margin-bottom: 0;">
+            <div class="padded-div flex-row" style="padding-bottom: 0; margin-bottom: 0;">
                 <div class="pull-left">
                     <button type="button" class="btn" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
                         <span class="fa fa-ellipsis-v"></span>
@@ -435,7 +427,7 @@
                             </ul>
                         </li>
                         <li data-bind="visible: ReportType()!='Single'">
-                            <a class="dropdown-item" data-bind="attr: {href: '/DotNetReport/Index.aspx?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
+                            <a class="dropdown-item" data-bind="attr: {href: '/DotNetReport?linkedreport=true&noparent=true&reportId=' + ReportID() }" target="_blank">
                                 <span class="fa fa-folder-open"></span> Open Report
                             </a>
                         </li>
@@ -470,7 +462,7 @@
                     </span>
                     <a class="btn btn-link" data-bind="visible: CanEdit() && CanSaveReports() && isDirty(), click: SaveWithoutRun">
                         <span class="fa fa-save"></span>
-                    </a>                    
+                    </a>
                     <a class="btn btn-link" data-bind="visible:ReportType() != 'Single',click: toggleExpand"><span class="fa" data-bind="css: {'fa-expand': !isExpanded(), 'fa-minus': isExpanded() }, visible: ReportType() != 'Single' && !noDashboardBorders()"></span></a>
                 </div>
                 <div data-bind="visible: $parent.arrangeDashboard">
@@ -485,7 +477,7 @@
             <div data-bind="if: activeDesign()">
                 <div data-bind="template: 'report-designer-compact'"></div>
             </div>
-            <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">                
+            <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
                 <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
                 <div data-bind="with: ReportResult" class="small">
@@ -510,81 +502,17 @@
     </div>
     <!-- /ko -->
     <!-- ko if: type === 'separator' -->
-    <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-id': id,'data-type':'separator'}">
-    <div data-bind="template: { name: 'line-separator-template', data: $data }"></div>
-    </div>
+        <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-id': id,'data-type':'separator'}">
+            <div data-bind="template: { name: 'line-separator-template', data: $data }"></div>
+        </div>
     <!-- /ko -->
     <!-- ko if: type === 'text' -->
-    <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height,'gs-id': id,'data-type':'text'}">
-        <div data-bind="template:{name:'text-widget-template', data:$data}"></div>
-    </div>
+        <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height,'gs-id': id,'data-type':'text'}">
+            <div data-bind="template:{name:'text-widget-template', data:$data}"></div>
+        </div>
     <!-- /ko -->
     <!-- /ko -->
 </div>
-<script type="text/html" id="line-separator-template">
-    <div class="grid-stack-item-content position-relative p-2" data-bind="css: { card: $root.arrangeDashboard }">
-        <hr data-bind="style: { borderTop: thickness() + 'px solid ' + color() }" class="m-0">
-        <div data-bind="visible: $root.arrangeDashboard" class="dropdown position-absolute" style="top:-5px; right:0; z-index:2000;">
-            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown">
-                <i class="fa fa-ellipsis-v"></i>
-            </button>
-               <ul class="dropdown-menu dropdown-menu-end p-2 bg-light small">
-                    <li class="d-flex align-items-center gap-2 mb-2">
-                        <label class="form-label small mb-0">Line Color</label>
-                        <input type="color" class="color-picker" data-bind="value: color,valueUpdate: 'input',event: { change: () => $root.onWidgetChange($data)}">
-                    </li>
-
-                    <li class="d-flex align-items-center gap-2 mb-2">
-                        <label class="mb-0">Thickness</label>
-                        <input type="number"
-                               min="1"
-                               max="10"
-                               data-bind="value: thickness,valueUpdate: 'input',event: { change: () => $root.onWidgetChange($data)}"
-                               class="form-control form-control-sm"
-                               style="width:50px">
-                    </li>
-
-                    <li>
-                        <button class="dropdown-item text-danger" data-bind="click: deleteSeparator">
-                            <i class="fa fa-trash me-2"></i>
-                            Delete
-                        </button>
-                    </li>
-                </ul>
-        </div>
-    </div>
-</script>
-<script type="text/html" id="text-widget-template">
-    <div class="grid-stack-item-content position-relative p-2" data-bind="css: { card: $root.arrangeDashboard }">
-        <div data-bind="html: decodeURIComponent(text())"></div>
-        <div class="position-absolute" style="top:3px; right:4px; z-index:2000;" data-bind="visible: $root.arrangeDashboard">
-            <div class="dropdown">
-                <button class="btn btn-sm btn-light"
-                        type="button"
-                        data-bs-toggle="dropdown"
-                        aria-expanded="false">
-                    <i class="fa fa-ellipsis-v"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li>
-                        <button class="dropdown-item"
-                                data-bind="click: $root.openTextEditor">
-                            <i class="fa fa-edit me-2"></i>
-                            Edit
-                        </button>
-                    </li>
-                    <li>
-                        <button class="dropdown-item text-danger"
-                                data-bind="click: deleteText">
-                            <i class="fa fa-trash me-2"></i>
-                            Delete
-                        </button>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </div>
-</script>
 
 <!-- Report Builder -->
 <div class="modal modal-fullscreen" id="modal-reportbuilder" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="padding-right: 0px !important;" data-bind="with: selectedReport">
@@ -641,6 +569,4 @@
         </div>
     </div>
 </div>
-
-
 </asp:Content>

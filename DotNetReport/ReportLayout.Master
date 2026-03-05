@@ -293,14 +293,14 @@
 </script>
 <script type="text/html" id="kpi-settings">
     <div class="chart-container pull-right">
-        <button type="button" class="btn btn-light btn-sm d-flex align-items-center mt-2 chart-settings-btn"
+        <button class="btn btn-light btn-sm d-flex align-items-center mt-2 chart-settings-btn"
                 data-bind="click: toggleKpiSettings()" title="KPI Settings">
             <i class="fa fa-cog"></i>
         </button>
         <div class="kpi-settings-panel border p-2 shadow-sm bg-light"
              data-bind="visible: showKpiSettings">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <button type="button" class="btn btn-sm btn-close" data-bind="click: toggleKpiSettings()"></button>
+                <button class="btn btn-sm btn-close" data-bind="click: toggleKpiSettings()"></button>
                 <h6 class="mb-0">KPI Settings</h6>
             </div>
             <ul class="nav nav-tabs nav-sm mb-2 small">
@@ -371,6 +371,7 @@
                             <option value="$">USD ($)</option>
                             <option value="€">Euro (€)</option>
                             <option value="£">Pound (£)</option>
+                            <option value="₹">Indian Rupee (₹)</option>
                             <option value="Rs">Rupee (Rs)</option>
                         </select>
                     </div>
@@ -384,10 +385,21 @@
                             <option value="billion">Billions (B)</option>
                         </select>
                     </div>
-                    <div class="d-flex justify-content-end">
-                        <button class="btn btn-sm btn-outline-secondary"
-                                data-bind="click: clearKpiSettings">
-                            Clear
+                    <div class="d-flex justify-content-end mb-2">
+                        <button class="btn btn-sm"
+                                data-bind="click: copyKpiFormat"
+                                title="Copy Format">
+                            <i class="fa fa-copy"></i>
+                        </button>
+                        <button class="btn btn-sm"
+                                data-bind="click: pasteKpiFormat"
+                                title="Paste Format">
+                            <i class="fa fa-paste"></i>
+                        </button>
+                         <button class="btn btn-sm"
+                                data-bind="click: clearKpiSettings"
+                                title="Clear">
+                                <i class="fa fa-close"></i>
                         </button>
                     </div>
                 </div>
@@ -562,7 +574,7 @@
                 <!-- /ko -->
                 <!-- /ko-->
             </tbody>
-            <!-- ko if: $parentContext.$parent.SubTotals().length == 1 && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
+            <!-- ko if: $parentContext.$parent.SubTotals().length == 1 && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 && $parentContext.$parentContext.$parent.totalRowFormat() == 'row' -->
             <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
                 <tr class="sub-total">
                     <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() -->
@@ -571,7 +583,7 @@
                     <!-- ko foreach: Items -->
                     <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
                     <td data-bind="style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : 'right'}">
-                        <div data-bind="style: {'width': fieldWidth }">
+                        <div data-bind="style: {'width': fieldWidth }, attr: {'title': (Column.fieldLabel() || Column.ColumnName) + ' - ' +_aggregate }, visible:  _showInTotalRow != false">
                         <span data-bind="html: formattedVal"></span>
                         </div>
                     </td>
@@ -580,46 +592,111 @@
                 </tr>
             </tfoot>
             <!-- /ko -->
+            <!-- ko if: $parentContext.$parentContext.$parent.subTotalPerGroup() && $parentContext.$parent.perGroupSubTotals().length > 0 && $parentContext.$parentContext.$parent.totalRowFormat() == 'row' -->
+            <!-- ko if: $parentContext.$parent.perGroupSubTotals()[$parentContext.$data.groupIndex] && $parentContext.$parent.perGroupSubTotals()[$parentContext.$data.groupIndex].length > 0 -->
+            <tfoot>
+                <tr class="sub-total" style="border-top: 2px solid #dee2e6;">
+                    <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && IsDrillDown() && CanExpandOption() -->
+                    <td></td>
+                    <!-- /ko -->
+                    <!-- ko foreach: $parentContext.$parent.perGroupSubTotals()[$parentContext.$data.groupIndex] -->
+                    <td data-bind="style: {'text-align': Column.IsNumeric ? 'right' : 'left', 'font-weight': 'bold'}">
+                        <div data-bind="style: {'width': Column.fieldWidth}">
+                            <span data-bind="text: formattedVal"></span>
+                        </div>
+                    </td>
+                    <!-- /ko -->
+                </tr>
+            </tfoot>
+            <!-- /ko -->
+            <!-- /ko -->
         </table>
+        <!-- ko if: $parentContext.$parent.SubTotals().length > 0 && $parentContext.$parentContext.$parent.totalRowFormat() == 'table' && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
+        <div class="mt-3" style="max-width: 450px;">
+            <table class="table table-bordered table-sm">
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th class="text-end">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- ko foreach: $parentContext.$parent.SubTotals()[0].Items -->
+                    <!-- ko if: _showInTotalRow != false && Value != 'NA' && Value != 'NaN' -->
+                    <tr>
+                        <td data-bind="text: (Column.fieldLabel() || Column.ColumnName) + ' (' + _aggregate + ')'"></td>
+                        <td class="text-end">
+                            <span data-bind="html: formattedVal"></span>
+                        </td>
+                    </tr>
+                    <!-- /ko -->
+                    <!-- /ko -->
+                </tbody>
+            </table>
+        </div>
+        <!-- /ko -->
+        <!-- ko if: $parentContext.$parent.SubTotals().length > 0 && $parentContext.$parentContext.$parent.totalRowFormat() == 'table' && $parentContext.$parentContext.$parent.OuterGroupColumns().length > 0 && $parentContext.$parentContext.$parent.subTotalPerGroup() -->
+        <!-- ko if: $parentContext.$parent.perGroupSubTotals()[$parentContext.$data.groupIndex] && $parentContext.$parent.perGroupSubTotals()[$parentContext.$data.groupIndex].length > 0 -->
+        <div class="mt-3" style="max-width: 450px;">
+            <table class="table table-bordered table-sm">
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th class="text-end">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- ko foreach: $parentContext.$parent.perGroupSubTotals()[$parentContext.$data.groupIndex] -->
+                    <!-- ko if: _showInTotalRow != false -->
+                    <tr>
+                        <td data-bind="text: Column.fieldLabel() || Column.ColumnName"></td>
+                        <td class="text-end">
+                            <span data-bind="text: formattedVal"></span>
+                        </td>
+                    </tr>
+                    <!-- /ko -->
+                    <!-- /ko -->
+                </tbody>
+            </table>
+        </div>
+        <!-- /ko -->
+        <!-- /ko -->
     </div>
 </script>
 
 <script type="text/html" id="report-render">
     <div data-bind="with: ReportData">
-      <div data-bind="foreach: Rows">
-        <div data-bind="html: renderedHtml, css: { 'card-view': $parents[$parents.length-1].cardView }"></div>
+        <div data-bind="foreach: Rows">
+            <div data-bind="html: renderedHtml, css: { 'card-view': $parents[$parents.length-1].cardView }"></div>
 
-        <div data-bind="foreach: subReportsRan">
-            <div class="">
-                <div class="" style="padding-bottom: 20px;" >
-                    <h2 class="pull-left" data-bind="text: ReportName"></h2>
-
-                    <div class="clearfix"></div>
-                    <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
-                        <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
-
-                        <div data-bind="with: ReportResult" class="small">
-                            <div data-bind="visible: !ReportData()">
-                                <div class="report-spinner"></div>
+            <div data-bind="foreach: subReportsRan">
+                <div class="">
+                    <div class="" style="padding-bottom: 20px;">
+                        <h2 data-bind="text: ReportName"></h2>
+                        <div class="clearfix"></div>
+                        <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
+                            <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+                            <div data-bind="with: ReportResult" class="small">
+                                <div data-bind="visible: !ReportData()">
+                                    <div class="report-spinner"></div>
+                                </div>
+                                <div data-bind="template: 'report-template', data: $data"></div>
                             </div>
-                            <div data-bind="template: 'report-template', data: $data"></div>
                         </div>
-                    </div>
-                    <div class="form-inline">
-                        <div class="small" data-bind="with: pager">
-                            <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
-                                <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
-                            </div>
-                            <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
-                                <div data-bind="template: 'pager-template', data: $data"></div>
+                        <div class="form-inline">
+                            <div class="small" data-bind="with: pager">
+                                <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
+                                    <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                                </div>
+                                <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
+                                    <div data-bind="template: 'pager-template', data: $data"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
-      </div>
     </div>
     <div class="clearfix"></div>
 </script>
@@ -664,6 +741,69 @@
         <!-- /ko -->
         <!-- /ko -->
     </div>
+    <!-- ko if: SubTotals().length > 0 && $parent.hasOuterGroupFields() && $parent.IncludeSubTotal() && $parent.totalRowFormat() == 'row' -->
+    <table class="table table-bordered table-sm mt-0" style="border-top: 2px double #dee2e6; margin-bottom: 5px;">
+         <thead>
+            <tr>
+                <th data-bind="attr: { colspan: SubTotals()[0].Items.length }">Grand Total</th>                        
+            </tr>
+        </thead>
+        <tbody></tbody>
+            <tr>
+                <!-- ko if: $parent.canDrilldown() -->
+                <td style="width: 30px;"></td>
+                <!-- /ko -->
+                <!-- ko foreach: SubTotals()[0].Items -->
+                <!-- ko if: _showInTotalRow != false -->
+                 <td data-bind="text: (Column.fieldLabel() || Column.ColumnName) + ' (' + _aggregate + ')'"></td>
+                <!-- /ko -->
+                <!-- /ko -->
+            </tr>
+        
+            <tr class="sub-total">
+                <!-- ko if: $parent.canDrilldown() -->
+                <td style="width: 30px;"></td>
+                <!-- /ko -->
+                <!-- ko foreach: SubTotals()[0].Items -->
+                <!-- ko if: _showInTotalRow != false -->
+                <td data-bind="style: {'text-align': Column.IsNumeric ? 'right' : 'left', 'font-weight': 'bold'}">
+                    <div data-bind="style: {'width': Column.fieldWidth}">                        
+                        <span data-bind="html: formattedVal"></span>                        
+                    </div>
+                </td>
+                <!-- /ko -->
+                <!-- /ko -->
+            </tr>
+        </tbody>
+    </table>
+    <!-- /ko -->
+    <!-- Grand Total: Table mode — Field/Total summary table -->
+    <!-- ko if: SubTotals().length > 0 && $parent.hasOuterGroupFields() && $parent.IncludeSubTotal() && $parent.totalRowFormat() != 'row' -->
+    <div class="mt-3">
+        <!-- ko if: $parent.subTotalPerGroup() --><strong>Grand Total</strong><!-- /ko -->
+        <!-- ko ifnot: $parent.subTotalPerGroup() --><strong>Total</strong><!-- /ko -->
+        <table class="table table-bordered table-sm mt-2" style="max-width: 450px;">
+            <thead>
+                <tr>
+                    <th>Field</th>
+                    <th class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- ko foreach: SubTotals()[0].Items -->
+                <!-- ko if: _showInTotalRow != false && Value != 'NA' && Value != 'NaN' -->
+                <tr>
+                    <td data-bind="text: (Column.fieldLabel() || Column.ColumnName) + ' (' + _aggregate + ')'"></td>
+                    <td class="text-end">
+                        <span data-bind="html: formattedVal"></span>
+                    </td>
+                </tr>
+                <!-- /ko -->
+                <!-- /ko -->
+            </tbody>
+        </table>
+    </div>
+    <!-- /ko -->
     <!-- /ko -->
 </script>
 <script type="text/html" id="admin-mode-template">
@@ -726,7 +866,7 @@
                     </div>
                     <!-- /ko -->
                     <!-- /ko -->
-                    <!-- ko if: groupedUsers().length == 0 && users.length > 0 -->
+                    <!-- ko if: groupedUsers().length == 0 && users().length > 0 -->
                     <!-- ko foreach: users -->
                     <div class="pull-left">
                         <div class="checkbox">
@@ -737,7 +877,7 @@
                     </div>
                     <!-- /ko -->
                     <!-- /ko -->
-                    <div data-bind="if: groupedUsers().length == 0 && users.length == 0">
+                    <div data-bind="if: groupedUsers().length == 0 && users().length == 0">
                         Users list not populated or not applicable
                     </div>
                 </div>
@@ -764,7 +904,7 @@
                     </div>
                     <!-- /ko -->
                     <!-- /ko -->
-                    <!-- ko if: groupedViewOnlyUsers().length == 0 && viewOnlyUsers.length > 0 -->
+                    <!-- ko if: groupedViewOnlyUsers().length == 0 && viewOnlyUsers().length > 0 -->
                     <!-- ko foreach: viewOnlyUsers -->
                     <div class="pull-left">
                         <div class="checkbox">
@@ -775,7 +915,7 @@
                     </div>
                     <!-- /ko -->
                     <!-- /ko -->
-                    <div data-bind="if: groupedViewOnlyUsers().length == 0 && users.length == 0">
+                    <div data-bind="if: groupedViewOnlyUsers().length == 0 && viewOnlyUsers().length == 0">
                         Users list not populated or not applicable
                     </div>
                 </div>
@@ -803,7 +943,7 @@
                     </div>
                     <!-- /ko -->
                     <!-- /ko -->
-                    <!-- ko if: groupedDeleteOnlyUsers().length == 0 && deleteOnlyUsers.length > 0 -->
+                    <!-- ko if: groupedDeleteOnlyUsers().length == 0 && deleteOnlyUsers().length > 0 -->
                     <!-- ko foreach: deleteOnlyUsers -->
                         <div class="pull-left">
                             <div class="checkbox">
@@ -814,7 +954,7 @@
                         </div>
                         <!-- /ko -->
                         <!-- /ko -->
-                        <div data-bind="if: groupedDeleteOnlyUsers().length == 0 &&  users.length == 0">
+                        <div data-bind="if: groupedDeleteOnlyUsers().length == 0 && deleteOnlyUsers().length == 0">
                             Users list not populated or not applicable
                         </div>
                     </div>
@@ -833,7 +973,7 @@
                         </div>
                     </div>
                     <!-- /ko -->
-                    <div data-bind="if: userRoles.length == 0">
+                    <div data-bind="if: userRoles().length == 0">
                         User Roles list not populated or not applicable
                     </div>
                 </div>
@@ -849,7 +989,7 @@
                         </div>
                     </div>
                     <!-- /ko -->
-                    <div data-bind="if: userRoles.length == 0">
+                    <div data-bind="if: viewOnlyUserRoles().length == 0">
                         User Roles list not populated or not applicable
                     </div>
                 </div>
@@ -865,7 +1005,7 @@
                             </div>
                         </div>
                         <!-- /ko -->
-                        <div data-bind="if: userRoles.length == 0">
+                        <div data-bind="if: deleteOnlyUserRoles().length == 0">
                             User Roles list not populated or not applicable
                         </div>
                     </div>
@@ -1288,8 +1428,25 @@
                             </div>
                         </div>
                     </div>
+                    <div class="form-group row" data-bind="visible: $parents[1].IncludeSubTotal()">
+                        <div class="col-sm-12">
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" data-bind="checked: dontSubTotal" />
+                                    <b>Don't Show In Total Row</b>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row" data-bind="visible: $parents[1].IncludeSubTotal() && !dontSubTotal()">
+                        <label class="col-sm-5 col-md-5 control-label">Total Row Aggregate</label>
+                        <div class="col-sm-7 col-md-7">
+                            <select class="form-select" data-bind="options: totalRowAggregateOptions, value: totalRowAggregate"></select>
+                        </div>
+                    </div>
                 </div>
                 <br />
+                <div data-bind="visible:$parent.ReportType() !='Html'">
                 <div class="card card-body">
                     <div class="form-row align-items-center">
                         <div class="col-auto">
@@ -1335,6 +1492,7 @@
                     </div>
                 </div>
                 <br />
+                </div>
                 <div class="card card-body">
                     <div class="form-row align-items-center">
                         <div class="col-auto">
@@ -1440,7 +1598,7 @@
                         </div>
                     </div>
                 </div>
-                <br />                
+                <br />
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" data-bind="click: cancelFieldOptions">Cancel</button>
@@ -1585,7 +1743,7 @@
     <div class="row">
         <div class="col-md-12" data-bind="disable: isFormulaField, hidden: useStoredProc">
             <div data-bind="with: textQuery.searchFields">
-                <select id="search-field" class="form-control" data-bind="select2: {dropdownParent: $root.activeDesign() ? $('#choose-data-design') : $('#choose-data-card'), placeholder: 'Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
+                <select class="form-control" data-bind="select2: {dropdownParent: $root.activeDesign() ? $('#choose-data-design') : $('#choose-data-card'), placeholder: 'Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
             </div>
         </div>
 
@@ -1602,7 +1760,7 @@
                 </span>
             </div>
 
-            <div class="data-select-tree">
+            <div class="data-select-tree" style="max-height:calc(100vh - 200px);overflow-y:auto">
                 <!-- ko foreach: CategorizedTables -->
                 <div class="mb-3">
                     <div data-bind="click: function() { isExpanded(!isExpanded()); }, visible: categoryName" style="cursor: pointer;">
@@ -1804,21 +1962,21 @@
                         <span class="badge bg-danger" >Dynamic cannot be first column.</span>
                     </span>
                 </div>
-                <div class="col-7">
-                    <div class="pull-right" style="margin-top: -5px;" data-bind="if: $parent.AggregateReport() && !$parent.useStoredProc()">
+                <div class="col-7 d-flex flex-row-reverse">
+                    <div  style="margin-top: -5px;" data-bind="if: $parent.AggregateReport() && !$parent.useStoredProc()">
                         <select class="form-select form-control-sm" data-bind="options: $parent.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate"></select>
                     </div>
 
-                    <div class="pull-right" style="padding-right: 10px;" data-bind="ifnot: $parent.useStoredProc">
+                    <div  style="padding-right: 10px;" data-bind="ifnot: $parent.useStoredProc">
                         <span class="fa fa-trash-o" title="Cannot Delete Required Filter" data-bind="visible: forceFilterForTable"></span>
                         <span class="fa fa-trash" style="cursor: pointer;" aria-hidden="true" title="Delete this Field" data-bind="click: $parent.RemoveField, hidden: forceFilterForTable"></span>
                     </div>
-                    <!--<div class="pull-right" style="padding-right: 10px;" data-bind="ifnot: $parent.useStoredProc">
+                    <!--<div  style="padding-right: 10px;" data-bind="ifnot: $parent.useStoredProc">
                         <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {active: filterOnFly()==true}">
                             <span class="fa fa-filter" aria-hidden="true" title="Filter by this field on the Report"></span>
                         </span>
                     </div>-->
-                    <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.ReportType()!='Pivot'">
+                    <div  style="padding-right: 10px;" data-bind="visible: $parent.ReportType()!='Pivot'">
                         <span class="button-box no-padding" tabindex="0" data-bind="click: toggleDisable">
                             <span data-bind="
                                 css: {
@@ -1833,42 +1991,37 @@
                             " aria-hidden="true"></span>
                         </span>
                     </div>
-                    <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.ReportType()!='Pivot' && $parent.ReportType()!='List' && !$parent.useStoredProc()">
+                    <div  style="padding-right: 10px;" data-bind="visible: $parent.ReportType()!='Pivot' && $parent.ReportType()!='List' && !$parent.useStoredProc()">
                         <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ hideInDetail(!hideInDetail()); }, css: {active: hideInDetail()==true}">
                             <span class="fa fa-eye-slash" aria-hidden="true" title="Hide in Details"></span>
                         </span>
                     </div>
-                    <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.isFieldValidForYAxis($index(), fieldType || fieldFormat(), selectedAggregate())  && $parent.isChart() && $index()>0">
+                    <div  style="padding-right: 10px;" data-bind="visible: $parent.isFieldValidForYAxis($index(), fieldType || fieldFormat(), selectedAggregate())  && $parent.isChart() && $index()>0">
                         <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ groupInGraph(!groupInGraph()); }, css: {active: groupInGraph()==false}">
                             <span class="fa fa-signal" aria-hidden="true" title="Include in series"></span>
                         </span>
                     </div>
-                    <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.IncludeSubTotal()  &&  (['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldType) >= 0 || ['Int', 'Double', 'Money', 'Decimal', 'Currency'].indexOf(fieldFormat()) >= 0)">
-                        <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ dontSubTotal(!dontSubTotal()); }, css: {active: dontSubTotal()==true}">
-                            <span class="fa fa-plus-circle" aria-hidden="true" title="Don't add to Total row"></span>
-                        </span>
-                    </div>
-                    <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.ReportType()!='Pivot'">
+                    <div  style="padding-right: 10px;" data-bind="visible: $parent.ReportType()!='Pivot'">
                         <span class="button-box no-padding" tabindex="0" data-bind="click: setupLinkField, css: {active: linkField()==true}">
                             <span class="fa fa-link" aria-hidden="true" title="Link to another Report or Url"></span>
                         </span>
                     </div>
-                    <div class="pull-right" style="padding-right: 10px;" data-bind="visible: $parent.ReportType()=='Combo' && $parent.isFieldValidForYAxis($index(), fieldType || fieldFormat(), selectedAggregate())  && $parent.isChart() && $index()>0">
+                    <div  style="padding-right: 10px;" data-bind="visible: $parent.ReportType()=='Combo' && $parent.isFieldValidForYAxis($index(), fieldType || fieldFormat(), selectedAggregate())  && $parent.isChart() && $index()>0">
                         <span class="button-box no-padding" tabindex="0" data-bind="click: function(){ seriesType(seriesType() == 'line' ? 'area' : (seriesType()=='bars' ? 'line' : 'bars')); }">
                             <span class="fa" aria-hidden="true" data-bind="css: {'fa-line-chart': seriesType() == 'line', 'fa-bar-chart': seriesType() == 'bars', 'fa-area-chart': seriesType()=='area' }, attr: {title: seriesType}"></span>
                         </span>
                     </div>
-                    <div class="pull-right" style="padding-right: 10px;">
+                    <div  style="padding-right: 10px;">
                         <span class="button-box no-padding" tabindex="0" data-bind="click: setupFieldOptions">
                             <span class="fa fa-gear" aria-hidden="true" title="More Options"></span>
                         </span>
                     </div>
-                    <div class="pull-right" style="padding-right: 10px;" data-bind="if: isFormulaField">
+                    <div  style="padding-right: 10px;" data-bind="if: isFormulaField">
                         <span class="button-box no-padding" tabindex="0" data-bind="click: editFormulaField">
                             <span class="fa fa-pencil" aria-hidden="true" title="Edit Formula Field"></span>
                         </span>
                     </div>
-                    <div class="pull-right" style="padding-right: 10px;" data-bind="if: isFormulaField">
+                    <div  style="padding-right: 10px;" data-bind="if: isFormulaField">
                         <span class="button-box no-padding" tabindex="0" data-bind="click: duplicateFormulaField">
                             <span class="fa fa-copy" aria-hidden="true" title="Duplicate Formula Field"></span>
                         </span>
@@ -1923,6 +2076,9 @@
             <ul class="dropdown-menu">
                 <li><a class="dropdown-item" href="#" data-bind="click: insertFieldTableTransposed">Transposed</a></li>
                 <li><a class="dropdown-item" href="#" data-bind="click: insertFieldTableStandard">Standard</a></li>
+                <!-- ko if: hasOuterGroupFields -->
+                <li><a class="dropdown-item" href="#" data-bind="click: insertGroupedTable">Grouped</a></li>
+                <!-- /ko -->
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="#" data-bind="click: insertHeaderBreak">Add Header Break</a></li>
                 <li><a class="dropdown-item" href="#" data-bind="click: insertFooterBreak">Add Footer Break</a></li>
@@ -1990,17 +2146,37 @@
 <script type="text/html" id="designer-options">
     <div class="row">
         <div class="col-md-5">
-            <div class="checkbox" data-bind="visible: ReportType()!='Pivot'">
-                <label>
-                    <input type="checkbox" data-bind="checked: IncludeSubTotal" />
-                    Include Total Row
-                </label>
-            </div>
-            <div class="checkbox" data-bind="visible: ReportType()!='Pivot' && hasPivotColumn()">
-                <label>
-                    <input type="checkbox" data-bind="checked: IncludeColumnTotal" />
-                    Include Total Column
-                </label>
+            <div data-bind="visible: ReportType()!='Pivot' && ReportType()!='Custom'">
+                <div class="checkbox">
+                    <label>
+                        <input type="checkbox" data-bind="checked: IncludeSubTotal" />
+                        Include Total Row
+                    </label>
+                </div>
+                <div data-bind="visible: IncludeSubTotal()" style="padding-left: 20px; margin-top: 4px; margin-bottom: 4px;">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" data-bind="checked: totalRowFormat" value="row" />
+                        <label class="form-check-label">As Total Row</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" data-bind="checked: totalRowFormat" value="table" />
+                        <label class="form-check-label">As Total Table</label>
+                    </div>
+                </div>
+                <div data-bind="visible: IncludeSubTotal() && hasOuterGroupFields()" style="padding-left: 20px; margin-top: 2px; margin-bottom: 4px;">
+                    <div class="checkbox" style="margin-top: 0;">
+                        <label>
+                            <input type="checkbox" data-bind="checked: subTotalPerGroup" />
+                            Sub Total Per Group
+                        </label>
+                    </div>
+                </div>
+                <div class="checkbox" data-bind="visible: hasPivotColumn()">
+                    <label>
+                        <input type="checkbox" data-bind="checked: IncludeColumnTotal" />
+                        Include Total Column
+                    </label>
+                </div>            
             </div>
             <div class="checkbox" data-bind="hidden: AggregateReport">
                 <label>
@@ -2389,6 +2565,9 @@
           <button type="button" class="btn btn-sm btn-light" data-bind="visible: ReportID(), click: function() {activeDesign(false); if (isExpanded) isExpanded(false);}" title="Close">
             <i class="fa fa-times"></i> Close Designer
           </button>
+          <button type="button" class="btn btn-sm btn-danger" data-bind="visible: !ReportID(), click: function() { if (ReportMode()=='dashboard') $parent.removeNewReport(); else cancelCreateReport(); }" title="Cancel new report">
+            <i class="fa fa-times"></i> Cancel
+          </button>
         </div>
         <div class="card-body p-1">
           <div data-bind="template: 'designer-choose-visual'"></div>
@@ -2541,7 +2720,7 @@
 
         <!-- Schedule -->
         <div class="card flex-fill expandable-panel" id="schedulePanel"
-             data-bind="css:{'collapsed-vertical': panels.isCollapsed('schedulePanel')}">
+             data-bind="css:{'collapsed-vertical': panels.isCollapsed('schedulePanel')}, visible: SaveReport() && !appSettings.showScheduling()">
           <div class="card-header p-1" data-bind="click:function(){panels.togglePanel('schedulePanel')}">
             <i class="fa fa-hourglass"></i> Schedule
           </div>
@@ -2778,7 +2957,7 @@
                             <div data-bind="template: 'designer-sort'"></div>
                         </div>
                         <br />
-                        <div data-bind="visible: SaveReport" class="card card-body">
+                        <div data-bind="visible: SaveReport() && !appSettings.showScheduling()" class="card card-body">
                             <h5><span class="fa fa-hourglass"></span>&nbsp;Choose Schedule</h5>
 
                             <div style="padding: 10px 10px" data-bind="if: SaveReport">
@@ -3014,12 +3193,28 @@
                             <input type="color" class="color-picker"
                                data-bind="value: tableSettings().borderColor, event: { change: updateTable }"/>
                         </div>
+                         <div class="mb-2 col-6">
+                            <label class="form-label small">Back Color</label><br />
+                            <input type="color" class="color-picker"
+                               data-bind="attr: { id: 'tbl-color-picker-' + ReportID()},value: tableSettings().backColor, event: { change: updateTable }"/>
+                        </div>
                         <div class="mb-2 col-6 d-flex align-items-end">
-                             <button class="btn btn-sm small btn-outline-secondary" data-bind="click: clearTableSettings">
-                                Clear
+                            <button class="btn btn-sm small"
+                                    data-bind="click: copyTableFormat"
+                                    title="Copy Format">
+                                <i class="fa fa-copy"></i>
+                            </button>
+                            <button class="btn btn-sm small"
+                                    data-bind="click: pasteTableFormat"
+                                    title="Paste Format">
+                                <i class="fa fa-paste"></i>
+                            </button>
+                            <button class="btn btn-sm small" data-bind="click: clearTableSettings"
+                                title="Clear">
+                                <i class="fa fa-close"></i>
                             </button>
                         </div>
-                    </div>
+                    </div>                    
                 </div>
             </div>
         </div>
@@ -3386,6 +3581,70 @@
                 <button type="button" class="btn btn-success" data-bs-dismiss="modal" data-bind="click: download">
                     <i class="fa fa-download me-1"></i> Download PDF
                 </button>
+            </div>
+        </div>
+    </div>
+</script>
+<script type="text/html" id="line-separator-template">
+    <div class="grid-stack-item-content position-relative p-2" data-bind="css: { card: $root.arrangeDashboard }">
+        <hr data-bind="style: { borderTop: thickness() + 'px solid ' + color() }" class="m-0">
+        <div data-bind="visible: $root.arrangeDashboard" class="dropdown position-absolute" style="top:-5px; right:0; z-index:2000;">
+            <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown">
+                <i class="fa fa-ellipsis-v"></i>
+            </button>
+               <ul class="dropdown-menu dropdown-menu-end p-2 bg-light small">
+                    <li class="d-flex align-items-center gap-2 mb-2">
+                        <label class="form-label small mb-0">Line Color</label>
+                        <input type="color" class="color-picker" data-bind="value: color,valueUpdate: 'input',event: { change: () => $root.onWidgetChange($data)}">
+                    </li>
+
+                    <li class="d-flex align-items-center gap-2 mb-2">
+                        <label class="mb-0">Thickness</label>
+                        <input type="number"
+                               min="1"
+                               max="10"
+                               data-bind="value: thickness,valueUpdate: 'input',event: { change: () => $root.onWidgetChange($data)}"
+                               class="form-control form-control-sm"
+                               style="width:50px">
+                    </li>
+
+                    <li>
+                        <button class="dropdown-item text-danger" data-bind="click: deleteSeparator">
+                            <i class="fa fa-trash me-2"></i>
+                            Delete
+                        </button>
+                    </li>
+                </ul>
+        </div>
+    </div>
+</script>
+<script type="text/html" id="text-widget-template">
+    <div class="grid-stack-item-content position-relative p-2" data-bind="css: { card: $root.arrangeDashboard }">
+        <div data-bind="html: decodeURIComponent(text())"></div>
+        <div class="position-absolute" style="top:3px; right:4px; z-index:2000;" data-bind="visible: $root.arrangeDashboard">
+            <div class="dropdown">
+                <button class="btn btn-sm btn-light"
+                        type="button"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                    <i class="fa fa-ellipsis-v"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <button class="dropdown-item"
+                                data-bind="click: $root.openTextEditor">
+                            <i class="fa fa-edit me-2"></i>
+                            Edit
+                        </button>
+                    </li>
+                    <li>
+                        <button class="dropdown-item text-danger"
+                                data-bind="click: deleteText">
+                            <i class="fa fa-trash me-2"></i>
+                            Delete
+                        </button>
+                    </li>
+                </ul>
             </div>
         </div>
     </div>
