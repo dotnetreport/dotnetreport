@@ -1827,7 +1827,7 @@ tfoot tr.sub-total {
     justify-content: flex-start;
 }
 .data-select-tree {
-    max-height: 500px;
+    max-height: calc(100vh - 200px);
     overflow-y: auto;
 }
 

@@ -115,10 +115,42 @@
 
     <script type="text/html" id="report-render">
         <div data-bind="with: ReportData">
-            <div data-bind="foreach: Rows">
-                <div data-bind="html: renderedHtml"></div>
-            </div>
+              <div data-bind="foreach: Rows">
+          <div data-bind="html: renderedHtml, css: { 'card-view': $parents[$parents.length-1].cardView }"></div>
+
+          <div data-bind="foreach: subReportsRan">
+              <div class="">
+                  <div class="" style="padding-bottom: 20px;" >
+                      <h2 data-bind="text: ReportName"></h2>
+
+                      <div class="clearfix"></div>
+                      <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
+                          <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+
+                          <div data-bind="with: ReportResult" class="small">
+                              <div data-bind="visible: !ReportData()">
+                                  <div class="report-spinner"></div>
+                              </div>
+                              <div data-bind="template: 'report-template', data: $data"></div>
+                          </div>
+                      </div>
+                      <div class="form-inline">
+                          <div class="small" data-bind="with: pager">
+                              <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
+                                  <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                              </div>
+                              <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
+                                  <div data-bind="template: 'pager-template', data: $data"></div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+
+              </div>
+          </div>
         </div>
+        </div>
+        <div class="clearfix"></div>
     </script>
 
     <script type="text/html" id="report-template">
@@ -252,10 +284,7 @@
         <div class="table-responsive">
             <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">
                 <thead style="position: sticky; top: -1px; z-index: 2;" data-bind="if: !$parents[2].noHeaderRow(), attr: {id: 'report-table-head' + $parents[2].ReportID()}">
-                    <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">
-                        <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() && !CanExpandOption() && (!$parents[2].hasPivotColumn() || ($parents[2].hasPivotColumn() && $parents[2].appSettings.useAltPivot)) -->
-                        <th style="width: 30px; border-left: 1px solid;" data-bind="style: {'background-color': Columns[0].headerBackColor}"></th>
-                        <!-- /ko -->
+                    <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">                        
                         <!-- ko template: 'report-column-header', data: $data -->
                         <!-- /ko-->
                     </tr>
@@ -269,12 +298,7 @@
 
                     <!-- ko if: !$parents[2].useRenderTable() -->
                     <!-- ko foreach: $parent.rows  -->
-                    <tr>
-                        <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() && $parentContext.$parentContext.$parentContext.$parent.ReportType() != 'Single' -->
-                            <td style="width: 30px; vertical-align: middle;" data-bind="style: {'background-color': Items[0]._backColor ?? Items[0].backColor(), 'color': Items[0]._fontColor ?? Items[0].fontColor()}">
-                                <a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a>
-                            </td>
-                        <!-- /ko -->
+                    <tr>                        
                         <!-- ko template: 'report-column', data: $data -->
                         <!-- /ko-->
                     </tr>
@@ -311,6 +335,42 @@
                         </td>
                     </tr>
                     <!-- /ko -->
+                     <!-- ko if: subReportsRan().length > 0 -->
+                <tr>
+                    <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
+                        <div data-bind="foreach: subReportsRan">
+                            <div class="">
+                                <div class="" style="padding-bottom: 20px;" >
+                                    <h2 data-bind="text: ReportName"></h2>
+
+                                    <div class="clearfix"></div>
+                                    <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
+                                        <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+
+                                        <div data-bind="with: ReportResult" class="small">
+                                            <div data-bind="visible: !ReportData()">
+                                                <div class="report-spinner"></div>
+                                            </div>
+                                            <div data-bind="template: 'report-template', data: $data"></div>
+                                        </div>
+                                    </div>
+                                    <div class="form-inline">
+                                        <div class="small" data-bind="with: pager">
+                                            <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
+                                                <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                                            </div>
+                                            <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
+                                                <div data-bind="template: 'pager-template', data: $data"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <!-- /ko -->
                     <!-- /ko -->
                     <!-- /ko-->
                 </tbody>
@@ -375,55 +435,97 @@
                 var dom = parser.parseFromString('<!doctype html><body>' + text, 'text/html');
                 var decodedText = dom.body.textContent;
 
-                // Remove new lines and carriage returns
-                return decodedText.replace(/[\n\r]/g, '');
+            // Remove new lines and carriage returns
+            return decodedText.replace(/[\n\r]/g, '');
+        }
+        
+        var vm = new reportViewModel({
+            runReportUrl: "@Url.Action("Report")",
+            execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
+            runLinkReportUrl: "@Url.Action("RunReportLinkUnAuth", "DotNetReportApi")",
+            reportWizard: $("#filter-panel"),
+            reportHeader: "report-header",
+            lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
+            apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")',
+            runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
+            reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)') || '{}',
+            reportMode: "print",
+            reportSql: "@Model.ReportSql",
+            reportConnect: "@Model.ConnectKey",
+            ReportSeries : "@Model.ReportSeries",
+            reportHeader: 'report-header',
+            userSettings: data,
+            dataFilters: JSON.parse(decodeHTMLEntities(data.dataFilters) || '{}'),
+            reportData: JSON.parse(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ReportData ?? "{}"))),
+            getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
+            chartSize: { width: 800, height: 450 }
+        });
+
+        vm.pager.pageSize(10000);
+        vm.adminMode(true);
+        ko.applyBindings(vm);
+
+        function checkReportsLoaded() {
+            var allReportsLoaded = true;
+
+            if (vm.ReportResult && vm.ReportResult() && vm.ReportResult().ReportData) {
+                var reportData = vm.ReportResult().ReportData;
+
+                if (reportData && reportData() && reportData().Rows) {
+                    var rows = ko.unwrap(reportData().Rows);
+
+                    _.forEach(rows, function(row) {
+                        if (row.subReportsRan) {
+                            var subReports = ko.unwrap(row.subReportsRan);
+                            _.forEach(subReports, function(subReport) {
+                                if (subReport.ReportResult && subReport.ReportResult()) {
+                                    if (!subReport.ReportResult().ReportData || !subReport.ReportResult().ReportData()) {
+                                        allReportsLoaded = false;
+                                    }
+                                } else {
+                                    allReportsLoaded = false;
+                                }
+                            });
+                        }
+                    });
+                }
             }
 
-            var vm = new reportViewModel({
-                runReportUrl: "@Url.Action("Report")",
-                execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
-                runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
-                reportWizard: $("#filter-panel"),
-                reportHeader: "report-header",
-                lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
-                apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")',
-                runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
-                reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)'),
-                reportMode: "print",
-                reportSql: "@Model.ReportSql",
-                reportConnect: "@Model.ConnectKey",
-                ReportSeries: "@Model.ReportSeries",
-                reportHeader: 'report-header',
-                userSettings: data,
-                dataFilters: JSON.parse(decodeHTMLEntities(data.dataFilters) || '{}'),
-                reportData: JSON.parse(decodeHTMLEntities('@Model.ReportData')),
-                getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
-                chartSize: { width: 800, height: 450 }
-            });
-            vm.pager.pageSize(10000);
-            ko.applyBindings(vm);
-            vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
-                vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
-                    if (vm.useReportHeader()) {
-                        vm.headerDesigner.init();
-                    }
+            return allReportsLoaded;
+        }
 
-                    if (vm.useStoredProc()) {
-                        setTimeout(function () {
-                            vm.printReport();
-                        }, 1000);
-                    } else {
-                        vm.printReport();
-                    }
+        var checkInterval;
+        function showReportWhenReady() {
+            if (checkReportsLoaded()) {
+                $('.report-inner').show();
+                if (checkInterval) {
+                    clearInterval(checkInterval);
+                }
+            }
+        }
 
-                    setTimeout(function () {
-                        $('.report-inner').show();
-                    }, 1500);
+        vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
+            if (vm.useReportHeader()) {
+                vm.headerDesigner.init();
+            }
 
-                    setTimeout(function () {
-                        $('.report-inner').show();
-                    }, 15000);
-                });
+            if (vm.useStoredProc()) {
+                setTimeout(function(){
+                    vm.printReport();
+                }, 1000);
+            } else {
+                vm.printReport();
+            }
+
+            checkInterval = setInterval(showReportWhenReady, 500);
+
+            setTimeout(function () {
+                $('.report-inner').show();
+                if (checkInterval) {
+                    clearInterval(checkInterval);
+                }
+            }, 1000);
+        });
 
                 $(window).resize(function () {
                     vm.DrawChart();
