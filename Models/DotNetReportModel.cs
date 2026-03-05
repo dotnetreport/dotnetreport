@@ -426,11 +426,13 @@ namespace ReportBuilder.Web.Models
         public string fieldAlign { get; set; }
         public string fieldFormating { get; set; }
         public bool dontSubTotal { get; set; }
+        public string totalRowAggregate { get; set; }
         public string currencySymbol { get; set; }
         public bool isNumeric { get; set; }
         public bool isCurrency { get; set; }
         public bool isJsonColumn { get; set; }
         public string aggregateFunction { get; set; }
+        public bool outerGroup { get; set; }
         public LinkFieldItem LinkFieldItem { get; set; }
         public string headerFontColor { get; set; }
         public string headerBackColor { get; set; }
@@ -923,19 +925,16 @@ namespace ReportBuilder.Web.Models
 
                 if (includeSubtotal)
                 {
-                    if (isNumeric && !(formatColumn?.dontSubTotal ?? false))
+                    if (!(formatColumn?.dontSubTotal ?? false))
                     {
-                        dynamic subtotal = 0; // Use dynamic to handle any numeric type
-                        for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
+                        var agg = formatColumn?.totalRowAggregate ?? "Sum";
+                        bool isCountAgg = agg == "Count" || agg == "Count Distinct";
+                        if (isNumeric || isCountAgg)
                         {
-                            var cellValue = dt.Rows[rowIndex][i - 1];
-                            if (cellValue != null && decimal.TryParse(cellValue.ToString(), out decimal numericValue))
-                            {
-                                subtotal += numericValue; // Add numeric values
-                            }
+                            decimal subtotal = ComputeAggregateValue(agg, dt.Rows.Cast<DataRow>(), dc.ColumnName);
+                            ws.Cells[dt.Rows.Count + rowstart + 1, i].Value = subtotal;
+                            ws.Cells[dt.Rows.Count + rowstart + 1, i].Style.Font.Bold = true;
                         }
-                        ws.Cells[dt.Rows.Count + rowstart + 1, i].Value = subtotal;
-                        ws.Cells[dt.Rows.Count + rowstart + 1, i].Style.Font.Bold = true;
                     }
                 }
                 if (formatColumn != null)
@@ -2379,8 +2378,208 @@ namespace ReportBuilder.Web.Models
             return (dt, qry, sqlFields);
         }
 
+        private static decimal ComputeAggregateValue(string aggregate, IEnumerable<DataRow> rows, string columnName)
+        {
+            var rowList = rows.ToList();
+            var strValues = new List<string>();
+            var numValues = new List<decimal>();
+            foreach (var row in rowList)
+            {
+                try
+                {
+                    var val = row[columnName]?.ToString() ?? "";
+                    strValues.Add(val);
+                    if (decimal.TryParse(val, out decimal d)) numValues.Add(d);
+                }
+                catch { }
+            }
+            switch ((aggregate ?? "Sum").Trim())
+            {
+                case "Count":          return rowList.Count;
+                case "Count Distinct": return strValues.Distinct(StringComparer.OrdinalIgnoreCase).Count();
+                case "Average":        return numValues.Any() ? (decimal)numValues.Average() : 0;
+                case "Max":            return numValues.Any() ? numValues.Max() : 0;
+                case "Min":            return numValues.Any() ? numValues.Min() : 0;
+                default:               return numValues.Sum();
+            }
+        }
+
+        private static void WriteGroupedExcel(
+            DataTable dt,
+            ExcelWorksheet ws,
+            int rowstart,
+            int colstart,
+            List<ReportHeaderColumn> columns,
+            bool includeSubtotal,
+            bool includeGrandTotal,
+            bool loadHeader,
+            string chartData,
+            bool isSubReport,
+            bool subTotalPerGroup = false)
+        {
+            var outerGroupColumns = columns?
+                .Where(c => c.aggregateFunction == "Outer Group" || c.outerGroup)
+                .Select(c => c.fieldName)
+                .ToList() ?? new List<string>();
+
+            if (!outerGroupColumns.Any())
+            {
+                FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeGrandTotal, loadHeader, chartData, false, isSubReport);
+                return;
+            }
+
+            RemoveColumnsBySubstring(dt, "__prm__");
+
+            var nonGroupDtColumns = dt.Columns.Cast<DataColumn>()
+                .Where(dc => !outerGroupColumns.Contains(dc.ColumnName))
+                .ToList();
+            int nonGroupColCount = nonGroupDtColumns.Count;
+            int currentRow = rowstart;
+
+            if (loadHeader)
+            {
+                int colIdx = colstart;
+                foreach (var dc in nonGroupDtColumns)
+                {
+                    var fc = columns?.FirstOrDefault(c => c.fieldName == dc.ColumnName);
+                    string label = isSubReport && !string.IsNullOrEmpty(fc?.fieldLabel2) ? fc.fieldLabel2 : (fc?.fieldLabel ?? dc.ColumnName);
+                    ws.Cells[currentRow, colIdx].Value = label;
+                    ws.Cells[currentRow, colIdx].Style.Font.Bold = true;
+                    if (!string.IsNullOrEmpty(fc?.headerFontColor))
+                        ws.Cells[currentRow, colIdx].Style.Font.Color.SetColor(ColorTranslator.FromHtml(fc.headerFontColor));
+                    if (!string.IsNullOrEmpty(fc?.headerBackColor))
+                    {
+                        ws.Cells[currentRow, colIdx].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                        ws.Cells[currentRow, colIdx].Style.Fill.BackgroundColor.SetColor(ColorTranslator.FromHtml(fc.headerBackColor));
+                    }
+                    colIdx++;
+                }
+                currentRow++;
+            }
+
+            {
+                int colIdx = colstart;
+                foreach (var dc in nonGroupDtColumns)
+                {
+                    var fc = columns?.FirstOrDefault(c => c.fieldName == dc.ColumnName);
+                    string decFmt = new string('0', fc?.decimalPlacesDigit ?? 2);
+                    bool colIsNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
+
+                    if (dc.DataType == typeof(decimal) || fc?.fieldFormating == "Decimal")
+                        ws.Column(colIdx).Style.Numberformat.Format = "###,###,##0." + decFmt;
+                    if (dc.DataType == typeof(DateTime))
+                        ws.Column(colIdx).Style.Numberformat.Format = "mm/dd/yyyy";
+                    if (fc?.fieldFormating == "Currency")
+                        ws.Column(colIdx).Style.Numberformat.Format = (fc.currencySymbol ?? "$") + "###,###,##0." + decFmt;
+
+                    bool alignRight = fc?.fieldAlign == "Right" ||
+                        (colIsNumeric && (fc?.fieldAlign == "Auto" || string.IsNullOrEmpty(fc?.fieldAlign)));
+                    ws.Column(colIdx).Style.HorizontalAlignment = alignRight
+                        ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Right
+                        : fc?.fieldAlign == "Center"
+                            ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Center
+                            : OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+
+                    colIdx++;
+                }
+            }
+
+            var sortedRows = dt.AsEnumerable()
+                .OrderBy(r => string.Join("|", outerGroupColumns.Select(gc => r[gc]?.ToString() ?? "")))
+                .ToList();
+
+            string lastGroupKey = null;
+            var groupRows = new List<DataRow>();
+            var allRows = new List<DataRow>();
+
+            void WriteSubTotalRow(IEnumerable<DataRow> rows, bool isGrandTotal)
+            {
+                int colIdx = colstart;
+                foreach (var dc in nonGroupDtColumns)
+                {
+                    var fc = columns?.FirstOrDefault(c => c.fieldName == dc.ColumnName);
+                    bool dontSub = fc?.dontSubTotal ?? false;
+                    bool colIsNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" ||
+                                       dc.DataType.Name == "Decimal" || fc?.isNumeric == true ||
+                                       fc?.fieldFormating == "Currency" || fc?.fieldFormating == "Decimal";
+
+                    if (!dontSub)
+                    {
+                        var agg = fc?.totalRowAggregate ?? "Sum";
+                        bool isCountAgg = agg == "Count" || agg == "Count Distinct";
+                        if (colIsNumeric || isCountAgg)
+                        {
+                            decimal val = ComputeAggregateValue(agg, rows, dc.ColumnName);
+                            ws.Cells[currentRow, colIdx].Value = val;
+                            ws.Cells[currentRow, colIdx].Style.Font.Bold = true;
+
+                            string decFmt = new string('0', fc?.decimalPlacesDigit ?? 2);
+                            if (fc?.fieldFormating == "Currency")
+                                ws.Cells[currentRow, colIdx].Style.Numberformat.Format = (fc.currencySymbol ?? "$") + "###,###,##0." + decFmt;
+                            else if (fc?.fieldFormating == "Decimal")
+                                ws.Cells[currentRow, colIdx].Style.Numberformat.Format = "###,###,##0." + decFmt;
+
+                            if (isGrandTotal)
+                            {
+                                ws.Cells[currentRow, colIdx].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                                ws.Cells[currentRow, colIdx].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                            }
+                        }
+                    }
+                    colIdx++;
+                }
+                currentRow++;
+            }
+
+            foreach (var row in sortedRows)
+            {
+                string groupKey = string.Join("|", outerGroupColumns.Select(gc => row[gc]?.ToString() ?? ""));
+                bool isNewGroup = groupKey != lastGroupKey;
+
+                if (isNewGroup)
+                {
+                    if (lastGroupKey != null && subTotalPerGroup && includeSubtotal)
+                        WriteSubTotalRow(groupRows, false);
+
+                    groupRows = new List<DataRow>();
+                    currentRow++;
+
+                    // Write group label row above the group's data rows (merged, highlighted)
+                    string groupLabel = string.Join("  |  ", outerGroupColumns.Select(gc => $"{gc} - {row[gc]?.ToString() ?? ""}"));
+                    ws.Cells[currentRow, colstart].Value = groupLabel;
+                    ws.Cells[currentRow, colstart].Style.Font.Bold = true;
+                    ws.Cells[currentRow, colstart].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+                    if (nonGroupColCount > 1)
+                        ws.Cells[currentRow, colstart, currentRow, colstart + nonGroupColCount - 1].Merge = true;
+                    currentRow++;
+                }
+
+                int colIndex = colstart;
+                foreach (var dc in nonGroupDtColumns)
+                {
+                    ws.Cells[currentRow, colIndex].Value = row[dc];
+                    colIndex++;
+                }
+
+                groupRows.Add(row);
+                allRows.Add(row);
+                lastGroupKey = groupKey;
+                currentRow++;
+            }
+
+            // Last group subtotal
+            if (subTotalPerGroup && includeSubtotal && groupRows.Any())
+                WriteSubTotalRow(groupRows, false);
+
+            // Grand total across all rows (suppressed in table mode — written separately)
+            if (includeGrandTotal && allRows.Any())
+                WriteSubTotalRow(allRows, true);
+
+            ws.Cells[ws.Dimension.Address].AutoFitColumns();
+        }
+
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null, bool isSubReport = false)
+                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null, bool isSubReport = false, bool subTotalPerGroup = false, string totalRowFormat = "row")
         {
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
@@ -2435,7 +2634,55 @@ namespace ReportBuilder.Web.Models
                 rowstart += 2;
                 rowend = rowstart + dt.Rows.Count;
 
-                FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeSubtotal, true, chartData, isSubReport: isSubReport);
+                bool isTableMode = includeSubtotal && totalRowFormat == "table";
+                bool includeGrandTotal = includeSubtotal && !isTableMode;
+                WriteGroupedExcel(dt, ws, rowstart, colstart, columns, includeSubtotal, includeGrandTotal, true, chartData, isSubReport, subTotalPerGroup);
+
+                // "As Total Table" mode: write a separate 2-column summary table below the main data
+                if (isTableMode && !pivot)
+                {
+                    var allDataRows = dt.Rows.Cast<DataRow>().ToList();
+                    int tblRow = (ws.Dimension?.End.Row ?? (rowstart + dt.Rows.Count + 1)) + 2;
+                    int tblCol = colstart;
+
+                    ws.Cells[tblRow, tblCol].Value = "Field";
+                    ws.Cells[tblRow, tblCol].Style.Font.Bold = true;
+                    ws.Cells[tblRow, tblCol + 1].Value = "Total";
+                    ws.Cells[tblRow, tblCol + 1].Style.Font.Bold = true;
+                    ws.Cells[tblRow, tblCol + 1].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
+                    tblRow++;
+
+                    for (int j = 0; j < dt.Columns.Count; j++)
+                    {
+                        var dc = dt.Columns[j];
+                        var fc = columns?.FirstOrDefault(c => c.fieldName == dc.ColumnName);
+                        if (fc?.dontSubTotal == true) continue;
+                        bool colIsNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" ||
+                                           dc.DataType.Name == "Decimal" || fc?.isNumeric == true ||
+                                           fc?.fieldFormating == "Currency" || fc?.fieldFormating == "Decimal";
+                        var agg = fc?.totalRowAggregate ?? "Sum";
+                        bool isCountAgg = agg == "Count" || agg == "Count Distinct";
+                        if (!colIsNumeric && !isCountAgg) continue;
+
+                        string label = fc?.fieldLabel ?? fc?.fieldName ?? dc.ColumnName;
+                        ws.Cells[tblRow, tblCol].Value = label;
+
+                        decimal total = ComputeAggregateValue(agg, allDataRows, dc.ColumnName);
+                        ws.Cells[tblRow, tblCol + 1].Value = total;
+                        ws.Cells[tblRow, tblCol + 1].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
+                        ws.Cells[tblRow, tblCol + 1].Style.Font.Bold = true;
+
+                        string decFmt = new string('0', fc?.decimalPlacesDigit ?? 2);
+                        if (fc?.fieldFormating == "Currency")
+                            ws.Cells[tblRow, tblCol + 1].Style.Numberformat.Format = (fc.currencySymbol ?? "$") + "###,###,##0." + decFmt;
+                        else if (fc?.fieldFormating == "Decimal")
+                            ws.Cells[tblRow, tblCol + 1].Style.Numberformat.Format = "###,###,##0." + decFmt;
+
+                        tblRow++;
+                    }
+                    ws.Column(tblCol).AutoFit();
+                    ws.Column(tblCol + 1).AutoFit();
+                }
 
                 if (allExpanded && dt.Rows.Count > 0)
                 {
@@ -2686,12 +2933,13 @@ namespace ReportBuilder.Web.Models
         }
 
         public async static Task<byte[]> GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "",string pageOrientation="")
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "", bool subTotalPerGroup = false)
         {
 
             var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
-            var subTotals = new decimal[dt.Columns.Count];
-            
+            var allRowsList = new List<DataRow>();
+            var currentGroupRowsList = new List<DataRow>();
+
             var document = new PdfDocument();
             int leftMargin = 40;
             int rightMargin = 40;
@@ -2843,19 +3091,96 @@ namespace ReportBuilder.Web.Models
                 }
                 
                 AddNewPageWithHeaders(true);
+                var outerGroupIndexes = new HashSet<int>();
+
+                if (columns != null)
+                {
+                    for (int i = 0; i < columns.Count; i++)
+                    {
+                        if (columns[i].aggregateFunction == "Outer Group")
+                            outerGroupIndexes.Add(i);
+                    }
+                }
+
+                bool hasOuterGroups = outerGroupIndexes.Any();
+
+                void DrawSubTotalRow(IEnumerable<DataRow> rows)
+                {
+                    if (currentYPosition + 20 > pageHeight)
+                        AddNewPageWithHeaders();
+
+                    currentXPosition = leftMargin;
+                    for (int j = 0; j < dt.Columns.Count; j++)
+                    {
+                        var dc = dt.Columns[j];
+                        var dummyVal = "";
+                        var formatColumn = GetColumnFormatting(dc, columns, ref dummyVal);
+                        bool dontSub = formatColumn.dontSubTotal;
+                        string displayValue = " ";
+
+                        if (!dontSub)
+                        {
+                            var agg = string.IsNullOrEmpty(formatColumn.totalRowAggregate) ? "Sum" : formatColumn.totalRowAggregate;
+                            bool colIsNumeric = formatColumn.isNumeric;
+                            bool isCountAgg = agg == "Count" || agg == "Count Distinct";
+                            if (colIsNumeric || isCountAgg)
+                            {
+                                decimal computed = ComputeAggregateValue(agg, rows, dc.ColumnName);
+                                var formatted = computed.ToString();
+                                GetColumnFormatting(dc, columns, ref formatted);
+                                displayValue = formatted;
+                            }
+                        }
+
+                        rect = new XRect(currentXPosition, currentYPosition, columnWidths[j], 20);
+                        gfx.DrawRectangle(XPens.LightGray, rect);
+                        if (displayValue != " ")
+                            gfx.DrawString(displayValue, fontNormal, XBrushes.Black, rect, XStringFormats.CenterRight);
+                        else
+                            gfx.DrawString(" ", fontNormal, XBrushes.Black, rect, XStringFormats.Center);
+                        currentXPosition += (int)columnWidths[j];
+                    }
+                    currentYPosition += 20;
+                }
+
+                string lastGroupKey = null;
 
                 for (int i = 0; i < dt.Rows.Count; i++)
                 {
                     currentXPosition = leftMargin;
+
+                    // Build group key using outer group columns
+                    string groupKey = "";
+                    foreach (int idx in outerGroupIndexes)
+                    {
+                        groupKey += dt.Rows[i][idx]?.ToString() + "|";
+                    }
+
+                    bool isNewGroup = groupKey != lastGroupKey;
+
+                    // Per-group subtotal: when group changes, draw subtotal for completed group
+                    if (isNewGroup && lastGroupKey != null && hasOuterGroups)
+                    {
+                        if (subTotalPerGroup && includeSubtotal)
+                            DrawSubTotalRow(currentGroupRowsList);
+                        currentGroupRowsList = new List<DataRow>();
+                    }
+
                     int maxLines = 1;
+
+                    // Measure row height first
                     for (int j = 0; j < dt.Columns.Count; j++)
                     {
-                        var value = dt.Rows[i][j].ToString();
-                        var dc = dt.Columns[j];
-                        var tempVal = value;
-                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidths[j], 9999), fontNormal, XStringFormats.Center);
-                        maxLines = Math.Max(maxLines, lines.Count);
+                        string value = dt.Rows[i][j]?.ToString() ?? "";
+                        if (outerGroupIndexes.Contains(j) && !isNewGroup)
+                            value = ""; // blank grouped columns for repeated rows
 
+                        var lines = WrapText(gfx, value,
+                            new XRect(0, 0, columnWidths[j], 9999),
+                            fontNormal,
+                            XStringFormats.Center);
+
+                        maxLines = Math.Max(maxLines, lines.Count);
                     }
 
                     int rowHeight = (int)((fontNormal.Height + cellPadding * 2) * maxLines);
@@ -2866,34 +3191,38 @@ namespace ReportBuilder.Web.Models
                     }
 
                     currentXPosition = leftMargin;
+
                     for (int j = 0; j < dt.Columns.Count; j++)
                     {
-                        var value = dt.Rows[i][j].ToString();
                         var dc = dt.Columns[j];
-                        var tempVal = GetFormattedValue(dc, dt.Rows[i], null, false);
+                        var rawValue = dt.Rows[i][j]?.ToString() ?? "";
+
+                        // Blank grouped columns unless first occurrence
+                        if (outerGroupIndexes.Contains(j) && !isNewGroup)
+                            rawValue = "";
+
+                        var tempVal = rawValue;
                         var formatColumn = GetColumnFormatting(dc, columns, ref tempVal);
-                        var lines = WrapText(gfx, tempVal, new XRect(0, 0, columnWidths[j], 9999), fontNormal, XStringFormats.Center);
-                        
-                        if (formatColumn.isNumeric && !formatColumn.dontSubTotal)
-                        {
-                            if (decimal.TryParse(value, out decimal decVal))
-                                subTotals[j] += decVal;
-                        }
+
+                        var lines = WrapText(gfx, tempVal,
+                            new XRect(0, 0, columnWidths[j], 9999),
+                            fontNormal,
+                            XStringFormats.Center);
 
                         rect = new XRect(currentXPosition, currentYPosition, columnWidths[j], rowHeight);
                         gfx.DrawRectangle(XPens.WhiteSmoke, rect);
 
-                        var horizontalAlignment = XStringFormats.Center;
-                        if (formatColumn != null)
-                        {
-                            horizontalAlignment = formatColumn.fieldAlign == "Right" || (formatColumn.isNumeric && (formatColumn.fieldAlign == "Auto" || string.IsNullOrEmpty(formatColumn.fieldAlign)))
+                        var horizontalAlignment =
+                            formatColumn.fieldAlign == "Right" ||
+                            (formatColumn.isNumeric &&
+                            (formatColumn.fieldAlign == "Auto" || string.IsNullOrEmpty(formatColumn.fieldAlign)))
                                 ? XStringFormats.CenterRight
                                 : formatColumn.fieldAlign == "Center"
                                     ? XStringFormats.Center
                                     : XStringFormats.CenterLeft;
-                        }
 
                         var yPosition = currentYPosition + 1;
+
                         foreach (string l in lines)
                         {
                             XRect lineRect = new XRect(rect.Left, yPosition, rect.Width, fontNormal.Height);
@@ -2902,37 +3231,22 @@ namespace ReportBuilder.Web.Models
                             yPosition += fontNormal.Height;
                         }
 
-                        currentXPosition += (int) columnWidths[j];
+                        currentXPosition += (int)columnWidths[j];
                     }
 
                     currentYPosition += rowHeight;
+                    allRowsList.Add(dt.Rows[i]);
+                    currentGroupRowsList.Add(dt.Rows[i]);
+                    lastGroupKey = groupKey;
                 }
 
-                if (includeSubtotal)
-                {
-                    currentXPosition = leftMargin;
+                // Last group subtotal
+                if (subTotalPerGroup && includeSubtotal && hasOuterGroups && currentGroupRowsList.Any())
+                    DrawSubTotalRow(currentGroupRowsList);
 
-                    for (int j = 0; j < dt.Columns.Count; j++)
-                    {
-                        var value = subTotals[j].ToString();
-                        var dc = dt.Columns[j];
-                        var formatColumn = GetColumnFormatting(dc, columns, ref value);
-
-                        rect = new XRect(currentXPosition, currentYPosition, columnWidths[j], 20);
-                        gfx.DrawRectangle(XPens.LightGray, rect);
-
-                        if (formatColumn.isNumeric && !(formatColumn?.dontSubTotal ?? false))
-                        {
-                            gfx.DrawString(value, fontNormal, XBrushes.Black, rect, XStringFormats.CenterRight);
-                        }
-                        else
-                        {
-                            gfx.DrawString(" ", fontNormal, XBrushes.Black, rect, XStringFormats.Center);
-                        }
-
-                        currentXPosition += (int)columnWidths[j];
-                    }
-                }
+                // Grand total across all rows
+                if (includeSubtotal && allRowsList.Any())
+                    DrawSubTotalRow(allRowsList);
 
                 gfx.Save();
                 document.Save(ms);
