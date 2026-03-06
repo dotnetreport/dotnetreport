@@ -14,6 +14,7 @@ using System.Web.Script.Serialization;
 using JsonConvert = Newtonsoft.Json.JsonConvert;
 using DocumentFormat.OpenXml.EMMA;
 using System.Web.Management;
+using System.Text.Json;
 
 namespace ReportBuilder.Web.Controllers
 {
