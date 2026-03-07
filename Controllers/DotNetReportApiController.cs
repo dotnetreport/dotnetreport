@@ -13,8 +13,6 @@ using System.Web;
 using System.Web.Mvc;
 using System.Web.Script.Serialization;
 using JsonConvert = Newtonsoft.Json.JsonConvert;
-using DocumentFormat.OpenXml.EMMA;
-using System.Web.Management;
 
 namespace ReportBuilder.Web.Controllers
 {
@@ -622,20 +620,20 @@ namespace ReportBuilder.Web.Controllers
                     new KeyValuePair<string, string>("filterId", filterId.HasValue ? filterId.ToString() : ""),
                     new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
                     new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
-                    new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters)),
+                    new KeyValuePair<string, string>("dataFilters", JsonConvert.SerializeObject(settings.DataFilters)),
                     new KeyValuePair<string, string>("useParameters", DotNetReportHelper.dbtype=="MS SQL" ? "true" : "false")
                 });
 
                 var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
                 var stringContent = await response.Content.ReadAsStringAsync();
 
-                model = JsonSerializer.Deserialize<DotNetReportModel>(stringContent);
+                model = JsonConvert.DeserializeObject<DotNetReportModel>(stringContent);
 
             }
             return Json(model, JsonRequestBehavior.AllowGet);
         }
 
-        [HttpGet]
+        [HttpPost]       
         public async Task<JsonResult> RunReportLink(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false)
         {
             var model = new DotNetReportModel();

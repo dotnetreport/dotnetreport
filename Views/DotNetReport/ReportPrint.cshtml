@@ -456,7 +456,7 @@
             reportHeader: 'report-header',
             userSettings: data,
             dataFilters: JSON.parse(decodeHTMLEntities(data.dataFilters) || '{}'),
-            reportData: JSON.parse(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ReportData ?? "{}"))),
+            reportData: JSON.parse(@Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.ReportData ?? "{}"))),
             getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
             chartSize: { width: 800, height: 450 }
         });
