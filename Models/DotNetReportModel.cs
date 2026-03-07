@@ -1,11 +1,10 @@
 ﻿using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
-using Microsoft.Data.SqlClient;
+using System.Data.SqlClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OfficeOpenXml;
-using PdfSharp;
 using PdfSharp.Drawing;
 using PdfSharp.Drawing.Layout;
 using PdfSharp.Pdf;
@@ -24,15 +23,12 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
-using System.Reflection;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using System.Net.Http;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
-using static ReportBuilder.Web.Controllers.DotNetReportApiController;
-using ReportBuilder.Web.Models;
 using PdfSharp.Pdf.IO;
 
 namespace ReportBuilder.Web.Models
