@@ -876,7 +876,7 @@ var textQuery = function (options) {
                     text: encodeURIComponent(text),
                     pageSize: 7
                 }),
-                userid: options.userId
+                userId: options.userId || ''
             }
         });
     }
@@ -958,6 +958,7 @@ var textQuery = function (options) {
     var token = JSON.parse(localStorage.getItem(tokenKey));
 
     self.searchFields = {
+        type: 'POST',
         selectedOption: ko.observable(),
         url: options.apiUrl,
         headers: { "Authorization": "Bearer " + token },
@@ -979,11 +980,12 @@ var textQuery = function (options) {
                     token: encodeURIComponent(params.term),
                     text: ''
                 }),
-                userid: options.userId
+                userId: options.userId || ''
             } : {});
         },
         processResults: function (data) {
             if (data.d) data = data.d;
+            if (data.Result) data = data.Result;
             var items = _.map(data, function (x) {
                 return { id: x.fieldId, text: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey, tableId: x.tableId };
             });
@@ -1099,6 +1101,7 @@ var textQuery = function (options) {
                 if (options.searchLookupFilter === true) {
                     self.SearchLookup(token, "").done(function (results) {
                         if (results.d) results = results.d;
+                        if (results.Result) results = results.Result;
                         var items = _.map(results, function (x) {
                             return { value: x.id, key: x.text, text: x.text };
                         });
@@ -1111,6 +1114,7 @@ var textQuery = function (options) {
                 if (token == "=" || token == ">" || token == "<") return;
                 self.ParseQuery(token, "").done(function (results) {
                     if (results.d) results = results.d;
+                    if (results.Result) results = results.Result;
                     var items = _.map(results, function (x) {
                         var item = { value: x.fieldId, key: x.tableDisplay + ' > ' + x.fieldDisplay, type: 'Field', dataType: x.fieldType, foreignKey: x.foreignKey, searchKey: x.tableDisplay + ' > ' + x.fieldDisplay };
                         if (options.wrapText) {

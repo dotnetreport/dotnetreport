@@ -95,10 +95,8 @@
         </div>
         <!-- /ko -->
         <!-- ko if: HasError -->
-        <h2>@Model.ReportName</h2>
-        <p>
-            @Model.ReportDescription
-        </p>
+        <h2 data-bind="text: ReportName"></h2>
+        <p data-bind="html: ReportDescription">
 
         <h3>An unexpected error occured while running the Report</h3>
         <hr />
