@@ -1058,6 +1058,25 @@ var reportViewModel = function (options) {
 	self.IncludeColumnTotal = ko.observable(false);
 	self.ShowUniqueRecords = ko.observable(false);
 	self.ShowExpandOption = ko.observable(false);
+	self.availableDataFilterIds = ko.observableArray([]);
+	self.bypassEnabled = ko.observable(false);
+	self.bypassMode = ko.observable("all"); // "all" | "specific"
+	self.bypassSpecificIds = ko.observableArray([]);
+	self.bypassSpecificIdsText = ko.computed({
+		read: function () { return self.bypassSpecificIds().join(","); },
+		write: function (val) { self.bypassSpecificIds(val.split(",").map(function (s) { return s.trim(); }).filter(Boolean)); }
+	});
+	self.bypassEnabled.subscribe(function (val) {
+		if (val && self.adminMode() && self.availableDataFilterIds.peek().length === 0) {
+			ajaxcall({
+				url: (options.runReportApiUrl || '').replace('RunReportApi', 'GetDataFilterKeys'),
+				type: 'GET'
+			}).done(function (result) {
+				if (result && result.d) result = result.d;
+				self.availableDataFilterIds(result || []);
+			});
+		}
+	});
 	self.DontExecuteOnRun = ko.observable(false);
 	self.AggregateReport = ko.observable(false);
 	self.SortByField = ko.observable();
@@ -2932,6 +2951,9 @@ var reportViewModel = function (options) {
 		self.EditFiltersOnReport(false);
 		self.ShowUniqueRecords(false);
 		self.ShowExpandOption(false);
+		self.bypassEnabled(false);
+		self.bypassMode("all");
+		self.bypassSpecificIds([]);
 		self.DontExecuteOnRun(false);
 		self.AggregateReport(false);
 		self.SortByField(null);
@@ -4420,6 +4442,7 @@ var reportViewModel = function (options) {
 							SaveReport: _saveReport,
 							ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
 							adminMode: self.adminMode(),
+							BypassDataFiltersToUpdate: self.bypassEnabled() ? (self.bypassMode() === "all" ? "/all/" : self.bypassSpecificIds().join(",")) : "",
 							userIdForFilter: self.userIdForFilter,
 							SubTotalMode: false,
 							useAltPivot: self.appSettings.useAltPivot
@@ -7407,6 +7430,10 @@ var reportViewModel = function (options) {
 		var reportSettings = JSON.parse(report.ReportSettings || "{}");
 		self.selectedStyle(reportSettings.SelectedStyle || 'default');
 		self.ShowExpandOption(reportSettings.ShowExpandOption === true ? true : false);
+		var bdf = report.BypassDataFilters || "";
+		self.bypassEnabled(bdf !== "");
+		self.bypassMode(bdf === "/all/" || !bdf ? "all" : "specific");
+		self.bypassSpecificIds(bdf && bdf !== "/all/" ? bdf.split(",").filter(Boolean) : []);
 		self.DontExecuteOnRun(reportSettings.DontExecuteOnRun === true ? true : false);
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
 		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);

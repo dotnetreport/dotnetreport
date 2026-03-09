@@ -330,6 +330,7 @@ namespace ReportBuilder.Web.Models
         public string? userId { get; set; }
         public string? query { get; set; } = "";
         public string? fieldIds { get; set; } = "";
+        public string BypassDataFiltersToUpdate { get; set; }
     }
 
     public class DotNetDasboardReportModel : DotNetReportModel

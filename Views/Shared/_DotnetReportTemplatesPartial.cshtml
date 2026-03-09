@@ -2126,6 +2126,50 @@
                     Show Data along with Graph
                 </label>
             </div>
+            <!-- ko if: adminMode() -->
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" data-bind="checked: bypassEnabled" />
+                    Bypass Data Filters
+                </label>
+            </div>
+            <!-- ko if: bypassEnabled() -->
+            <div style="padding-left: 20px;">
+                <div class="radio">
+                    <label>
+                        <input type="radio" name="bypassMode" value="all" data-bind="checked: bypassMode" />
+                        Bypass All Data Filters
+                    </label>
+                </div>
+                <div class="radio">
+                    <label>
+                        <input type="radio" name="bypassMode" value="specific" data-bind="checked: bypassMode" />
+                        Bypass Specific Filters
+                    </label>
+                </div>
+                <!-- ko if: bypassMode() === 'specific' -->
+                <div style="padding-left: 20px;">
+                    <!-- ko if: availableDataFilterIds().length > 0 -->
+                    <!-- ko foreach: availableDataFilterIds() -->
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" data-bind="checked: $parent.bypassSpecificIds, checkedValue: $data" />
+                            <span data-bind="text: $data"></span>
+                        </label>
+                    </div>
+                    <!-- /ko -->
+                    <!-- /ko -->
+                    <!-- ko if: availableDataFilterIds().length === 0 -->
+                    <div class="form-group mt-1">
+                        <label class="text-muted small">Enter filter column names (comma-separated):</label>
+                        <input type="text" class="form-control form-control-sm" placeholder="e.g. TenantId,UserId" data-bind="value: bypassSpecificIdsText, valueUpdate: 'input'" />
+                    </div>
+                    <!-- /ko -->
+                </div>
+                <!-- /ko -->
+            </div>
+            <!-- /ko -->
+            <!-- /ko -->
             <div class="checkbox">
                 <label>
                     <input type="checkbox" data-bind="checked: DontExecuteOnRun" />

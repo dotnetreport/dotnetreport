@@ -265,7 +265,28 @@ namespace ReportBuilder.Web.Controllers
             public bool includeColumnTotal { get; set; }
         }
 
-        [ValidateAntiForgeryToken]
+        [HttpGet]
+        public IActionResult GetDataFilterKeys()
+        {
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode)
+                return Ok(new string[0]);
+
+            var keys = new List<string>();
+            if (settings.DataFilters != null)
+            {
+                try
+                {
+                    var dict = JsonConvert.DeserializeObject<Dictionary<string, object>>(
+                        JsonConvert.SerializeObject(settings.DataFilters));
+                    if (dict != null) keys = new List<string>(dict.Keys);
+                }
+                catch { }
+            }
+            return Ok(keys);
+        }
+
+        [AllowAnonymous]
         [HttpPost]
         public async Task<IActionResult> RunReport(RunReportParameters data)
         {
