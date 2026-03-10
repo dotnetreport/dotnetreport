@@ -98,9 +98,23 @@ namespace ReportBuilder.Web.Controllers
 
             // Uncomment if you want to restrict max records returned
             sql = sql.Substring(0, 0) + "SELECT DISTINCT TOP 500 " + sql.Substring(0 + "SELECT ".Length);
+            string token = model.token;
+            string lastToken = "";
             if (sql.Contains("{{token}}"))
             {
-                sql = sql.Replace("{{token}}", $"'%{model.token}%'");
+                token = Uri.UnescapeDataString(token);
+                if (!string.IsNullOrWhiteSpace(token))
+                {
+                    var parts = token
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+                    if (parts.Length > 0)
+                    {
+                        lastToken = parts[parts.Length - 1].Trim();
+                    }
+                }
+                lastToken = lastToken.Replace("'", "");
+                sql = sql.Replace("{{token}}", $"'%{lastToken}%'");
             }
             sql = ConvertTopQuery(sql, DotNetReportHelper.dbtype);
             var json = new StringBuilder();
@@ -409,7 +423,7 @@ namespace ReportBuilder.Web.Controllers
                                 sql += $" ORDER BY {(hasDistinct ? "1" : "NEWID()")} ";
                             else if (DotNetReportHelper.dbtype == "PostgreSQL")
                                 sql += $" ORDER BY {(hasDistinct ? "1" : "RANDOM()")} ";
-                            else if (DotNetReportHelper.dbtype == "MySQL")
+                            else if (DotNetReportHelper.dbtype == "MySql")
                                 sql += $" ORDER BY {(hasDistinct ? "1" : "RAND()")} ";
                             else if (DotNetReportHelper.dbtype == "Oracle")
                                 sql += $" ORDER BY {(hasDistinct ? "1" : "DBMS_RANDOM.VALUE")} ";
@@ -419,7 +433,7 @@ namespace ReportBuilder.Web.Controllers
                         hasTop = sql.IndexOf(" TOP ", StringComparison.OrdinalIgnoreCase) >= 0;
                         if (!hasTop && string.IsNullOrEmpty(pivotColumn))
                         {
-                            if (DotNetReportHelper.dbtype == "PostgreSQL" || DotNetReportHelper.dbtype == "MySQL")
+                            if (DotNetReportHelper.dbtype == "PostgreSQL" || DotNetReportHelper.dbtype == "MySql")
                             {
                                 sql += $" LIMIT {pageSize} OFFSET {(pageNumber - 1) * pageSize}";
                             }
@@ -631,6 +645,47 @@ namespace ReportBuilder.Web.Controllers
 
                 return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
             }
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> RunReportLinkUnAuth(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false, string exportId = "")
+        {
+            var model = new DotNetReportModel();
+            var settings = ExportSessionStore.Get(exportId);
+            if (settings == null)
+                return Unauthorized();
+
+            settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
+            settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
+            settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
+            settings.CanUseAdminMode = true;
+
+            using (var client = new HttpClient())
+            {
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                    new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                    new KeyValuePair<string, string>("clientId", settings.ClientId),
+                    new KeyValuePair<string, string>("userId", settings.UserId),
+                    new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+                    new KeyValuePair<string, string>("reportId", reportId.ToString()),
+                    new KeyValuePair<string, string>("filterId", filterId.HasValue ? filterId.ToString() : ""),
+                    new KeyValuePair<string, string>("filterValue", filterValue.ToString()),
+                    new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+                    new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters)),
+                    new KeyValuePair<string, string>("useParameters", DotNetReportHelper.dbtype=="MS SQL" ? "true" : "false")
+                });
+
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/RunLinkedReport"), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+
+                model = JsonSerializer.Deserialize<DotNetReportModel>(stringContent);
+
+            }
+
+            return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
         }
 
         [HttpGet]
@@ -886,7 +941,7 @@ namespace ReportBuilder.Web.Controllers
                 return sql;
             switch (dbtype)
             {
-                case "MySQL":
+                case "MySql":
                     sql = sql.Replace("[", "`").Replace("]", "`");
                     break;
 
@@ -907,7 +962,7 @@ namespace ReportBuilder.Web.Controllers
                     var top = m.Groups[1].Value;
                     sql = System.Text.RegularExpressions.Regex.Replace(sql, @"TOP\s+\d+", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                     sql = System.Text.RegularExpressions.Regex.Replace(sql, @"\[(.*?)\]", "`$1`").Trim();
-                    if (dbtype.Equals("MySQL", StringComparison.OrdinalIgnoreCase) ||
+                    if (dbtype.Equals("MySql", StringComparison.OrdinalIgnoreCase) ||
                         dbtype.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
                     {
                         sql = sql.TrimEnd(';') + $" LIMIT {top};";
@@ -1318,8 +1373,8 @@ namespace ReportBuilder.Web.Controllers
         public async Task<IActionResult> DownloadExcel(
             [FromForm] string reportSql,
             [FromForm] string connectKey,
-            [FromForm] string reportName, 
-            [FromForm] bool allExpanded, 
+            [FromForm] string reportName,
+            [FromForm] bool allExpanded,
             [FromForm] string expandSqls,
             [FromForm] string chartData = null,
             [FromForm] string columnDetails = null,
@@ -1330,16 +1385,18 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string onlyAndGroupInColumnDetail = null,
             [FromForm] bool isSubReport = false,
             [FromForm] string userId = "",
-            [FromForm] bool adminMode = false)
+            [FromForm] bool adminMode = false,
+            [FromForm] bool subTotalPerGroup = false,
+            [FromForm] string totalRowFormat = "row")
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql, adminMode: adminMode);            
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(onlyAndGroupInColumnDetail));
 
-            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport);
+            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport, subTotalPerGroup, totalRowFormat);
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".xlsx");
             Response.ContentType = "application/vnd.ms-excel";
 
@@ -1363,7 +1420,10 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string pageOrientation = "",
             [FromForm] bool includeSubTotal = false,
             [FromForm] bool includeColumnTotal = false,
-            [FromForm] string userId = "")
+            [FromForm] string userId = "",
+            [FromForm] bool isSubreport = false,
+            [FromForm] int pageNumber=1,
+            [FromForm] int currentPageSize = 1)
         {
 
             var settings = GetSettings();
@@ -1374,7 +1434,7 @@ namespace ReportBuilder.Web.Controllers
                 await ValidateAccess(userId, reportSql, adminMode: adminMode);
             }
             var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
-                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation,includeSubTotal,includeColumnTotal);
+                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation,includeSubTotal,includeColumnTotal,isSubreport,pageNumber,currentPageSize);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
@@ -1395,16 +1455,17 @@ namespace ReportBuilder.Web.Controllers
            [FromForm] string pageSize = "",
            [FromForm] string pageOrientation = "",
            [FromForm] string userId = "",
-           [FromForm] bool adminMode = false)
+           [FromForm] bool adminMode = false,
+           [FromForm] bool subTotalPerGroup = false)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql, adminMode: adminMode);            
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             reportName = HttpUtility.UrlDecode(reportName);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
-            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation);
+            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, subTotalPerGroup);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
