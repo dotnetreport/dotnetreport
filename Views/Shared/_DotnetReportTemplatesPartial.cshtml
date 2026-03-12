@@ -1553,7 +1553,7 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-select" required data-bind="options: $parentContext.$parent.SavedReports, optionsText: 'reportName', optionsValue: 'reportId', value: LinkedToReportId, optionsCaption: 'Choose the Report to link to'"></select>
+                            <select class="form-select" required data-bind="options: savedReportsWithFolder, optionsText: function(r) { return (r.folderName ? r.folderName + ' \u203a ' : '') + r.reportName }, optionsValue: 'reportId', optionsCaption: '', value: LinkedToReportId, select2: { placeholder: 'Search reports or folders...', allowClear: true }"></select>
                         </div>
                     </div>
                     <div class="checkbox" data-bind="if: LinkedToReportId">
@@ -1565,7 +1565,7 @@
                     <div class="form-group row" data-bind="if: SendAsFilterParameter">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report Filter</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-select" required data-bind="options: allFields, optionsText: 'fieldName', optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
+                            <select class="form-select" required data-bind="options: allFields, optionsText: function(f) { return (f.tableName ? f.tableName + ' \u203a ' : '') + f.fieldName }, optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
                         </div>
                     </div>
                 </div>
@@ -1688,7 +1688,7 @@
                 </span>
             </div>
 
-            <div class="data-select-tree" style="max-height:calc(100vh - 200px);overflow-y:auto">
+            <div class="data-select-tree">
                 <!-- ko foreach: CategorizedTables -->
                 <div class="mb-3">
                     <div data-bind="click: function() { isExpanded(!isExpanded()); }, visible: categoryName" style="cursor: pointer;">
@@ -2648,7 +2648,7 @@
 
         <!-- Schedule -->
         <div class="card flex-fill expandable-panel" id="schedulePanel"
-             data-bind="css:{'collapsed-vertical': panels.isCollapsed('schedulePanel')}, visible: SaveReport() && !appSettings.showScheduling()">
+             data-bind="css:{'collapsed-vertical': panels.isCollapsed('schedulePanel')}, visible: SaveReport() && !ko.unwrap(appSettings.showScheduling)">
           <div class="card-header p-1" data-bind="click:function(){panels.togglePanel('schedulePanel')}">
             <i class="fa fa-hourglass"></i> Schedule
           </div>
@@ -2885,7 +2885,7 @@
                             <div data-bind="template: 'designer-sort'"></div>
                         </div>
                         <br />
-                        <div data-bind="visible: SaveReport() && !appSettings.showScheduling()" class="card card-body">
+                        <div data-bind="visible: SaveReport() && !ko.unwrap(appSettings.showScheduling)" class="card card-body">
                             <h5><span class="fa fa-hourglass"></span>&nbsp;Choose Schedule</h5>
 
                             <div style="padding: 10px 10px" data-bind="if: SaveReport">
