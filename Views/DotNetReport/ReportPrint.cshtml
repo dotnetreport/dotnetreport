@@ -440,13 +440,13 @@
         
         var vm = new reportViewModel({
             runReportUrl: "@Url.Action("Report")",
-            execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
+            execReportUrl: "@Url.Action("RunReportUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId",
             runLinkReportUrl: "@Url.Action("RunReportLinkUnAuth", "DotNetReportApi")",
             reportWizard: $("#filter-panel"),
             reportHeader: "report-header",
             lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
             apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")',
-            runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
+            runReportApiUrl: '@Url.Action("RunReportApiUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId',
             reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)') || '{}',
             reportMode: "print",
             reportSql: "@Model.ReportSql",

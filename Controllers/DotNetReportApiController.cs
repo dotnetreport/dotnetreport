@@ -269,6 +269,35 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public async Task<IActionResult> RunReport(RunReportParameters data)
         {
+            return await ExecuteRunReport(data);
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        public async Task<IActionResult> RunReportUnAuth([FromQuery] string exportId, [FromBody] RunReportParameters data)
+        {
+            if (ExportSessionStore.Get(exportId) == null)
+                return Unauthorized();
+            return await ExecuteRunReport(data);
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        public async Task<IActionResult> RunReportApiUnAuth([FromQuery] string exportId, [FromBody] DotNetReportApiCall data)
+        {
+            var settings = ExportSessionStore.Get(exportId);
+            if (settings == null)
+                return Unauthorized();
+
+            settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
+            settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
+            settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
+            settings.CanUseAdminMode = true;
+            return await ExecuteCallReportApi(data.Method, JsonSerializer.Serialize(data), data.userId, settings);
+        }
+
+        private async Task<IActionResult> ExecuteRunReport(RunReportParameters data)
+        {
             string reportSql = data.reportSql;
             string connectKey = data.connectKey;
             string reportType = data.reportType;
