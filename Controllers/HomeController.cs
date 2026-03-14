@@ -15,7 +15,7 @@ namespace ReportBuilder.Web.Controllers
     [Authorize]
     public class HomeController : Controller
     {
-        private readonly IConfigurationRoot _configuration;
+        private readonly IConfiguration _configuration;
         private readonly SignInManager<IdentityUser> _signInManager;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly DotNetUserApiController _userApiController;
@@ -26,7 +26,7 @@ namespace ReportBuilder.Web.Controllers
             _userApiController=dotNetUserApiController;
                 var builder = new ConfigurationBuilder()
                  .SetBasePath(Directory.GetCurrentDirectory())
-                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
             _configuration = builder.Build();
 
         }
@@ -59,7 +59,7 @@ namespace ReportBuilder.Web.Controllers
             return View();
         }
 
-        private async Task LoginUser(string email, string contact, bool dotnetAdmin, List<ClaimInfo> userclaims=null, List<string> roles=null)
+        private async Task LoginUser(string email, string contact, bool dotnetAdmin, List<ClaimInfo> userclaims = null, List<string> roles = null, bool isPersistent = false)
         {
             var claims = new List<Claim>
                     {
@@ -79,10 +79,15 @@ namespace ReportBuilder.Web.Controllers
             }
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
+
+            // isPersistent = true  → browser stores cookie on disk; survives browser/app close.
+            // isPersistent = false → session cookie; Electron persists it via its user-data store
+            //                        but a 365-day server-side expiry is still applied so the
+            //                        cookie is always honoured after Data Protection keys persist.
             var authProperties = new AuthenticationProperties
             {
-                
-                // Configure additional properties as needed
+                IsPersistent = isPersistent,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(365)
             };
 
             await HttpContext.SignInAsync(
@@ -128,7 +133,7 @@ namespace ReportBuilder.Web.Controllers
                     {
                         SessionHelper.SetUserRoles(HttpContext, loginResult.User.AllRoles);
                         SessionHelper.SetCurrentUserRoles(HttpContext, loginResult.User.Roles);
-                        await LoginUser(model.Email, loginResult.PrimaryContact, true, loginResult.User.Claims, loginResult.User.Roles);
+                        await LoginUser(model.Email, loginResult.PrimaryContact, true, loginResult.User.Claims, loginResult.User.Roles, model.RememberMe);
                         var usersResult = await _userApiController.LoadUsers();
                         if (usersResult.Result is OkObjectResult okResult)
                         {
@@ -164,7 +169,7 @@ namespace ReportBuilder.Web.Controllers
             }
             catch (Exception ex)
             {
-                ModelState.AddModelError("Error", ex.Message);
+                ModelState.AddModelError(string.Empty, ex.Message);
                 return View(model);
 
             }

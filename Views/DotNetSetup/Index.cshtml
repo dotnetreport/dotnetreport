@@ -1,4 +1,4 @@
-﻿@using Newtonsoft.Json;
+@using Newtonsoft.Json;
 @{
     Layout = "~/Views/shared/_Layout.Report.cshtml";
 }
@@ -106,6 +106,10 @@
                 ko.applyBindings(vm);
                 vm.LoadDataConnections();
                 vm.customSql.textQuery.setupQuery();
+                // Default the connection builder to "Build Connection String"
+                if (vm.DbConfig && vm.DbConfig.ConnectionType && !vm.DbConfig.ConnectionType()) {
+                    vm.DbConfig.ConnectionType('Build');
+                }
             });
         });
 
@@ -122,6 +126,11 @@
     <div class="d-sm-block ">
         <!-- Nav tabs -->
         <ul class="nav nav-tabs flex-grow-1" role="tablist">
+            <li role="presentation" class="nav-item">
+                <a class="nav-link active" href="#connection" aria-controls="home" role="tab" data-bs-toggle="tab">
+                    <i class="fa fa-plug"></i> Workspace
+                </a>
+            </li>
             <li role="presentation" class="nav-item">
                 <a class="nav-link" href="#tablesfields" aria-controls="home" role="tab" data-bs-toggle="tab" data-bind="click: function() { customTableMode(false); activeTable(null);}">
                     <i class="fa fa-database"></i> Database Tables
@@ -158,11 +167,6 @@
                 </a>
             </li>
             <li role="presentation" class="nav-item">
-                <a class="nav-link active" href="#connection" aria-controls="home" role="tab" data-bs-toggle="tab">
-                    <i class="fa fa-plug"></i> Data Settings
-                </a>
-            </li>
-            <li role="presentation" class="nav-item">
                 <a class="nav-link" href="#settings" aria-controls="home" role="tab" data-bs-toggle="tab">
                     <i class="fa fa-gears"></i> Settings
                 </a>
@@ -174,29 +178,32 @@
 </div>
 <!-- Tab panes -->
 <div class="fix-content" style="display: none;" data-bind="visible: true">
+    <!-- ko if: !DbConfig.DatabaseType() -->
+    <div style="background:#b02a37; color:#fff; padding:5px 16px; font-size:.82rem; line-height:1.5;"
+         title="Reports and dashboards cannot run without a database connection. Go to the Workspace tab and click 'Connect to Database' to get started.">
+        <i class="fa fa-plug me-1"></i>
+        <strong>No database connected</strong> — go to the <strong>Workspace</strong> tab and connect to your data to get started.
+        <i class="fa fa-info-circle ms-1 opacity-75"></i>
+    </div>
+    <!-- /ko -->
     <div class="tab-content">
         <div role="tabpanel" class="tab-pane active" id="connection">
-            <b>Manage Database Connection</b>
+            <b>Manage Workspace</b>
             <p>
-                Data Connection groups data schemas (including tables and stored procedures and other configuration), Reports, and Dashboards into a single environment. You can create multiple Data Connections and easily switch between them for separate environment management.
+                A Workspace organises your database schema — tables, stored procedures, and configuration — along with associated Reports and Dashboards.
+                You can create multiple Workspaces for different database connections and switch between them to manage separate environments.
             </p>
             <hr />
             <div class="form-row" data-bind="visible: true">
                 <div class="form-group">
                     <div class="control-group">
+                        <b>Current Workspace:</b><br />
                         <select class="form-select" style="width:25%" data-bind="options: DataConnections, optionsText: 'DataConnectName', optionsValue: 'DataConnectGuid', value: currentConnectionKey"></select>
-                        <div class="padded-top"></div>
-                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#connection-setup-modal">Manage DB Connection</button>
-                        <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Connection</button>
-                        <button class="btn btn-primary btn-sm" data-bind="click: editDataConnectionModal, hidden: canSwitchConnection" data-bs-toggle="modal" data-bs-target="#add-connection-modal">Edit Connection</button>
-                        <button class="btn btn-primary btn-sm" data-bind="click: newDataConnectionModal" data-bs-toggle="modal" data-bs-target="#add-connection-modal">Add New Connection</button>
-                        <button class="btn btn-primary btn-sm" data-bind="click: exportAll, visible: false">Export Connection</button>
-                        <button class="btn btn-primary btn-sm" data-bind="click: importStart, visible: false">Import Connection</button>
                     </div>
                     <div data-bind="visible: importingFile">
                         <br />
                         <div class="alert alert-info">
-                            Please select a file you have previously exported from this utility. The system will load the screen with the Data Connection setting in the file, however, it will <b>NOT</b> be saved until you press the Save All button or Save individual tables
+                            Please select a file you have previously exported from this utility. The system will load the screen with the Data Connection setting in the file, however, it will <b>NOT</b> be saved until you press the Save All button or Save individual tables.
                             <br />
                             <div class="input-group">
                                 <input type="file" accept=".json" id="import-file" data-bind="event: { change: function() { importFile($element.files[0]) } }" />
@@ -204,145 +211,74 @@
                                     <button class="btn btn-link" data-bind="click: importCancel">Cancel</button>
                                 </span>
                             </div>
-
                         </div>
                     </div>
                     <br />
-                    <br />
-                    <div class="boxed">
-                        <p><b>Database: </b><span data-bind="text: DbConfig.DatabaseType"></span></p>
-                        <p><b>Selected Tables: </b><span data-bind="text: Tables.availableTables().length"></span></p>
-                        <p><b>Joins Setup: </b><span data-bind="text: Joins().length"></span></p>
-                    </div>
-                </div>
-            </div>
-
-            <br />
-            <br />
-            <div class="card">
-                <div class="card-header">
-                    <b>Account Level Settings</b>
-                </div>
-                <div class="card-body">
-                    <div data-bind="with: settings">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6 class="mt-2 mb-2">Admin Options</h6>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" id="useClientIdInAdmin" data-bind="checked: useClientIdInAdmin">
-                                    <label class="form-check-label" for="useClientIdInAdmin">Use Client ID in Admin mode</label>
-                                    <small class="text-muted d-block">Enable this to respect client IDs even when in admin mode.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" id="useSqlBuilderInAdminMode" data-bind="checked: useSqlBuilderInAdminMode">
-                                    <label class="form-check-label" for="useSqlBuilderInAdminMode">Use SQL Builder in Admin Mode</label>
-                                    <small class="text-muted d-block">Allows SQL query builder access <b>only</b> in admin mode.</small>
-                                </div>
-                                <h6 class="mt-3 mb-2">Customization</h6>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" id="useSqlCustomField" data-bind="checked: useSqlCustomField">
-                                    <label class="form-check-label" for="useSqlCustomField">Use SQL in Custom Field</label>
-                                    <small class="text-muted d-block">Allows the use of SQL expressions in custom fields.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: usePromptBuilder">
-                                    <label class="form-check-label">Use AI aided, prompt based Report Builder</label>
-                                    <small class="text-muted d-block">Let non Admin users create reports using the AI aided Prompt based builder</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: useAltPivot">
-                                    <label class="form-check-label">Pivot with Drilldown</label>
-                                    <small class="text-muted d-block">Use alternate Pivot method that doesn’t use SQL’s PIVOT.<br>Allows drilldown, but may be slower.</small>
-                                </div>
-                                <div class="form-check" data-bind="visible: isEnterprise">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: useFunctions">
-                                    <label class="form-check-label">Use Functions</label>
-                                    <small class="text-muted d-block">
-                                        Enable calculated functions for List reports only.<br>
-                                        Available for Enterprise license users.
-                                    </small>
-                                </div>
-                                <h6 class="mt-3 mb-2">Report Options</h6>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" id="allowUsersToCreateReports" data-bind="checked: allowUsersToCreateReports">
-                                    <label class="form-check-label" for="allowUsersToCreateReports">Allow All Users to Create Reports</label>
-                                    <small class="text-muted d-block">Permits users to generate and customize reports.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: showImportExport">
-                                    <label class="form-check-label">Allow All Users to export/import reports</label>
-                                    <small class="text-muted d-block">
-                                        Allow non admin users to export and import Reports in the system.
-                                    </small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: canCopyReport">
-                                    <label class="form-check-label">Always allow users to copy reports</label>
-                                    <small class="text-muted d-block">
-                                        Allow users with View Only access to copy Reports in the system.
-                                    </small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: showScheduling">
-                                    <label class="form-check-label">Hide Report/Dashboard Scheduling</label>
-                                    <small class="text-muted d-block">
-                                        Removes scheduling in reports and dashboard, select only if you don't want to use scheduling feature.
-                                    </small>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <h6 class="mt-2 mb-2">Folder Options</h6>
-                                <div class="form-check" data-bind="visible: false">
-                                    <input type="checkbox" class="form-check-input" id="noFolders" data-bind="checked: noFolders">
-                                    <label class="form-check-label" for="noFolders">No Folders</label>
-                                    <small class="text-muted d-block">Disables the use of folders in the application.</small>
-                                </div>
-                                <div class="form-check" data-bind="visible: false">
-                                    <input type="checkbox" class="form-check-input" id="noDefaultFolder" data-bind="checked: noDefaultFolder">
-                                    <label class="form-check-label" for="noDefaultFolder">No Default Folder</label>
-                                    <small class="text-muted d-block">Removes the Default folder.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: showEmptyFolders">
-                                    <label class="form-check-label">Show Empty Folders</label>
-                                    <small class="text-muted d-block">Will show empty folders for non admin users.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" id="allowUsersToManageFolders" data-bind="checked: allowUsersToManageFolders">
-                                    <label class="form-check-label" for="allowUsersToManageFolders">Allow All Users to Manage Folders</label>
-                                    <small class="text-muted d-block">Grants permission to organize and manage folders without admin mode.</small>
-                                </div>
-                                <h6 class="mt-3 mb-2">Export Options</h6>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: useAltPdf">
-                                    <label class="form-check-label">PDF Export without Chromium</label>
-                                    <small class="text-muted d-block">Use alternate PDF export method that doesn’t rely on Chromium.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: dontXmlExport">
-                                    <label class="form-check-label">Hide XML Export option</label>
-                                    <small class="text-muted d-block">Remove XML Export option.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: dontWordExport">
-                                    <label class="form-check-label">Hide Word Export option</label>
-                                    <small class="text-muted d-block">Remove Word Export option.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: showPageSize">
-                                    <label class="form-check-label">Show Page Size on PDF & Word export</label>
-                                    <small class="text-muted d-block">Display document dimensions in exported PDF & Word.</small>
+                    <!-- Empty workspace — no tables yet -->
+                    <div class="col-sm-12 col-md-7 col-lg-6" data-bind="if: Tables.availableTables().length === 0 && Joins().length === 0">
+                        <div class="card shadow-sm border-0" data-bind="hidden: canSwitchConnection">
+                            <div class="card-body text-center py-5">
+                                <h5 class="mb-4 fw-semibold">
+                                    Add data to your <span class="badge bg-success">Workspace</span>
+                                </h5>
+                                <div class="d-flex justify-content-center gap-4 flex-wrap">
+                                    <div class="card border-0 p-4 text-center" style="background:#e4f5fc;width:180px;cursor:pointer" data-bs-toggle="modal" data-bs-target="#connection-setup-modal">
+                                        <i class="fa fa-database fa-3x text-primary mb-3"></i>
+                                        <p class="mb-0 fw-medium">Connect to Database</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="mt-3">
-                            <button type="button" id="saveAppSettings" class="btn btn-primary" data-bind="click: saveAppSettings">Save</button>
+                    </div>
+                    <!-- Populated workspace — show summary card -->
+                    <div class="col-sm-12 col-md-7 col-lg-6" data-bind="ifnot: Tables.availableTables().length === 0 && Joins().length === 0">
+                        <div class="card" data-bind="hidden: canSwitchConnection">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <i class="fa fa-database me-2 text-primary"></i>
+                                            <span class="me-2">Database:</span>
+                                            <i class="me-1"
+                                               data-bind="css:
+                                                   DbConfig.DatabaseType() === 'MS SQL'      ? 'fa fa-windows text-primary' :
+                                                   DbConfig.DatabaseType() === 'MySQL'        ? 'fa fa-database text-warning' :
+                                                   DbConfig.DatabaseType() === 'Postgre Sql'  ? 'fa fa-leaf text-info' :
+                                                   DbConfig.DatabaseType() === 'Oracle'       ? 'fa fa-circle text-danger' :
+                                                   DbConfig.DatabaseType() === 'OleDB'        ? 'fa fa-plug text-secondary' :
+                                                                                                'fa fa-database text-muted'"></i>
+                                            <span data-bind="text: DbConfig.DatabaseType" class="me-3 fw-semibold"></span>
+                                        </div>
+                                        <div class="mb-3">
+                                            <i class="fa fa-table me-2 text-success"></i>
+                                            <span class="me-2">Tables selected:</span>
+                                            <span data-bind="text: Tables.availableTables().length" class="fw-semibold"></span>
+                                        </div>
+                                        <div>
+                                            <i class="fa fa-link me-2 text-info"></i>
+                                            <span class="me-2">Joins setup:</span>
+                                            <span data-bind="text: Joins().length" class="fw-semibold"></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 text-center">
+                                        <div class="m-2 card p-4" style="background:#dcf5ff;cursor:pointer" data-bs-toggle="modal" data-bs-target="#connection-setup-modal">
+                                            <i class="fa fa-database fa-3x text-primary mb-2"></i>
+                                            <p class="mb-0">Setup Database Connection</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                    <div style="margin-top:16px"></div>
+                    <button class="btn btn-primary btn-sm" data-bind="click: switchConnection, visible: canSwitchConnection">Switch Workspace</button>
+                    <button class="btn btn-primary btn-sm" data-bind="click: editDataConnectionModal, hidden: canSwitchConnection" data-bs-toggle="modal" data-bs-target="#add-connection-modal">Edit Workspace Details</button>
+                    <button class="btn btn-primary btn-sm" data-bind="click: newDataConnectionModal, hidden: canSwitchConnection" data-bs-toggle="modal" data-bs-target="#add-connection-modal">Add New Workspace</button>
+                    <button class="btn btn-primary btn-sm" data-bind="click: exportAll, visible: false">Export Connection</button>
+                    <button class="btn btn-primary btn-sm" data-bind="click: importStart, visible: false">Import Connection</button>
                 </div>
             </div>
         </div>
-
         <div role="tabpanel" class="tab-pane" id="tablesfields">
             <b data-bind="text: customTableMode() ? 'Custom Tables' : 'Database Tables'"></b>
             <p>
@@ -788,7 +724,7 @@
                     <div class="mb-2 d-flex gap-2">
                         <div class="mb-2">
                             <button class="btn btn-sm btn-primary" data-bind="click: function() { exportFoldersReportJson() }">
-                                <span class="fa fa-download"></span> Export Selected Reports Access
+                                <span class="fa fa-download"></span> Export Selected Reports
                             </button>
                         </div>
                         <div class="mb-2">
@@ -1091,11 +1027,126 @@
         </div>
 
         <div role="tabpanel" id="settings" class="tab-pane">
-            <b>Settings</b>
-            <p>
-                Configure local Application level settings
-            </p>
+            <!-- ── Account Level Settings ── -->
+            <b>Account Settings</b>
+            <p>Configure advanced account options for all users.</p>
             <hr />
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div data-bind="with: settings">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="mt-2 mb-2">Admin Options</h6>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="useClientIdInAdmin" data-bind="checked: useClientIdInAdmin">
+                                    <label class="form-check-label" for="useClientIdInAdmin">Use Client ID in Admin mode</label>
+                                    <small class="text-muted d-block">Enable this to respect client IDs even when in admin mode.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="useSqlBuilderInAdminMode" data-bind="checked: useSqlBuilderInAdminMode">
+                                    <label class="form-check-label" for="useSqlBuilderInAdminMode">Use SQL Builder in Admin Mode</label>
+                                    <small class="text-muted d-block">Allows SQL query builder access <b>only</b> in admin mode.</small>
+                                </div>
+                                <h6 class="mt-3 mb-2">Customization</h6>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="useSqlCustomField" data-bind="checked: useSqlCustomField">
+                                    <label class="form-check-label" for="useSqlCustomField">Use SQL in Custom Field</label>
+                                    <small class="text-muted d-block">Allows the use of SQL expressions in custom fields.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: usePromptBuilder">
+                                    <label class="form-check-label">Use AI aided, prompt based Report Builder</label>
+                                    <small class="text-muted d-block">Let non Admin users create reports using the AI aided Prompt based builder</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: useAltPivot">
+                                    <label class="form-check-label">Pivot with Drilldown</label>
+                                    <small class="text-muted d-block">Use alternate Pivot method that doesn't use SQL's PIVOT.<br>Allows drilldown, but may be slower.</small>
+                                </div>
+                                <div class="form-check" data-bind="visible: isEnterprise">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: useFunctions">
+                                    <label class="form-check-label">Use Functions</label>
+                                    <small class="text-muted d-block">Enable calculated functions for List reports only.<br>Available for Enterprise license users.</small>
+                                </div>
+                                <h6 class="mt-3 mb-2">Report Options</h6>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="allowUsersToCreateReports" data-bind="checked: allowUsersToCreateReports">
+                                    <label class="form-check-label" for="allowUsersToCreateReports">Allow All Users to Create Reports</label>
+                                    <small class="text-muted d-block">Permits users to generate and customize reports.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showImportExport">
+                                    <label class="form-check-label">Allow All Users to export/import reports</label>
+                                    <small class="text-muted d-block">Allow non admin users to export and import Reports in the system.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: canCopyReport">
+                                    <label class="form-check-label">Always allow users to copy reports</label>
+                                    <small class="text-muted d-block">Allow users with View Only access to copy Reports in the system.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showScheduling">
+                                    <label class="form-check-label">Hide Report/Dashboard Scheduling</label>
+                                    <small class="text-muted d-block">Removes scheduling in reports and dashboard.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="mt-2 mb-2">Folder Options</h6>
+                                <div class="form-check" data-bind="visible: false">
+                                    <input type="checkbox" class="form-check-input" id="noFolders" data-bind="checked: noFolders">
+                                    <label class="form-check-label" for="noFolders">No Folders</label>
+                                    <small class="text-muted d-block">Disables the use of folders in the application.</small>
+                                </div>
+                                <div class="form-check" data-bind="visible: false">
+                                    <input type="checkbox" class="form-check-input" id="noDefaultFolder" data-bind="checked: noDefaultFolder">
+                                    <label class="form-check-label" for="noDefaultFolder">No Default Folder</label>
+                                    <small class="text-muted d-block">Removes the Default folder.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showEmptyFolders">
+                                    <label class="form-check-label">Show Empty Folders</label>
+                                    <small class="text-muted d-block">Will show empty folders for non admin users.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="allowUsersToManageFolders" data-bind="checked: allowUsersToManageFolders">
+                                    <label class="form-check-label" for="allowUsersToManageFolders">Allow All Users to Manage Folders</label>
+                                    <small class="text-muted d-block">Grants permission to organise and manage folders without admin mode.</small>
+                                </div>
+                                <h6 class="mt-3 mb-2">Export Options</h6>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: useAltPdf">
+                                    <label class="form-check-label">PDF Export without Chromium</label>
+                                    <small class="text-muted d-block">Use alternate PDF export method that doesn't rely on Chromium.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: dontXmlExport">
+                                    <label class="form-check-label">Hide XML Export option</label>
+                                    <small class="text-muted d-block">Remove XML Export option.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: dontWordExport">
+                                    <label class="form-check-label">Hide Word Export option</label>
+                                    <small class="text-muted d-block">Remove Word Export option.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showPageSize">
+                                    <label class="form-check-label">Show Page Size on PDF &amp; Word export</label>
+                                    <small class="text-muted d-block">Display document dimensions in exported PDF &amp; Word.</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button type="button" id="saveAppSettings" class="btn btn-primary" data-bind="click: saveAppSettings">Save Account Settings</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr />
+
+            <!-- ── Local App Settings ── -->
+            <b>Application Settings</b>
+            <p>Configure local application-level settings (stored in <code>appsettings.dotnetreport.json</code>).</p>
             <div class="row">
                 <div class="col-md-8 mb-4">
                     <div class="card" style="margin: 20px;">
@@ -1104,16 +1155,7 @@
                                 <label for="backendApiUrl">Backend Service API Url:</label>
                                 <input type="text" class="form-control" required data-bind="value: backendApiUrl">
                                 <div class="invalid-feedback">BackendApiUrl is required.</div>
-                                <div>
-                                    <label for="themeSelect">Application Theme:</label>
-                                    <select class="form-control" id="themeSelect" data-bind="options: appThemes,
-                                               optionsText: 'name',
-                                               optionsValue: 'value',
-                                               value:selectedAppTheme
-                                               optionsCaption: 'Select a Theme'"></select>
-                                    <br>
-                                    <div class="invalid-feedback">Application Theme is required.</div>
-                                </div>
+                                
                                 <div>
                                     <label for="timezone">Default time zone:</label>
                                     <select class="form-control" id="timezoneSelect" data-bind="options: timeZones,
@@ -1159,7 +1201,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <button type="button" id="saveLocalAppSettings" class="btn btn-primary" data-bind="click: saveLocalAppSettings">Save</button>
+                                <button type="button" id="saveLocalAppSettings" class="btn btn-primary" data-bind="click: saveLocalAppSettings">Save Application Settings</button>
                             </form>
                         </div>
                     </div>

@@ -531,12 +531,28 @@ namespace ReportBuilder.Web.Models
         public static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
         public static bool useAltPivot = false;
 
+        // When running inside Electron the app is installed to Program Files (read-only).
+        // Write the per-user dotnetreport config to %AppData%\DotNetReport instead.
+        private static string ConfigFileDir =>
+            Environment.GetEnvironmentVariable("ELECTRON_APP") == "true"
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DotNetReport")
+                : Directory.GetCurrentDirectory();
+
+        private static string ConfigFilePath =>
+            Path.Combine(ConfigFileDir, _configFileName);
 
         static DotNetReportHelper()
         {
+            // Build from files first, then overlay process env vars so Electron-injected
+            // values (EncryptionKey, SsoSecretKey, ConnectionStrings__*, etc.) win.
+            // Resolve the per-user dotnetreport config path (AppData when running in Electron).
+            var configFilePath = Path.Combine(ConfigFileDir, _configFileName);
+
             var builder = new ConfigurationBuilder()
                            .SetBasePath(Directory.GetCurrentDirectory())
-                           .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+                           .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                           .AddJsonFile(configFilePath, optional: true, reloadOnChange: true)
+                           .AddEnvironmentVariables();   // must be LAST — overrides file values
 
             _configuration = builder.Build();
         }
@@ -4127,7 +4143,7 @@ namespace ReportBuilder.Web.Models
 
         public static dynamic GetDbConnectionSettings(string account, string dataConnect, bool addOledbProvider = false)
         {
-            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            var _configFilePath = ConfigFilePath;
             if (!System.IO.File.Exists(_configFilePath))
             {
                 var emptyConfig = new JObject();
@@ -4204,7 +4220,7 @@ namespace ReportBuilder.Web.Models
 
             if (!model.testOnly)
             {
-                var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+                var _configFilePath = ConfigFilePath;
                 if (!System.IO.File.Exists(_configFilePath))
                 {
                     var emptyConfig = new JObject();
@@ -4260,7 +4276,10 @@ namespace ReportBuilder.Web.Models
 
         public static void UpdateUserConfigSetting(UpdateUserConfigModel model)
         {
-            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            // Use %AppData%\DotNetReport when running from Electron (Program Files is read-only).
+            var dir = ConfigFileDir;
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+            var _configFilePath = ConfigFilePath;
             if (!System.IO.File.Exists(_configFilePath))
             {
                 var emptyConfig = new JObject();
@@ -4291,32 +4310,47 @@ namespace ReportBuilder.Web.Models
 
         public static void UpdateConfigurationFile(string accountApiKey, string privateApiKey, string dataConnectKey, bool onlyIfEmpty = false)
         {
-            var _configFileName = "appsettings.json";
-            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            // Use %AppData%\DotNetReport when running from Electron (Program Files is read-only).
+            var dir = ConfigFileDir;
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+            var _configFilePath = ConfigFilePath;
 
             JObject existingConfig;
             if (System.IO.File.Exists(_configFilePath))
             {
                 existingConfig = JObject.Parse(System.IO.File.ReadAllText(_configFilePath));
-                if (existingConfig["dotNetReport"] is JObject dotNetReportObject)
+            }
+            else
+            {
+                existingConfig = new JObject();
+            }
+
+            if (existingConfig["dotNetReport"] == null)
+            {
+                existingConfig["dotNetReport"] = new JObject();
+            }
+
+            if (existingConfig["dotNetReport"] is JObject dotNetReportObject)
+            {
+                var currentToken = dotNetReportObject["accountApiToken"]?.ToString();
+                var isEmpty = string.IsNullOrEmpty(currentToken) || currentToken == "Your Account API Key";
+
+                if (!onlyIfEmpty || isEmpty)
                 {
-                    if (!onlyIfEmpty || (onlyIfEmpty && dotNetReportObject["accountApiToken"] != null && dotNetReportObject["accountApiToken"].ToString() == "Your Account API Key"))
-                    {
-                        dotNetReportObject["accountApiToken"] = accountApiKey;
-                        dotNetReportObject["dataconnectApiToken"] = dataConnectKey;
+                    dotNetReportObject["accountApiToken"] = accountApiKey;
+                    dotNetReportObject["dataconnectApiToken"] = dataConnectKey;
 
-                        if (!string.IsNullOrEmpty(privateApiKey))
-                            dotNetReportObject["privateApiToken"] = privateApiKey;
+                    if (!string.IsNullOrEmpty(privateApiKey))
+                        dotNetReportObject["privateApiToken"] = privateApiKey;
 
-                        System.IO.File.WriteAllText(_configFilePath, existingConfig.ToString(Newtonsoft.Json.Formatting.Indented));
-                    }
+                    System.IO.File.WriteAllText(_configFilePath, existingConfig.ToString(Newtonsoft.Json.Formatting.Indented));
                 }
             }
         }
 
         public static AppSettingModel GetAppSettings()
         {
-            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            var _configFilePath = ConfigFilePath;
             if (!System.IO.File.Exists(_configFilePath))
             {
                 var emptyConfig = new JObject();
@@ -4348,7 +4382,7 @@ namespace ReportBuilder.Web.Models
 
         public static void SaveAppSettings(AppSettingModel model)
         {
-            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            var _configFilePath = ConfigFilePath;
             if (!System.IO.File.Exists(_configFilePath))
             {
                 var emptyConfig = new JObject();

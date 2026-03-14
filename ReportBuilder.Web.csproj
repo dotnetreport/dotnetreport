@@ -6,8 +6,24 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 	</PropertyGroup>
 
+	<!-- Exclude the Electron wrapper so publish doesn't recursively copy its own output -->
 	<ItemGroup>
-	  <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
+		<Content Remove="electron-app\**" />
+		<None Remove="electron-app\**" />
+		<Compile Remove="electron-app\**" />
+	</ItemGroup>
+
+	<!-- Never publish environment-specific or secret appsettings — only appsettings.json ships.
+	     appsettings.*.json matches Development, dotnetreport, etc. but NOT appsettings.json -->
+	<ItemGroup>
+		<Content Update="appsettings.*.json">
+			<CopyToPublishDirectory>Never</CopyToPublishDirectory>
+			<CopyToOutputDirectory>Never</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="DocumentFormat.OpenXml" Version="3.4.1" />
 	  <PackageReference Include="EPPlus" Version="4.5.3.3" />
 	  <PackageReference Include="HtmlSanitizer" Version="9.0.892" />
 	  <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.10.0" />
@@ -21,6 +37,8 @@
 	  <PackageReference Include="System.Data.OleDb" Version="9.0.10" />
     <PackageReference Include="MySql.Data" Version="9.5.0" />
     <PackageReference Include="Npgsql" Version="9.0.4" />
+    <PackageReference Include="System.Drawing.Common" Version="4.7.3" />
+    <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
 	</ItemGroup>
 
 </Project>

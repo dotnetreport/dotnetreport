@@ -1,87 +1,214 @@
-﻿@model ReportBuilder.Web.Models.RegisterViewModel
+@model ReportBuilder.Web.Models.RegisterViewModel
 @{
     Layout = "~/Views/shared/_Layout.Report.cshtml";
 }
 
-<div class="row justify-content-center mt-5">
+<style>
+    .auth-wrap {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: calc(100vh - 80px);
+        padding: 32px 16px;
+    }
+    .auth-card {
+        display: flex;
+        width: 100%;
+        max-width: 900px;
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0,0,0,.18);
+    }
+    .auth-panel {
+        flex: 0 0 320px;
+        background: linear-gradient(160deg, #0f0f1a 0%, #0d3977 100%);
+        color: #fff;
+        padding: 48px 32px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .auth-panel img { width: 120px; margin-bottom: 28px; opacity: .92; }
+    .auth-panel h2  { font-size: 1.5rem; font-weight: 800; margin-bottom: 10px; }
+    .auth-panel p   { font-size: .88rem; opacity: .75; line-height: 1.6; margin-bottom: 28px; }
+    .auth-benefit {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+    .auth-benefit .ab-icon {
+        width: 34px; height: 34px; min-width: 34px;
+        border-radius: 8px;
+        background: rgba(255,255,255,.12);
+        display: flex; align-items: center; justify-content: center;
+        font-size: .95rem; color: #93c5fd;
+    }
+    .auth-benefit .ab-text h6 { font-size: .84rem; font-weight: 700; margin: 0 0 2px; color: #fff; }
+    .auth-benefit .ab-text p  { font-size: .78rem; opacity: .65; margin: 0; line-height: 1.4; }
+    .auth-trial-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: rgba(255,255,255,.1);
+        border: 1px solid rgba(255,255,255,.2);
+        border-radius: 50px;
+        padding: 5px 14px;
+        font-size: .78rem;
+        color: #bfdbfe;
+        margin-bottom: 24px;
+    }
+    .auth-form-panel {
+        flex: 1;
+        background: #fff;
+        padding: 48px 40px;
+    }
+    .auth-form-panel h3 { font-weight: 800; font-size: 1.35rem; margin-bottom: 4px; color: #111; }
+    .auth-form-panel .auth-sub { color: #6c757d; font-size: .88rem; margin-bottom: 28px; }
+    .auth-form-panel .form-label { font-weight: 600; font-size: .85rem; color: #374151; margin-bottom: 4px; }
+    .auth-form-panel .form-label .optional { font-weight: 400; color: #9ca3af; font-size: .78rem; margin-left: 4px; }
+    .auth-form-panel .form-control {
+        border-radius: 8px;
+        border: 1.5px solid #e5e7eb;
+        padding: 10px 14px;
+        font-size: .9rem;
+        transition: border-color .2s;
+    }
+    .auth-form-panel .form-control:focus { border-color: #0d6efd; box-shadow: 0 0 0 3px rgba(13,110,253,.1); }
+    .auth-btn { width: 100%; padding: 11px; font-weight: 700; font-size: .95rem; border-radius: 8px; margin-top: 4px; }
+    .auth-footer-link { font-size: .84rem; color: #6c757d; margin-top: 20px; text-align: center; }
+    .auth-footer-link a { color: #0d6efd; font-weight: 600; text-decoration: none; }
+    .auth-footer-link a:hover { text-decoration: underline; }
+    .auth-tos { font-size: .76rem; color: #9ca3af; text-align: center; margin-top: 12px; line-height: 1.5; }
+    @@media (max-width: 700px) {
+        .auth-panel { display: none; }
+        .auth-form-panel { padding: 36px 24px; }
+    }
+</style>
 
-<div class="col-md-4">
-    <div class="container">
-        <div class="row">
-            <div class="col-md-12 col-lg-12 mx-auto">
-            @using (Html.BeginForm("Register", "Home", FormMethod.Post, new { @class = "form-box needs-validation", role = "form", novalidate = "" }))
-            {
-                @Html.AntiForgeryToken()
-                <div class="text-center">
-                    <h4>Let's get started!</h4>
-                    <div class="alert alert-info">
-                        This will create a new Dotnet Report Cloud Account<div class="small">Your temporary password will be sent to your email address</div>
-                    </div>
-                    <br />
-                </div>
-                <div class="form-group">
-                    @Html.ValidationSummary(true, "", new { @class = "text-danger" })
-                </div>
-                <div class="form-group">
-                    @Html.LabelFor(m => m.PrimaryContact, new { @class = "control-label requird" })
-                    <div>
-                        @Html.TextBoxFor(m => m.PrimaryContact, new { @class = "form-control" })
-                        @Html.ValidationMessageFor(m => m.PrimaryContact, "", new { @class = "text-danger" })
-                    </div>
-                </div>
+<div class="auth-wrap">
+    <div class="auth-card">
 
-                <div class="form-group">
-                            @Html.LabelFor(m => m.Email, new { @class = "control-label requird" })
-                    <div>
-                        @Html.TextBoxFor(m => m.Email, new { @class = "form-control" })
-                        @Html.ValidationMessageFor(m => m.Email, "", new { @class = "text-danger" })
-                    </div>
+        <!-- Left brand panel -->
+        <div class="auth-panel">
+            <img src="~/img/report-logo.png" alt="Dotnet Report" />
+
+            <div class="auth-trial-badge">
+                <i class="fa fa-star"></i> Free trial — no credit card required
+            </div>
+
+            <h2>Start reporting in minutes</h2>
+            <p>Create your Dotnet Report cloud account and connect your database to get started.</p>
+
+            <div class="auth-benefit">
+                <div class="ab-icon"><i class="fa fa-database"></i></div>
+                <div class="ab-text">
+                    <h6>Connect any SQL database</h6>
+                    <p>MS SQL, MySQL, PostgreSQL and more</p>
                 </div>
-
-                <div class="form-group">
-                    @Html.LabelFor(m => m.PhoneNumber, new { @class = "control-label" })
-                    <div>
-                        @Html.TextBoxFor(m => m.PhoneNumber, new { @class = "form-control", data_val = "false" })
-                        @Html.ValidationMessageFor(m => m.PhoneNumber, "", new { @class = "text-danger" })
-                    </div>
+            </div>
+            <div class="auth-benefit">
+                <div class="ab-icon"><i class="fa fa-magic"></i></div>
+                <div class="ab-text">
+                    <h6>Drag-and-drop report builder</h6>
+                    <p>Build reports without writing SQL</p>
                 </div>
-                        
-                <div class="form-group">
-                    @Html.LabelFor(m => m.BusinessName, new { @class = "control-label" })
-                    <div>
-                        @Html.TextBoxFor(m => m.BusinessName, new { @class = "form-control", data_val = "false" })
-                        @Html.ValidationMessageFor(m => m.BusinessName, "", new { @class = "text-danger" })
-                    </div>
+            </div>
+            <div class="auth-benefit">
+                <div class="ab-icon"><i class="fa fa-dashboard"></i></div>
+                <div class="ab-text">
+                    <h6>Live dashboards</h6>
+                    <p>Charts, KPIs, and widgets in one view</p>
                 </div>
-
-
-                <div class="form-group">
-                    <div>
-                        <input type="submit" class="btn btn-primary btn-lg" value="Sign Up" />
-                        <br />
-                    </div>
+            </div>
+            <div class="auth-benefit">
+                <div class="ab-icon"><i class="fa fa-clock-o"></i></div>
+                <div class="ab-text">
+                    <h6>Scheduled delivery</h6>
+                    <p>Email reports automatically on any schedule</p>
                 </div>
-                <hr />
-                <p>
-                    @Html.ActionLink("Already have an Account? Login here", "Login", "Home")
-                </p>
-
-            }
-
             </div>
         </div>
+
+        <!-- Right form panel -->
+        <div class="auth-form-panel">
+            <h3>Create your account</h3>
+            <p class="auth-sub">Your temporary password will be sent to your email address after signing up.</p>
+
+            @using (Html.BeginForm("Register", "Home", FormMethod.Post, new { @class = "needs-validation", role = "form", novalidate = "" }))
+            {
+                @Html.AntiForgeryToken()
+
+                <div class="mb-0">
+                    @Html.ValidationSummary(true, "", new { @class = "text-danger small" })
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="PrimaryContact">Full Name</label>
+                    @Html.TextBoxFor(m => m.PrimaryContact, new { @class = "form-control", placeholder = "Jane Smith" })
+                    @Html.ValidationMessageFor(m => m.PrimaryContact, "", new { @class = "text-danger small" })
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="Email">Email Address</label>
+                    @Html.TextBoxFor(m => m.Email, new { @class = "form-control", placeholder = "jane@company.com" })
+                    @Html.ValidationMessageFor(m => m.Email, "", new { @class = "text-danger small" })
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-sm-6">
+                        <label class="form-label">Phone <span class="optional">(optional)</span></label>
+                        @Html.TextBoxFor(m => m.PhoneNumber, new { @class = "form-control", placeholder = "+1 555 000 0000", data_val = "false" })
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label">Company <span class="optional">(optional)</span></label>
+                        @Html.TextBoxFor(m => m.BusinessName, new { @class = "form-control", placeholder = "Acme Corp", data_val = "false" })
+                    </div>
+                </div>
+
+                <button type="submit" id="registerBtn" class="btn btn-primary auth-btn">
+                    <i class="fa fa-user-plus me-2"></i> Create Account
+                </button>
+
+                <div class="auth-tos">
+                    By signing up you agree to the Dotnet Report
+                    <a href="https://dotnetreport.com/terms/" target="_blank" style="color:#6b7280">Terms of Service</a>.
+                </div>
+            }
+
+            <div class="auth-footer-link">
+                Already have an account? <a href="@Url.Action("Login", "Home")">Sign in</a>
+            </div>
+        </div>
+
     </div>
 </div>
 
+<!-- Full-page submit overlay -->
+<div id="authOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9999; align-items:center; justify-content:center; flex-direction:column; gap:14px;">
+    <div class="spinner-border text-light" style="width:3rem;height:3rem;" role="status"><span class="visually-hidden">Loading…</span></div>
+    <span style="color:#fff; font-size:.95rem; font-weight:600; letter-spacing:.02em;">Creating your account…</span>
 </div>
 
 @section scripts {
-
 <script type="text/javascript">
-    $('#ReferredBy').hide();
+    // legacy referral field (keep existing behaviour)
+    if ($('#ReferredBy').length) $('#ReferredBy').hide();
     function referredByChanged(e) {
         if ($('#Source').val() == 'Referred By') $('#ReferredBy').show(); else $('#ReferredBy').hide();
     }
-</script>
 
+    (function () {
+        var $form    = $('form.needs-validation');
+        var $btn     = $('#registerBtn');
+        var $overlay = $('#authOverlay');
+
+        $form.on('submit', function () {
+            // Only block if jQuery validation passes — keeps error states usable
+            if ($form.data('validator') && !$form.valid()) return;
+
+            $btn.prop('disabled', true)
+                .html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Creating account…');
+            $overlay.css('display', 'flex');
+        });
+    })();
+</script>
 }

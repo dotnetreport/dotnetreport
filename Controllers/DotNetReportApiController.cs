@@ -19,7 +19,7 @@ namespace ReportBuilder.Web.Controllers
     [ApiController]
     public class DotNetReportApiController : ControllerBase
     {
-        private readonly IConfigurationRoot _configuration;
+        private readonly IConfiguration _configuration;
         public readonly static string _configFileName = "appsettings.dotnetreport.json";
         
         public DotNetReportApiController()
@@ -35,11 +35,13 @@ namespace ReportBuilder.Web.Controllers
         {
             DotNetReportHelper.dbtype = DbTypes.MS_SQL.ToDbString();
 
+            var tokenConfig = DotNetReportHelper.StaticConfig;
+
             var settings = new DotNetReportSettings
             {
                 ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl"),
-                AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken"), // Your Account Api Token from your http://dotnetreport.com Account
-                DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken") // Your Data Connect Api Token from your http://dotnetreport.com Account            };
+                AccountApiToken = tokenConfig.GetValue<string>("dotNetReport:accountApiToken"),
+                DataConnectApiToken = tokenConfig.GetValue<string>("dotNetReport:dataconnectApiToken")
             };
 
             var appSettings = DotNetReportHelper.GetAppSettings();
@@ -59,10 +61,28 @@ namespace ReportBuilder.Web.Controllers
             settings.ClientId = "";  // You can pass your multi-tenant client id here to track their reports and folders
             settings.UserId = ""; // You can pass your current authenticated user id here to track their reports and folders            
             settings.UserName = "";
-            settings.CurrentUserRole = SessionHelper.GetCurrentUserRoles(HttpContext)?.Any() == true ? SessionHelper.GetCurrentUserRoles(HttpContext) : new List<string>(); // Populate your current authenticated user's roles
+            // CurrentUserRole — prefer session, fall back to ClaimTypes.Role claims baked in the
+            // auth cookie so roles survive an app restart (session cleared, cookie still valid).
+            var currentUserRoles = SessionHelper.GetCurrentUserRoles(HttpContext);
+            if (!currentUserRoles.Any())
+            {
+                currentUserRoles = (User as ClaimsPrincipal)?.Claims
+                    .Where(c => c.Type == ClaimTypes.Role)
+                    .Select(c => c.Value)
+                    .ToList() ?? new List<string>();
+                if (currentUserRoles.Any())
+                    SessionHelper.SetCurrentUserRoles(HttpContext, currentUserRoles); // repopulate session
+            }
+            settings.CurrentUserRole = currentUserRoles;
 
-            settings.Users = SessionHelper.GetUsers(HttpContext)?.Any()== true? SessionHelper.GetUsers(HttpContext) : new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
-            settings.UserRoles = SessionHelper.GetUserRoles(HttpContext)?.Any() == true ? SessionHelper.GetUserRoles(HttpContext) : new List<string>();// Populate all your application's user roles, ex  { "Admin", "Normal" }
+            settings.Users = SessionHelper.GetUsers(HttpContext)?.Any() == true ? SessionHelper.GetUsers(HttpContext) : new List<dynamic>();
+
+            // UserRoles (all system roles) — prefer session; if empty fall back to the current
+            // user's own roles so at minimum role-based filtering still works after restart.
+            var userRoles = SessionHelper.GetUserRoles(HttpContext);
+            if (!userRoles.Any() && currentUserRoles.Any())
+                userRoles = currentUserRoles;
+            settings.UserRoles = userRoles;
             settings.CanUseAdminMode = ClaimsHelper.HasAnyRequiredClaim(User as ClaimsPrincipal, ClaimsStore.AllowAdminMode); // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
 
@@ -161,13 +181,17 @@ namespace ReportBuilder.Web.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> CallReportApiUnAuth(string method, string model, string exportId)
         {
-            var settings = ExportSessionStore.Get(exportId);
-            if (settings == null)
+            var exportSettings = ExportSessionStore.Get(exportId);
+            if (exportSettings == null)
                 return Unauthorized();
 
-            settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
-            settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
-            settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
+            // Use GetSettings() so tokens come from StaticConfig (appsettings.dotnetreport.json),
+            // then restore the user context that was saved at print time.
+            var settings = GetSettings();
+            settings.ClientId = exportSettings.ClientId;
+            settings.UserId = exportSettings.UserId;
+            settings.CurrentUserRole = exportSettings.CurrentUserRole;
+            settings.DataFilters = exportSettings.DataFilters;
             settings.CanUseAdminMode = true;
             return await ExecuteCallReportApi(method, model, null, settings);
         }
@@ -297,6 +321,39 @@ namespace ReportBuilder.Web.Controllers
         [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> RunReport(RunReportParameters data)
+        {
+            return await ExecuteRunReport(data);
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        public async Task<IActionResult> RunReportUnAuth([FromQuery] string exportId, [FromBody] RunReportParameters data)
+        {
+            if (ExportSessionStore.Get(exportId) == null)
+                return Unauthorized();
+            return await ExecuteRunReport(data);
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        public async Task<IActionResult> RunReportApiUnAuth([FromQuery] string exportId, [FromBody] DotNetReportApiCall data)
+        {
+            var exportSettings = ExportSessionStore.Get(exportId);
+            if (exportSettings == null)
+                return Unauthorized();
+
+            // Use GetSettings() so tokens come from StaticConfig (appsettings.dotnetreport.json),
+            // then restore the user context that was saved at print time.
+            var settings = GetSettings();
+            settings.ClientId = exportSettings.ClientId;
+            settings.UserId = exportSettings.UserId;
+            settings.CurrentUserRole = exportSettings.CurrentUserRole;
+            settings.DataFilters = exportSettings.DataFilters;
+            settings.CanUseAdminMode = true;
+            return await ExecuteCallReportApi(data.Method, JsonSerializer.Serialize(data), data.userId, settings);
+        }
+
+        private async Task<IActionResult> ExecuteRunReport(RunReportParameters data)
         {
             string reportSql = data.reportSql;
             string connectKey = data.connectKey;
@@ -765,8 +822,58 @@ namespace ReportBuilder.Web.Controllers
             return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
         }
 
+        /// <summary>
+        /// Re-fetches users and all-roles from the remote API and writes them back into session.
+        /// Called on requests where the session may have been cleared (e.g., app restart) but the
+        /// auth cookie is still valid. Safe to call every request — exits immediately when session
+        /// already has data. Any errors are swallowed so they never break the page load.
+        /// </summary>
+        private async Task EnsureSessionAsync()
+        {
+            // Session already populated — nothing to do.
+            if (SessionHelper.GetUserRoles(HttpContext)?.Any() == true &&
+                SessionHelper.GetUsers(HttpContext)?.Any() == true)
+                return;
+
+            var tokenConfig = DotNetReportHelper.StaticConfig;
+            var accountKey = tokenConfig.GetValue<string>("dotNetReport:accountApiToken");
+            var apiBaseUrl = tokenConfig.GetValue<string>("dotNetReport:accountApiUrl")
+                             ?? _configuration.GetValue<string>("dotNetReport:accountapiurl");
+
+            if (string.IsNullOrEmpty(accountKey) || string.IsNullOrEmpty(apiBaseUrl))
+                return;
+
+            try
+            {
+                using var client = new HttpClient();
+                var content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("account", accountKey)
+                });
+                var response = await client.PostAsync(apiBaseUrl + "/DotnetUserRoles/LoadUsers", content);
+                if (!response.IsSuccessStatusCode) return;
+
+                var json = await response.Content.ReadAsStringAsync();
+                var apiResult = JsonConvert.DeserializeObject<ApiResult<List<UserViewModel>>>(json);
+                if (apiResult?.Success == true && apiResult.data != null)
+                {
+                    SessionHelper.SetUsers(HttpContext, apiResult.data);
+
+                    var allRoles = apiResult.data
+                        .SelectMany(u => u.Roles.Select(r => r.RoleName))
+                        .Where(r => !string.IsNullOrEmpty(r))
+                        .Distinct()
+                        .ToList();
+                    if (allRoles.Any())
+                        SessionHelper.SetUserRoles(HttpContext, allRoles);
+                }
+            }
+            catch { /* Non-fatal: GetSettings() will fall back to claims-based roles */ }
+        }
+
         private async Task<dynamic> GetDashboardsData(bool adminMode = false)
         {
+            await EnsureSessionAsync();
             var settings = GetSettings();
             if (string.IsNullOrEmpty(settings.AccountApiToken))
             {
@@ -804,9 +911,24 @@ namespace ReportBuilder.Web.Controllers
             var newReportViewUserRoles = ""; // comma separated user roles for report view permission when new report is created
 
             var settings = GetSettings();
+            var noAccount = string.IsNullOrEmpty(settings.AccountApiToken) || settings.AccountApiToken == "Your Public Account Api Token";
+            bool noDatabase = false;
+            if (!noAccount)
+            {
+                try
+                {
+                    var connect = DotNetReportHelper.GetConnection();
+                    var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
+                    noDatabase = dbConfig == null
+                        || string.IsNullOrEmpty(dbConfig["DatabaseType"]?.ToString())
+                        || string.IsNullOrEmpty(dbConfig["ConnectionString"]?.ToString());
+                }
+                catch { noDatabase = true; }
+            }
             return Ok(new
             {
-                noAccount = string.IsNullOrEmpty(settings.AccountApiToken) || settings.AccountApiToken == "Your Public Account Api Token",
+                noAccount,
+                noDatabase,
                 users = settings.Users,
                 userRoles = settings.UserRoles,
                 currentUserId = settings.UserId,

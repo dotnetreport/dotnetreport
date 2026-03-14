@@ -1,99 +1,387 @@
-﻿@using Newtonsoft.Json;
+@using Newtonsoft.Json;
 @using ReportBuilder.Web.Models;
 @{
     Layout = "~/Views/shared/_Layout.Report.cshtml";
+    ViewBag.Title = "Welcome";
 }
 
-@section head {
-    <style>
+<style>
+    .home-hero {
+        background: linear-gradient(135deg, #0f0f1a 0%, #1a2744 50%, #0d3977 100%);
+        color: #fff;
+        padding: 50px 24px 42px;
+        text-align: center;
+        border-radius: 0 0 20px 20px;
+        margin: -16px -12px 32px;
+    }
+    .home-hero h1 { font-size: 2.2rem; font-weight: 800; margin-bottom: 10px; }
+    .home-hero p  { font-size: 1.05rem; opacity: .85; max-width: 560px; margin: 0 auto 20px; }
+    .home-hero .welcome-name { font-size: 1rem; opacity: .7; letter-spacing: .05em; margin-bottom: 8px; }
 
-        .hero {
+    .feature-card {
+        border: 1px solid #e9ecef;
+        border-radius: 14px;
+        padding: 22px 18px;
+        height: 100%;
+        transition: all .2s;
+        background: #fff;
+    }
+    .feature-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.1); transform: translateY(-3px); border-color: #c5d8ff; }
+    .feature-icon { font-size: 2rem; margin-bottom: 10px; }
+    .feature-card h6 { font-weight: 700; margin-bottom: 6px; }
+    .feature-card p  { font-size: .84rem; color: #6c757d; margin: 0; line-height: 1.5; }
+
+    .explore-card {
         display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        background: transparent;
-        }
+        flex-direction: column;
+        border: 2px solid #e9ecef;
+        border-radius: 16px;
+        padding: 28px 22px;
+        text-decoration: none;
+        color: inherit;
+        height: 100%;
+        transition: all .2s;
+        background: #fff;
+    }
+    .explore-card:hover { border-color: var(--ec); box-shadow: 0 8px 28px rgba(0,0,0,.1); transform: translateY(-4px); color: inherit; text-decoration: none; }
+    .explore-card .ec-icon { font-size: 2.5rem; margin-bottom: 12px; color: var(--ec); }
+    .explore-card h5    { font-weight: 700; margin-bottom: 6px; }
+    .explore-card p     { font-size: .85rem; color: #6c757d; flex-grow: 1; margin-bottom: 14px; line-height: 1.5; }
+    .explore-card .ec-go { font-size: .82rem; font-weight: 600; color: var(--ec); }
 
-        .hero-image img {
-        max-width: 100%;
-        height: auto;
-        }
+    .section-title { font-weight: 800; font-size: 1.4rem; margin-bottom: 6px; }
+    .section-sub   { color: #6c757d; font-size: .9rem; margin-bottom: 24px; }
 
-        .hero-text {
-        margin-left: 20px; /* Adjust the spacing between the image and text as needed */
-        }
+    .quickstart-step {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 16px;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        background: #fff;
+    }
+    .quickstart-step .step-num {
+        width: 32px; height: 32px; min-width: 32px;
+        background: #0d6efd; color: #fff;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: .85rem;
+    }
+    .quickstart-step h6 { font-weight: 700; margin-bottom: 4px; }
+    .quickstart-step p  { font-size: .83rem; color: #6c757d; margin: 0; }
 
-    </style>
-}
+    /* Tutorials section */
+    .tutorial-toggle-btn {
+        background: none; border: 2px solid #0d6efd; color: #0d6efd;
+        border-radius: 50px; padding: 7px 22px; font-weight: 600; font-size: .88rem;
+        cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 8px;
+    }
+    .tutorial-toggle-btn:hover { background: #0d6efd; color: #fff; }
+    .tutorial-toggle-btn .toggle-icon { transition: transform .3s; }
+    .tutorial-toggle-btn.open .toggle-icon { transform: rotate(180deg); }
 
-<div class="container">
-    <div class="hero">
-        <div class="hero-image">
-            <img src="/img/report-main.png">
+    .tutorial-card {
+        border: 2px solid #e9ecef; border-radius: 14px; padding: 22px 18px;
+        height: 100%; background: #fff; transition: all .2s;
+        display: flex; flex-direction: column;
+    }
+    .tutorial-card:hover { border-color: var(--tc); box-shadow: 0 6px 24px rgba(0,0,0,.08); transform: translateY(-3px); }
+    .tutorial-card .tc-icon { font-size: 2rem; color: var(--tc); margin-bottom: 10px; }
+    .tutorial-card h6 { font-weight: 700; margin-bottom: 6px; }
+    .tutorial-card p  { font-size: .84rem; color: #6c757d; flex-grow: 1; margin-bottom: 14px; line-height: 1.5; }
+    .tutorial-card .tc-steps { font-size: .76rem; color: #94a3b8; margin-bottom: 12px; }
+    .tutorial-card .tc-steps span { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
+</style>
+
+<!-- ── Hero ──────────────────────────────────────────────────────────────── -->
+<div class="home-hero">
+    @if (User.Identity.IsAuthenticated)
+    {
+        <p class="welcome-name">Logged in as @User.Identity.Name</p>
+    }
+    <h1>Welcome to Dotnet Report</h1>
+    <p>Your ad-hoc reporting and dashboard system is ready. Explore reports, build dashboards, and manage your data.</p>
+    <div class="d-flex justify-content-center gap-3 flex-wrap">
+        <a href="@Url.Action("Dashboard", "DotNetReport")" class="btn btn-light btn-lg px-4 fw-semibold">
+            <i class="fa fa-dashboard me-2"></i> Go to Dashboards
+        </a>
+        <a href="@Url.Action("Index", "DotNetReport")" class="btn btn-outline-light btn-lg px-4 fw-semibold">
+            <i class="fa fa-bar-chart me-2"></i> Browse Reports
+        </a>
+    </div>
+</div>
+
+<div class="container pb-5">
+
+    <!-- ── Explore Section ───────────────────────────────────────────────── -->
+    <div class="text-center mb-2">
+        <div class="section-title">Get Started</div>
+        <p class="section-sub">Jump straight to the section you need</p>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <div class="col-md-6 col-lg-@(ClaimsHelper.HasAnyRequiredClaim(User as System.Security.Claims.ClaimsPrincipal, ClaimsStore.AllowSetupPageAccess) ? "4" : "6")">
+            <a href="@Url.Action("Dashboard", "DotNetReport")" class="explore-card" style="--ec:#0d6efd">
+                <div class="ec-icon"><i class="fa fa-dashboard"></i></div>
+                <h5>Dashboard</h5>
+                <p>View and arrange drag-and-drop dashboards with real-time charts, KPIs, and widgets. See your key metrics at a glance.</p>
+                <span class="ec-go">Open Dashboards <i class="fa fa-arrow-right ms-1"></i></span>
+            </a>
         </div>
-        <div class="hero-text">
-            @if (User.Identity.IsAuthenticated)
+        <div class="col-md-6 col-lg-@(ClaimsHelper.HasAnyRequiredClaim(User as System.Security.Claims.ClaimsPrincipal, ClaimsStore.AllowSetupPageAccess) ? "4" : "6")">
+            <a href="@Url.Action("Index", "DotNetReport")" class="explore-card" style="--ec:#198754">
+                <div class="ec-icon"><i class="fa fa-bar-chart"></i></div>
+                <h5>Reports</h5>
+                <p>Run existing reports or build new ones from scratch. Tables, charts, pivots, and exports — all included.</p>
+                <span class="ec-go">View Reports <i class="fa fa-arrow-right ms-1"></i></span>
+            </a>
+        </div>
+        @if (ClaimsHelper.HasAnyRequiredClaim(User as System.Security.Claims.ClaimsPrincipal, ClaimsStore.AllowSetupPageAccess))
+        {
+            <div class="col-md-6 col-lg-4">
+                <a href="@Url.Action("Index", "DotnetSetup")" class="explore-card" style="--ec:#dc3545">
+                    <div class="ec-icon"><i class="fa fa-database"></i></div>
+                    <h5>Configure Data</h5>
+                    <p>Connect your database, map tables and fields, set permissions, and manage users — all from the admin setup panel.</p>
+                    <span class="ec-go">Open Admin Setup <i class="fa fa-arrow-right ms-1"></i></span>
+                </a>
+            </div>
+        }
+    </div>
+
+    <!-- ── Quick Start ─────────────────────────────────────────────────── -->
+    <div class="text-center mb-2">
+        <div class="section-title">Quick Start Guide</div>
+        <p class="section-sub">New to Dotnet Report? Follow these steps</p>
+    </div>
+
+    <div class="row g-3 mb-5">
+        <div class="col-md-6 col-lg-3">
+            <div class="quickstart-step">
+                <div class="step-num">1</div>
+                <div>
+                    <h6>Connect Your Database</h6>
+                    <p>Go to <strong>Configure Data</strong> to connect your SQL database and map tables for reporting.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="quickstart-step">
+                <div class="step-num">2</div>
+                <div>
+                    <h6>Build Your First Report</h6>
+                    <p>Head to <strong>Reports</strong> and click <em>New Report</em> to start the report designer.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="quickstart-step">
+                <div class="step-num">3</div>
+                <div>
+                    <h6>Create a Dashboard</h6>
+                    <p>Go to <strong>Dashboards</strong> and click <em>New Dashboard</em> to add charts and KPIs.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="quickstart-step">
+                <div class="step-num">4</div>
+                <div>
+                    <h6>Need Help?</h6>
+                    <p>Visit our <a href="https://dotnetreport.com/docs/" target="_blank">Knowledgebase</a> or <a href="https://dotnetreport.com/contact/" target="_blank">Contact Support</a> anytime.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Resources ────────────────────────────────────────────────────── -->
+    <div class="d-flex justify-content-center align-items-center gap-3 flex-wrap mb-5">
+        <span class="text-muted small">Need help?</span>
+        <a href="https://dotnetreport.com/docs/" target="_blank" class="btn btn-outline-secondary px-4">
+            <i class="fa fa-book me-2"></i> Knowledge Base
+        </a>
+        <a href="https://dotnetreport.com/contact/" target="_blank" class="btn btn-outline-secondary px-4">
+            <i class="fa fa-envelope me-2"></i> Contact Support
+        </a>
+    </div>
+
+    <!-- ── Tutorials Toggle ───────────────────────────────────────────────── -->
+    <div class="text-center mb-3">
+        <button class="tutorial-toggle-btn" id="tutorials-toggle-btn" onclick="toggleTutorials()">
+            <i class="fa fa-graduation-cap"></i>
+            Show Interactive Tutorials
+            <i class="fa fa-chevron-down toggle-icon"></i>
+        </button>
+    </div>
+
+    <div id="tutorials-section" style="display:none;" class="mb-5">
+        <div class="text-center mb-3">
+            <div class="section-title">Interactive Page Tours</div>
+            <p class="section-sub">Step-by-step spotlight tours that highlight and explain each part of the app. Click <strong>Launch Tour</strong> to navigate to the page and start the walkthrough.</p>
+        </div>
+        <div class="row g-4 mb-3">
+            <div class="col-md-6 col-lg-4">
+                <div class="tutorial-card" style="--tc:#0d6efd">
+                    <div class="tc-icon"><i class="fa fa-dashboard"></i></div>
+                    <h6>Dashboard Tour</h6>
+                    <p>Learn how dashboards work — tabs, widgets, admin mode, arrange mode, and exporting. Perfect for first-time users.</p>
+                    <div class="tc-steps">
+                        <span><i class="fa fa-list-ol"></i> 6 steps</span>
+                        <span><i class="fa fa-clock-o"></i> ~2 min</span>
+                    </div>
+                    <a href="/DotNetReport/Dashboard?tour=1" class="btn btn-outline-primary btn-sm mt-auto" onclick="sessionStorage.setItem('ag-start-tour','dashboard');return true;">
+                        <i class="fa fa-play me-1"></i> Launch Tour
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="tutorial-card" style="--tc:#198754">
+                    <div class="tc-icon"><i class="fa fa-bar-chart"></i></div>
+                    <h6>Reports Tour</h6>
+                    <p>Explore the report library, run an existing report, and build a new one from scratch using the visual designer.</p>
+                    <div class="tc-steps">
+                        <span><i class="fa fa-list-ol"></i> 9 steps</span>
+                        <span><i class="fa fa-clock-o"></i> ~4 min</span>
+                    </div>
+                    <a href="/DotNetReport?tour=1" class="btn btn-outline-success btn-sm mt-auto" onclick="sessionStorage.setItem('ag-start-tour','reports');return true;">
+                        <i class="fa fa-play me-1"></i> Launch Tour
+                    </a>
+                </div>
+            </div>
+            @if (ClaimsHelper.HasAnyRequiredClaim(User as System.Security.Claims.ClaimsPrincipal, ClaimsStore.AllowSetupPageAccess))
             {
-                <h4>Hi @User.Identity.Name</h4>
-            }
-            <h1>Welcome to Dotnet Report</h1>
-            <p>Dotnet Report is an easy-to-use and feature-rich Reports, Analytics and Dashboards system.</p>
-
-        </div>
-    </div>
-
-    <div class="row justify-content-center mt-5">
-
-        <div class="col-md-4">
-            <div class="list-group">
-                <div class="list-group-item list-group-item-dark list-group-item-heading">
-                    Front End Options for Users
-                </div>
-                <a href="/dotnetreport/dashboard" class="list-group-item list-group-item-action" data-bind="click: viewManageDashboards">
-                    <i class="fa fa-dashboard mr-2"></i> View/Design Dashboards
-                </a>
-                <a href="/dotnetreport" class="list-group-item list-group-item-action" data-bind="click: viewManageReports">
-                    <i class="fa fa-file mr-2"></i> View/Run Reports
-                </a>
-            </div>
-            <br />
-            <div class="list-group">
-                <div class="list-group-item list-group-item-action">
-                    <i class="fa fa-question-circle-o mr-2"></i>Need help? <br />
-                    Try our <a href="https://dotnetreport.com/docs/" target="_blank">Knowledgebase</a> or <a href="https://dotnetreport.com/contact/" target="_blank">Contact Support</a>
-                </div>
-
-            </div>
-
-        </div>
-            <div class="col-md-4">
-
-                <div class="list-group">
-
-                    <div class="list-group-item list-group-item-dark list-group-item-heading">
-                        Backend Options for Admins
-                    </div> 
-                    @if(ClaimsHelper.HasAnyRequiredClaim(User as System.Security.Claims.ClaimsPrincipal, ClaimsStore.AllowSetupPageAccess))
-                    {
-                        <a href="/dotnetsetup" class="list-group-item list-group-item-action">
-                            <i class="fa fa-database mr-2"></i> Manage Database / Settings
+                <div class="col-md-6 col-lg-4">
+                    <div class="tutorial-card" style="--tc:#dc3545">
+                        <div class="tc-icon"><i class="fa fa-gears"></i></div>
+                        <h6>Configure Data Tour</h6>
+                        <p>Walk through connecting your database, loading tables, setting relations, and adding custom SQL sources.</p>
+                        <div class="tc-steps">
+                            <span><i class="fa fa-list-ol"></i> 8 steps</span>
+                            <span><i class="fa fa-clock-o"></i> ~3 min</span>
+                        </div>
+                        <a href="/DotnetSetup?tour=1" class="btn btn-outline-danger btn-sm mt-auto" onclick="sessionStorage.setItem('ag-start-tour','setup');return true;">
+                            <i class="fa fa-play me-1"></i> Launch Tour
                         </a>
-                    }
-                <a href="https://dotnetreport.com/app/AccountProfile/Dashboard" class="list-group-item list-group-item-action" target="_blank">
-                    <i class="fa fa-gear mr-2"></i> Manage your Account (Online Portal)
-                </a>
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="alert alert-info d-flex align-items-center gap-3 rounded-3 border-0" style="background:#eff6ff">
+            <i class="fa fa-info-circle fa-lg text-primary flex-shrink-0"></i>
+            <div>
+                <strong>How it works:</strong> When you click <em>Launch Tour</em>, you'll be taken to that page and a step-by-step spotlight walkthrough will start automatically, highlighting each UI element and explaining what it does. You can also start any tour at any time using the <strong><i class="fa fa-map-signs"></i> Tour Guide</strong> button in the bottom-right corner of every page.
             </div>
-
         </div>
     </div>
+
+    <!-- ── Feature Highlights ─────────────────────────────────────────────── -->
+    <div class="text-center mb-2">
+        <div class="section-title">Everything Built In</div>
+        <p class="section-sub">Dotnet Report is a complete embedded reporting solution</p>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4 col-lg-3">
+            <div class="feature-card">
+                <div class="feature-icon text-primary"><i class="fa fa-magic"></i></div>
+                <h6>Drag-and-Drop Designer</h6>
+                <p>Build reports without any SQL knowledge using the visual report designer.</p>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+            <div class="feature-card">
+                <div class="feature-icon text-success"><i class="fa fa-filter"></i></div>
+                <h6>Dynamic Filters</h6>
+                <p>Date ranges, dropdowns, and multi-select filters for precise data slicing.</p>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+            <div class="feature-card">
+                <div class="feature-icon text-warning"><i class="fa fa-download"></i></div>
+                <h6>Export Everywhere</h6>
+                <p>Excel, PDF, CSV and Word export out of the box. Print-ready layouts included.</p>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+            <div class="feature-card">
+                <div class="feature-icon text-danger"><i class="fa fa-clock-o"></i></div>
+                <h6>Scheduled Delivery</h6>
+                <p>Reports emailed automatically on any schedule — daily, weekly, or monthly.</p>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+            <div class="feature-card">
+                <div class="feature-icon text-info"><i class="fa fa-lock"></i></div>
+                <h6>Row-Level Security</h6>
+                <p>Data filters per user or role — each person only sees what they're allowed to see.</p>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+            <div class="feature-card">
+                <div class="feature-icon" style="color:#6f42c1"><i class="fa fa-map-marker"></i></div>
+                <h6>Map &amp; Geo Reports</h6>
+                <p>Heatmaps, choropleth maps, and location-based visualizations for geographic data.</p>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+            <div class="feature-card">
+                <div class="feature-icon text-secondary"><i class="fa fa-bolt"></i></div>
+                <h6>Smart Query (Beta)</h6>
+                <p>Ask questions in plain English and get instant data insights powered by AI.</p>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+            <div class="feature-card">
+                <div class="feature-icon text-dark"><i class="fa fa-paint-brush"></i></div>
+                <h6>Full White-Labeling</h6>
+                <p>Custom themes, logos, and CSS — designed to match your application.</p>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 @section scripts{
     @if (ViewBag.NewAccount == true)
     {
-    <script>
-        toastr.success("Thank you for signing up. Your new account is ready!")
-    </script>
+        <script>
+            toastr.success("Thank you for signing up. Your new account is ready!")
+        </script>
     }
+    <script>
+        function toggleTutorials() {
+            var section = document.getElementById('tutorials-section');
+            var btn     = document.getElementById('tutorials-toggle-btn');
+            var isOpen  = section.style.display !== 'none';
+            if (isOpen) {
+                section.style.display = 'none';
+                btn.classList.remove('open');
+                btn.innerHTML = '<i class="fa fa-graduation-cap"></i> Show Interactive Tutorials <i class="fa fa-chevron-down toggle-icon"></i>';
+            } else {
+                section.style.display = 'block';
+                btn.classList.add('open');
+                btn.innerHTML = '<i class="fa fa-graduation-cap"></i> Hide Tutorials <i class="fa fa-chevron-down toggle-icon open" style="transform:rotate(180deg)"></i>';
+            }
+        }
+
+        // Restore tutorials section state from localStorage
+        (function () {
+            if (localStorage.getItem('ag-tutorials-open') === 'true') {
+                var section = document.getElementById('tutorials-section');
+                var btn = document.getElementById('tutorials-toggle-btn');
+                if (section) {
+                    section.style.display = 'block';
+                    btn.classList.add('open');
+                    btn.innerHTML = '<i class="fa fa-graduation-cap"></i> Hide Tutorials <i class="fa fa-chevron-down toggle-icon" style="transform:rotate(180deg)"></i>';
+                }
+            }
+        })();
+
+        // Persist toggle state
+        document.getElementById('tutorials-toggle-btn').addEventListener('click', function () {
+            var isOpen = document.getElementById('tutorials-section').style.display !== 'none';
+            localStorage.setItem('ag-tutorials-open', isOpen ? 'true' : 'false');
+        });
+    </script>
 }

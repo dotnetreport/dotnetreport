@@ -743,7 +743,7 @@
                 </div>
             </div>
             <div class="d-flex align-items-center">
-                <div class="bubble-badge">
+                <div class="bubble-badge bg-primary">
                     Admin Mode
                     <div class="form-check form-switch ms-2">
                         <input class="form-check-input" type="checkbox" data-bind="checked: adminMode">
@@ -1553,7 +1553,7 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-select" required data-bind="options: $parentContext.$parent.SavedReports, optionsText: 'reportName', optionsValue: 'reportId', value: LinkedToReportId, optionsCaption: 'Choose the Report to link to'"></select>
+                            <select class="form-select" required data-bind="options: savedReportsWithFolder, optionsText: function(r) { return (r.folderName ? r.folderName + ' \u203a ' : '') + r.reportName }, optionsValue: 'reportId', optionsCaption: '', value: LinkedToReportId, select2: { placeholder: 'Search reports or folders...', allowClear: true }"></select>
                         </div>
                     </div>
                     <div class="checkbox" data-bind="if: LinkedToReportId">
@@ -1565,7 +1565,7 @@
                     <div class="form-group row" data-bind="if: SendAsFilterParameter">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report Filter</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-select" required data-bind="options: allFields, optionsText: 'fieldName', optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
+                            <select class="form-select" required data-bind="options: allFields, optionsText: function(f) { return (f.tableName ? f.tableName + ' \u203a ' : '') + f.fieldName }, optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
                         </div>
                     </div>
                 </div>
@@ -1688,7 +1688,7 @@
                 </span>
             </div>
 
-            <div class="data-select-tree" style="max-height:calc(100vh - 200px);overflow-y:auto">
+            <div class="data-select-tree">
                 <!-- ko foreach: CategorizedTables -->
                 <div class="mb-3">
                     <div data-bind="click: function() { isExpanded(!isExpanded()); }, visible: categoryName" style="cursor: pointer;">
@@ -2648,7 +2648,7 @@
 
         <!-- Schedule -->
         <div class="card flex-fill expandable-panel" id="schedulePanel"
-             data-bind="css:{'collapsed-vertical': panels.isCollapsed('schedulePanel')}, visible: SaveReport() && !appSettings.showScheduling()">
+             data-bind="css:{'collapsed-vertical': panels.isCollapsed('schedulePanel')}, visible: SaveReport() && !ko.unwrap(appSettings.showScheduling)">
           <div class="card-header p-1" data-bind="click:function(){panels.togglePanel('schedulePanel')}">
             <i class="fa fa-hourglass"></i> Schedule
           </div>
@@ -2885,7 +2885,7 @@
                             <div data-bind="template: 'designer-sort'"></div>
                         </div>
                         <br />
-                        <div data-bind="visible: SaveReport() && !appSettings.showScheduling()" class="card card-body">
+                        <div data-bind="visible: SaveReport() && !ko.unwrap(appSettings.showScheduling)" class="card card-body">
                             <h5><span class="fa fa-hourglass"></span>&nbsp;Choose Schedule</h5>
 
                             <div style="padding: 10px 10px" data-bind="if: SaveReport">
@@ -3257,20 +3257,39 @@
         </div>
     </div>
 </div>
-<div class="modal" id="noaccountModal" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal" id="noaccountModal" tabindex="-1" role="dialog" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                <h4 class="modal-title">Account not Setup</h4>
+            <div class="modal-header" style="background:linear-gradient(135deg,#0f0f1a,#0d3977);color:#fff">
+                <h5 class="modal-title"><i class="fa fa-exclamation-triangle me-2 text-warning"></i>Setup Required</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p class="alert alert-danger">dotnet Report Account Configuration missing!</p>
-                <p>You do not have the neccessary initial configuration completed to use dotnet Report.</p>
-                <p>Please view the <a href="https://dotnetreport.com/blogs/getting-started-with-dotnet-report/" target="_blank">Getting Started Guide</a> to correctly configure dotnet Report.</p>
+                <div class="alert alert-warning d-flex gap-2 align-items-start">
+                    <i class="fa fa-key fa-lg mt-1 flex-shrink-0"></i>
+                    <div>
+                        <strong>API credentials are not configured.</strong><br>
+                        Dotnet Report needs your Account API Key and Data Connect API Key before it can run reports or load dashboards.
+                    </div>
+                </div>
+                <p class="mb-2">To get started:</p>
+                <ol class="mb-3">
+                    <li>Go to <strong>Configure Data</strong> in the sidebar</li>
+                    <li>Open the <strong>Settings</strong> tab</li>
+                    <li>Enter your <strong>Backend API URL</strong>, then save</li>
+                    <li>Open the <strong>Workspace</strong> tab and connect your database</li>
+                </ol>
+                <p class="text-muted small mb-0">
+                    <i class="fa fa-info-circle me-1"></i>
+                    Your API keys are stored in <code>appsettings.dotnetreport.json</code>.
+                    You can find them in your <a href="https://dotnetreport.com/app" target="_blank">Dotnet Report account</a>.
+                </p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Dismiss</button>
+                <a href="/DotnetSetup" class="btn btn-primary">
+                    <i class="fa fa-gears me-1"></i> Go to Configure Data
+                </a>
             </div>
         </div>
     </div>

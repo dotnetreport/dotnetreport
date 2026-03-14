@@ -1,4 +1,4 @@
-﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Identity
 @using ReportBuilder.Web.Models;
 @inject SignInManager<IdentityUser> SignInManager
 @inject UserManager<IdentityUser> UserManager
@@ -12,94 +12,129 @@
     <title>Dotnet Report Builder - @ViewBag.Title </title>
     <meta name="keywords" content="ad-hoc reporting, reporting, asp .net reporting, asp .net report, report builder, ad hoc report builder, ad-hoc report builder, adhoc report, ad hoc reports, .net report viewer, reportviewer, sql reportviewer, report builder mvc, report mvc, report builder web forms, query builder, sql report builder,visual report builder,custom query,query maker" />
     <meta name="description" content="Ad hoc Reporting software that allows programmers to easily add Reporting functionality to their ASP .NET Web Software Solution" />
-
+    <!-- dark mode: apply before CSS loads to prevent flash of light content -->
+    <script>
+        (function () {
+            if (localStorage.getItem('dotnetreport-darkMode') === 'true') {
+                document.documentElement.classList.add('dark-mode');
+            }
+        })();
+    </script>
     @await Html.PartialAsync("_DotnetReportHeaderPartial")
     @RenderSection("head", required: false)
-    <link id="theme-css" rel="stylesheet" href="/css/dotnetreport-default.css">
+    <link type="text/css" rel="stylesheet" media="all" href="/css/default.min.css" id="theme-css" />
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="/">
-            <img src="~/img/report-logo.png" alt=".Net Report Builder" style="width: 140px;" />
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse justify-content-end" id="navbarNavDropdown">
-            <ul class="navbar-nav">
-                <li class="nav-item dropdown" data-bind="visible: adminMode" style="display: none;">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        Change Theme
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
-                        <li><a class="dropdown-item" href="#" onclick="changeTheme('default')">Default</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="changeTheme('dark')">Dark</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="changeTheme('teal')">Serenity</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="changeTheme('flatly')">Flatly</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="changeTheme('lumen')">Lumen</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="changeTheme('monotone')">Monotone</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="changeTheme('morph')">Morph</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="changeTheme('quartz')">Quartz</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="changeTheme('sandstone')">Sandstone</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="changeTheme('sketchy')">Sketchy</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="changeTheme('solar')">Solar</a></li>
-                    </ul>
-                </li>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow p-2">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <img src="~/img/report-logo.png" width="120" alt="Dotnet Report" class="me-2" />
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="fa fa-bars"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    @if (User.Identity.IsAuthenticated)
+                    {
+                        <li class="nav-item">
+                            <button class="btn btn-outline-light btn-sm me-2" id="dark-mode-toggle" title="Toggle dark mode" style="width:36px;padding:5px 0">
+                                <i class="fa fa-moon-o" id="dark-mode-icon"></i>
+                            </button>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fa fa-user-circle"></i> @User.Identity.Name
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                @if (ClaimsHelper.HasAnyRequiredClaim(User as System.Security.Claims.ClaimsPrincipal, ClaimsStore.AllowSetupPageAccess))
+                                {
+                                    <li><a class="dropdown-item" href="/DotnetSetup"><span class="fa fa-gear"></span> Configure Database</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                }
+                                <li>
+                                    <form id="logoutForm" action="@Url.Action("Logout", "Home")" method="post">
+                                        <a class="dropdown-item" href="javascript:logout()"><span class="fa fa-sign-out"></span> Logout</a>
+                                    </form>
+                                </li>
+                            </ul>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </nav>
 
-                @if (User.Identity.IsAuthenticated)
-                {
-                    <li class="nav-item">
-                        <a class="nav-link" href="/DotnetReport/Dashboard"><span class="fa fa-dashboard"></span> Dashboards</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/DotnetReport"><span class="fa fa-bar-chart"></span> Reports</a>
-                    </li>      
-                    <li class="nav-item">
-                        <a class="nav-link" href="/DotnetSetup"><span class="fa fa-gears"></span> Setup</a>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fa fa-user"></i> @User.Identity.Name
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+    @Html.AntiForgeryToken()
+
+    @if (User.Identity.IsAuthenticated)
+    {
+        <div class="container-fluid">
+            <div class="row">
+                <!-- Sidebar -->
+                <nav id="sidebarMenu" class="sidebar">
+                    <div class="position-sticky d-flex flex-column h-100">
+                        <ul class="nav flex-column pt-2">
+                            <li class="nav-item">
+                                <a class="nav-link text-secondary" href="/DotnetReport/Dashboard" title="Dashboard">
+                                    <i class="fa fa-fw fa-dashboard"></i> <span class="menu-text">Dashboard</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-secondary" href="/DotnetReport" title="Reports">
+                                    <i class="fa fa-fw fa-bar-chart"></i> <span class="menu-text">Reports</span>
+                                </a>
+                            </li>
                             @if (ClaimsHelper.HasAnyRequiredClaim(User as System.Security.Claims.ClaimsPrincipal, ClaimsStore.AllowSetupPageAccess))
                             {
-                                <li><a class="dropdown-item" href="/DotnetSetup"><span class="fa fa-gear"></span> Configure Database</a></li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-secondary" href="/DotnetSetup" title="Configure Data">
+                                        <i class="fa fa-fw fa-gears"></i> <span class="menu-text">Configure Data</span>
+                                    </a>
+                                </li>
                             }
-                            <li>
-                                <form id="logoutForm" action="@Url.Action("Logout", "Home")" method="post">
-                                    <a class="dropdown-item" href="javascript:logout()"><span class="fa fa-close"></span> Logout</a>
-                                </form>
-                            </li>
                         </ul>
-                    </li>
-                }
-            </ul>
+                    </div>
+                </nav>
+
+                <!-- Main Content -->
+                <main role="main" class="col-12 ms-sm-auto" style="padding-bottom: 60px;">
+                    <div class="pt-3 pb-2 mb-3">
+                        <div id="alertplaceholder"></div>
+                        @RenderBody()
+                    </div>
+                </main>
+            </div>
         </div>
-    </div>
-</nav>
-    @Html.AntiForgeryToken()
-    <div class="body-content container-fluid" style="padding-bottom: 60px;">
-        @RenderBody()
-    </div>
+    }
+    else
+    {
+        <div class="body-content container-fluid" style="padding-bottom: 60px;">
+            @RenderBody()
+        </div>
+    }
+
     <div class="report-layout-footer">
         <!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
-        <p>Ad Hoc Reporting and Dashboard powered by <a href="http://www.dotNetReport.com" target="_blank">dotnetreport</a>. Copyright © www.dotnetreport.com. v6.2.4</p>
+        <p>Ad Hoc Reporting and Dashboard powered by <a href="http://www.dotNetReport.com" target="_blank">dotnetreport</a>. Copyright &copy; www.dotnetreport.com. v6.2.4</p>
         <!--########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
     </div>
-    
+
     @await Html.PartialAsync("_DotnetReportTemplatesPartial")
     @await Html.PartialAsync("_DotnetReportJsLibrariesPartial")
     @await Html.PartialAsync("_DotnetReportCodeMirrorLibrariesPartial")
 
     @RenderSection("scripts", required: false)
 
-    <script type="text/javascript">        
-        function logout() 
-        {
-            bootbox.confirm("Are you sure you want to Logout?", function(x) {
+    @if (User.Identity.IsAuthenticated)
+    {
+        <script src="~/js/app-guide.js"></script>
+    }
+
+    <script type="text/javascript">
+        function logout() {
+            bootbox.confirm("Are you sure you want to Logout?", function (x) {
                 if (x) {
                     document.getElementById('logoutForm').submit();
                 }
@@ -107,11 +142,77 @@
         }
     </script>
 
-    @if (User.Identity.IsAuthenticated)
-    {
-        <script type="text/javascript">
-            getThemeFromAppSettings()
-        </script>
-    }
+    <script>
+    (function () {
+        var DARK_KEY = 'dotnetreport-darkMode';
+        var isDark = localStorage.getItem(DARK_KEY) === 'true';
+
+        function patchChartSvgs() {
+            document.querySelectorAll('svg rect').forEach(function (rect) {
+                var fill = (rect.getAttribute('fill') || '').toLowerCase().trim();
+                if (fill === 'white' || fill === '#ffffff') {
+                    rect.setAttribute('fill', '#161b27');
+                }
+            });
+            var WHITE = ['white', 'rgb(255, 255, 255)', '#fff', '#ffffff', '#fffff'];
+            document.querySelectorAll('.grid-stack-item-content div[style]').forEach(function (div) {
+                var bg = (div.style.backgroundColor || '').toLowerCase().trim();
+                if (WHITE.indexOf(bg) !== -1) {
+                    div.setAttribute('data-dm-patched', '1');
+                    div.style.backgroundColor = '#161b27';
+                    div.style.color = div.style.color || '#cdd6e0';
+                }
+            });
+        }
+
+        function unpatchDarkMode() {
+            document.querySelectorAll('[data-dm-patched]').forEach(function (el) {
+                el.style.backgroundColor = '';
+                el.removeAttribute('data-dm-patched');
+            });
+        }
+
+        function applyDark(dark) {
+            document.documentElement.classList.toggle('dark-mode', dark);
+            document.body.classList.toggle('dark-mode', dark);
+            var icon = document.getElementById('dark-mode-icon');
+            if (icon) { icon.className = dark ? 'fa fa-sun-o' : 'fa fa-moon-o'; }
+            localStorage.setItem(DARK_KEY, dark);
+            if (dark) { patchChartSvgs(); } else { unpatchDarkMode(); }
+        }
+
+        applyDark(isDark);
+
+        var btn = document.getElementById('dark-mode-toggle');
+        if (btn) {
+            btn.addEventListener('click', function () {
+                isDark = !isDark;
+                applyDark(isDark);
+            });
+        }
+
+        if (window.MutationObserver && document.body) {
+            var pending = false;
+            new MutationObserver(function (mutations) {
+                if (!document.body.classList.contains('dark-mode') || pending) return;
+                for (var i = 0; i < mutations.length; i++) {
+                    for (var j = 0; j < mutations[i].addedNodes.length; j++) {
+                        var n = mutations[i].addedNodes[j];
+                        if (n.nodeType === 1) {
+                            var hasSvg = n.tagName === 'svg' || (n.querySelector && n.querySelector('svg'));
+                            var hasWidget = n.classList && (n.classList.contains('grid-stack-item-content') || n.classList.contains('grid-stack-item'))
+                                            || (n.querySelector && n.querySelector('.grid-stack-item-content'));
+                            if (hasSvg || hasWidget) {
+                                pending = true;
+                                setTimeout(function () { patchChartSvgs(); pending = false; }, 200);
+                                return;
+                            }
+                        }
+                    }
+                }
+            }).observe(document.body, { childList: true, subtree: true });
+        }
+    })();
+    </script>
 </body>
 </html>

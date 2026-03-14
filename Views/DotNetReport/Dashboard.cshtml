@@ -36,7 +36,7 @@
             var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
             var adminMode = false;
             if (localStorage.length > 0) adminMode = localStorage.getItem('reportAdminMode');
-            ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=' + adminMode, noBlocking: true }).done(function (dashboardData) {
+            ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=' + adminMode || 'false', noBlocking: true }).done(function (dashboardData) {
                 if (dashboardData && dashboardData.noAccount === true) {
                     $("#noaccountModal").modal('show');
                     return;
@@ -49,6 +49,9 @@
                 var dashboardId = parseInt(queryParams.id || 0);
                 if (!dashboardId && dashboards.length > 0) { dashboardId = dashboards[0].id; }
                 ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")', noBlocking: true }).done(function (data) {
+                    if (data && data.noDatabase === true) {
+                        $('#no-database-banner').show();
+                    }
                     var vm = new dashboardViewModel({
                         runReportUrl: "@Url.Action("Report")",
                         execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
@@ -129,6 +132,13 @@
         });
     </script>
 }
+
+<div id="no-database-banner" style="display:none; background:#b02a37; color:#fff; padding:5px 16px; font-size:.82rem; line-height:1.5;"
+     title="Reports and dashboards cannot run without a database connection. Go to Configure Data › Workspace and click 'Connect to Database' to get started.">
+    <i class="fa fa-plug me-1"></i>
+    <strong>No database connected</strong> — <a href="/DotnetSetup" style="color:#fff; font-weight:600; text-decoration:underline;">set up your database</a> to run reports and dashboards.
+    <i class="fa fa-info-circle ms-1 opacity-75"></i>
+</div>
 
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 

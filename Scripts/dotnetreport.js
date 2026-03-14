@@ -17,7 +17,7 @@ function formulaFieldViewModel(args) {
 	self.parameterId = ko.observable(args.parameterId);
 }
 
-function linkFieldViewModel(args, options, adminMode, savedReports) {
+function linkFieldViewModel(args, options, adminMode, savedReports, allFolders) {
 	args = args || {};
 	var self = this;
 
@@ -35,8 +35,48 @@ function linkFieldViewModel(args, options, adminMode, savedReports) {
 		}
 		return '';
 	});
+	self.LinkedReportFolderName = ko.computed(function () {
+		var reportId = self.LinkedToReportId();
+		if (reportId && savedReports && allFolders) {
+			var folders = typeof allFolders === 'function' ? allFolders() : allFolders;
+			var report = _.find(savedReports(), function (r) { return r.reportId == reportId; });
+			if (report) {
+				var folder = _.find(folders, function (f) { return f.Id == report.folderId; });
+				return folder ? folder.FolderName : null;
+			}
+		}
+		return args.LinkedReportFolderName || null;
+	});
+
+	self.savedReportsWithFolder = ko.computed(function () {
+		if (!savedReports) return [];
+		var folders = allFolders ? (typeof allFolders === 'function' ? allFolders() : allFolders) : [];
+		return _.map(savedReports(), function (r) {
+			var folder = _.find(folders, function (f) { return f.Id == r.folderId; });
+			return _.assign({}, r, { folderName: folder ? folder.FolderName : '' });
+		});
+	});
+
 	self.SendAsFilterParameter = ko.observable(args.SendAsFilterParameter || false);
 	self.SelectedFilterId = ko.observable(args.SelectedFilterId);
+
+	self.SelectedFilterTableName = ko.computed(function () {
+		var filterId = self.SelectedFilterId();
+		if (filterId != null) {
+			var field = _.find(self.allFields(), function (f) { return f.fieldId == filterId; });
+			if (field) return field.tableName || null;
+		}
+		return args.SelectedFilterTableName || null;
+	});
+
+	self.SelectedFilterFieldName = ko.computed(function () {
+		var filterId = self.SelectedFilterId();
+		if (filterId != null) {
+			var field = _.find(self.allFields(), function (f) { return f.fieldId == filterId; });
+			if (field) return field.fieldName || null;
+		}
+		return args.SelectedFilterFieldName || null;
+	});
 
 	self.LinkToUrl = ko.observable(args.LinkToUrl);
 	self.SendAsQueryParameter = ko.observable(args.SendAsQueryParameter || false);
@@ -47,8 +87,11 @@ function linkFieldViewModel(args, options, adminMode, savedReports) {
 			LinksToReport: self.LinksToReport(),
 			LinkedToReportId: self.LinkedToReportId(),
 			LinkedReportName: self.LinkedReportName(),
+			LinkedReportFolderName: self.LinkedReportFolderName(),
 			SendAsFilterParameter: self.SendAsFilterParameter(),
 			SelectedFilterId: self.SelectedFilterId(),
+			SelectedFilterTableName: self.SelectedFilterTableName(),
+			SelectedFilterFieldName: self.SelectedFilterFieldName(),
 			LinkToUrl: self.LinkToUrl(),
 			SendAsQueryParameter: self.SendAsQueryParameter(),
 			QueryParameterName: self.QueryParameterName()
@@ -6771,7 +6814,7 @@ var reportViewModel = function (options) {
 		e.dontSubTotal = ko.observable(e.dontSubTotal);
 		e.hideInDetail = ko.observable(e.hideInDetail);
 		e.linkField = ko.observable(e.linkField);
-		e.linkFieldItem = new linkFieldViewModel(e.linkFieldItem, options, self.adminMode, self.SavedReports);
+		e.linkFieldItem = new linkFieldViewModel(e.linkFieldItem, options, self.adminMode, self.SavedReports, function() { return self.allFolders || []; });
 		e.isFormulaField = ko.observable(e.isFormulaField);
 		e.functionId = ko.observable(e.functionId);
 		e.functionConfig = e.fieldSettings.functionConfig || {};
@@ -8055,6 +8098,7 @@ var reportViewModel = function (options) {
 			try {
 				const reportview = new reportViewModel(options);
 				reportview.adminMode = ko.observable(true);
+				reportview.allFolders = self.allFolders;
 
 				const response = await reportview.LoadReport(r.reportId, true, '', true, false);
 				const reportData = response && response.UseStoredProc === false
@@ -8486,6 +8530,7 @@ var dashboardViewModel = function (options) {
 	self.tables = [];
 	self.procs = [];
 	self.folders = [];
+	self.savedReports = [];
 	self.activeDesign = ko.observable(false);
 	self.ChartDrillDownData = ko.observable();
 	self.selectedStyle = ko.observable('default');
@@ -9036,6 +9081,8 @@ var dashboardViewModel = function (options) {
 				report.Tables(self.tables);
 				report.Procs(self.procs);
 				report.Folders(self.folders);
+				report.SavedReports(self.savedReports || []);
+				report.allFolders = self.folders;
 				report.SaveReport(false);
 				self.selectedReport(report);
 				if (options.reportWizard) options.reportWizard.data('report-id', report.ReportID());
@@ -9049,6 +9096,8 @@ var dashboardViewModel = function (options) {
 				report.Tables(self.tables);
 				report.Procs(self.procs);
 				report.Folders(self.folders);
+				report.SavedReports(self.savedReports || []);
+				report.allFolders = self.folders;
 				report.SaveReport(true);
 				self.selectedReport(report);
 				if (options.reportWizard) options.reportWizard.data('report-id', report.ReportID());
@@ -9665,6 +9714,7 @@ var dashboardViewModel = function (options) {
 					});
 				});
 				self.reportsAndFolders(setup);
+				self.savedReports = allReports[0];
 			});
 		});
 	};

@@ -1,61 +1,154 @@
-﻿
+
 @model ReportBuilder.Web.Models.LoginViewModel
 @{
     Layout = "~/Views/shared/_Layout.Report.cshtml";
 }
 
-<div class="row justify-content-center mt-5">
+<style>
+    .auth-wrap {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: calc(100vh - 80px);
+        padding: 32px 16px;
+    }
+    .auth-card {
+        display: flex;
+        width: 100%;
+        max-width: 820px;
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0,0,0,.18);
+    }
+    .auth-panel {
+        flex: 0 0 300px;
+        background: linear-gradient(160deg, #0f0f1a 0%, #0d3977 100%);
+        color: #fff;
+        padding: 48px 32px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .auth-panel img { width: 120px; margin-bottom: 28px; opacity: .92; }
+    .auth-panel h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 10px; }
+    .auth-panel p  { font-size: .88rem; opacity: .75; line-height: 1.6; margin: 0; }
+    .auth-panel .auth-feature { display: flex; align-items: center; gap: 10px; margin-top: 20px; font-size: .84rem; opacity: .85; }
+    .auth-panel .auth-feature i { font-size: 1rem; color: #60a5fa; flex-shrink: 0; }
+    .auth-form-panel {
+        flex: 1;
+        background: #fff;
+        padding: 48px 40px;
+    }
+    .auth-form-panel h3 { font-weight: 800; font-size: 1.35rem; margin-bottom: 4px; color: #111; }
+    .auth-form-panel .auth-sub { color: #6c757d; font-size: .88rem; margin-bottom: 28px; }
+    .auth-form-panel .form-label { font-weight: 600; font-size: .85rem; color: #374151; margin-bottom: 4px; }
+    .auth-form-panel .form-control {
+        border-radius: 8px;
+        border: 1.5px solid #e5e7eb;
+        padding: 10px 14px;
+        font-size: .9rem;
+        transition: border-color .2s;
+    }
+    .auth-form-panel .form-control:focus { border-color: #0d6efd; box-shadow: 0 0 0 3px rgba(13,110,253,.1); }
+    .auth-btn { width: 100%; padding: 11px; font-weight: 700; font-size: .95rem; border-radius: 8px; margin-top: 8px; }
+    .auth-footer-link { font-size: .84rem; color: #6c757d; margin-top: 20px; text-align: center; }
+    .auth-footer-link a { color: #0d6efd; font-weight: 600; text-decoration: none; }
+    .auth-footer-link a:hover { text-decoration: underline; }
+    @@media (max-width: 640px) {
+        .auth-panel { display: none; }
+        .auth-form-panel { padding: 36px 24px; }
+    }
+</style>
 
-<div class="col-md-4">
-    <div class="row">
-        <div class="col-md-12 col-lg-12 mx-auto">
-            <section id="loginForm" >
-                @using (Html.BeginForm("Login", "Home", FormMethod.Post, new { @class = "form-horizontal form-box", role = "form" }))
-                {
-                    @Html.AntiForgeryToken()
-                    <div class="text-center">
-                        <img src="~/img/report-main.png" width="180" />
-                        <h4>Welcome back, please Login below.</h4>
-                    </div>
-                    <br />
-                    <div class="form-group">
-                            @Html.ValidationSummary(true, "", new { @class = "text-danger" })
-                    </div>
-                    <div class="form-group">
-                        @Html.LabelFor(m => m.Email, new { @class = "control-label" })
-                        <div>
-                            @Html.TextBoxFor(m => m.Email, new { @class = "form-control" })
-                            @Html.ValidationMessageFor(m => m.Email, "", new { @class = "text-danger" })
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        @Html.LabelFor(m => m.Password, new { @class = "control-label" })
-                        <div>
-                            @Html.PasswordFor(m => m.Password, new { @class = "form-control" })
-                            @Html.ValidationMessageFor(m => m.Password, "", new { @class = "text-danger" })
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div class="col-md-offset-1 col-md-10">
-                            <div class="checkbox">
-                                @Html.CheckBoxFor(m => m.RememberMe)
-                                @Html.LabelFor(m => m.RememberMe)
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div class="col-md-offset-3 col-md-10">
-                            <input type="submit" value="Log in" class="btn btn-primary btn-lg" />
-                        </div>
-                    </div>
-                    <hr />
-                    <p>
-                        @Html.ActionLink("If you don't have an Account, Register now.", "Register", "Home")
-                    </p>
-                }
-            </section>
+<div class="auth-wrap">
+    <div class="auth-card">
+
+        <!-- Left brand panel -->
+        <div class="auth-panel">
+            <img src="~/img/report-logo.png" alt="Dotnet Report" />
+            <h2>Welcome back</h2>
+            <p>Sign in to access your reports, dashboards, and data insights.</p>
+            <div class="auth-feature"><i class="fa fa-bar-chart"></i> Ad-hoc report builder</div>
+            <div class="auth-feature"><i class="fa fa-dashboard"></i> Live drag-and-drop dashboards</div>
+            <div class="auth-feature"><i class="fa fa-lock"></i> Role-based access control</div>
         </div>
+
+        <!-- Right form panel -->
+        <div class="auth-form-panel">
+            <h3>Sign in to your account</h3>
+            <p class="auth-sub">Enter your credentials below to continue</p>
+
+            @using (Html.BeginForm("Login", "Home", FormMethod.Post, new { @class = "needs-validation", role = "form", novalidate = "" }))
+            {
+                @Html.AntiForgeryToken()
+
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert alert-danger py-2 px-3 mb-3" style="font-size:.85rem;">
+                        <i class="fa fa-exclamation-circle me-1"></i> Login failed. Please check your email and password.
+                    </div>
+                }
+
+                <div class="mb-3">
+                    @Html.LabelFor(m => m.Email, new { @class = "form-label" })
+                    @Html.TextBoxFor(m => m.Email, new { @class = "form-control", placeholder = "you@example.com" })
+                    @Html.ValidationMessageFor(m => m.Email, "", new { @class = "text-danger small" })
+                </div>
+
+                <div class="mb-3">
+                    @Html.LabelFor(m => m.Password, new { @class = "form-label" })
+                    @Html.PasswordFor(m => m.Password, new { @class = "form-control", placeholder = "Your password" })
+                    @Html.ValidationMessageFor(m => m.Password, "", new { @class = "text-danger small" })
+                </div>
+
+                <div class="mb-4 d-flex align-items-center gap-2">
+                    @Html.CheckBoxFor(m => m.RememberMe, new { @class = "form-check-input", style = "margin:0" })
+                    @Html.LabelFor(m => m.RememberMe, new { @class = "form-check-label small text-muted" })
+                </div>
+
+                <button type="submit" id="loginBtn" class="btn btn-primary auth-btn">
+                    <i class="fa fa-sign-in me-2"></i> Sign In
+                </button>
+            }
+
+            <div class="auth-footer-link">
+                Don't have an account? <a href="@Url.Action("Register", "Home")">Create one now</a>
+            </div>
+        </div>
+
     </div>
 </div>
 
+<!-- Full-page submit overlay -->
+<div id="authOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9999; align-items:center; justify-content:center; flex-direction:column; gap:14px;">
+    <div class="spinner-border text-light" style="width:3rem;height:3rem;" role="status"><span class="visually-hidden">Loading…</span></div>
+    <span style="color:#fff; font-size:.95rem; font-weight:600; letter-spacing:.02em;">Signing in…</span>
 </div>
+
+@section scripts {
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <script>
+            // error already shown inline — no toastr needed
+        </script>
+    }
+    <script>
+        (function () {
+            var $form = $('form.needs-validation');
+            var $btn  = $('#loginBtn');
+            var $overlay = $('#authOverlay');
+
+            $form.on('submit', function () {
+                // Only block the UI if jQuery validation is happy.
+                // If the form has a validator attached and it says invalid,
+                // the validator will already be showing errors — leave the
+                // button enabled so the user can correct and retry.
+                if ($form.data('validator') && !$form.valid()) return;
+
+                $btn.prop('disabled', true)
+                    .html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Signing in…');
+                $overlay.css('display', 'flex');
+            });
+        })();
+    </script>
+}
