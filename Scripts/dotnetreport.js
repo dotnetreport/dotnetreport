@@ -2437,8 +2437,7 @@ var reportViewModel = function (options) {
 							data: {
 								method: "/ReportApi/DeleteReportSchedule",
 								model: JSON.stringify({
-									reportId: self.scheduleReportModal.reportId(),
-									userId: self.userIdForSchedule									
+									reportId: self.scheduleReportModal.reportId()								
 								})
 							}
 						}).done(function (result) {
@@ -2459,7 +2458,6 @@ var reportViewModel = function (options) {
 					method: "/ReportApi/SaveReportSchedule",
 					model: JSON.stringify({
 						reportId: self.scheduleReportModal.reportId(),
-						userId: self.userIdForSchedule,
 						scheduleData: JSON.stringify(scheduleData)
 					})
 				}
@@ -2482,8 +2480,7 @@ var reportViewModel = function (options) {
 			data: {
 				method: "/ReportApi/GetReportSchedule",
 				model: JSON.stringify({
-					reportId: report.reportId,
-					userId: self.userIdForSchedule
+					reportId: report.reportId
 				})
 			},
 			noBlocking: true
