@@ -2462,7 +2462,109 @@ var reportViewModel = function (options) {
 
 			reader.readAsText(file);
 		}
-	}; 
+	};
+
+	// Schedule Report Modal
+	self.scheduleReportModal = {
+		reportId: ko.observable(null),
+		reportName: ko.observable(''),
+		saveSchedule: function () {
+			var scheduleData = self.scheduleBuilder.toJs();
+
+			// If schedule is unchecked, confirm removal
+			if (!scheduleData) {
+				bootbox.confirm("Are you sure you want to remove the schedule for this report?", function (r) {
+					if (r) {
+						ajaxcall({
+							url: options.apiUrl,
+							data: {
+								method: "/ReportApi/DeleteReportSchedule",
+								model: JSON.stringify({
+									reportId: self.scheduleReportModal.reportId()								
+								})
+							}
+						}).done(function (result) {
+							toastr.success('Schedule removed successfully');
+							$('#modal-schedule-report').modal('hide');
+						}).fail(function (err) {
+							toastr.error('Failed to remove schedule');
+						});
+					}
+				});
+				return;
+			}
+
+			// Validate required fields
+			var modal = $('#modal-schedule-report');
+			var curInputs = modal.find('input[required], select[required]');
+			var isValid = true;
+			curInputs.removeClass('is-invalid');
+			for (var i = 0; i < curInputs.length; i++) {
+				if (!self.isInputValid(curInputs[i])) {
+					isValid = false;
+					$(curInputs[i]).addClass('is-invalid');
+				}
+			}
+			var emailInput = modal.find('input[data-bind*="emailTo"]');
+			if (!isValid || !scheduleData.EmailTo || scheduleData.EmailTo.trim() === '') {
+				emailInput.addClass('is-invalid');
+				toastr.error('Email is required to save a schedule');
+				return;
+			}
+
+			// Validate each comma-separated email address
+			var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+			var emails = scheduleData.EmailTo.split(',').map(function (e) { return e.trim(); }).filter(function (e) { return e !== ''; });
+			if (!emails.every(function (e) { return emailRegex.test(e); })) {
+				emailInput.addClass('is-invalid');
+				toastr.error('Please enter valid email address(es)');
+				return;
+			}
+
+			// Save the schedule
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/SaveReportSchedule",
+					model: JSON.stringify({
+						reportId: self.scheduleReportModal.reportId(),
+						scheduleData: JSON.stringify(scheduleData)
+					})
+				}
+			}).done(function (result) {
+				toastr.success('Schedule saved successfully');
+				$('#modal-schedule-report').modal('hide');
+			}).fail(function (err) {
+				toastr.error('Failed to save schedule');
+			});
+		}
+	};
+
+	self.openScheduleModal = function (report) {
+		self.scheduleReportModal.reportId(report.reportId);
+		self.scheduleReportModal.reportName(report.reportName);
+
+		// Load existing schedule for this report and user
+		ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/GetReportSchedule",
+				model: JSON.stringify({
+					reportId: report.reportId
+				})
+			},
+			noBlocking: true
+		}).done(function (result) {
+			if (result && result.d) { result = result.d; }
+			if (result && result.result) { result = result.result; }
+
+			// Load the schedule data into the scheduleBuilder, or reset if none exists
+			self.scheduleBuilder.fromJs(result && result.SelectedOption ? result : null);
+		}).fail(function () {
+			self.scheduleBuilder.fromJs(null);
+		});
+	};
+
 	self.reportsInFolder = ko.computed(function () {
 		if (self.SelectedFolder() == null) {
 			return [];

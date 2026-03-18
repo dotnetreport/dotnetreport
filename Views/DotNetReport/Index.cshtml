@@ -314,6 +314,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <a class="dropdown-item" href="#" data-bind="visible: hasDrilldown, click: function() {exportReport('excel-sub');}">
                                                                 <span class="fa fa-file-excel-o"></span> Download Excel (Expanded)
                                                             </a>
+                                                            <div class="dropdown-divider"></div>
+                                                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-schedule-report" data-bind="click: function() { $parent.openScheduleModal($data); }">
+                                                                <span class="fa fa-hourglass"></span> Schedule Report
+                                                            </a>
                                                         </div>
                                                     </div>
                                                     <button class="btn btn-sm btn-outline-secondary" data-bind="click: deleteReport, visible: canDelete">
@@ -345,6 +349,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             </a>
                                                             <a class="dropdown-item" href="#" data-bind="visible: hasDrilldown, click: function() {exportReport('excel-sub');}">
                                                                 <span class="fa fa-file-excel-o"></span> Download Excel with inner rows
+                                                            </a>
+                                                            <div class="dropdown-divider"></div>
+                                                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-schedule-report" data-bind="click: function() { $parent.openScheduleModal($data); }">
+                                                                <span class="fa fa-hourglass"></span> Schedule Report
                                                             </a>
                                                         </div>
                                                     </div>
@@ -536,6 +544,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                         </a>
                                                                     </li>
                                                                 </ul>
+                                                            </li>
+                                                            <li><hr class="dropdown-divider"></li>
+                                                            <li>
+                                                                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-schedule-report" data-bind="click: function() { $parent.openScheduleModal($data); }">
+                                                                    <span class="fa fa-hourglass"></span> Schedule Report
+                                                                </a>
                                                             </li>
                                                         </ul>
                                                     </div>
@@ -942,4 +956,26 @@ Its Recommended you use it as is, and only change styling as needed to match you
 <!-- This renders the template -->
 <div class="modal" id="wordOptionsScheduleModal" tabindex="-1" aria-labelledby="wordOptionsScheduleModalLabel" aria-hidden="true">
     <div data-bind="template: { name: 'word-options-schedule-template', data: $data }"></div>
+</div>
+
+<!-- Schedule Report Modal -->
+<div class="modal" id="modal-schedule-report" tabindex="-1" aria-labelledby="scheduleReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" data-bind="with: scheduleReportModal">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scheduleReportModalLabel">
+                    <i class="fa fa-hourglass me-2"></i> Schedule Report
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6 data-bind="text: reportName" class="mb-3"></h6>
+                <div data-bind="template: { name: 'report-schedule', data: $parent }"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" data-bind="click: saveSchedule">Save Schedule</button>
+            </div>
+        </div>
+    </div>
 </div>
