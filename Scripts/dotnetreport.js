@@ -2451,6 +2451,33 @@ var reportViewModel = function (options) {
 				return;
 			}
 
+			// Validate required fields
+			var modal = $('#modal-schedule-report');
+			var curInputs = modal.find('input[required], select[required]');
+			var isValid = true;
+			curInputs.removeClass('is-invalid');
+			for (var i = 0; i < curInputs.length; i++) {
+				if (!self.isInputValid(curInputs[i])) {
+					isValid = false;
+					$(curInputs[i]).addClass('is-invalid');
+				}
+			}
+			var emailInput = modal.find('input[data-bind*="emailTo"]');
+			if (!isValid || !scheduleData.EmailTo || scheduleData.EmailTo.trim() === '') {
+				emailInput.addClass('is-invalid');
+				toastr.error('Email is required to save a schedule');
+				return;
+			}
+
+			// Validate each comma-separated email address
+			var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+			var emails = scheduleData.EmailTo.split(',').map(function (e) { return e.trim(); }).filter(function (e) { return e !== ''; });
+			if (!emails.every(function (e) { return emailRegex.test(e); })) {
+				emailInput.addClass('is-invalid');
+				toastr.error('Please enter valid email address(es)');
+				return;
+			}
+
 			// Save the schedule
 			ajaxcall({
 				url: options.apiUrl,
@@ -2485,13 +2512,12 @@ var reportViewModel = function (options) {
 			},
 			noBlocking: true
 		}).done(function (result) {
-			if (result.d) { result = result.d; }
-			if (result.result) { result = result.result; }
+			if (result && result.d) { result = result.d; }
+			if (result && result.result) { result = result.result; }
 
-			// Load the schedule data into the scheduleBuilder
-			self.scheduleBuilder.fromJs(result);
+			// Load the schedule data into the scheduleBuilder, or reset if none exists
+			self.scheduleBuilder.fromJs(result && result.SelectedOption ? result : null);
 		}).fail(function () {
-			// If no schedule exists, reset to defaults
 			self.scheduleBuilder.fromJs(null);
 		});
 	};
