@@ -9169,7 +9169,7 @@ var dashboardViewModel = function (options) {
 					self.procs = x;
 				}));
 			}
-			if (self.procs.folders === 0) {
+			if (self.folders.length === 0) {
 				promises.push(report.loadFolders().done(function (x) {
 					if (x.d) x = x.d;
 					self.folders = x;
