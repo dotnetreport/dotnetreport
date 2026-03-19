@@ -1600,7 +1600,8 @@
 </script>
 
 <script type="text/html" id="designer-choose-visual">
-    <div class="btn-group" role="group" aria-label="Visualization Options">
+    <div style="overflow-x: auto;">
+    <div class="btn-group" role="group" aria-label="Visualization Options" style="flex-wrap: nowrap; min-width: max-content;">
         <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('List'); }, css: { active: ReportType()=='List' }">
             <span class="fa fa-2x fa-list-alt"></span>
             <p>List</p>
@@ -1649,6 +1650,7 @@
             <span class="fa fa-2x fa-random"></span>
             <p>Transpose</p>
         </button>
+    </div>
     </div>
 </script>
 
@@ -2497,7 +2499,7 @@
             <i class="fa fa-times"></i> Cancel
           </button>
         </div>
-        <div class="card-body p-1">
+        <div class="card-body p-1" style="overflow-x: auto;">
           <div data-bind="template: 'designer-choose-visual'"></div>
         </div>
       </div>
