@@ -4843,7 +4843,8 @@ var reportViewModel = function (options) {
 							default: r.FormattedValue = '$' + r.FormattedValue; break;
 						}
 					}
-					if (self.dateFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(new Date(r.Value).getTime())) {
+					var _parsedDate = self.safeParseDate(r.Value);
+					if (self.dateFormatTypes.indexOf(col.fieldFormat()) >= 0 && _parsedDate) {
 						var dtFormat = "en-US";
 						switch (col.dateFormat()) {
 							case 'United Kingdom': dtFormat = 'en-GB'; break;
@@ -4854,13 +4855,13 @@ var reportViewModel = function (options) {
 						}
 
 						if (col.dateFormat() == 'Custom' && col.customDateFormat()) {
-							r.FormattedValue = self.formatDate(new Date(r.Value), col.customDateFormat());
+							r.FormattedValue = self.formatDate(r.Value, col.customDateFormat());
 						}
 						else {
 							switch (col.fieldFormat()) {
-								case 'Date': r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
-								case 'Date and Time': r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
-								case 'Time': r.FormattedValue = (new Date(r.Value)).toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+								case 'Date': r.FormattedValue = _parsedDate.toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
+								case 'Date and Time': r.FormattedValue = _parsedDate.toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+								case 'Time': r.FormattedValue = _parsedDate.toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
 							}
 						}
 					}
@@ -7582,22 +7583,90 @@ var reportViewModel = function (options) {
 			return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
 		}
 	}
-	self.formatDate = function(date, format) {
+	self.safeParseDate = function (val) {
+		if (!val) return null;
+		var s = val.toString().trim();
+
+		// ISO format: "2026-08-10" or "2026-08-10T14:30:00"
+		var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+		if (iso) return new Date(parseInt(iso[1]), parseInt(iso[2]) - 1, parseInt(iso[3]), parseInt(iso[4] || 0), parseInt(iso[5] || 0), parseInt(iso[6] || 0));
+
+		// Ambiguous slash/dot format
+		var parts = s.match(/^(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{2,4})/);
+		if (parts) {
+			var a = parseInt(parts[1]), b = parseInt(parts[2]), c = parseInt(parts[3]);
+			if (c < 100) c += 2000;
+			if (a > 12) {
+				// a must be day: dd/mm/yyyy
+				return new Date(c, b - 1, a);
+			} else if (b > 12) {
+				// b must be day: mm/dd/yyyy
+				return new Date(c, a - 1, b);
+			}
+		}
+
+		var d = new Date(s);
+		return isNaN(d.getTime()) ? null : d;
+	};
+
+	self.formatDate = function(dateOrValue, format) {
+		var date = (dateOrValue instanceof Date) ? dateOrValue : self.safeParseDate(dateOrValue);
+		if (!date) return dateOrValue;
+
 		const pad = (n) => n < 10 ? '0' + n : n;
 		const monthNamesShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+		const monthNamesFull = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+		const dayNamesShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+		const dayNamesFull = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 		let day = date.getDate(),
-			month = date.getMonth(), // Months are zero-based
-			year = date.getFullYear();
+			month = date.getMonth(),
+			year = date.getFullYear(),
+			hours = date.getHours(),
+			minutes = date.getMinutes(),
+			seconds = date.getSeconds();
 
-		return format
-			.replace('yyyy', year)
-			.replace('yy', year.toString().slice(-2))
-			.replace('MM', monthNamesShort[month])
-			.replace('mm', pad(month + 1))
-			.replace('m', month + 1)
-			.replace('dd', pad(day))
-			.replace('d', day);
+		var h12 = hours % 12 || 12;
+		var ampm = hours < 12 ? 'AM' : 'PM';
+
+		var hasTime = /[Hh]/.test(format);
+
+		var result = format;
+		result = result.replace('yyyy', '\x01').replace('yy', '\x02');
+		result = result.replace('MMMM', '\x03').replace('MMM', '\x04').replace('MM', '\x05');
+		result = result.replace('dddd', '\x06').replace('ddd', '\x07').replace('dd', '\x08');
+		if (hasTime) {
+			result = result.replace('HH', '\x09').replace('hh', '\x0B').replace('H', '\x0C').replace('h', '\x0D');
+			result = result.replace('mm', '\x0E'); // minutes when time is present
+			result = result.replace('ss', '\x0F');
+			result = result.replace('tt', '\x10').replace('t', '\x11');
+		} else {
+			result = result.replace('mm', '\x05');
+		}
+		result = result.replace('M', '\x12').replace('d', '\x13');
+
+		result = result.replace('\x01', year.toString());
+		result = result.replace('\x02', year.toString().slice(-2));
+		result = result.replace('\x03', monthNamesFull[month]);
+		result = result.replace('\x04', monthNamesShort[month]);
+		result = result.replace(/\x05/g, pad(month + 1));
+		result = result.replace('\x06', dayNamesFull[date.getDay()]);
+		result = result.replace('\x07', dayNamesShort[date.getDay()]);
+		result = result.replace('\x08', pad(day));
+		if (hasTime) {
+			result = result.replace('\x09', pad(hours));
+			result = result.replace('\x0B', pad(h12));
+			result = result.replace('\x0C', hours.toString());
+			result = result.replace('\x0D', h12.toString());
+			result = result.replace('\x0E', pad(minutes));
+			result = result.replace('\x0F', pad(seconds));
+			result = result.replace('\x10', ampm);
+			result = result.replace('\x11', ampm.charAt(0));
+		}
+		result = result.replace('\x12', (month + 1).toString());
+		result = result.replace('\x13', day.toString());
+
+		return result;
 	}
 
 	// ui-validation

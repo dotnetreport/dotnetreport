@@ -1466,10 +1466,18 @@ namespace ReportBuilder.Web.Models
                     {
                         try
                         {
+                            var rawValue = row[col] != null && row[col] != DBNull.Value ? row[col] : null;
+                            // Use ISO 8601 for dates so JavaScript can parse unambiguously regardless of server culture
+                            string valueStr;
+                            if (rawValue is DateTime dtVal)
+                                valueStr = dtVal.ToString("yyyy-MM-ddTHH:mm:ss");
+                            else
+                                valueStr = rawValue?.ToString();
+
                             var item = new DotNetReportDataRowItemModel
                             {
                                 Column = model.Columns[i],
-                                Value = sanitizer.Sanitize(row[col] != null ? row[col].ToString() : null),
+                                Value = sanitizer.Sanitize(valueStr),
                                 FormattedValue = sanitizer.Sanitize(GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable)),
                                 LabelValue = sanitizer.Sanitize(GetLabelValue(col, row))
                             };

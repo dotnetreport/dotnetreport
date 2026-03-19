@@ -213,6 +213,17 @@ function downloadJson(content, fileName, contentType) {
     window.URL.revokeObjectURL(url);
 }
    // knockout binding extenders
+ko.bindingHandlers.bsPopover = {
+    init: function (element, valueAccessor) {
+        var opts = valueAccessor() || {};
+        opts.sanitize = false;
+        var pop = new bootstrap.Popover(element, opts);
+        ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
+            pop.dispose();
+        });
+    }
+};
+
 ko.bindingHandlers.datepicker = {
     init: function (element, valueAccessor, allBindingsAccessor) {
         //initialize datepicker with some optional options
