@@ -2197,6 +2197,17 @@
                     Show previous comparision in KPI if applicable
                 </label>
             </div>
+            <div data-bind="hidden: useStoredProc" class="mt-2">
+                <button class="btn btn-sm btn-outline-secondary" data-bind="click: detectJoinsForReport">
+                    <span class="fa fa-link"></span> Configure Joins
+                </button>
+                <!-- ko if: customJoins().length > 0 -->
+                <span class="badge bg-success ms-1"><span data-bind="text: customJoins().length"></span> override(s)</span>
+                <button class="btn btn-sm btn-outline-danger ms-1" data-bind="click: clearCustomJoins" title="Remove all join overrides">
+                    <span class="fa fa-times"></span>
+                </button>
+                <!-- /ko -->
+            </div>
         </div>
     </div>
 </script>
@@ -3579,3 +3590,63 @@
         </div>
     </div>
 </script>
+
+<!-- Configure Joins Modal -->
+            <div class="modal" id="weightedmodal-configure-joins" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg ">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="configureJoinsLabel"><i class="fa fa-link"></i> Configure Joins for Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Override join types and drag to reorder for this report only.</p>
+
+                <!-- ko if: detectedJoins().length === 0 -->
+                <div class="alert alert-info">
+                    <i class="fa fa-info-circle"></i> No joins detected. Make sure you have selected fields from multiple tables.
+                </div>
+                <!-- /ko -->
+
+                <!-- ko if: detectedJoins().length > 0 -->
+                <div class="row fw-bold border-bottom pb-2 mb-1 small text-muted">
+                    <div class="col-1"></div>
+                    <div class="col-2">Table</div>
+                    <div class="col-2">Field</div>
+                    <div class="col-2">Join Type</div>
+                    <div class="col-3">Joined Table</div>
+                    <div class="col-2">Join Field</div>
+                </div>
+                <div data-bind="sortable: { data: detectedJoins, options: { handle: '.report-join-drag-handle', cursor: 'move' }, afterMove: reportJoinSorted }">
+                    <div class="row align-items-center border-bottom py-2">
+                        <div class="col-1">
+                            <span class="btn btn-sm btn-outline-secondary report-join-drag-handle" title="Drag to reorder"><i class="fa fa-bars"></i></span>
+                        </div>
+                        <div class="col-2">
+                            <span data-bind="text: tableName"></span>
+                            <!-- ko if: isForeignKey -->
+                            <span class="badge bg-info ms-1" title="Foreign Key Join">FK</span>
+                            <!-- /ko -->
+                        </div>
+                        <div class="col-2"><code data-bind="text: fieldName"></code></div>
+                        <div class="col-2">
+                            <select class="form-select form-select-sm"
+                                    data-bind="options: ['INNER','LEFT','LEFT OUTER','RIGHT','RIGHT OUTER'], value: joinType"></select>
+                        </div>
+                        <div class="col-3" data-bind="text: joinedTableName"></div>
+                        <div class="col-2"><code data-bind="text: joinFieldName"></code></div>
+                    </div>
+                </div>
+                <!-- /ko -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary btn-sm" data-bind="click: clearCustomJoins">
+                    <i class="fa fa-times"></i> Clear Overrides
+                </button>
+                <button class="btn btn-primary btn-sm" data-bind="click: saveCustomJoins">
+                    <i class="fa fa-check"></i> Apply to Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

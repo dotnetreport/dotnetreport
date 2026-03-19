@@ -182,6 +182,7 @@ namespace ReportBuilder.Web.Models
         public string JoinType { get; set; }
         public string FieldName { get; set; }
         public string JoinFieldName { get; set; }
+        public int JoinOrder { get; set; }
     }
 
 

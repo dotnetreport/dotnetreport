@@ -113,6 +113,7 @@ var manageViewModel = function (options) {
 	self.Joins.subscribe(function () {
 		self.isDirty(true);
 	});
+	self.reorderableJoins = ko.observableArray([]);
 
 	self.trackJoinChanges = function (join) {
 		join.JoinTable.subscribe(() => self.isDirty(true));
@@ -173,6 +174,10 @@ var manageViewModel = function (options) {
 		var startIndex = (pageNumber - 1) * pageSize;
 		var endIndex = startIndex + pageSize;
 		return joins.slice(startIndex, endIndex < joins.length ? endIndex : joins.length);
+	});
+
+	self.pagedJoins.subscribe(function (paged) {
+		self.reorderableJoins(paged.slice());
 	});
 
 	self.filteredJoins.subscribe(function (x) {
@@ -238,6 +243,28 @@ var manageViewModel = function (options) {
 			return direction ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
 		});
 		self.sortDirection.joinField(!direction);
+	};
+
+	self.joinSorted = function (args) {
+		// Rebuild full Joins list with page items in their new drag order
+		var allJoins = self.Joins();
+		var pageItemSet = new Set(self.reorderableJoins());
+		var reordered = self.reorderableJoins();
+		var result = [];
+		var pageIdx = 0;
+		for (var i = 0; i < allJoins.length; i++) {
+			if (pageItemSet.has(allJoins[i])) {
+				result.push(reordered[pageIdx++]);
+			} else {
+				result.push(allJoins[i]);
+			}
+		}
+		// Assign sequential JoinOrder to all items
+		_.forEach(result, function (e, i) {
+			e.JoinOrder(i);
+		});
+		self.Joins(result);
+		self.isDirty(true);
 	};
 
 	self.visualizeJoins = function () {
@@ -1068,7 +1095,8 @@ var manageViewModel = function (options) {
 				})
 			})
 		}).done(function (result) {
-			self.Joins($.map(result, function (item) {				
+			result.sort(function (a, b) { return (a.JoinOrder || 0) - (b.JoinOrder || 0); });
+			self.Joins($.map(result, function (item) {
 				var join = self.setupJoin(item);
 				self.trackJoinChanges(join);
 				return join;
@@ -1160,14 +1188,15 @@ var manageViewModel = function (options) {
 			function (x) {
 				return {
 					DataConnectionId: x.DataConnectionId,
-					Id: x.Id ? x.Id : x.RelationId, 
+					Id: x.Id ? x.Id : x.RelationId,
 					TableId: x.TableId,
-					TableName: x.JoinTable ? x.JoinTable.DisplayName : null,       
+					TableName: x.JoinTable ? x.JoinTable.DisplayName : null,
 					JoinedTableId: x.JoinedTableId,
-					JoinedTableName: x.OtherTable ? x.OtherTable.DisplayName : null, 
+					JoinedTableName: x.OtherTable ? x.OtherTable.DisplayName : null,
 					JoinType: x.JoinType,
 					FieldName: x.FieldName,
-					JoinFieldName: x.JoinFieldName
+					JoinFieldName: x.JoinFieldName,
+					JoinOrder: x.JoinOrder || 0
 				};
 			}
 		);

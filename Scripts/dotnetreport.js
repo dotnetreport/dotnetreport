@@ -1084,10 +1084,136 @@ var reportViewModel = function (options) {
 	self.isModalOpen = ko.observable(false);
 	self.cardView = ko.observable(false);
 	self.dontGroupCustom = ko.observable(false);
+	self.customJoins = ko.observableArray([]);
+	self.detectedJoins = ko.observableArray([]);
 	self.isDirty = ko.observable(false);
 	self.activeDesign = ko.observable(false);
 	self.panels = new DesignerViewModel();
 	self.selectMode = ko.observable(false);
+
+	self.detectJoinsForReport = function () {
+		// Collect unique tableIds from selected fields
+		var tableIds = [];
+		_.forEach(self.SelectedFields(), function (f) {
+			if (f.tableId && tableIds.indexOf(f.tableId) === -1) {
+				tableIds.push(f.tableId);
+			}
+		});
+
+		if (tableIds.length < 2) {
+			self.detectedJoins([]);
+			toastr.info('This report uses only one table. No joins to configure.');
+			return;
+		}
+
+		ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/GetRelationsForTables",
+				model: JSON.stringify({
+					tableIds: JSON.stringify(tableIds)
+				})
+			}
+		}).done(function (result) {
+			if (result.d) { result = result.d; }
+			if (result.result) { result = result.result; }
+
+			var existingOverrides = ko.toJS(self.customJoins());
+			var seenPairs = {};
+			var joins = [];
+
+			// Add relation-based joins from API
+			_.forEach(result, function (r) {
+				var pairKey = Math.min(r.TableId, r.JoinedTableId) + '_' + Math.max(r.TableId, r.JoinedTableId);
+				if (seenPairs[pairKey]) return;
+				seenPairs[pairKey] = true;
+
+				var existingOverride = _.find(existingOverrides, function (o) {
+					return !o.isForeignKey &&
+						((o.tableId === r.TableId && o.joinedTableId === r.JoinedTableId) ||
+						 (o.tableId === r.JoinedTableId && o.joinedTableId === r.TableId));
+				});
+				joins.push({
+					tableId: r.TableId,
+					joinedTableId: r.JoinedTableId,
+					tableName: r.TableName,
+					joinedTableName: r.JoinedTableName,
+					joinType: ko.observable(existingOverride ? existingOverride.joinType : r.JoinType),
+					fieldName: r.FieldName,
+					joinFieldName: r.JoinFieldName,
+					joinOrder: ko.observable(existingOverride && existingOverride.joinOrder != null ? existingOverride.joinOrder : r.JoinOrder),
+					isForeignKey: false
+				});
+			});
+
+			// Add foreign key joins from selected fields
+			_.forEach(self.SelectedFields(), function (f) {
+				if (f.hasForeignKey && !f.foreignFilterOnly && f.foreignTable) {
+					var fkKey = 'fk_' + f.tableId + '_' + f.fieldId;
+					if (seenPairs[fkKey]) return;
+					seenPairs[fkKey] = true;
+
+					var existingOverride = _.find(existingOverrides, function (o) {
+						return o.isForeignKey && o.fieldId === f.fieldId;
+					});
+					joins.push({
+						tableId: f.tableId,
+						joinedTableId: 0,
+						tableName: f.tableName,
+						joinedTableName: f.foreignTable,
+						joinType: ko.observable(existingOverride ? existingOverride.joinType : (f.foreignJoin || 'INNER')),
+						fieldName: f.dbField ? f.dbField.replace(/[\[\]"]/g, '').split('.').pop() : '',
+						joinFieldName: f.foreignKey || '',
+						joinOrder: ko.observable(existingOverride && existingOverride.joinOrder != null ? existingOverride.joinOrder : joins.length),
+						isForeignKey: true,
+						fieldId: f.fieldId
+					});
+				}
+			});
+
+			// Sort by joinOrder
+			joins.sort(function (a, b) { return a.joinOrder() - b.joinOrder(); });
+
+			self.detectedJoins(joins);
+			$('#weightedmodal-configure-joins').modal('show');
+		});
+	};
+
+	self.reportJoinSorted = function (args) {
+		_.forEach(self.detectedJoins(), function (e, i) {
+			e.joinOrder(i);
+		});
+	};
+
+	self.saveCustomJoins = function () {
+		var joins = _.map(self.detectedJoins(), function (j, i) {
+			var obj = {
+				tableId: j.tableId,
+				joinedTableId: j.joinedTableId,
+				joinType: j.joinType(),
+				tableName: j.tableName,
+				joinedTableName: j.joinedTableName,
+				fieldName: j.fieldName,
+				joinFieldName: j.joinFieldName,
+				joinOrder: i,
+				isForeignKey: j.isForeignKey || false
+			};
+			if (j.isForeignKey && j.fieldId) {
+				obj.fieldId = j.fieldId;
+			}
+			return obj;
+		});
+		self.customJoins(joins);
+		$('#weightedmodal-configure-joins').modal('hide');
+		toastr.success('Join overrides applied to this report.');
+	};
+
+	self.clearCustomJoins = function () {
+		self.customJoins([]);
+		self.detectedJoins([]);
+		$('#weightedmodal-configure-joins').modal('hide');
+		toastr.info('Join overrides cleared. Using global join settings.');
+	};
 
 	$(document).on('shown.bs.modal', '.modal', function (e) {
 		if (options.reportWizard && options.reportWizard.is(e.target)) {
@@ -3957,6 +4083,7 @@ var reportViewModel = function (options) {
 				includeColumnTotal: self.IncludeColumnTotal(),
 				totalRowFormat: self.totalRowFormat(),
 				subTotalPerGroup: self.subTotalPerGroup(),
+				customJoins: ko.toJS(self.customJoins()),
 			}),
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -7230,6 +7357,7 @@ var reportViewModel = function (options) {
 		self.reportHtml(decodeURIComponent(reportSettings.reportHtml));
 		self.cardView(reportSettings.cardView === true ? true : false);
 		self.dontGroupCustom(reportSettings.dontGroupCustom === true ? true : false);
+		self.customJoins(reportSettings.customJoins || []);
 		self.subReports(reportSettings.subReports || []);
 		if (self.subReports().length <= 0) {
 			self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
