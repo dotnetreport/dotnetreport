@@ -348,9 +348,7 @@ namespace ReportBuilder.Web.Controllers
                         bool hasDistinct = sql.Contains("DISTINCT");
                         if (hasDistinct)
                         {
-                            int distinctIndex = sqlFrom.IndexOf("DISTINCT", StringComparison.OrdinalIgnoreCase) + 8;
-                            int fromClauseIndex = sqlFrom.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
-                            string distinctColumns = sqlFrom.Substring(distinctIndex, fromClauseIndex - distinctIndex).Trim();
+                            string distinctColumns = string.Join(", ", sqlFields);
 
                             string fromClause = sql.Substring(fromIndex).Replace("{FROM}", "FROM");
 
