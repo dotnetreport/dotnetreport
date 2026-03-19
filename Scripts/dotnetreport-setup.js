@@ -185,7 +185,7 @@ var manageViewModel = function (options) {
 		self.joinsPager.currentPage(1);
 	});
 
-	self.JoinTypes = ["INNER", "LEFT", "LEFT OUTER", "RIGHT", "RIGHT OUTER"];
+	self.JoinTypes = ["INNER", "LEFT", "RIGHT", "CROSS"];
 
 	self.filterJoinsSorted = function () {
 		ko.toJS(self.filteredJoins());

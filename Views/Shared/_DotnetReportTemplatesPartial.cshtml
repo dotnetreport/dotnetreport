@@ -3609,12 +3609,19 @@
                 <!-- /ko -->
 
                 <!-- ko if: detectedJoins().length > 0 -->
+                <div class="mb-3 p-2 bg-light rounded d-flex align-items-center">
+                    <label class="fw-bold small me-2 text-nowrap">FROM (First Table):</label>
+                    <select class="form-select form-select-sm" style="max-width: 250px;"
+                            data-bind="options: joinBaseTables, optionsText: 'name', optionsValue: 'id', value: baseTableIdOverride"></select>
+                </div>
+
                 <div class="row fw-bold border-bottom pb-2 mb-1 small text-muted">
                     <div class="col-1"></div>
                     <div class="col-2">Table</div>
                     <div class="col-2">Field</div>
+                    <div class="col-1"></div>
                     <div class="col-2">Join Type</div>
-                    <div class="col-3">Joined Table</div>
+                    <div class="col-2">Joined Table</div>
                     <div class="col-2">Join Field</div>
                 </div>
                 <div data-bind="sortable: { data: detectedJoins, options: { handle: '.report-join-drag-handle', cursor: 'move' }, afterMove: reportJoinSorted }">
@@ -3629,11 +3636,16 @@
                             <!-- /ko -->
                         </div>
                         <div class="col-2"><code data-bind="text: fieldName"></code></div>
+                        <div class="col-1 text-center">
+                            <button class="btn btn-sm btn-outline-primary" title="Swap Table ↔ Joined Table" data-bind="click: $root.swapJoinDirection">
+                                <i class="fa fa-exchange"></i>
+                            </button>
+                        </div>
                         <div class="col-2">
                             <select class="form-select form-select-sm"
-                                    data-bind="options: ['INNER','LEFT','LEFT OUTER','RIGHT','RIGHT OUTER'], value: joinType"></select>
+                                    data-bind="options: ['INNER','LEFT','RIGHT','CROSS'], value: joinType"></select>
                         </div>
-                        <div class="col-3" data-bind="text: joinedTableName"></div>
+                        <div class="col-2" data-bind="text: joinedTableName"></div>
                         <div class="col-2"><code data-bind="text: joinFieldName"></code></div>
                     </div>
                 </div>
