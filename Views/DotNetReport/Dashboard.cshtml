@@ -10,6 +10,9 @@
         .report-chart {
             min-height: auto !important;
         }
+        #dashboard-tabs .tab-hover-icon { visibility: hidden; width: 0; }
+        #dashboard-tabs > li:hover .tab-hover-icon { visibility: visible; width: auto; }
+        #dashboard-tabs .drop-highlight { border: 2px dashed #dee2e6; border-radius: .25rem .25rem 0 0; background: #f8f9fa; min-width: 80px; min-height: 36px; }
 
         .expanded {
             position: fixed !important;
@@ -36,14 +39,14 @@
             var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
             var adminMode = false;
             if (localStorage.length > 0) adminMode = localStorage.getItem('reportAdminMode');
-            ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=' + adminMode || 'false', noBlocking: true }).done(function (dashboardData) {
+            ajaxcall({ url: '@Url.Action("GetDashboards", "DotNetReportApi")' + '?adminMode=' + (adminMode || 'false'), noBlocking: true }).done(function (dashboardData) {
                 if (dashboardData && dashboardData.noAccount === true) {
                     $("#noaccountModal").modal('show');
                     return;
                 }
 
                 _.forEach(dashboardData, function (d) {
-                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles, clientId: d.ClientId, canManage: d.CanManage });
+                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles, clientId: d.ClientId, canManage: d.CanManage, displayOrder: d.DisplayOrder });
                 });
 
                 var dashboardId = parseInt(queryParams.id || 0);
@@ -132,22 +135,26 @@
 
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
-<div style="display: none" data-bind="visible: currentDashboard">
-    <ul class="nav nav-tabs" data-bind="foreach: dashboards">
-        <li class="nav-item">
-            <h2>
-                <a class="nav-link" href="#" data-bind="text: name, click: function() { $parent.selectDashboard(id);}, css: { 'active': $parent.currentDashboard().id === id, 'selected-tab': $parent.currentDashboard().id === id }"></a>
-            </h2>
-        </li>
-    </ul>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container-fluid p-0">
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardNavbar" aria-controls="dashboardNavbar" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="dashboardNavbar">
-                <ul class="navbar-nav me-auto"></ul>
-                <div class="d-flex align-items-center gap-2">
+<nav class="navbar navbar-expand-lg navbar-light bg-light" style="display:none; position:relative; z-index:1030;" data-bind="visible: currentDashboard">
+    <div class="container-fluid p-0">
+        <ul class="nav nav-tabs me-auto" id="dashboard-tabs" data-bind="sortable: { data: dashboards, options: { cursor: 'move', placeholder: 'drop-highlight', axis: 'x' }, strategyMove: true, afterMove: function(arg) { saveDashboardOrder(); } }">
+            <li class="nav-item nav-link d-flex align-items-center gap-1" style="cursor:pointer;" data-bind="attr: {'data-dashboard-id': id}, css: { 'active': $parent.currentDashboard().id === id }, click: function() { $parent.selectDashboard(id); }">                
+                <div class="dropdown tab-hover-icon" data-bind="visible: canManage || $parent.adminMode()">
+                    <button type="button" class="btn btn-link btn-sm p-0 text-muted" data-bs-toggle="dropdown" data-bind="click: function(){}, clickBubble: false"><span class="fa fa-ellipsis-v"></span></button>
+                    <ul class="dropdown-menu small">
+                        <li><a href="#" class="dropdown-item" data-bind="click: function(){ $parent.editDashboardTab($data); }"><span class="fa fa-pencil"></span> Edit</a></li>
+                        <li><a href="#" class="dropdown-item" data-bind="click: function(){ $parent.openDashboardScheduleModal(); }"><span class="fa fa-hourglass"></span> Schedule</a></li>
+                        <li><a href="#" class="dropdown-item" data-bind="click: function(){ $parent.RefreshAllReports(); }"><span class="fa fa-refresh"></span> Refresh</a></li>
+                    </ul>
+                </div>
+                <span data-bind="text: name"></span>
+            </li>
+        </ul>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardNavbar" aria-controls="dashboardNavbar" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="dashboardNavbar">
+            <div class="d-flex align-items-center gap-2 ms-auto">
                     <div class="dropdown">
                         <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fa fa-pencil-square"></i>
@@ -201,12 +208,14 @@
                                     <span>Add Text</span>
                                 </button>
                             </li>
+                            <li data-bind="visible: hasDashboard()">
+                                <button class="dropdown-item" data-bind="click: openDashboardScheduleModal">
+                                    <i class="fa fa-hourglass"></i>
+                                    <span>Schedule</span>
+                                </button>
+                            </li>
                         </ul>
                     </div>
-                    <button class="btn btn-light btn-sm" data-bind="click: openDashboardScheduleModal, visible: hasDashboard()">
-                        <i class="fa fa-hourglass"></i>
-                        <span>Schedule</span>
-                    </button>
                     <div class="dropdown" data-bind="visible: hasDashboard()">
                         <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fa fa-download"></i>
@@ -243,8 +252,7 @@
                 </div>
             </div>
         </div>
-    </nav>
-</div>
+</nav>
 
 <div class="d-flex justify-content-between">
     <div class="row" style="display: none" data-bind="visible: currentDashboard">

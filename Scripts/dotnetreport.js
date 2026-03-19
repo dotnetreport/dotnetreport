@@ -8896,13 +8896,32 @@ var dashboardViewModel = function (options) {
 			}
             self.dashboards([]);
 			_.forEach(dashboardData, function (d) {
-				self.dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles, clientId: d.ClientId, canManage: d.CanManage });
+				self.dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles, clientId: d.ClientId, canManage: d.CanManage, displayOrder: d.DisplayOrder });
 			});
 			var dashboardId = 0;
 			if (self.dashboards().length > 0) { dashboardId = self.dashboards()[0].id; }
 			self.selectDashboard(dashboardId);
 		});
 	}
+
+	self.saveDashboardOrder = function () {
+		var ids = _.map(self.dashboards(), function (d) { return d.id; });
+		ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/SaveDashboardOrder",
+				model: JSON.stringify({ dashboardIds: ids.join(',') })
+			}
+		}).done(function () {
+			toastr.success('Dashboard order saved');
+		});
+	};
+
+	self.editDashboardTab = function (dashboard) {
+		self.selectDashboard(dashboard.id);
+		self.editDashboard();
+		$('#add-dashboard-modal').modal('show');
+	};
 
 	self.checkOverlaps =function (widgets) {
 		let overlaps = [];
@@ -9897,7 +9916,7 @@ var dashboardViewModel = function (options) {
 				chartData: report.ChartData() || '',
 				columnDetails: report.getColumnDetails(),
 				includeSubTotal: report.IncludeSubTotal(),
-				includeColumnTotal: self.IncludeColumnTotal(),
+				includeColumnTotal: report.IncludeColumnTotal(),
 				pivot: report.ReportType() == 'Pivot',
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
