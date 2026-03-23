@@ -1085,6 +1085,7 @@ var reportViewModel = function (options) {
 	self.cardView = ko.observable(false);
 	self.dontGroupCustom = ko.observable(false);
 	self.customJoins = ko.observableArray([]);
+	self.selectedReport = self;
 	self.detectedJoins = ko.observableArray([]);
 	self.baseTableIdOverride = ko.observable(null);
 	self.joinBaseTables = ko.observableArray([]);
@@ -8897,10 +8898,10 @@ var dashboardViewModel = function (options) {
 		dontWordExport: false,
 		usePromptBuilder: true,
 		showPageSize: false,
-		showImportExport: false,
 		canCopyReport: true,
 		useFunctions: false,
-		showScheduling: false
+		showImportExport: ko.observable(false),
+		showScheduling: ko.observable(false)
 	};
 
 	self.loadAppSettings = function () {
@@ -8929,10 +8930,10 @@ var dashboardViewModel = function (options) {
 			self.appSettings.dontWordExport = x.dontWordExport;
 			self.appSettings.usePromptBuilder = x.usePromptBuilder;
 			self.appSettings.showPageSize = x.showPageSize;
-			self.appSettings.showImportExport = x.showImportExport;
 			self.appSettings.canCopyReport = x.canCopyReport;
 			self.appSettings.useFunctions = x.useFunctions;
-			self.appSettings.showScheduling = x.showScheduling;
+			self.appSettings.showImportExport(x.showImportExport);
+			self.appSettings.showScheduling(x.showScheduling);
 		});
 	}
 

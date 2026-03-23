@@ -3592,7 +3592,7 @@
 </script>
 
 <!-- Configure Joins Modal -->
-            <div class="modal" id="weightedmodal-configure-joins" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal" id="weightedmodal-configure-joins" tabindex="-1" role="dialog" aria-hidden="true" data-bind="with: selectedReport">
     <div class="modal-dialog modal-lg ">
         <div class="modal-content">
             <div class="modal-header">
@@ -3637,7 +3637,7 @@
                         </div>
                         <div class="col-2"><code data-bind="text: fieldName"></code></div>
                         <div class="col-1 text-center">
-                            <button class="btn btn-sm btn-outline-primary" title="Swap Table ↔ Joined Table" data-bind="click: $root.swapJoinDirection">
+                            <button class="btn btn-sm btn-outline-primary" title="Swap Table ↔ Joined Table" data-bind="click: $parent.swapJoinDirection">
                                 <i class="fa fa-exchange"></i>
                             </button>
                         </div>
