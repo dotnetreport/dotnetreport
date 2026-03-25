@@ -222,11 +222,11 @@
                             <span>Export</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfReportsWithPageOption() : ExportAllPdfReports('',''); }, hidden: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
-                            <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfAltReportsWithPageOption() : ExportAllPdfAltReports('',''); }, visible: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
-                            <li><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelReports"><i class="fa fa-file-excel-o"></i> Excel</a></li>
-                            <li data-bind="visible: canDrilldown"><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelExpandedReports"><i class="fa fa-file-excel-o"></i> Excel (Expanded)</a></li>
-                            <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllWordReportsWithPageOption() : ExportAllWordReports('','');}"><i class="fa fa-file-word-o"></i> Word</a></li>
+                            <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfReportsWithPageOption() : ExportAllPdfReports('',''); }, hidden: appSettings.useAltPdf"><i class="fa fa-file-pdf"></i> Pdf</a></li>
+                            <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfAltReportsWithPageOption() : ExportAllPdfAltReports('',''); }, visible: appSettings.useAltPdf"><i class="fa fa-file-pdf"></i> Pdf</a></li>
+                            <li><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelReports"><i class="fa fa-file-excel"></i> Excel</a></li>
+                            <li data-bind="visible: canDrilldown"><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelExpandedReports"><i class="fa fa-file-excel"></i> Excel (Expanded)</a></li>
+                            <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllWordReportsWithPageOption() : ExportAllWordReports('','');}"><i class="fa fa-file-word"></i> Word</a></li>
                             <li><a class="dropdown-item" href="#" data-bind="click: PrintDashboard"><i class="fa fa-print"></i> Print</a></li>
                         </ul>
                     </div>
@@ -416,22 +416,22 @@
                             <ul class="dropdown-menu small">
                                 <li>
                                     <a href="#" class="dropdown-item" data-bind="click: downloadExcel">
-                                        <span class="fa fa-file-excel-o"></span> Excel
+                                        <span class="fa fa-file-excel"></span> Excel
                                     </a>
                                 </li>
                                 <li data-bind="visible: canDrilldown">
                                     <a href="#" class="dropdown-item" data-bind="click: downloadExcelWithDrilldown">
-                                        <span class="fa fa-file-excel-o"></span> Excel (Expanded)
+                                        <span class="fa fa-file-excel"></span> Excel (Expanded)
                                     </a>
                                 </li>
                                 <li>
                                     <a href="#" class="dropdown-item" data-bind="click: $parent.appSettings.showPageSize ? function() { loadPdfModel() } : function() { $parent.appSettings.useAltPdf ? downloadPdfAlt('','') : downloadPdf('','') }">
-                                        <span class="fa fa-file-pdf-o"></span> PDF
+                                        <span class="fa fa-file-pdf"></span> PDF
                                     </a>
                                 </li>
                                 <li>
                                     <a href="#" class="dropdown-item" data-bind="click: $parent.appSettings.showPageSize ? function() { loadWordModel()} : function() { downloadWord('',''); }">
-                                        <span class="fa fa-file-word-o"></span> Word
+                                        <span class="fa fa-file-word"></span> Word
                                     </a>
                                 </li>
                             </ul>
