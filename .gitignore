@@ -195,3 +195,4 @@ ModelManifest.xml
 /.vscode
 /src
 /*.tgz
+/electron-app

@@ -314,6 +314,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <a class="dropdown-item" href="#" data-bind="visible: hasDrilldown, click: function() {exportReport('excel-sub');}">
                                                                 <span class="fas fa-file-excel"></span> Download Excel (Expanded)
                                                             </a>
+                                                            <div class="dropdown-divider"></div>
+                                                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-schedule-report" data-bind="click: function() { $parent.openScheduleModal($data); }">
+                                                                <span class="fa fa-hourglass"></span> Schedule Report
+                                                            </a>
                                                         </div>
                                                     </div>
                                                     <button class="btn btn-sm btn-outline-secondary" data-bind="click: deleteReport, visible: canDelete">
@@ -345,6 +349,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             </a>
                                                             <a class="dropdown-item" href="#" data-bind="visible: hasDrilldown, click: function() {exportReport('excel-sub');}">
                                                                 <span class="fas fa-file-excel"></span> Download Excel with inner rows
+                                                            </a>
+                                                            <div class="dropdown-divider"></div>
+                                                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-schedule-report" data-bind="click: function() { $parent.openScheduleModal($data); }">
+                                                                <span class="fa fa-hourglass"></span> Schedule Report
                                                             </a>
                                                         </div>
                                                     </div>
@@ -522,7 +530,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                 <ul class="dropdown-menu">
                                                                     <li>
                                                                         <a class="dropdown-item" href="#" data-bind="click: function() {exportReport($root.appSettings.useAltPdf ? 'pdfalt' : 'pdf');}">
-                                                                            <span class="fa fa-file-pdf-o"></span> Download PDF
+                                                                            <span class="fa fa-file-pdf"></span> Download PDF
                                                                         </a>
                                                                     </li>
                                                                     <li>
@@ -536,6 +544,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                         </a>
                                                                     </li>
                                                                 </ul>
+                                                            </li>
+                                                            <li><hr class="dropdown-divider"></li>
+                                                            <li>
+                                                                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-schedule-report" data-bind="click: function() { $parent.openScheduleModal($data); }">
+                                                                    <span class="fa fa-hourglass"></span> Schedule Report
+                                                                </a>
                                                             </li>
                                                         </ul>
                                                     </div>
@@ -631,21 +645,21 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
                                               ? function() { PdfPage.isDebug = false; $('#pdfOptionsModal').modal('show'); }
                                               : function() { downloadPdf(false); }">
-                                            <i class="fa fa-file-pdf-o"></i> Pdf
+                                            <i class="fa fa-file-pdf"></i> Pdf
                                         </a>
                                     </li>
                                     <li data-bind="visible: adminMode() && !appSettings.useAltPdf()">
                                         <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
                                               ? function() { PdfPage.isDebug = true; $('#pdfOptionsModal').modal('show'); }
                                               : function() { downloadPdf(true); }">
-                                            <i class="fa fa-file-pdf-o"></i> Pdf (Debug)
+                                            <i class="fa fa-file-pdf"></i> Pdf (Debug)
                                         </a>
                                     </li>
                                     <li data-bind="visible: appSettings.useAltPdf">
                                         <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
                                               ? function() { $('#pdfOptionsModal').modal('show'); }
                                               : function() { downloadPdfAlt(); }">
-                                            <i class="fa fa-file-pdf-o"></i> Pdf
+                                            <i class="fa fa-file-pdf"></i> Pdf
                                         </a>
                                     </li>
                                     <li>
@@ -942,4 +956,26 @@ Its Recommended you use it as is, and only change styling as needed to match you
 <!-- This renders the template -->
 <div class="modal" id="wordOptionsScheduleModal" tabindex="-1" aria-labelledby="wordOptionsScheduleModalLabel" aria-hidden="true">
     <div data-bind="template: { name: 'word-options-schedule-template', data: $data }"></div>
+</div>
+
+<!-- Schedule Report Modal -->
+<div class="modal" id="modal-schedule-report" tabindex="-1" aria-labelledby="scheduleReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" data-bind="with: scheduleReportModal">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scheduleReportModalLabel">
+                    <i class="fa fa-hourglass me-2"></i> Schedule Report
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6 data-bind="text: reportName" class="mb-3"></h6>
+                <div data-bind="template: { name: 'report-schedule', data: $parent }"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" data-bind="click: saveSchedule">Save Schedule</button>
+            </div>
+        </div>
+    </div>
 </div>
