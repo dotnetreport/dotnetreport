@@ -213,6 +213,17 @@ function downloadJson(content, fileName, contentType) {
     window.URL.revokeObjectURL(url);
 }
    // knockout binding extenders
+ko.bindingHandlers.bsPopover = {
+    init: function (element, valueAccessor) {
+        var opts = valueAccessor() || {};
+        opts.sanitize = false;
+        var pop = new bootstrap.Popover(element, opts);
+        ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
+            pop.dispose();
+        });
+    }
+};
+
 ko.bindingHandlers.datepicker = {
     init: function (element, valueAccessor, allBindingsAccessor) {
         //initialize datepicker with some optional options
@@ -295,8 +306,21 @@ ko.bindingHandlers.checkedInArray = {
 ko.bindingHandlers.select2 = {
     after: ["options", "value"],
     init: function (el, valueAccessor, allBindingsAccessor, viewModel) {
-        $(el).select2(ko.unwrap(valueAccessor()));
+        var allBindings = allBindingsAccessor();
+        var s2opts = $.extend(
+            { width: '100%', dropdownParent: $(el).closest('.modal').length ? $(el).closest('.modal') : $(document.body) },
+            ko.unwrap(valueAccessor()) || {}
+        );
+        $(el).select2(s2opts);
+        // Sync user selection back to KO value observable (Select2 v4)
+        $(el).on('change.select2binding', function () {
+            if (allBindings.value && ko.isObservable(allBindings.value)) {
+                var raw = $(el).val();
+                allBindings.value(raw ? (isNaN(raw) ? raw : parseInt(raw, 10)) : null);
+            }
+        });
         ko.utils.domNodeDisposal.addDisposeCallback(el, function () {
+            $(el).off('change.select2binding');
             if (el && $(el).length && $(el).data('select2')) {
                 $(el).select2('destroy');
             }
@@ -304,22 +328,10 @@ ko.bindingHandlers.select2 = {
     },
     update: function (el, valueAccessor, allBindingsAccessor, viewModel) {
         var allBindings = allBindingsAccessor();
-        var select2 = $(el).data("select2");
-        if (!select2) return;
+        if (!$(el).data('select2')) return;
         if ("value" in allBindings) {
-            var newValue = "" + ko.unwrap(allBindings.value);
-            if ((allBindings.select2.multiple || el.multiple) && newValue.constructor !== Array) {
-                select2.val([newValue.split(",")]);
-            }
-            else {
-                select2.val([newValue]);
-            }
-        }
-        if ("selectedOptions" in allBindings && select2.val().length == 0) {
-            var newValue = ko.unwrap(allBindings.selectedOptions);
-            if ((allBindings.select2.multiple || el.multiple) && newValue && newValue.constructor == Array) {
-                select2.val([newValue]);
-            }
+            var newValue = ko.unwrap(allBindings.value);
+            $(el).val(newValue != null ? newValue : null).trigger('change.select2');
         }
     }
 };

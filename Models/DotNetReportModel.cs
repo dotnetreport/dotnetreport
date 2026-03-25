@@ -438,6 +438,7 @@ namespace ReportBuilder.Web.Models
         public string headerBackColor { get; set; }
         public string fontColor { get; set; }
         public string backColor { get; set; }
+        public string fieldWidth { get; set; }
     }
     public class LinkFieldItem
     {
@@ -1003,7 +1004,30 @@ namespace ReportBuilder.Web.Models
                 counter++;
             }
 
+            ApplyColumnWidths(ws, colstart, dt.Columns.Count, columns);
+        }
+
+        private static void ApplyColumnWidths(ExcelWorksheet ws, int colstart, int columnCount, List<ReportHeaderColumn> columns)
+        {
+            if (ws.Dimension == null) return;
+
             ws.Cells[ws.Dimension.Address].AutoFitColumns();
+
+            if (columns == null || !columns.Any()) return;
+
+            for (int i = 0; i < columnCount && i < columns.Count; i++)
+            {
+                var col = columns[i];
+                if (string.IsNullOrEmpty(col?.fieldWidth)) continue;
+
+                var width = col.fieldWidth.Trim().ToLower();
+                double pxValue;
+
+                if (width.EndsWith("px") && double.TryParse(width.Replace("px", ""), out pxValue) && pxValue > 0)
+                {
+                    ws.Column(colstart + i).Width = pxValue / 7;
+                }
+            }
         }
 
         public static DataTable Transpose(DataTable dt)
@@ -1466,10 +1490,18 @@ namespace ReportBuilder.Web.Models
                     {
                         try
                         {
+                            var rawValue = row[col] != null && row[col] != DBNull.Value ? row[col] : null;
+                            // Use ISO 8601 for dates so JavaScript can parse unambiguously regardless of server culture
+                            string valueStr;
+                            if (rawValue is DateTime dtVal)
+                                valueStr = dtVal.ToString("yyyy-MM-ddTHH:mm:ss");
+                            else
+                                valueStr = rawValue?.ToString();
+
                             var item = new DotNetReportDataRowItemModel
                             {
                                 Column = model.Columns[i],
-                                Value = sanitizer.Sanitize(row[col] != null ? row[col].ToString() : null),
+                                Value = sanitizer.Sanitize(valueStr),
                                 FormattedValue = sanitizer.Sanitize(GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable)),
                                 LabelValue = sanitizer.Sanitize(GetLabelValue(col, row))
                             };
@@ -2575,7 +2607,7 @@ namespace ReportBuilder.Web.Models
             if (includeGrandTotal && allRows.Any())
                 WriteSubTotalRow(allRows, true);
 
-            ws.Cells[ws.Dimension.Address].AutoFitColumns();
+            ApplyColumnWidths(ws, colstart, dt.Columns.Count, columns);
         }
 
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
