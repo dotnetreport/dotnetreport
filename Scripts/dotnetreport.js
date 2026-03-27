@@ -3734,6 +3734,7 @@ var reportViewModel = function (options) {
 
 	self.RemoveSeries = function (series) {
 		self.AdditionalSeries.remove(series);
+		self.reportChanged();
 	};
 
 	self.FindField = function (fieldId) {
@@ -4138,7 +4139,7 @@ var reportViewModel = function (options) {
 		var saveAlertFlag = false;
 		if (!importJson) {
 			self.TotalSeries(self.AdditionalSeries().length);
-			if (self.TotalSeries() > 0 && !saveOnly && self.ReportMode() != 'dashboard') self.ReportMode('start');
+			if (self.TotalSeries() > 0 && !saveOnly && self.ReportMode() != 'dashboard' && !self.activeDesign()) self.ReportMode('start');
 
 
 			if (self.ReportType() == 'Single') {
@@ -4252,7 +4253,6 @@ var reportViewModel = function (options) {
 						$("#sqlModal").modal('show');
 						return;
 					}
-					options.reportWizard.modal('hide');
 
 					if (saveOnly) {
 						return;
@@ -4261,7 +4261,14 @@ var reportViewModel = function (options) {
 					if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard" || previewOnly === true) {
 						self.setupSettingsDirtyCheck();
 						isExecuteReportQuery = true;
-						self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, self.ReportSeries);
+						var _reportSeries = self.AdditionalSeries().length > 0
+							? _.map(self.AdditionalSeries(), function (e) { return e.Value(); }).join(',')
+							: self.ReportSeries;
+						self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _reportSeries);
+					}
+
+					if (!self.activeDesign() && !isExecuteReportQuery) {
+						options.reportWizard.modal('hide');
 					}
 
 					if (isExecuteReportQuery === false) {
@@ -5743,8 +5750,8 @@ var reportViewModel = function (options) {
 				});
 			}
 		}
-		self.ReportResult().ReportData(null);
-		self.ReportResult().SubTotals([]);
+			self.ReportResult().ReportData(null);
+			self.ReportResult().SubTotals([]);		
 		if (self.DontExecuteOnRun() && !self.executingReport) return;
 		
 		var pivotData = self.preparePivotData();
