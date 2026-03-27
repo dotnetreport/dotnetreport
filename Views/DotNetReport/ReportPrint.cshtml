@@ -505,7 +505,7 @@
 
         vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
             if (vm.useReportHeader()) {
-                vm.headerDesigner.init();
+                vm.headerDesigner.init(true);
             }
 
             if (vm.useStoredProc()) {
