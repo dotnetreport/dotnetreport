@@ -3836,9 +3836,9 @@ namespace ReportBuilder.Web.Models
                 await page.PdfAsync(pdfFile, pdfOptions);
                 return File.ReadAllBytes(pdfFile);
             }
-            catch
+            catch (Exception ex)
             {
-                throw;
+                throw ex;
             }
             finally
             {

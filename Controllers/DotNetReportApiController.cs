@@ -1339,7 +1339,7 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadAllPdf([FromForm] string reportdata)
+        public async Task<IActionResult> DownloadAllPdf([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports")
         {
             var pdfBytesList = new List<byte[]>();
             var settings = GetSettings();
@@ -1351,11 +1351,12 @@ namespace ReportBuilder.Web.Controllers
                 pdfBytesList.Add(pdf);
             }
             var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);
-            return File(combinedPdf, "application/pdf", "CombinedReports.pdf");
+            var fileName = string.IsNullOrWhiteSpace(dashboardName) ? "CombinedReports" : dashboardName;
+            return File(combinedPdf, "application/pdf", $"{fileName}.pdf");
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadAllPdfAlt([FromForm] string reportdata)
+        public async Task<IActionResult> DownloadAllPdfAlt([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports")
         {
             var pdfBytesList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
@@ -1372,11 +1373,12 @@ namespace ReportBuilder.Web.Controllers
                 pdfBytesList.Add(pdf);
             }
             var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);
-            return File(combinedPdf, "application/pdf", "CombinedReports.pdf");
+            var fileName = string.IsNullOrWhiteSpace(dashboardName) ? "CombinedReports" : dashboardName;
+            return File(combinedPdf, "application/pdf", $"{fileName}.pdf");
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadAllExcel([FromForm] string reportdata)
+        public async Task<IActionResult> DownloadAllExcel([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports")
         {
             var excelbyteList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
@@ -1394,13 +1396,14 @@ namespace ReportBuilder.Web.Controllers
             }
             // Combine all Excel files into one workbook
             var combinedExcel = DotNetReportHelper.GetCombineExcelFile(excelbyteList, reports.Select(r => r.reportName).ToList());
-            Response.Headers.Add("content-disposition", "attachment; filename=CombinedReports.xlsx");
+            var fileName = string.IsNullOrWhiteSpace(dashboardName) ? "CombinedReports" : dashboardName;
+            Response.Headers.Add("content-disposition", $"attachment; filename={fileName}.xlsx");
             Response.ContentType = "application/vnd.ms-excel";
-            return File(combinedExcel, "application/vnd.ms-excel", "CombinedReports.xlsx");
+            return File(combinedExcel, "application/vnd.ms-excel", $"{fileName}.xlsx");
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadAllWord([FromForm] string reportdata)
+        public async Task<IActionResult> DownloadAllWord([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports")
         {
             var wordbyteList = new List<byte[]>();
             var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
@@ -1416,9 +1419,10 @@ namespace ReportBuilder.Web.Controllers
                 wordbyteList.Add(wordreport);
             }
             var combinedWord = DotNetReportHelper.GetCombineWordFile(wordbyteList);
-            Response.Headers.Add("content-disposition", "attachment; filename=CombinedReports.docx");
+            var fileName = string.IsNullOrWhiteSpace(dashboardName) ? "CombinedReports" : dashboardName;
+            Response.Headers.Add("content-disposition", $"attachment; filename={fileName}.docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-            return File(combinedWord, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "CombinedReports.docx");
+            return File(combinedWord, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", $"{fileName}.docx");
         }
 
     }

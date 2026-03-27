@@ -9792,9 +9792,11 @@ var dashboardViewModel = function (options) {
 				includeColumnTotal: report.IncludeColumnTotal(),
 			});
 		});
+		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
 		reports[0]?.downloadExport("DownloadAllPdf", {
-			reportdata: JSON.stringify(allreports)
-		}, 'pdf','CombinedReport');
+			reportdata: JSON.stringify(allreports),
+			dashboardName: dashboardName
+		}, 'pdf', dashboardName);
 	}
 	self.ExportAllPdfAltReportsWithPageOption = function () {
 		if (self.dashboard.PdfPage) {
@@ -9830,9 +9832,11 @@ var dashboardViewModel = function (options) {
 				pageOrientation: pageOrientation
 			});
 		});
+		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
 		reports[0]?.downloadExport("DownloadAllPdfAlt", {
-			reportdata: JSON.stringify(allreports)
-		}, 'pdf', 'CombinedReport');
+			reportdata: JSON.stringify(allreports),
+			dashboardName: dashboardName
+		}, 'pdf', dashboardName);
 	}
 	self.ExportAllExcelReports = function () {
 		const reports = self.reports();
@@ -9855,9 +9859,11 @@ var dashboardViewModel = function (options) {
 				pivotFunction: pivotData.pivotFunction,
 			});
 		});
+		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
 		reports[0]?.downloadExport("DownloadAllExcel", {
-			reportdata: JSON.stringify(allreports)
-		}, 'xlsx', 'CombinedReport');
+			reportdata: JSON.stringify(allreports),
+			dashboardName: dashboardName
+		}, 'xlsx', dashboardName);
 	}
 	self.ExportAllExcelExpandedReports = function () {
 		const reports = self.reports();
@@ -9884,9 +9890,11 @@ var dashboardViewModel = function (options) {
 				onlyAndGroupInColumnDetail: hasOnlyAndGroupInDetail ? JSON.stringify(onlyAndGroupInDetailColumnDetails) : null,
 			});
 		});
+		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
 		reports[0]?.downloadExport("DownloadAllExcel", {
-			reportdata: JSON.stringify(allreports)
-		}, 'xlsx', 'CombinedReport');
+			reportdata: JSON.stringify(allreports),
+			dashboardName: dashboardName
+		}, 'xlsx', dashboardName);
 	}
 	self.canDrilldown = ko.computed(function () {
 		return _.find(self.reports(), function (x) { return x.canDrilldown() == true }) != null;
@@ -9924,9 +9932,11 @@ var dashboardViewModel = function (options) {
 				pageOrientation: pageOrientation
 			});
 		});
+		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
 		reports[0]?.downloadExport("DownloadAllWord", {
-			reportdata: JSON.stringify(allreports)
-		}, 'docx', 'CombinedReport');
+			reportdata: JSON.stringify(allreports),
+			dashboardName: dashboardName
+		}, 'docx', dashboardName);
 	}
 
 	self.RunReport = function () {
