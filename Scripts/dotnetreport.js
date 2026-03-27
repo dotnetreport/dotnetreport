@@ -4138,7 +4138,7 @@ var reportViewModel = function (options) {
 		var saveAlertFlag = false;
 		if (!importJson) {
 			self.TotalSeries(self.AdditionalSeries().length);
-			if (self.TotalSeries() > 0 && !saveOnly) self.ReportMode('start');
+			if (self.TotalSeries() > 0 && !saveOnly && self.ReportMode() != 'dashboard') self.ReportMode('start');
 
 
 			if (self.ReportType() == 'Single') {
@@ -4192,76 +4192,79 @@ var reportViewModel = function (options) {
 				var seriesCount = self.AdditionalSeries().length;
 				self.allSqlQueries('');
 				var promises = [];
+				var orderedSqls = [];
 				do {
 					if (i > 0) {
 						isComparison = true;
 					}
 
-					promises.push(ajaxcall({
-						url: options.runReportApiUrl,
-						type: "POST",
-						data: JSON.stringify({
-							method: "/ReportApi/RunReport",
-							SaveReport: _saveReport && i === 0,
-							ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
-							adminMode: self.adminMode(),
-							userIdForFilter: self.userIdForFilter,
-							SubTotalMode: false,
-							useAltPivot: self.appSettings.useAltPivot
-						}),
-						noBlocking: dashboardRun === true || self.activeDesign()
-					}).done(function (result) {
-						if (result.d) { result = result.d; }
-						if (result.result) { result = result.result; }
-						_result = result;
-						if (_saveReport) self.isDirty(false);
-						self.allSqlQueries(self.allSqlQueries() + (self.allSqlQueries() ? ',' : '') + result.sql);
-						if (options.dashboardId && !self.ReportID() && result.reportId) {
-							ajaxcall({
-								url: options.apiUrl,
-								data: {
-									method: "/ReportApi/AddReportToDashboard",
-									model: JSON.stringify({
-										dashboardId: options.dashboardId,
-										reportId: result.reportId
-									})
-								},
-								noBlocking: true
-							});
-						}
-						self.ReportID(result.reportId);
-
-						if (previewOnly !== true && (self.SaveReport() || saveOnly)) {
-							if (saveOnly && !saveAlertFlag) {
-								saveAlertFlag = true;
-								toastr.success(importJson ? ((importJson.ReportName ?? 'Report') + ' Imported') : ((self.ReportName() ?? 'Report') + ' Saved'));
-								self.allSqlQueries("");
-								self.LoadAllSavedReports(true);
+					(function (idx) {
+						promises.push(ajaxcall({
+							url: options.runReportApiUrl,
+							type: "POST",
+							data: JSON.stringify({
+								method: "/ReportApi/RunReport",
+								SaveReport: _saveReport && idx === 0,
+								ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, idx - 1)),
+								adminMode: self.adminMode(),
+								userIdForFilter: self.userIdForFilter,
+								SubTotalMode: false,
+								useAltPivot: self.appSettings.useAltPivot
+							}),
+							noBlocking: dashboardRun === true || self.activeDesign()
+						}).done(function (result) {
+							if (result.d) { result = result.d; }
+							if (result.result) { result = result.result; }
+							_result = result;
+							if (_saveReport) self.isDirty(false);
+							orderedSqls[idx] = result.sql;
+							if (options.dashboardId && !self.ReportID() && result.reportId) {
+								ajaxcall({
+									url: options.apiUrl,
+									data: {
+										method: "/ReportApi/AddReportToDashboard",
+										model: JSON.stringify({
+											dashboardId: options.dashboardId,
+											reportId: result.reportId
+										})
+									},
+									noBlocking: true
+								});
 							}
-						}
+							self.ReportID(result.reportId);
 
-						if (!saveOnly) {
-							if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard" || previewOnly === true) {
-								self.setupSettingsDirtyCheck();
-								isExecuteReportQuery = true;
-								self.ExecuteReportQuery(result.sql, result.connectKey, self.ReportSeries, previewOnly);
+							if (previewOnly !== true && (self.SaveReport() || saveOnly)) {
+								if (saveOnly && !saveAlertFlag) {
+									saveAlertFlag = true;
+									toastr.success(importJson ? ((importJson.ReportName ?? 'Report') + ' Imported') : ((self.ReportName() ?? 'Report') + ' Saved'));
+									self.allSqlQueries("");
+									self.LoadAllSavedReports(true);
+								}
 							}
-						}
-					}));
+						}));
+					})(i);
 					i++;
 				}
 				while (i < seriesCount + 1);
 				return $.when.apply($, promises).done(function () {
+					self.allSqlQueries(orderedSqls.join(','));
 					if (previewOnly === true) {
 						$("#sqlModal").modal('show');
 						return;
 					}
 					options.reportWizard.modal('hide');
 
+					if (saveOnly) {
+						return;
+					}
+
+					if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard" || previewOnly === true) {
+						self.setupSettingsDirtyCheck();
+						isExecuteReportQuery = true;
+						self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, self.ReportSeries);
+					}
+
 					if (isExecuteReportQuery === false) {
-						if (saveOnly) {
-							return;
-						}
 						if (self.ReportMode().indexOf('export-') == 0) {
 
 							self.ReportID(_result.reportId);
@@ -7484,6 +7487,17 @@ var reportViewModel = function (options) {
 					self.executingReport = false;
 					e.runMode = true;
 					e.openReport();
+				};
+				e.editReportAi = function () {
+					if (!e.canEdit) {
+						toastr.error('No access to edit report');
+						return;
+					}
+					self.isDirty(false);
+					self.LoadReport(e.reportId).done(function () {
+						self.SaveReport(true);
+						self.editReportAi();
+					});
 				};
 				e.loadReportColumns = function () {
 					return ajaxcall({

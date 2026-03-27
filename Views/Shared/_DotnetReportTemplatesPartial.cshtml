@@ -2498,9 +2498,14 @@
                 data-bind="click: toggleAiChat, visible: appSettings.usePromptBuilder">
             <i class="fa fa-comment fa-lg"></i>
           </button>
-          <button type="button" class="btn btn-sm btn-light" data-bind="visible: ReportID(), click: function() {activeDesign(false); if (isExpanded) isExpanded(false);}" title="Close">
-            <i class="fa fa-times"></i> Close Designer
-          </button>
+          <div>
+              <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bind="visible: ReportID(), click: function() { RunReport(false, true, ReportMode()=='dashboard'); }" title="Re-run Report">
+                  <i class="fa fa-play"></i>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-bind="visible: ReportID(), click: function() {activeDesign(false); if (isExpanded) isExpanded(false);}" title="Close Designer">
+                  <i class="fa fa-times"></i>
+              </button>
+          </div>
           <button type="button" class="btn btn-sm btn-danger" data-bind="visible: !ReportID(), click: function() { if (ReportMode()=='dashboard') $parent.removeNewReport(); else cancelCreateReport(); }" title="Cancel new report">
             <i class="fa fa-times"></i> Cancel
           </button>

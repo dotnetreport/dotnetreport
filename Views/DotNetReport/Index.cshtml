@@ -290,9 +290,26 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <div class="d-none d-md-block">
                                                     <br />
                                                     <span data-bind="if: $root.CanSaveReports() || $root.adminMode() ">
-                                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: openReport, visible: canEdit" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
-                                                            <span class="fa fa-edit" aria-hidden="true"></span> Edit
-                                                        </button>
+                                                        <div class="btn-group" data-bind="visible: canEdit">
+                                                            <button class="btn btn-sm btn-outline-secondary" data-bind="click: openReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                                <span class="fa fa-edit" aria-hidden="true"></span> Edit
+                                                            </button>
+                                                            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" style="margin-left: -4px;">
+                                                                <span class="sr-only"></span>
+                                                            </button>
+                                                            <ul class="dropdown-menu">
+                                                                <li>
+                                                                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder" data-bind="click: openReport">
+                                                                        <i class="fa fa-sliders"></i> Edit Standard
+                                                                    </a>
+                                                                </li>
+                                                                <li>
+                                                                    <a class="dropdown-item" href="#" data-bind="click: editReportAi">
+                                                                        <i class="fa fa-bolt"></i> Edit Smarter
+                                                                    </a>
+                                                                </li>
+                                                            </ul>
+                                                        </div>
                                                         <button class="btn btn-sm btn-outline-secondary" data-bind="click: copyReport, visible:canEdit || $parent.appSettings.canCopyReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                                             <span class="fa fa-copy" aria-hidden="true"></span> Copy
                                                         </button>
@@ -328,9 +345,14 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
                                                 <div class="d-block d-md-none">
                                                     <span data-bind="if: $root.CanSaveReports() || $root.adminMode()">
-                                                        <button class="btn btn-sm btn-outline-secondary" title="Edit Report" data-bind="click: openReport, visible: canEdit" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
-                                                            <span class="fa fa-edit" aria-hidden="true"></span>
-                                                        </button>
+                                                        <div class="btn-group" data-bind="visible: canEdit">
+                                                            <button class="btn btn-sm btn-outline-secondary" title="Edit Standard" data-bind="click: openReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                                <span class="fa fa-edit" aria-hidden="true"></span>
+                                                            </button>
+                                                            <button class="btn btn-sm btn-outline-secondary" title="Edit Smarter" data-bind="click: editReportAi" style="margin-left: -4px;">
+                                                                <span class="fa fa-bolt" aria-hidden="true"></span>
+                                                            </button>
+                                                        </div>
                                                         <button class="btn btn-sm btn-light" data-bind="click: copyReport, visible:canEdit || $parent.appSettings.canCopyReport" title="Copy Report" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                                             <span class="fa fa-copy" aria-hidden="true"></span>
                                                         </button>
@@ -504,10 +526,22 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <span class="fa fa-ellipsis-h"></span>
                                                         </button>
                                                         <ul class="dropdown-menu">
-                                                            <li>
-                                                                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder" data-bind="click: openReport, visible: canEdit">
+                                                            <li class="dropdown-submenu" data-bind="visible: canEdit">
+                                                                <a class="dropdown-item dropdown-toggle" href="#">
                                                                     <span class="fa fa-edit"></span> Edit
                                                                 </a>
+                                                                <ul class="dropdown-menu">
+                                                                    <li>
+                                                                        <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder" data-bind="click: openReport">
+                                                                            <span class="fa fa-sliders"></span> Standard
+                                                                        </a>
+                                                                    </li>
+                                                                    <li>
+                                                                        <a class="dropdown-item" href="#" data-bind="click: editReportAi">
+                                                                            <span class="fa fa-bolt"></span> Smarter
+                                                                        </a>
+                                                                    </li>
+                                                                </ul>
                                                             </li>
                                                             <li>
                                                                 <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder" data-bind="click: copyReport, visible:canEdit || $parent.appSettings.canCopyReport">
