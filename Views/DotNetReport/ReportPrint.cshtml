@@ -217,12 +217,13 @@
                     <span data-bind="html: formattedVal"></span>
 
                     <!-- ko if: $parent.Rows.length > 1 && $parents[$parents.length-2].showPriorInKpi() -->
-                    <span data-bind="style: {'color': $parent.calculateRate() > 0 ? 'green' : 'red', 'font-size': '24px'}">
-                        <span data-bind="html: $parent.calculateRate() + '%'"></span>
-                    </span>
+                    <div data-bind="style: {'font-size': '20px'}" class="text-muted">
+                        <span data-bind="text: $parent.comparisonLabel"></span>: <span data-bind="html: $parent.formatKpiValue($parent.Rows[1].Items[0].Value, $parent.Rows[1].Items[0].formattedVal)"></span>
+                        <span data-bind="style: {'color': $parent.calculateRate() > 0 ? 'green' : 'red', 'font-size': '20px'}">
+                            <i data-bind="css: $parent.calculateRate() > 0 ? 'fa fa-arrow-up' : 'fa fa-arrow-down'"></i>
+                            <span data-bind="html: Math.abs($parent.calculateRate()) + '%'"></span>
+                        </span>
 
-                    <div data-bind="style: {'font-size': '24px', 'color': 'gray'}, css: {'text-muted': true}">
-                        Prior Period: <span data-bind="html: $parent.Rows[1].Items[0].formattedVal"></span>
                     </div>
                     <!-- /ko -->
 

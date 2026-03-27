@@ -4202,7 +4202,7 @@ var reportViewModel = function (options) {
 						type: "POST",
 						data: JSON.stringify({
 							method: "/ReportApi/RunReport",
-							SaveReport: _saveReport,
+							SaveReport: _saveReport && i === 0,
 							ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, i - 1)),
 							adminMode: self.adminMode(),
 							userIdForFilter: self.userIdForFilter,
@@ -5064,6 +5064,7 @@ var reportViewModel = function (options) {
 		var validFieldNames = _.map(result.ReportData.Columns, 'SqlField');
 		result.ReportData.IsDrillDown = ko.observable(false);
 		result.ReportData.CanExpandOption = ko.computed(function () { return self.ShowExpandOption(); });
+		result.ReportData.comparisonLabel = self.AdditionalSeries().length > 0 ? self.AdditionalSeries()[0].Value() : 'Prior Period';
 		result.ReportData.calculateRate = function () {
 			if (result.ReportData.Rows.length <= 1) return null;
 			var currentValue = parseFloat(result.ReportData.Rows[0].Items[0].Value) || 0;
