@@ -2651,9 +2651,10 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 
 		if (!selected.length) return toastr.warning('No tables to export.');
 
-		const msg = (filtered.length < all.length
-			? `Only filtered tables (${filtered.length} of ${all.length}) will be exported.`
-			: `All ${all.length} tables will be exported.`);
+		const msg = filtered.length < all.length
+			? `Exporting ${selected.length} selected tables (filtered: ${filtered.length} of ${all.length} total).`
+			: `Exporting ${selected.length} selected of ${all.length} total tables.`;
+
 
 		bootbox.confirm({
 			title: "Confirm Export Tables",
