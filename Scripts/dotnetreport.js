@@ -521,18 +521,10 @@ function DesignerViewModel() {
 	self.exclusivePanels = ['sortPanel', 'customFieldPanel', 'customFunctionPanel', 'jsonFieldsPanel', 'settingsPanel', 'accessPanel', 'htmlPanel', 'subReportsPanel', 'htmlReportPanel', 'schedulePanel'];
 
 	self.togglePanel = function (panelId) {
-		if (panelId === 'dataPanel' || panelId === 'selectedPanel') {
-			if (self.activePanel() === panelId) {
-				self.activePanel('');
-			} else {
-				self.activePanel(panelId);
-			}
+		if (self.activePanel() === panelId) {
+			self.activePanel('');
 		} else {
-			if (self.activePanel() === panelId) {
-				self.activePanel('');
-			} else {
-				self.activePanel(panelId);
-			}
+			self.activePanel(panelId);
 		}
 	};
 
@@ -541,9 +533,7 @@ function DesignerViewModel() {
 	}
 
 	self.isCollapsed = function (panelId) {
-		if (panelId === 'dataPanel' || panelId === 'selectedPanel') {
-			return false; 
-		}
+		
 		return self.activePanel() !== panelId;
 	};
 }
@@ -3141,7 +3131,7 @@ var reportViewModel = function (options) {
 				if (target) {
 					target.scrollIntoView({ behavior: 'smooth', block: 'start' });
 				}
-			}, 300); // delay ensures DOM is updated
+			}, 300);
 		}
 	}
 
@@ -3279,7 +3269,7 @@ var reportViewModel = function (options) {
 		self.currentFormulaField(null);
 	};
 
-	self.isFormulaField.subscribe(function () {
+	self.isFormulaField.subscribe(function (val) {
 		self.clearFormulaField();
 	});
 	self.cancelFormulaField = function () {
@@ -3295,7 +3285,7 @@ var reportViewModel = function (options) {
 				if (target) {
 					target.scrollIntoView({ behavior: 'smooth', block: 'start' });
 				}
-			}, 300); // delay ensures DOM is updated
+			}, 300);
 		}
 	};
 	self.removeField = function (field) {

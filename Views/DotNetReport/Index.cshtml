@@ -735,11 +735,25 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 </nav>
             </div>
             <div class="card-body">
-                <div data-bind="if: activeDesign()">
-                    <div data-bind="template: 'report-designer-compact', data: $root"></div>
-                </div>
+                <div data-bind="css: {'d-flex': activeDesign()}">
+                    <div data-bind="if: activeDesign()" class="compact-designer-sidebar">
+                        <div data-bind="template: 'report-designer-compact', data: $root"></div>
+                    </div>
 
-                <div data-bind="with: ReportResult" class="report-view">
+                <div data-bind="with: ReportResult, css: {'flex-grow-1 min-width-0': $root.activeDesign()}" class="report-view">
+                    <div data-bind="visible: $root.activeDesign()" class="live-preview-label"> Live Preview</div>
+                    <div data-bind="visible: $root.activeDesign() && $root.isFormulaField()">
+                        <div class="card mb-2 custom-field-design">
+                            <div class="card-header py-1"><i class="fa fa-magic"></i> Custom Field</div>
+                            <div class="card-body" data-bind="template: { name: 'custom-field-designer', data: $root }"></div>
+                        </div>
+                    </div>
+                    <div data-bind="visible: $root.activeDesign() && $root.isFunctionField()">
+                        <div class="card mb-2 custom-field-design">
+                            <div class="card-header py-1"><i class="fa fa-magic"></i> Function Field</div>
+                            <div class="card-body" data-bind="template: { name: 'custom-function-designer', data: $root }"></div>
+                        </div>
+                    </div>
                     <div data-bind="ifnot: HasError">
                         <div data-bind="with: $root">
                             <div>
@@ -886,6 +900,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <hr />
                     </div>
                 </div>
+                </div><!-- /flex wrapper -->
             </div>
         </div>
     </div>

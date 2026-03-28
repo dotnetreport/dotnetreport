@@ -1671,8 +1671,14 @@
             </label>
         </div>
         <div class="pull-right">
-            <a href="#" class="btn btn-secondary btn-sm" title="Add Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: cancelFormulaField, text: isFormulaField()? 'Cancel': 'Custom Field', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
-            <a href="#" class="btn btn-secondary btn-sm" title="Add Custom Field using Function" data-bind="hidden:isFormulaField() || useStoredProc() || !ko.unwrap(appSettings.useFunctions) || ReportType() !== 'List' , click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
+            <a href="#" class="btn btn-sm" title="Add Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: cancelFormulaField, css: {'btn-primary': !isFormulaField(), 'btn-danger btn-sm': isFormulaField}">
+                <!-- ko ifnot: isFormulaField() -->Custom Field<!-- /ko -->
+                <!-- ko if: isFormulaField() --><i class="fa fa-times"></i><!-- /ko -->
+            </a>
+            <a href="#" class="btn btn-sm" title="Add Custom Field using Function" data-bind="hidden:isFormulaField() || useStoredProc() || !ko.unwrap(appSettings.useFunctions) || ReportType() !== 'List' , click: function(){designFunctionField()}, css: {'btn-primary': !isFunctionField(), 'btn-danger btn-sm': isFunctionField}">
+                <!-- ko ifnot: isFunctionField() -->Function Field<!-- /ko -->
+                <!-- ko if: isFunctionField() --><i class="fa fa-times"></i><!-- /ko -->
+            </a>
         </div>
     </div>
     <div class="clearfix"></div>
@@ -2499,16 +2505,18 @@
             <i class="fa fa-comment fa-lg"></i>
           </button>
           <div>
-              <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bind="visible: ReportID(), click: function() { RunReport(false, true, ReportMode()=='dashboard'); }" title="Re-run Report">
+              <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bind="click: function() { RunReport(false, true, ReportMode()=='dashboard'); }" title="Re-run Report">
                   <i class="fa fa-play"></i>
               </button>
+              <!-- Close for existing reports -->
               <button type="button" class="btn btn-sm btn-outline-secondary" data-bind="visible: ReportID(), click: function() {activeDesign(false); if (isExpanded) isExpanded(false);}" title="Close Designer">
                   <i class="fa fa-times"></i>
               </button>
+              <!-- Cancel for new reports -->
+              <button type="button" class="btn btn-sm btn-danger" data-bind="visible: !ReportID(), click: function() { if (ReportMode()=='dashboard') $parent.removeNewReport(); else cancelCreateReport(); }" title="Cancel new report">
+                  <i class="fa fa-times"></i>
+              </button>
           </div>
-          <button type="button" class="btn btn-sm btn-danger" data-bind="visible: !ReportID(), click: function() { if (ReportMode()=='dashboard') $parent.removeNewReport(); else cancelCreateReport(); }" title="Cancel new report">
-            <i class="fa fa-times"></i> Cancel
-          </button>
         </div>
         <div class="card-body p-1" style="overflow-x: auto;">
           <div data-bind="template: 'designer-choose-visual'"></div>
@@ -2568,25 +2576,6 @@
 
         <div class="card flex-fill expandable-panel" id="jsonFieldsPanel" data-bind="visible: lastPickedField() && lastPickedField().fieldType == 'Json'">
             <div class="card-body" data-bind="template: 'json-field-picker'"></div>
-        </div>
-
-        <!-- Custom Field -->
-        <div class="card flex-fill expandable-panel" id="customFieldPanel" data-bind="visible: isFormulaField">
-            <div class="card-header p-1">
-            <i class="fa fa-magic"></i> Custom Field
-            </div>
-            <div class="card-body p-1 custom-field-design" style="max-height: 400px; overflow-y: auto; overflow-x: hidden;">
-                <div data-bind="template: 'custom-field-designer', data: $data"></div>
-            </div>
-        </div>
-
-        <div class="card flex-fill expandable-panel" id="customFunctionPanel" data-bind="visible: isFunctionField">
-            <div class="card-header p-1">
-            <i class="fa fa-magic"></i> Function Field
-            </div>
-            <div class="card-body p-1 custom-field-design" style="max-height: 400px; overflow-y: auto; overflow-x: hidden;" data-bind="if: isFunctionField">
-                <div data-bind="template: 'custom-function-designer', data: $data"></div>
-            </div>
         </div>
 
         <!-- Field Options Panel -->
@@ -2683,6 +2672,7 @@
         </div>
 
       </div>
+
     </div>
     <hr />
     <!-- AI Assistant Popup -->
