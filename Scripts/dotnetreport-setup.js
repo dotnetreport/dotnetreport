@@ -2698,23 +2698,19 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 		self.tableFilter('');
 	}
 
-	self.selectAll = function () {
+	self.selectAll = function (customOnly) {
 		_.forEach(self.model(), function (e) {
-			if (!e.Selected()) {
+			if (customOnly ? e.CustomTable() === true : e.CustomTable() === false) {
 				e.Selected(true);
-				_.forEach(e.Columns(), function (c) {
-					c.Selected(true);
-				});
 			}
 		});
 	}
 
-	self.unselectAll = function () {
+	self.unselectAll = function (customOnly) {
 		_.forEach(self.model(), function (e) {
-			e.Selected(false);
-			_.forEach(e.Columns(), function (c) {
-				c.Selected(false);
-			});
+			if (customOnly ? e.CustomTable() === true : e.CustomTable() === false) {
+				e.Selected(false);
+			}
 		});
 	}	
 
