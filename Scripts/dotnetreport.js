@@ -1088,6 +1088,7 @@ var reportViewModel = function (options) {
 	$(document).on('hidden.bs.modal', '.modal', function (e) {
 		if (options.reportWizard && options.reportWizard.is(e.target)) {
 			self.isModalOpen(false);
+			self.activeDesign(false);
 		}
 	});
 
@@ -1108,12 +1109,17 @@ var reportViewModel = function (options) {
 	})
 
 	self.activeDesignRunning = false;
+	self._reportChangedTimer = null;
 	self.reportChanged = function () {
 		self.isDirty(true);
 		if (self.activeDesign()) {
 			if (self.activeDesignRunning || self.executingReport) return;
-			self.activeDesignRunning = true;
-			self.RunReport(false, true);
+			if (self._reportChangedTimer) clearTimeout(self._reportChangedTimer);
+			self._reportChangedTimer = setTimeout(function () {
+				if (self.activeDesignRunning || self.executingReport) return;
+				self.activeDesignRunning = true;
+				self.RunReport(false, true);
+			}, 500);
 		}
 	}
 	self.sortFolders = function () {
@@ -2088,6 +2094,8 @@ var reportViewModel = function (options) {
 
 	self.onModalCloseClicked = function () {
 		if (options.reportWizard == null) return;
+		var wasActiveDesign = self.activeDesign();
+		self.activeDesign(false);
 		if (self.ReportMode() != 'dashboard' && self.ReportMode() != 'execute' && self.ReportMode() != 'design') {
 			if (self.isDirty()) {
 				bootbox.confirm("You have unsaved changes. Do you want to discard them?", function (result) {
@@ -2099,6 +2107,7 @@ var reportViewModel = function (options) {
 						self.ReportMode("start");
 						self.clearReport();
 					} else {
+						self.activeDesign(wasActiveDesign);
 						options.reportWizard.modal('show');
 					}
 				});
@@ -4290,7 +4299,7 @@ var reportViewModel = function (options) {
 						if (!self.activeDesign()) {
 							self.LoadAllSavedReports(true);
 						}
-						if (options.samePageOnRun || dashboardRun) {
+						if (options.samePageOnRun || dashboardRun || self.activeDesign()) {
 							self.ReportID(_result.reportId);
 							self.setupSettingsDirtyCheck();
 							self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _.map(self.AdditionalSeries(), function (e, i) {
@@ -5475,8 +5484,8 @@ var reportViewModel = function (options) {
 			});
 		}
 
-		function renderPivotHeaders(columns, tableId) {
-			let thead = document.getElementById('report-table-head' + tableId);
+		function renderPivotHeaders(columns, tableId, theadElement) {
+			let thead = theadElement || document.getElementById('report-table-head' + tableId);
 			if (!thead) return;
 
 			columns.forEach(c => {
@@ -5533,8 +5542,16 @@ var reportViewModel = function (options) {
 		}
 
 		function renderTable(data, colspan) {
-			const tableBody = document.getElementById('report-table-body' + self.ReportID());
-			const tableHead = document.getElementById('report-table-head' + self.ReportID());
+			var tableBody, tableHead;
+			if (self.activeDesign()) {
+				var modal = document.querySelector('.modal.show .live-preview-area');
+				if (modal) {
+					tableBody = modal.querySelector('[id="report-table-body' + self.ReportID() + '"]');
+					tableHead = modal.querySelector('[id="report-table-head' + self.ReportID() + '"]');
+				}
+			}
+			if (!tableBody) tableBody = document.getElementById('report-table-body' + self.ReportID());
+			if (!tableHead) tableHead = document.getElementById('report-table-head' + self.ReportID());
 
 			if (tableHead && data.length > 0 && self.hasPivotColumn()) {
 				const columns = data[0].Items.map(x => {
@@ -5547,7 +5564,7 @@ var reportViewModel = function (options) {
 					};
 				});
 
-				renderPivotHeaders(columns, self.ReportID());
+				renderPivotHeaders(columns, self.ReportID(), tableHead);
 			}
 
 			if (tableBody) {
@@ -5629,7 +5646,13 @@ var reportViewModel = function (options) {
 
 		if (self.isChart()) {
 			google.charts.load('current', { packages: ['corechart', 'geochart','treemap'] });
-			google.charts.setOnLoadCallback(self.DrawChart);
+			if (self.activeDesign()) {
+				google.charts.setOnLoadCallback(function () {
+					setTimeout(self.DrawChart, 500);
+				});
+			} else {
+				google.charts.setOnLoadCallback(self.DrawChart);
+			}
 		}
 
 		
@@ -6342,7 +6365,18 @@ var reportViewModel = function (options) {
 		// Create the data table.
 		var reportData = self.ReportResult().ReportData();
 		if (!reportData || !google.visualization || !google.visualization.DataTable || !google.visualization.LineChart || !google.visualization.BarChart || !google.visualization.ColumnChart || !google.visualization.PieChart) return;
-		var chartDiv = document.getElementById('chart_div_' + self.ReportID());
+		var chartDivId = 'chart_div_' + self.ReportID();
+		var chartDiv = null;
+		if (self.activeDesign()) {
+			// In live preview mode, find the chart div inside the modal to avoid duplicate ID conflicts
+			var modal = document.querySelector('.modal.show .live-preview-area, .modal.show .report-expanded-scroll');
+			if (modal) {
+				chartDiv = modal.querySelector('[id="' + chartDivId + '"]');
+			}
+		}
+		if (!chartDiv) {
+			chartDiv = document.getElementById(chartDivId);
+		}
 		if (!chartDiv || !reportData) return;
 
 		if (self.ReportType() === "HeatMap") {
@@ -6693,17 +6727,20 @@ var reportViewModel = function (options) {
 		}
 
 		var chartWidth; var chartHeight;
+		var edgeThreshold = 20; // pixels from edge to show resize cursor
+		var isNearEdge = false;
 		function handlePointerDown(event) {
 			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
+			if (!isNearEdge) return; // Only allow resize drag from edges
 			event.preventDefault(); // Prevent default browser behavior
 			document.addEventListener('pointermove', handlePointerMove);
 			document.addEventListener('pointerup', handlePointerUp);
 		}
 		function handlePointerMove(event) {
 			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
-			event.preventDefault(); 
-			chartWidth = event.clientX - document.getElementById('chart_div_' + self.ReportID()).getBoundingClientRect().left;
-			chartHeight = event.clientY - document.getElementById('chart_div_' + self.ReportID()).getBoundingClientRect().top;
+			event.preventDefault();
+			chartWidth = event.clientX - chartDiv.getBoundingClientRect().left;
+			chartHeight = event.clientY - chartDiv.getBoundingClientRect().top;
 			chartWidth = Math.max(100, chartWidth); // Ensure a minimum width
 			chartHeight = Math.max(100, chartHeight); // Ensure a minimum height
 			chartOptions.width = chartWidth;
@@ -6733,7 +6770,7 @@ var reportViewModel = function (options) {
 		}
 		function retrieveDimensions() {
 			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID());
-			var chartElement = document.getElementById('chart_div_' + self.ReportID());
+			var chartElement = chartDiv;
 			var containerWidth = chartElement.parentElement.clientWidth;
 			var parentElementHeight = chartElement.parentElement.parentElement.parentElement.offsetHeight;
 
@@ -6766,6 +6803,15 @@ var reportViewModel = function (options) {
 		
 		// Call retrieveDimensions to load saved dimensions when the chart is initialized
 		if (self.ReportMode() != 'print') retrieveDimensions();
+
+		// In live preview mode, override dimensions to fit the preview container
+		if (self.activeDesign()) {
+			chartOptions.width = '100%';
+			chartOptions.height = '350px';
+			chartDiv.style.width = '100%';
+			chartDiv.style.maxWidth = '100%';
+			chartDiv.style.minHeight = '300px';
+		}
 		chartOptions.hAxis = { titleTextStyle: { color: self.chartOptions().fontColor }, textStyle: { color: self.chartOptions().fontColor } }; chartOptions.vAxis = { titleTextStyle: { color: self.chartOptions().fontColor }, textStyle: { color: self.chartOptions().fontColor } };
 		if (!chartOptions.showGridlines) { chartOptions.hAxis.gridlines = { color: 'none' }; chartOptions.vAxis.gridlines = { color: 'none' }; }
 		if (!chartOptions.showXAxisLabel) { chartOptions.hAxis.textPosition = 'none'; }
@@ -6834,22 +6880,41 @@ var reportViewModel = function (options) {
 		chart.draw(data, chartOptions);
 
 		// Add event listener for pointer down on the chart container
-		var parentDiv = document.getElementById('chart_div_' + self.ReportID());
+		var parentDiv = chartDiv;
 		var chartContainer = (parentDiv && parentDiv.children[0]) ? parentDiv.children[0].children[0] : null; 
 		if (chartContainer) {
 			chartContainer.addEventListener('pointerdown', handlePointerDown);
 
 			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
 
-			chartContainer.addEventListener('pointerenter', function () {
-				chartContainer.style.cursor = 'nwse-resize';
-				chartContainer.style.border = '1px dashed black';
-				chartContainer.style.boxSizing = 'content-box';
+			chartContainer.addEventListener('pointermove', function (e) {
+				var rect = chartContainer.getBoundingClientRect();
+				var nearRight = (rect.right - e.clientX) <= edgeThreshold;
+				var nearBottom = (rect.bottom - e.clientY) <= edgeThreshold;
+				isNearEdge = nearRight || nearBottom;
+				if (nearRight && nearBottom) {
+					chartContainer.style.cursor = 'nwse-resize';
+				} else if (nearRight) {
+					chartContainer.style.cursor = 'ew-resize';
+				} else if (nearBottom) {
+					chartContainer.style.cursor = 'ns-resize';
+				} else {
+					chartContainer.style.cursor = 'default';
+				}
+				// Show border hint only when near edge
+				if (isNearEdge) {
+					chartContainer.style.border = '1px dashed #aaa';
+					chartContainer.style.boxSizing = 'content-box';
+				} else {
+					chartContainer.style.border = 'none';
+					chartContainer.style.boxSizing = 'border-box';
+				}
 			});
 			chartContainer.addEventListener('pointerleave', function () {
 				chartContainer.style.cursor = 'default';
 				chartContainer.style.border = 'none';
 				chartContainer.style.boxSizing = 'border-box';
+				isNearEdge = false;
 			});
 		}
 	};
@@ -7745,17 +7810,18 @@ var reportViewModel = function (options) {
 		if (options.reportWizard == null) return;
 		var containerSelector; var isValid = true; var firstInvalid = null
 
-		if (self.activeDesign()) {
-			containerSelector = $(".compact-designer"); // design mode
-		} else {
-			containerSelector = options.reportWizard; // modal wizard
-		}
+		containerSelector = options.reportWizard; // modal wizard
 
 		var curInputs = containerSelector.find(validateCustomOnly === true ? ".custom-field-design input, .custom-field-design select" : "input, select")
 
 		if (!self.isModalOpen() && !self.activeDesign()) {
 			curInputs = $("#filter-panel-" + self.ReportID()).find("input, select");
 		}
+
+		// Only validate visible inputs — hidden panels (e.g. standard designer when live preview is active) should be skipped
+		curInputs = curInputs.filter(function () {
+			return $(this).is(':visible');
+		});
 
 		if (self.activeDesign() && !validateCustomOnly) {
 			curInputs = curInputs.filter(function () {
@@ -7824,14 +7890,22 @@ var reportViewModel = function (options) {
 		// Scroll to first invalid input if any
 		if (!isValid && firstInvalid) {
 			if (self.activeDesign && self.activeDesign()) {
-				const panel = firstInvalid.closest(".expandable-panel");
-				if (panel) panel.classList.remove("collapsed-vertical");				
+				// Expand the collapsed designer panel containing the invalid input
+				var designerPanel = $(firstInvalid).closest('.designer-panel');
+				if (designerPanel.length) {
+					var cardBody = designerPanel.find('.card-body');
+					if (cardBody.is(':hidden')) {
+						// Find the panel ID from the card-header's click binding and toggle it
+						var header = designerPanel.find('.card-header');
+						if (header.length) header.click();
+					}
+				}
 			}
 
 			setTimeout(function () {
 				firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
 				firstInvalid.focus();
-			}, 100);
+			}, 200);
 		}
 
 		return isValid;
@@ -9390,11 +9464,18 @@ var dashboardViewModel = function (options) {
 				report.Folders(self.folders);
 				report.SavedReports(self.savedReports || []);
 				report.allFolders = self.folders;
-				report.SaveReport(false);
+				report.SaveReport(true);
 				self.selectedReport(report);
 				if (options.reportWizard) options.reportWizard.data('report-id', report.ReportID());
 				report.activeDesign(true);
-				report.isExpanded(true);
+
+				setTimeout(function () {
+					var reportModel = new bootstrap.Modal(document.getElementById('modal-reportbuilder'));
+					reportModel.show();
+					if ($.unblockUI) {
+						$.unblockUI();
+					}
+				}, 500);
 			});
 		}
 
@@ -9440,7 +9521,7 @@ var dashboardViewModel = function (options) {
 		return report;
 	}
 
-	self.newReport = function (useSmarter) {
+	self.newReport = function () {
 		if (hasNewReportWidget()) {
 			toastr.error('You already have a new report in progress. Please save or remove it before adding another.');
 			return;
@@ -9450,17 +9531,11 @@ var dashboardViewModel = function (options) {
 		}, 0);
 		self.reports.push(report);
 		refreshGrid(self.reports(), false);
-		if (useSmarter === true) {
-			report.editReportAi();
-		}
-		else {
-			report.openReport();
-		}
+		report.openReport();
 	}
 
 	self.cancelNewReport = function (report) {
 		if (report && !report.ReportID()) {
-			report.activeDesign(false);
 			self.reports.remove(report);
 			removeNewReportWidget();
 			refreshGrid(self.reports(), false);

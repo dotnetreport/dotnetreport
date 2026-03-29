@@ -161,22 +161,10 @@
                             <span>Manage</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li class="dropdown dropdown-hover" data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
-                                <a href="#" class="dropdown-toggle dropdown-item" data-bs-toggle="dropdown" role="button" aria-expanded="false" data-bind="click: function() { newReport(true) }">
+                            <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
+                                <a href="#" class="dropdown-item" data-bind="click: function() { newReport() }">
                                     <span class="fa fa-plus"></span> Add New Report
                                 </a>
-                                <ul class="dropdown-menu">
-                                    <li>
-                                        <a class="dropdown-item" href="#" data-bind="click: function() { newReport(false) }">
-                                            <span class="fa fa-pencil"></span> Add using Standard Designer
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="#" data-bind="click: function() { newReport(true) }">
-                                            <span class="fa fa-bolt"></span> Add using Smarter Designer
-                                        </a>
-                                    </li>
-                                </ul>
                             </li>
                             <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
                                 <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
@@ -392,22 +380,10 @@
                                 <span class="fa fa-filter"></span> Filter
                             </a>
                         </li>
-                        <li class="dropdown dropdown-hover">
-                            <a href="#" class="dropdown-toggle dropdown-item" data-bs-toggle="dropdown" role="button" aria-expanded="false" data-bind="click: editReportAi">
+                        <li>
+                            <a href="#" class="dropdown-item" data-bind="click: openReport">
                                 <span class="fa fa-pencil"></span> Edit
                             </a>
-                            <ul class="dropdown-menu small">
-                                <li>
-                                    <a class="dropdown-item" href="#" data-bind="click: openReport">
-                                        <span class="fa fa-pencil"></span> Edit Standard
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="#" data-bind="click: editReportAi">
-                                        <span class="fa fa-bolt"></span> Edit Smarter
-                                    </a>
-                                </li>
-                            </ul>
                         </li>
                         <li class="dropdown dropdown-hover" data-bind="visible: ReportType()!='Single'">
                             <a href="#" class="dropdown-toggle dropdown-item">
@@ -484,32 +460,14 @@
                     </div>
                 </div>
             </div>
-            <div class="dashboard-widget-body" data-bind="css: {'d-flex': activeDesign()}">
-                <div data-bind="if: activeDesign()" class="compact-designer-sidebar">
-                    <div data-bind="template: 'report-designer-compact'"></div>
-                </div>
-                <div class="card-body list-overflow-auto" data-bind="css: {'flex-grow-1 min-width-0': activeDesign()}" style="padding-top: 0; margin-top: 0;">
-                    <div data-bind="visible: activeDesign()" class="live-preview-label">Live Preview</div>
-                    <div data-bind="visible: activeDesign() && isFormulaField()">
-                        <div class="card mb-2 custom-field-design">
-                            <div class="card-header py-1"><i class="fa fa-magic"></i> Custom Field</div>
-                            <div class="card-body" data-bind="template: { name: 'custom-field-designer', data: $data }"></div>
-                        </div>
+            <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
+                <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+                <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
+                <div data-bind="with: ReportResult" class="small">
+                    <div data-bind="visible: !ReportData()">
+                        <div class="report-spinner"></div>
                     </div>
-                    <div data-bind="visible: activeDesign() && isFunctionField()">
-                        <div class="card mb-2 custom-field-design">
-                            <div class="card-header py-1"><i class="fa fa-magic"></i> Function Field</div>
-                            <div class="card-body" data-bind="template: { name: 'custom-function-designer', data: $data }"></div>
-                        </div>
-                    </div>
-                    <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
-                    <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
-                    <div data-bind="with: ReportResult" class="small">
-                        <div data-bind="visible: !ReportData()">
-                            <div class="report-spinner"></div>
-                        </div>
-                        <div data-bind="template: 'report-template', data: $data"></div>
-                    </div>
+                    <div data-bind="template: 'report-template', data: $data"></div>
                 </div>
             </div>
             <div class="form-inline" data-bind="visible: !noDashboardBorders()">
