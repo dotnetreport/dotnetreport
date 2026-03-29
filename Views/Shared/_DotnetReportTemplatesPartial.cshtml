@@ -1671,11 +1671,11 @@
             </label>
         </div>
         <div class="pull-right">
-            <a href="#" class="btn btn-sm" title="Add Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: cancelFormulaField, css: {'btn-primary': !isFormulaField(), 'btn-danger btn-sm': isFormulaField}">
+            <a href="#" class="btn btn-sm" style="font-size: 11px; padding: 3px 8px;" title="Add Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: cancelFormulaField, css: {'btn-primary': !isFormulaField(), 'btn-danger btn-sm': isFormulaField}">
                 <!-- ko ifnot: isFormulaField() -->Custom Field<!-- /ko -->
                 <!-- ko if: isFormulaField() --><i class="fa fa-times"></i><!-- /ko -->
             </a>
-            <a href="#" class="btn btn-sm" title="Add Custom Field using Function" data-bind="hidden:isFormulaField() || useStoredProc() || !ko.unwrap(appSettings.useFunctions) || ReportType() !== 'List' , click: function(){designFunctionField()}, css: {'btn-primary': !isFunctionField(), 'btn-danger btn-sm': isFunctionField}">
+            <a href="#" class="btn btn-sm" style="font-size: 11px; padding: 3px 8px;" title="Add Custom Field using Function" data-bind="hidden:isFormulaField() || useStoredProc() || !ko.unwrap(appSettings.useFunctions) || ReportType() !== 'List' , click: function(){designFunctionField()}, css: {'btn-primary': !isFunctionField(), 'btn-danger btn-sm': isFunctionField}">
                 <!-- ko ifnot: isFunctionField() -->Function Field<!-- /ko -->
                 <!-- ko if: isFunctionField() --><i class="fa fa-times"></i><!-- /ko -->
             </a>
@@ -3063,7 +3063,7 @@
                         </div>
 
                         <!-- ==================== LIVE PREVIEW MODE (activeDesign ON) ==================== -->
-                        <div data-bind="visible: activeDesign()" class="live-preview-area d-flex flex-column" style="height: 100%; display: none;">
+                        <div data-bind="css: {'d-flex': activeDesign(), 'd-none': !activeDesign()}" class="live-preview-area flex-column" style="height: 100%;">
                             <!-- Custom Field (shown above preview when active) -->
                             <div data-bind="visible: isFormulaField()" class="mb-2">
                                 <div class="card custom-field-design">
@@ -3086,10 +3086,10 @@
                                     </span>
                                 </div>
                                 <div class="card-body flex-grow-1" style="overflow-y: auto; min-height: 0;">
-                                    <div data-bind="if: $root.CanEdit() && ReportType()!='Html' && ReportType()!='Single'">
+                                    <div data-bind="if: typeof CanEdit === 'function' && CanEdit() && ReportType()!='Html' && ReportType()!='Single'">
                                         <div data-bind="template: 'chart-settings', data: $data"></div>
                                     </div>
-                                    <div data-bind="if: $root.CanEdit() && ReportType()=='Single'">
+                                    <div data-bind="if: typeof CanEdit === 'function' && CanEdit() && ReportType()=='Single'">
                                         <div data-bind="template: 'kpi-settings', data: $data"></div>
                                     </div>
                                     <p data-bind="html: ReportDescription, visible: ReportDescription"></p>

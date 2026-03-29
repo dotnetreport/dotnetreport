@@ -4188,7 +4188,8 @@ var reportViewModel = function (options) {
 				var isComparison = false;
 				var isExecuteReportQuery = false;
 				var _result = null;
-				var _saveReport = self.CanSaveReports() && !isComparison && previewOnly !== true && (saveOnly || !self.activeDesign()) ? (saveOnly || self.SaveReport()) : false;
+				var isAutoRun = self.activeDesign() && skipValidation;
+				var _saveReport = self.CanSaveReports() && !isComparison && previewOnly !== true && (saveOnly || !isAutoRun) ? (saveOnly || self.SaveReport()) : false;
 				var seriesCount = self.AdditionalSeries().length;
 				self.allSqlQueries('');
 				var promises = [];
@@ -4266,8 +4267,12 @@ var reportViewModel = function (options) {
 						self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _reportSeries);
 					}
 
-					if (!self.activeDesign() && !isExecuteReportQuery) {
+					if (!isAutoRun) {
+						if (_saveReport) {
+							toastr.success((self.ReportName() || 'Report') + ' Saved');
+						}
 						options.reportWizard.modal('hide');
+						self.activeDesign(false);
 					}
 
 					if (isExecuteReportQuery === false) {

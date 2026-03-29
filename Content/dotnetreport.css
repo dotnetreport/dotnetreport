@@ -870,13 +870,12 @@ thead th {
 /* Default report table header styling */
 .report-view thead th,
 .report-inner thead th,
-.live-preview-area thead th {
+.live-preview-area thead th,
+.list-overflow-auto thead th {
     background-color: #f0f3f8;
     color: #344054;
-    font-weight: 600;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+    font-weight: bold;
+
     padding: 10px 12px;
     border-top: none;
     border-bottom: 2px solid #d0d5dd;
@@ -885,14 +884,16 @@ thead th {
 
 .report-view thead th a,
 .report-inner thead th a,
-.live-preview-area thead th a {
+.live-preview-area thead th a,
+.list-overflow-auto thead th a {
     color: #344054;
     text-decoration: none;
 }
 
 .report-view thead th a:hover,
 .report-inner thead th a:hover,
-.live-preview-area thead th a:hover {
+.live-preview-area thead th a:hover,
+.list-overflow-auto thead th a:hover {
     color: #1570ef;
 }
 
@@ -2206,17 +2207,18 @@ td[class^="pivot-group-"] {
     font-size: 12px;
 }
 
-.live-preview-designer .designer-panel .card-body * {
-    font-size: inherit;
-}
-
 .live-preview-designer .designer-panel .card-body select.form-select,
 .live-preview-designer .designer-panel .card-body input.form-control,
 .live-preview-designer .designer-panel .card-body textarea.form-control,
 .live-preview-designer .designer-panel .card-body .btn,
 .live-preview-designer .designer-panel .card-body label,
-.live-preview-designer .designer-panel .card-body .form-check-label {
-    font-size: 11px;
+.live-preview-designer .designer-panel .card-body .form-check-label,
+.live-preview-designer .designer-panel .card-body a,
+.live-preview-designer .designer-panel .card-body span,
+.live-preview-designer .designer-panel .card-body td,
+.live-preview-designer .designer-panel .card-body th,
+.live-preview-designer .designer-panel .card-body div {
+    font-size: 12px;
 }
 
 .live-preview-designer .designer-panel .card-body select.form-select,
