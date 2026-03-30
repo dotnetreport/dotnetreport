@@ -742,6 +742,20 @@
                     <i class="fa fa-user-circle"></i> You can manage Reports/Dashboards for all users
                 </div>
             </div>
+            <div data-bind="visible: adminMode">
+                <div class="alert alert-info d-inline-block" style="font-size: 10pt; padding: 5px; max-width: 350px; white-space: normal; margin-bottom: 0;" title="Logged in user">
+                    <i class="fa fa-id-badge"></i>
+                    <span data-bind="text: currentUserName || currentUserId || 'Unknown User'"></span>
+                    <!-- ko if: currentUserRole -->
+                    <span class="bubble-badge-separator">|</span>
+                    Roles: <span data-bind="text: currentUserRole"></span>
+                    <!-- /ko -->
+                    <!-- ko if: clientId -->
+                    <span class="bubble-badge-separator">|</span>
+                    Client: <span data-bind="text: clientId"></span>
+                    <!-- /ko -->
+                </div>
+            </div>
             <div class="d-flex align-items-center">
                 <div class="bubble-badge">
                     Admin Mode
