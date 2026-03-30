@@ -1050,6 +1050,7 @@ var reportViewModel = function (options) {
 	self.ShowExpandOption = ko.observable(false);
 	self.DontExecuteOnRun = ko.observable(false);
 	self.AggregateReport = ko.observable(false);
+	self.ShowFilterDetails = ko.observable(false);
 	self.SortByField = ko.observable();
 	self.SortDesc = ko.observable(false);
 	self.EditFiltersOnReport = ko.observable(false);
@@ -2125,6 +2126,134 @@ var reportViewModel = function (options) {
 		self.FlyFilters(flyfilters);
 	}
 
+	self.buildFilterDetailsText = function (filterGroups, isNested) {
+		if (!filterGroups || filterGroups.length === 0) return '';
+
+		var groupTexts = []; // each entry: { andOr: string, text: string }
+		_.forEach(filterGroups, function (group) {
+			var parts = []; // each entry: { andOr: string, text: string }
+			_.forEach(group.Filters(), function (f) {
+				if (!f.Field() || !f.Apply()) return;
+
+				var operator = f.Operator();
+				// Skip filters with no meaningful operator
+				if (!operator || operator === 'none' || operator === 'all') return;
+
+				var field = f.Field();
+				var fieldName = field.fieldLabel ? (ko.unwrap(field.fieldLabel) || field.fieldName) : field.fieldName;
+				var tableName = field.tableName || '';
+				var displayName = tableName ? (tableName + ' > ' + fieldName) : fieldName;
+				var value = '';
+
+				// Handle different operator types
+				if (['is blank', 'is not blank', 'is null', 'is not null'].indexOf(operator) !== -1) {
+					value = '';
+				} else if (operator === 'range') {
+					var rangeVal = f.Value() || '';
+					value = '"' + rangeVal + '"';
+					if ((rangeVal.indexOf('Today +') >= 0 || rangeVal.indexOf('Today -') >= 0) && f.Value2()) {
+						value += ' ' + f.Value2() + ' days';
+					}
+				} else if (operator === 'between') {
+					value = '"' + (f.Value() || '') + '" and "' + (f.Value2() || '') + '"';
+				} else if (operator === 'in' || operator === 'not in') {
+					// For foreign key / lookup fields, resolve IDs to display text
+					if (field.hasForeignKey && f.LookupList().length > 0) {
+						var selectedIds = f.ValueIn();
+						var lookupMap = {};
+						_.forEach(f.LookupList(), function (item) {
+							lookupMap[String(item.id)] = item.text;
+						});
+						var displayValues = _.map(selectedIds, function (id) {
+							return lookupMap[String(id)] || id;
+						});
+						value = '"' + displayValues.join('", "') + '"';
+					} else {
+						value = '"' + f.ValueIn().join('", "') + '"';
+					}
+				} else if (operator === '=') {
+					// For foreign key fields with lookup, resolve the ID to text
+					if (field.hasForeignKey && f.LookupList().length > 0) {
+						var match = _.find(f.LookupList(), function (item) { return String(item.id) === String(f.Value()); });
+						value = '"' + (match ? match.text : (f.Value() || '')) + '"';
+					} else {
+						value = '"' + (f.Value() || '') + '"';
+					}
+				} else {
+					value = '"' + (f.Value() || '') + '"';
+				}
+
+				// Build readable operator
+				var readableOp = operator;
+				switch (operator) {
+					case '=': readableOp = 'is'; break;
+					case 'not equal': readableOp = 'is not'; break;
+					case '>': readableOp = 'is greater than'; break;
+					case '<': readableOp = 'is less than'; break;
+					case '>=': readableOp = 'is greater than or equal to'; break;
+					case '<=': readableOp = 'is less than or equal to'; break;
+					case 'in': readableOp = 'is one of'; break;
+					case 'not in': readableOp = 'is not one of'; break;
+					case 'contains': readableOp = 'contains'; break;
+					case 'not contain': readableOp = 'does not contain'; break;
+					case 'starts with': readableOp = 'starts with'; break;
+					case 'ends with': readableOp = 'ends with'; break;
+					case 'is blank': readableOp = 'is blank'; break;
+					case 'is not blank': readableOp = 'is not blank'; break;
+					case 'is null': readableOp = 'is empty'; break;
+					case 'is not null': readableOp = 'is not empty'; break;
+					case 'between': readableOp = 'is between'; break;
+					case 'range': readableOp = 'range is'; break;
+				}
+
+				var filterText = '<strong>' + displayName + '</strong> ' + readableOp;
+				if (value) filterText += ' ' + value;
+				parts.push({ andOr: f.AndOr() || 'And', text: filterText });
+			});
+
+			// Process nested filter groups - each sub-group carries its own AndOr
+			_.forEach(group.FilterGroups(), function (subGroup) {
+				var subText = self.buildFilterDetailsText([subGroup], true);
+				if (subText) parts.push({ andOr: subGroup.AndOr() || 'And', text: subText });
+			});
+
+			if (parts.length > 0) {
+				var groupText = parts[0].text;
+				for (var p = 1; p < parts.length; p++) {
+					var logic = ' <span class="filter-detail-logic">' + parts[p].andOr.toUpperCase() + '</span> ';
+					groupText += logic + parts[p].text;
+				}
+				if (isNested) {
+					groupText = '( ' + groupText + ' )';
+				}
+				groupTexts.push({ andOr: group.AndOr() || 'And', text: groupText });
+			}
+		});
+
+		if (groupTexts.length === 0) return '';
+		var result = groupTexts[0].text;
+		for (var g = 1; g < groupTexts.length; g++) {
+			var logic = ' <span class="filter-detail-logic">' + groupTexts[g].andOr.toUpperCase() + '</span> ';
+			result += logic + groupTexts[g].text;
+		}
+		return result;
+	};
+
+	self.filterDetailsSummary = ko.computed(function () {
+		if (!self.ShowFilterDetails()) return '';
+		return self.buildFilterDetailsText(self.FilterGroups(), false);
+	});
+
+	self.buildFilterDetailsPlainText = function (filterGroups, isNested) {
+		// Plain text version for exports (no HTML tags)
+		var html = self.buildFilterDetailsText(filterGroups, isNested);
+		if (!html) return '';
+		// Strip HTML tags to get plain text
+		var temp = document.createElement('div');
+		temp.innerHTML = html;
+		return temp.textContent || temp.innerText || '';
+	};
+
 	self.enabledFields = ko.computed(function () {
 		return _.filter(self.SelectedFields(), function (x) { return !x.disabled(); });
 	});
@@ -2719,6 +2848,7 @@ var reportViewModel = function (options) {
 		self.ShowUniqueRecords(false);
 		self.ShowExpandOption(false);
 		self.DontExecuteOnRun(false);
+		self.ShowFilterDetails(false);
 		self.AggregateReport(false);
 		self.SortByField(null);
 		self.SortDesc(false);
@@ -3957,6 +4087,7 @@ var reportViewModel = function (options) {
 				includeColumnTotal: self.IncludeColumnTotal(),
 				totalRowFormat: self.totalRowFormat(),
 				subTotalPerGroup: self.subTotalPerGroup(),
+				ShowFilterDetails: self.ShowFilterDetails(),
 			}),
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
@@ -4267,7 +4398,7 @@ var reportViewModel = function (options) {
 						self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _reportSeries);
 					}
 
-					if (!isAutoRun) {
+					if (!isAutoRun && (!isExecuteReportQuery || self.activeDesign())) {
 						if (_saveReport) {
 							toastr.success((self.ReportName() || 'Report') + ' Saved');
 						}
@@ -7265,6 +7396,7 @@ var reportViewModel = function (options) {
 		self.selectedStyle(reportSettings.SelectedStyle || 'default');
 		self.ShowExpandOption(reportSettings.ShowExpandOption === true ? true : false);
 		self.DontExecuteOnRun(reportSettings.DontExecuteOnRun === true ? true : false);
+		self.ShowFilterDetails(reportSettings.ShowFilterDetails === true ? true : false);
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
 		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
 		self.pieChartDonut(reportSettings.pieChartDonut === true ? true : false);
@@ -8227,7 +8359,8 @@ var reportViewModel = function (options) {
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
 			pageSize: pageSize,
-			pageOrientation: pageOrientation
+			pageOrientation: pageOrientation,
+			filterDetailsText: self.ShowFilterDetails() ? self.buildFilterDetailsPlainText(self.FilterGroups(), false) : ''
 		};
 	}
 
@@ -8294,7 +8427,8 @@ var reportViewModel = function (options) {
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
 			onlyAndGroupInColumnDetail: hasOnlyAndGroupInDetail ? JSON.stringify(onlyAndGroupInDetailColumnDetails) : null,
-			isSubReport: false
+			isSubReport: false,
+			filterDetailsText: self.ShowFilterDetails() ? self.buildFilterDetailsPlainText(self.FilterGroups(), false) : ''
 		}, 'xlsx');
 	}
 

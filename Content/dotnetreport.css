@@ -748,6 +748,7 @@ select.is-invalid ~ span .select2-selection {
     overflow-y: hidden; 
     white-space: nowrap;
     max-width: 100%; 
+    background-color: #fff;
 }
 
 .report-view {
@@ -2393,5 +2394,10 @@ td[class^="pivot-group-"] {
     width: 100%;
     max-width: 100%;
     flex: none;
+}
+
+.filter-detail-logic {
+    font-weight: 600;
+    font-size: 0.8em;
 }
 

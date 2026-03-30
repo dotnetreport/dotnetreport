@@ -973,6 +973,16 @@
         </div>
     </div>
 </script>
+<script type="text/html" id="filter-details-summary">
+    <!-- ko if: typeof ShowFilterDetails === 'function' && ShowFilterDetails() && typeof filterDetailsSummary === 'function' && filterDetailsSummary() -->
+    <div class="mb-2 py-1 small" style="border-left: 3px solid #adb5bd; padding-left: 10px;">
+        <i class="fa fa-filter"></i>
+        <b>Filters:</b>
+        <span data-bind="html: filterDetailsSummary()"></span>
+    </div>
+    <!-- /ko -->
+</script>
+
 <script type="text/html" id="fly-filter-template">
     <div class="card" data-bind="visible: FlyFilters().length>0 || DontExecuteOnRun">
         <div class="card-header">
@@ -2142,6 +2152,12 @@
                 <label>
                     <input type="checkbox" data-bind="checked: DontExecuteOnRun" />
                     Wait to Select Filters before Running Report
+                </label>
+            </div>
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" data-bind="checked: ShowFilterDetails" />
+                    Include Filter Details on Report
                 </label>
             </div>
             <div class="form-group row">

@@ -462,6 +462,7 @@
             </div>
             <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+                <div data-bind="template: 'filter-details-summary'"></div>
                 <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
                 <div data-bind="with: ReportResult" class="small">
                     <div data-bind="visible: !ReportData()">
