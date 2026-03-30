@@ -1219,13 +1219,19 @@
                 </span>
             </div>
             <div class="mb-3">
-                <div class="row g-3">
-                    <label class="col-sm-3 col-form-label">Email to</label>
-                    <div class="col-sm-6">
-                        <input type="text" class="form-control" data-bind="value: emailTo" placeholder="Enter Email Addresses separated by comma to send the Report to" required />
+                <div class="row g-2 align-items-center">
+                    <label class="col-12 col-sm-3 col-form-label">Email to</label>
+
+                    <div class="col-12 col-sm-6">
+                        <input type="text" class="form-control"
+                               data-bind="value: emailTo"
+                               placeholder="Enter Email Addresses separated by comma"
+                               required />
                     </div>
-                    <label class="col-sm-1 col-form-label">Format</label>
-                    <div class="col-sm-2">
+
+                    <label class="col-6 col-sm-1 col-form-label">Format</label>
+
+                    <div class="col-6 col-sm-2">
                         <select class="form-select" data-bind="value: format,event: { change: onFormatChange }">
                             <option value="EXCEL">Excel</option>
                             <option data-bind="visible: $parent.canDrilldown && $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option>
@@ -1238,45 +1244,61 @@
                 </div>
             </div>
             <div class="mb-3">
-                <div class="row g-3">
-                    <label class="col-sm-3 col-form-label">Pick Time Zone</label>
-                    <div class="col-sm-9">
-                        <select class="form-select" data-bind="options: timezonOption,
-                                                            optionsText: 'displayName',
-                                                            optionsValue: 'timeZoneId',
-                                                            value: selectedTimezone,
-                                                            select2: {dropdownParent: $element.closest('.modal'), allowClear: true, placeholder: 'Set a time zone to send report'}">
+                <div class="row g-2 align-items-center">
+                    <label class="col-12 col-sm-3 col-form-label">Pick Time Zone</label>
+
+                    <div class="col-12 col-sm-9">
+                        <select class="form-select"
+                                data-bind="options: timezonOption,
+                                           optionsText: 'displayName',
+                                           optionsValue: 'timeZoneId',
+                                           value: selectedTimezone,
+                                           select2: {dropdownParent: $element.closest('.modal'), allowClear: true, placeholder: 'Set a time zone'}">
                         </select>
                     </div>
                 </div>
             </div>
+
             <div class="mb-3">
-                <div class="row g-3">
-                    <div class="col-sm-3">
+                <div class="row g-2">
+                    <div class="col-6 col-sm-3">
                         <div class="form-check" title="Set a date to start sending scheduled report">
-                            <input class="form-check-input" type="checkbox" data-bind="checked: hasScheduleStart" id="scheduleStartCheckbox">
+                            <input class="form-check-input" type="checkbox"
+                                   data-bind="checked: hasScheduleStart"
+                                   id="scheduleStartCheckbox">
                             <label class="form-check-label" for="scheduleStartCheckbox">
                                 Schedule Start Date
                             </label>
                         </div>
                     </div>
-                    <div class="col-sm-4" data-bind="if: hasScheduleStart">
-                        <input type="text" class="form-control" data-bind="datepicker: scheduleStart, datepickerOptions: {value: scheduleStart}" title="Scheduled Report will not be sent before this date" required />
+
+                    <div class="col-6 col-sm-4" data-bind="if: hasScheduleStart">
+                        <input type="date" class="form-control"
+                               data-bind="datepicker: scheduleStart, datepickerOptions: {value: scheduleStart}"
+                               title="Scheduled Report will not be sent before this date"
+                               required />
                     </div>
                 </div>
             </div>
+
             <div class="mb-3">
-                <div class="row g-3">
-                    <div class="col-sm-3">
-                        <div class="form-check" title="Set a date to stop sending scheduled report">
-                            <input class="form-check-input" type="checkbox" data-bind="checked: hasScheduleEnd" id="scheduleEndCheckbox">
+                <div class="row g-2">
+                    <div class="col-6 col-sm-3">
+                        <div class="form-check"  title="Set a date to stop sending scheduled report">
+                            <input class="form-check-input" type="checkbox"
+                                   data-bind="checked: hasScheduleEnd"
+                                   id="scheduleEndCheckbox">
                             <label class="form-check-label" for="scheduleEndCheckbox">
                                 Schedule End Date
                             </label>
                         </div>
                     </div>
-                    <div class="col-sm-4" data-bind="if: hasScheduleEnd">
-                        <input type="text" class="form-control" data-bind="datepicker: scheduleEnd, datepickerOptions: {value: scheduleEnd}" title="Scheduled Report will not be sent after this date" required />
+
+                    <div class="col-6 col-sm-4" data-bind="if: hasScheduleEnd">
+                        <input type="date" class="form-control"
+                               data-bind="datepicker: scheduleEnd, datepickerOptions: {value: scheduleEnd}"
+                               title="Scheduled Report will not be sent after this date"
+                               required />
                     </div>
                 </div>
             </div>
