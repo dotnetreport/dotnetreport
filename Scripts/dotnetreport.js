@@ -7957,17 +7957,27 @@ var reportViewModel = function (options) {
 			containerSelector = options.reportWizard; // modal wizard
 		}
 
-		var curInputs = containerSelector.find(validateCustomOnly === true ? ".custom-field-design input, .custom-field-design select" : "input, select")
+		var selector;
+		if (validateCustomOnly === true) {
+			selector = ".custom-field-design input, .custom-field-design select";
+		} else if (!self.activeDesign()) {
+			selector = "input:visible, select:visible";
+		} else {
+			selector = "input, select";
+		}
+
+		var curInputs = containerSelector.find(selector);
 
 		if (!self.isModalOpen() && !self.activeDesign()) {
 			curInputs = $("#filter-panel-" + self.ReportID()).find("input, select");
 		}
 
-
 		if (self.activeDesign() && !validateCustomOnly) {
-			curInputs = curInputs.filter(function () {
-				return !$(this).closest("#customFieldPanel").length;
-			});
+			curInputs = curInputs.add(
+				options.reportWizard.find("input, select").filter(function () {
+					return !$(this).closest("#customFieldSection").length;
+				})
+			);
 		}
 
 		$(".needs-validation").removeClass("was-validated");
