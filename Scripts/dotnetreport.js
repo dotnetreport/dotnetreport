@@ -7972,14 +7972,6 @@ var reportViewModel = function (options) {
 			curInputs = $("#filter-panel-" + self.ReportID()).find("input, select");
 		}
 
-		if (self.activeDesign() && !validateCustomOnly) {
-			curInputs = curInputs.add(
-				options.reportWizard.find("input, select").filter(function () {
-					return !$(this).closest("#customFieldSection").length;
-				})
-			);
-		}
-
 		$(".needs-validation").removeClass("was-validated");
 		for (var i = 0; i < curInputs.length; i++) {
 			$(curInputs[i]).removeClass("is-invalid");
