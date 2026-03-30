@@ -2472,7 +2472,19 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 				t.autoFormat();
 			}
 		});
-
+		t.autoSort = function (e) {
+			var sorted = t.Columns().slice().sort(function (a, b) {
+				var nameA = a.DisplayName().toLowerCase();
+				var nameB = b.DisplayName().toLowerCase();
+				if (nameA < nameB) return -1;
+				if (nameA > nameB) return 1;
+				return 0;
+			});
+			_.forEach(sorted, function (col, index) {
+				col.DisplayOrder(index + 1);
+			});
+			t.Columns(sorted);
+		};
 		t.autoFormat = function (e) {
 			_.forEach(t.Columns(), function (c) {
 				var displayName = c.DisplayName();
