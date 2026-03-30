@@ -1080,14 +1080,14 @@
                                 <span data-bind="visible: Field() && Field().forced" class="badge bg-info">Required Filter</span>
                             </div>
                             <div class="col-md-1">
-                                <div style="display: flex; align-items: center;">
-                                    <div class="form-group" style="flex-grow: 1;">
+                                <div style="display: flex; align-items: left;">
+                                    <div class="form-group" >
                                         <button class="btn btn-sm btn-secondary" data-bind="click: $parent.RemoveFilter, hidden: Field() && Field().forced" title="Remove">
                                             <i class="fa fa-trash"></i>
                                         </button>
                                     </div>
-                                    <div class="form-group" style="flex-grow: 1;" data-bind="with: Field, hidden: document.querySelector('#filter-panel.card-body.collapse')">
-                                        <span class="btn btn-sm" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {'btn-success': filterOnFly()==true, 'btn-secondary': filterOnFly()==false}">
+                                    <div class="form-group" data-bind="with: Field, hidden: document.querySelector('#filter-panel.card-body.collapse')">
+                                        <span class="btn btn-sm" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {'btn-success': filterOnFly()==true, 'btn-secondary': !filterOnFly()}">
                                             <span class="fa fa-filter" aria-hidden="true" title="Filter on Report"></span>
                                         </span>
                                     </div>
@@ -3138,7 +3138,7 @@
                 </button>
                 <a href="#" class="btn btn-danger" data-bind="click: cancelCreateReport">Cancel editing Report</a>
                 <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && CanSaveReports(), click: SaveWithoutRun" style="padding-right: 10px;">Save Report</button>
-                <button class="btn btn-primary" type="button" data-bind="text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report', click: RunReport">Run Report</button>
+                <button class="btn btn-primary" type="button" data-bind="text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report', click: SaveAndRunReport">Run Report</button>
             </div>
 
         </div>

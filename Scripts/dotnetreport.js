@@ -2192,8 +2192,8 @@ var reportViewModel = function (options) {
 					case '<': readableOp = 'is less than'; break;
 					case '>=': readableOp = 'is greater than or equal to'; break;
 					case '<=': readableOp = 'is less than or equal to'; break;
-					case 'in': readableOp = 'is one of'; break;
-					case 'not in': readableOp = 'is not one of'; break;
+					case 'in': readableOp = 'is in'; break;
+					case 'not in': readableOp = 'is not in'; break;
 					case 'contains': readableOp = 'contains'; break;
 					case 'not contain': readableOp = 'does not contain'; break;
 					case 'starts with': readableOp = 'starts with'; break;
@@ -3884,6 +3884,10 @@ var reportViewModel = function (options) {
 		self.RunReport(true);
 	};
 
+	self.SaveAndRunReport = function () {
+		self.RunReport(false,false,false);
+	};
+
 	self.RemoveInvalidFilters = function (filtergroup, parent) {
 		if (!parent) parent = self.FilterGroups()[0];
 		var emptyGroups = [];
@@ -4319,7 +4323,7 @@ var reportViewModel = function (options) {
 				var isComparison = false;
 				var isExecuteReportQuery = false;
 				var _result = null;
-				var isAutoRun = self.activeDesign() && skipValidation;
+				var isAutoRun = (self.activeDesign() && skipValidation) || dashboardRun;
 				var _saveReport = self.CanSaveReports() && !isComparison && previewOnly !== true && (saveOnly || !isAutoRun) ? (saveOnly || self.SaveReport()) : false;
 				var seriesCount = self.AdditionalSeries().length;
 				self.allSqlQueries('');
@@ -4398,7 +4402,7 @@ var reportViewModel = function (options) {
 						self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _reportSeries);
 					}
 
-					if (!isAutoRun && (!isExecuteReportQuery || self.activeDesign())) {
+					if (!isAutoRun) {
 						if (_saveReport) {
 							toastr.success((self.ReportName() || 'Report') + ' Saved');
 						}
@@ -7947,7 +7951,11 @@ var reportViewModel = function (options) {
 		if (options.reportWizard == null) return;
 		var containerSelector; var isValid = true; var firstInvalid = null
 
-		containerSelector = options.reportWizard; // modal wizard
+		if (self.activeDesign()) {
+			containerSelector = $(".live-preview-designer"); // design mode
+		} else {
+			containerSelector = options.reportWizard; // modal wizard
+		}
 
 		var curInputs = containerSelector.find(validateCustomOnly === true ? ".custom-field-design input, .custom-field-design select" : "input, select")
 
@@ -7955,10 +7963,6 @@ var reportViewModel = function (options) {
 			curInputs = $("#filter-panel-" + self.ReportID()).find("input, select");
 		}
 
-		// Only validate visible inputs — hidden panels (e.g. standard designer when live preview is active) should be skipped
-		curInputs = curInputs.filter(function () {
-			return $(this).is(':visible');
-		});
 
 		if (self.activeDesign() && !validateCustomOnly) {
 			curInputs = curInputs.filter(function () {

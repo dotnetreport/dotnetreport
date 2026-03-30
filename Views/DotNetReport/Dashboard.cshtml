@@ -160,9 +160,9 @@
                             <i class="fa fa-pencil-square"></i>
                             <span>Manage</span>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
+                        <ul class="dropdown-menu small">
                             <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
-                                <a href="#" class="dropdown-item" data-bind="click: function() { newReport() }">
+                                <a href="#" class="dropdown-item" data-bind="click: function() { newReport() }" title="Create a new report and add it to the Dashboard">
                                     <span class="fa fa-plus"></span> Add New Report
                                 </a>
                             </li>
@@ -175,7 +175,7 @@
                             <li>
                                 <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
                                     <i class="fa fa-dashboard"></i>
-                                    <span>Add a New Dashboard</span>
+                                    <span>Create a New Dashboard</span>
                                 </button>
                             </li>
                             <li data-bind="visible: hasDashboard()">
@@ -184,6 +184,7 @@
                                     <span>Refresh</span>
                                 </button>
                             </li>
+                            <li><hr class="dropdown-divider"></li>
                             <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
                                 <button class="dropdown-item" data-bind="click: addLineSeparator">
                                     <i class="fa fa-minus"></i>
@@ -209,7 +210,7 @@
                             <i class="fa fa-download"></i>
                             <span>Export</span>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
+                        <ul class="dropdown-menu small">
                             <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfReportsWithPageOption() : ExportAllPdfReports('',''); }, hidden: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
                             <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfAltReportsWithPageOption() : ExportAllPdfAltReports('',''); }, visible: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
                             <li><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelReports"><i class="fa fa-file-excel-o"></i> Excel</a></li>
