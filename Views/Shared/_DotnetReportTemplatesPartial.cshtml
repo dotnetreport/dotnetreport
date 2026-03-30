@@ -1409,19 +1409,25 @@
                         </div>
                     </div>
                     <div class="form-group row" data-bind="visible: $parents[1].IncludeSubTotal()">
-                        <div class="col-sm-12">
+                        <div class="col-sm-12 d-flex align-items-center">
                             <div class="checkbox">
                                 <label>
                                     <input type="checkbox" data-bind="checked: dontSubTotal" />
                                     <b>Don't Show In Total Row</b>
                                 </label>
                             </div>
+                            <button class="btn btn-sm btn-secondary ms-2" title="Apply to all columns" data-bind="click: function(){ applyAllDontSubTotal(!applyAllDontSubTotal()); }">
+                                <span class="fa" data-bind="css: applyAllDontSubTotal() ? 'fa-check' : 'fa-paste'"></span>
+                            </button>
                         </div>
                     </div>
                     <div class="form-group row" data-bind="visible: $parents[1].IncludeSubTotal() && !dontSubTotal()">
                         <label class="col-sm-5 col-md-5 control-label">Total Row Aggregate</label>
-                        <div class="col-sm-7 col-md-7">
+                        <div class="col-sm-7 col-md-7 d-flex align-items-center">
                             <select class="form-select" data-bind="options: totalRowAggregateOptions, value: totalRowAggregate"></select>
+                            <button class="btn btn-sm btn-secondary ms-2" title="Apply to all columns" data-bind="click: function(){ applyAllTotalRowAggregate(!applyAllTotalRowAggregate()); }">
+                                <span class="fa" data-bind="css: applyAllTotalRowAggregate() ? 'fa-check' : 'fa-paste'"></span>
+                            </button>
                         </div>
                     </div>
                 </div>

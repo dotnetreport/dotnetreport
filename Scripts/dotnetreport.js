@@ -1612,7 +1612,7 @@ var reportViewModel = function (options) {
 	self.appSettings = {
 		useClientIdInAdmin: false,
 		useSqlBuilderInAdminMode: false,
-		useSqlCustomField: false,
+		useSqlCustomField: ko.observable(true),
 		noFolders: false,
 		noDefaultFolder: false,
 		showEmptyFolders: false,
@@ -7173,6 +7173,8 @@ var reportViewModel = function (options) {
 		e.applyAllBackColor = ko.observable(false);
 		e.applyAllBold = ko.observable(false);
 		e.applyAllHeaderBold = ko.observable(false);
+		e.applyAllDontSubTotal = ko.observable(false);
+		e.applyAllTotalRowAggregate = ko.observable(false);
 		e.addConditionalFormatSetting = function (f) {
 			f = f || {};
 			var filter = new filterGroupViewModel({ isRoot: true, parent: self, options: options });
@@ -7297,6 +7299,8 @@ var reportViewModel = function (options) {
 				if (e.applyAllBackColor()) f.backColor(e.backColor());
 				if (e.applyAllBold()) f.fontBold(e.fontBold());
 				if (e.applyAllHeaderBold()) f.headerFontBold(e.headerFontBold());
+				if (e.applyAllDontSubTotal()) f.dontSubTotal(e.dontSubTotal());
+				if (e.applyAllTotalRowAggregate()) f.totalRowAggregate(e.totalRowAggregate());
 			});
 
 			e.fieldConditionVal = [];
@@ -8196,7 +8200,7 @@ var reportViewModel = function (options) {
 			self.CanManageFolders(x.allowUsersToManageFolders !== false ? true : false);
 			self.appSettings.useClientIdInAdmin = x.useClientIdInAdmin;
 			self.appSettings.useSqlBuilderInAdminMode = x.useSqlBuilderInAdminMode;
-			self.appSettings.useSqlCustomField = x.useSqlCustomField;
+			self.appSettings.useSqlCustomField(x.useSqlCustomField);
 			self.appSettings.noFolders = x.noFolders;
 			self.appSettings.noDefaultFolder = x.noDefaultFolder;
 			self.appSettings.showEmptyFolders = x.showEmptyFolders;
