@@ -5,6 +5,10 @@
     .report-chart {
         min-height: auto !important;
     }
+    #dashboard-tabs .tab-hover-icon { visibility: hidden; width: 0; }
+    #dashboard-tabs > li:hover .tab-hover-icon { visibility: visible; width: auto; }
+    #dashboard-tabs .drop-highlight { border: 2px dashed #dee2e6; border-radius: .25rem .25rem 0 0; background: #f8f9fa; min-width: 80px; min-height: 36px; }
+
     .expanded {
         position: fixed !important;
         padding: 0 !important;
@@ -16,7 +20,6 @@
         z-index: 1050 !important;
     }
 </style>
-
 </asp:Content>
 <asp:Content ID="Content3" ContentPlaceHolderID="scripts" runat="server">
     <script src="../Scripts/gridstack/gridstack-all.js"></script>
@@ -41,7 +44,7 @@
                 }
 
                 _.forEach(dashboardData, function (d) {
-                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles, clientId: d.ClientId });
+                    dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles, clientId: d.ClientId, canManage: d.CanManage, displayOrder: d.DisplayOrder });
                 });
 
                 var dashboardId = parseInt(queryParams.id || 0);
@@ -140,109 +143,113 @@
 
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
-<div class="row" style="display: none" data-bind="visible: currentDashboard">
-    <div class="col-12 d-flex flex-wrap justify-content-between align-items-center">
-        <ul class="nav nav-tabs flex-grow-1" data-bind="foreach: dashboards">
-            <li class="nav-item">
-                <h2>
-                    <a class="nav-link" href="#" data-bind="text: name, click: function() { $parent.selectDashboard(id);}, css: { 'active': $parent.currentDashboard().id === id, 'selected-tab': $parent.currentDashboard().id === id }"></a>
-                </h2>
+<nav class="navbar navbar-expand-lg navbar-light bg-light" style="display:none; position:relative; z-index:1030;" data-bind="visible: currentDashboard">
+    <div class="container-fluid p-0">
+        <ul class="nav nav-tabs me-auto" id="dashboard-tabs" data-bind="sortable: { data: dashboards, options: { cursor: 'move', placeholder: 'drop-highlight', axis: 'x' }, strategyMove: true, afterMove: function(arg) { saveDashboardOrder(); } }">
+            <li class="nav-item nav-link d-flex align-items-center gap-1" style="cursor:pointer;" data-bind="attr: {'data-dashboard-id': id}, css: { 'active': $parent.currentDashboard().id === id }, click: function() { $parent.selectDashboard(id); }">                
+                <div class="dropdown tab-hover-icon" data-bind="visible: canManage || $parent.adminMode()">
+                    <button type="button" class="btn btn-link btn-sm p-0 text-muted" data-bs-toggle="dropdown" data-bind="click: function(){}, clickBubble: false"><span class="fa fa-ellipsis-v"></span></button>
+                    <ul class="dropdown-menu small">
+                        <li><a href="#" class="dropdown-item" data-bind="click: function(){ $parent.editDashboardTab($data); }"><span class="fa fa-pencil"></span> Edit</a></li>
+                        <li><a href="#" class="dropdown-item" data-bind="click: function(){ $parent.openDashboardScheduleModal(); }"><span class="fa fa-hourglass"></span> Schedule</a></li>
+                        <li><a href="#" class="dropdown-item" data-bind="click: function(){ $parent.RefreshAllReports(); }"><span class="fa fa-refresh"></span> Refresh</a></li>
+                    </ul>
+                </div>
+                <span data-bind="text: name"></span>
             </li>
         </ul>
-        <div class="d-flex flex-wrap align-items-end gap-2 mt-2 mt-md-0 border-bottom" style="padding-top: 21px;">
-            <div class="dropdown">
-                <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fa fa-pencil-square"></i>
-                    <span>Manage</span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li class="dropdown dropdown-hover" data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
-                        <a href="#" class="dropdown-toggle dropdown-item" data-bs-toggle="dropdown" role="button" aria-expanded="false" data-bind="click: function() { newReport(true) }">
-                            <span class="fa fa-plus"></span> Add New Report
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li>
-                                <a class="dropdown-item" href="#" data-bind="click: function() { newReport(false) }">
-                                    <span class="fa fa-pencil"></span> Add using Standard Designer
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardNavbar" aria-controls="dashboardNavbar" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="dashboardNavbar">
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                    <div class="dropdown">
+                        <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-pencil-square"></i>
+                            <span>Manage</span>
+                        </button>
+                        <ul class="dropdown-menu small">
+                            <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
+                                <a href="#" class="dropdown-item" data-bind="click: function() { newReport() }" title="Create a new report and add it to the Dashboard">
+                                    <span class="fa fa-plus"></span> Add New Report
                                 </a>
                             </li>
+                            <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
+                                <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
+                                    <i class="fa fa-pencil"></i>
+                                    <span>Edit Dashboard</span>
+                                </button>
+                            </li>
                             <li>
-                                <a class="dropdown-item" href="#" data-bind="click: function() { newReport(true) }">
-                                    <span class="fa fa-bolt"></span> Add using Smarter Designer
-                                </a>
+                                <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
+                                    <i class="fa fa-dashboard"></i>
+                                    <span>Create a New Dashboard</span>
+                                </button>
+                            </li>
+                            <li data-bind="visible: hasDashboard()">
+                                <button class="dropdown-item" data-bind="click: RefreshAllReports">
+                                    <i class="fa fa-refresh"></i>
+                                    <span>Refresh</span>
+                                </button>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
+                                <button class="dropdown-item" data-bind="click: addLineSeparator">
+                                    <i class="fa fa-minus"></i>
+                                    <span>Add Line Separator</span>
+                                </button>
+                            </li>
+                            <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
+                                <button class="dropdown-item" data-bind="click: openAddTextModal">
+                                    <i class="fa fa-font"></i>
+                                    <span>Add Text</span>
+                                </button>
+                            </li>
+                            <li data-bind="visible: hasDashboard()">
+                                <button class="dropdown-item" data-bind="click: openDashboardScheduleModal">
+                                    <i class="fa fa-hourglass"></i>
+                                    <span>Schedule</span>
+                                </button>
                             </li>
                         </ul>
-                    </li>
-                    <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
-                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
-                            <i class="fa fa-pencil"></i>
-                            <span>Edit Dashboard</span>
-                        </button>
-                    </li>
-                    <li>
-                        <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
-                            <i class="fa fa-dashboard"></i>
-                            <span>Add a New Dashboard</span>
-                        </button>
-                    </li>
-                    <li data-bind="visible: hasDashboard()">
-                        <button class="dropdown-item" data-bind="click: RefreshAllReports">
-                            <i class="fa fa-refresh"></i>
-                            <span>Refresh</span>
-                        </button>
-                    </li>
-                    <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
-                        <button class="dropdown-item" data-bind="click: addLineSeparator">
-                            <i class="fa fa-minus"></i>
-                            <span>Add Line Separator</span>
-                        </button>
-                    </li>
-                    <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
-                        <button class="dropdown-item" data-bind="click: openAddTextModal">
-                            <i class="fa fa-font"></i>
-                            <span>Add Text</span>
-                        </button>
-                    </li>
-                </ul>
-            </div>
-            <div class="dropdown">
-                <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fa fa-download"></i>
-                    <span>Export</span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfReportsWithPageOption() : ExportAllPdfReports('',''); }, hidden: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
-                    <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfAltReportsWithPageOption() : ExportAllPdfAltReports('',''); }, visible: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
-                    <li><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelReports"><i class="fa fa-file-excel-o"></i> Excel</a></li>
-                    <li data-bind="visible: canDrilldown"><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelExpandedReports"><i class="fa fa-file-excel-o"></i> Excel (Expanded)</a></li>
-                    <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllWordReportsWithPageOption() : ExportAllWordReports('','');}"><i class="fa fa-file-word-o"></i> Word</a></li>
-                    <li><a class="dropdown-item" href="#" data-bind="click: PrintDashboard"><i class="fa fa-print"></i> Print</a></li>
-                </ul>
-            </div>
-            <div data-bind="if: currentDashboard().canManage || adminMode()">
-                <div class="btn btn-light btn-sm d-flex align-items-center gap-2">
-                    <div class="form-check form-switch m-0">
-                        <input class="form-check-input" id="arrange-mode" type="checkbox" data-bind="checked: arrangeDashboard">
                     </div>
-                    <span>Arrange</span>
+                    <div class="dropdown" data-bind="visible: hasDashboard()">
+                        <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-download"></i>
+                            <span>Export</span>
+                        </button>
+                        <ul class="dropdown-menu small">
+                            <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfReportsWithPageOption() : ExportAllPdfReports('',''); }, hidden: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
+                            <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfAltReportsWithPageOption() : ExportAllPdfAltReports('',''); }, visible: appSettings.useAltPdf"><i class="fa fa-file-pdf-o"></i> Pdf</a></li>
+                            <li><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelReports"><i class="fa fa-file-excel-o"></i> Excel</a></li>
+                            <li data-bind="visible: canDrilldown"><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelExpandedReports"><i class="fa fa-file-excel-o"></i> Excel (Expanded)</a></li>
+                            <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllWordReportsWithPageOption() : ExportAllWordReports('','');}"><i class="fa fa-file-word-o"></i> Word</a></li>
+                            <li><a class="dropdown-item" href="#" data-bind="click: PrintDashboard"><i class="fa fa-print"></i> Print</a></li>
+                        </ul>
+                    </div>
+                    <div data-bind="if: hasDashboard() && (currentDashboard().canManage || adminMode())">
+                        <div class="btn btn-light btn-sm d-flex align-items-center gap-2">
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" id="arrange-mode" type="checkbox" data-bind="checked: arrangeDashboard">
+                            </div>
+                            <span>Arrange</span>
+                        </div>
+                    </div>
+                    <div class="btn-group btn-group-sm" role="group" data-bind="visible: hasDashboard()">
+                        <button class="btn btn-light" data-bind="click: zoomOutDashboard" data-bs-toggle="tooltip" title="Zoom Out">
+                            <i class="fa fa-search-minus"></i>
+                        </button>
+                        <button class="btn btn-light" data-bind="click: resetZoomDashboard" data-bs-toggle="tooltip" title="Reset Zoom">
+                            <i class="fa fa-compress"></i>
+                        </button>
+                        <button class="btn btn-light" data-bind="click: zoomInDashboard" data-bs-toggle="tooltip" title="Zoom In">
+                            <i class="fa fa-search-plus"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
-            <div class="btn-group btn-group-sm" role="group">
-                <button class="btn btn-light" data-bind="click: zoomOutDashboard" data-bs-toggle="tooltip" title="Zoom Out">
-                    <i class="fa fa-search-minus"></i>
-                </button>
-
-                <button class="btn btn-light" data-bind="click: resetZoomDashboard" data-bs-toggle="tooltip" title="Reset Zoom">
-                    <i class="fa fa-compress"></i>
-                </button>
-
-                <button class="btn btn-light" data-bind="click: zoomInDashboard" data-bs-toggle="tooltip" title="Zoom In">
-                    <i class="fa fa-search-plus"></i>
-                </button>
-            </div>
         </div>
-    </div>
-</div>
+</nav>
 
 <div class="d-flex justify-content-between">
     <div class="row" style="display: none" data-bind="visible: currentDashboard">
@@ -382,22 +389,10 @@
                                 <span class="fa fa-filter"></span> Filter
                             </a>
                         </li>
-                        <li class="dropdown dropdown-hover">
-                            <a href="#" class="dropdown-toggle dropdown-item" data-bs-toggle="dropdown" role="button" aria-expanded="false" data-bind="click: editReportAi">
+                        <li>
+                            <a href="#" class="dropdown-item" data-bind="click: openReport">
                                 <span class="fa fa-pencil"></span> Edit
                             </a>
-                            <ul class="dropdown-menu small">
-                                <li>
-                                    <a class="dropdown-item" href="#" data-bind="click: openReport">
-                                        <span class="fa fa-pencil"></span> Edit Standard
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="#" data-bind="click: editReportAi">
-                                        <span class="fa fa-bolt"></span> Edit Smarter
-                                    </a>
-                                </li>
-                            </ul>
                         </li>
                         <li class="dropdown dropdown-hover" data-bind="visible: ReportType()!='Single'">
                             <a href="#" class="dropdown-toggle dropdown-item">
@@ -474,11 +469,9 @@
                     </div>
                 </div>
             </div>
-            <div data-bind="if: activeDesign()">
-                <div data-bind="template: 'report-designer-compact'"></div>
-            </div>
             <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+                <div data-bind="template: 'filter-details-summary'"></div>
                 <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
                 <div data-bind="with: ReportResult" class="small">
                     <div data-bind="visible: !ReportData()">
@@ -487,12 +480,12 @@
                     <div data-bind="template: 'report-template', data: $data"></div>
                 </div>
             </div>
-            <div class="form-inline" data-bind="ifnot: noDashboardBorders">
+            <div class="form-inline" data-bind="visible: !noDashboardBorders()">
                 <div class="small" data-bind="with: pager">
-                    <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
-                        <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                    <div class="form-group pull-left total-records" data-bind="visible: totalRecords()>1 && $parent.ReportType() != 'Single'">
+                        <span data-bind="text: 'Total Records: ' + totalRecords()"></span>
                     </div>
-                    <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
+                    <div class="form-group pull-right" data-bind="visible: pages()>1 && $parent.ReportType() != 'Single'">
                         <div data-bind="template: 'pager-template', data: $data"></div>
                     </div>
                     <div class="clearfix"></div>
@@ -550,6 +543,28 @@
 <div class="modal" id="exportAllPdfOptionsModal" tabindex="-1" aria-labelledby="exportAllPdfOptionsModalLabel" aria-hidden="true" data-bind="with: dashboard">
     <div data-bind="template: { name: 'pdf-options-template', data: $data  }"></div>
 </div>
+<!-- Schedule Dashboard Modal -->
+<div class="modal" id="modal-schedule-dashboard" tabindex="-1" aria-labelledby="scheduleDashboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" data-bind="with: scheduleDashboardModal">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scheduleDashboardModalLabel">
+                    <i class="fa fa-hourglass me-2"></i> Schedule Dashboard
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6 data-bind="text: dashboardName" class="mb-3"></h6>
+                <div data-bind="template: { name: 'report-schedule', data: $parent.dashboard }"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" data-bind="click: saveSchedule">Save Schedule</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal" id="textWidgetModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">

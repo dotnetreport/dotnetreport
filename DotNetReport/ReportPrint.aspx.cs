@@ -1,6 +1,8 @@
 ﻿using ReportBuilder.Web.Models;
 using System;
+using System.Linq;
 using System.Web;
+using System.Web.Mvc;
 
 namespace ReportBuilder.WebForms.DotNetReport
 {
@@ -45,6 +47,27 @@ namespace ReportBuilder.WebForms.DotNetReport
             Session["clientId"] = clientId;
             Session["currentUserRole"] = currentUserRole;
 
+            var settings = new DotNetReportSettings
+            {
+                ClientId = clientId,
+                UserId = userId,
+                CurrentUserRole = (currentUserRole ?? "")
+                    .Split(',')
+                    .ToList(),
+                DataFilters = string.IsNullOrEmpty(dataFilters) ?
+                                    new { } :
+                                    Newtonsoft.Json.JsonConvert.DeserializeObject<object>(dataFilters)
+            };
+
+            var exportId = ExportSessionStore.Save(settings);
+            Session["ExportId"] = exportId;
+
+            var sanitizer = new Ganss.Xss.HtmlSanitizer
+            {
+                AllowedSchemes = { "data" }, // allow base64 images
+                AllowedTags = { "b", "i", "u", "p", "span", "div", "img", "table", "tr", "td" },
+                AllowedAttributes = { "style", "class", "src", "alt", "width", "height" }
+            };
             Model = new DotNetReportPrintModel
             {
                 ReportId = reportId,
@@ -63,7 +86,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 ClientId = clientId,
                 CurrentUserRoles = currentUserRole,
                 DataFilters = dataFilters,
-                ReportData = reportData
+                ReportData = sanitizer.Sanitize(HttpUtility.UrlDecode(reportData))
             };
 
         }

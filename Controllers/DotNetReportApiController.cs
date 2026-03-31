@@ -6,8 +6,10 @@ using System.Data;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Script.Serialization;
@@ -242,23 +244,78 @@ namespace ReportBuilder.Web.Controllers
                 throw ex;
             }
         }
-
-        [AllowAnonymous]
-        [HttpPost]
-        public async Task<JsonResult> RunReportUnAuth(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
-            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false, bool useAltPivot = false)
+        public class RunReportParameters
         {
-            return await RunReport(reportSql, connectKey, reportType, pageNumber, pageSize, sortBy, desc, reportSeries, pivotColumn, pivotFunction, reportData, subtotalMode, useAltPivot);
+            public string reportSql { get; set; }
+            public string connectKey { get; set; }
+            public string reportType { get; set; }
+            public int pageNumber { get; set; }
+            public int pageSize { get; set; }
+            public string sortBy { get; set; }
+            public bool desc { get; set; }
+            public string ReportSeries { get; set; }
+
+            public string pivotColumn { get; set; }
+            public string pivotFunction { get; set; }
+            public string reportData { get; set; }
+            public bool SubTotalMode { get; set; }
+            public bool useAltPivot { get; set; }
+            public bool adminmode { get; set; }
+            public bool includeColumnTotal { get; set; }
         }
 
         [ValidateAntiForgeryToken]
         [HttpPost]
-        public async Task<JsonResult> RunReport(string reportSql, string connectKey, string reportType, int pageNumber = 1, int pageSize = 50, string sortBy = null, 
-            bool desc = false, string reportSeries = null, string pivotColumn = null, string pivotFunction = null, string reportData = null, bool subtotalMode = false,bool adminmode=false, bool useAltPivot = false,bool includeColumnTotal=false)
+        public async Task<JsonResult> RunReport(RunReportParameters data)
         {
+            return await ExecuteRunReport(data);
+        }
+        [AllowAnonymous]
+        [HttpPost]
+        public async Task<JsonResult> RunReportUnAuth(string exportId,RunReportParameters data)
+        {
+            var settings = ExportSessionStore.Get(exportId);
+            if (settings == null)
+                throw new Exception("Unauthorized");
+            return await ExecuteRunReport(data);
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        public async Task<JsonResult> RunReportApiUnAuth(string exportId,DotNetReportApiCall data)
+        {
+            var settings = ExportSessionStore.Get(exportId);
+            if (settings == null)
+                throw new Exception("Unauthorized");
+
+            settings.ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"];
+            settings.AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"]; // Your Account Api Token from your http://dotnetreport.com Account
+            settings.DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]; // Your Data Connect Api Token from your http://dotnetreport.com Account
+            settings.CanUseAdminMode = true;
+            return await ExecuteCallReportApi(data.Method, JsonSerializer.Serialize(data), data.userId, settings);
+        }
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<JsonResult> ExecuteRunReport(RunReportParameters data)
+        {
+            string reportSql = data.reportSql;
+            string connectKey = data.connectKey;
+            string reportType = data.reportType;
+            int pageNumber = data.pageNumber;
+            int pageSize = data.pageSize;
+            string sortBy = data.sortBy;
+            bool desc = data.desc;
+            string reportSeries = data.ReportSeries;
+            string pivotColumn = data.pivotColumn;
+            string pivotFunction = data.pivotFunction;
+            string reportData = data.reportData;
+            bool subtotalMode = data.SubTotalMode;
+            bool includeColumnTotal = data.includeColumnTotal;
+            bool adminmode = data.adminmode;
             var sql = "";
             var sqlCount = "";
             int totalRecords = 0;
+            var useAltPivot = data.useAltPivot;
             var qry = new SqlQuery();
 
             try
@@ -291,9 +348,7 @@ namespace ReportBuilder.Web.Controllers
                         bool hasDistinct = sql.Contains("DISTINCT");
                         if (hasDistinct)
                         {
-                            int distinctIndex = sqlFrom.IndexOf("DISTINCT", StringComparison.OrdinalIgnoreCase) + 8;
-                            int fromClauseIndex = sqlFrom.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
-                            string distinctColumns = sqlFrom.Substring(distinctIndex, fromClauseIndex - distinctIndex).Trim();
+                            string distinctColumns = string.Join(", ", sqlFields);
 
                             string fromClause = sql.Substring(fromIndex).Replace("{FROM}", "FROM");
 
@@ -1126,7 +1181,8 @@ namespace ReportBuilder.Web.Controllers
             string userId = "",
             bool adminMode = false,
             bool subTotalPerGroup = false,
-            string totalRowFormat = "row")
+            string totalRowFormat = "row",
+            string filterDetailsText = null)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -1140,7 +1196,7 @@ namespace ReportBuilder.Web.Controllers
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(onlyAndGroupInColumnDetail));
 
-            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport, subTotalPerGroup, totalRowFormat);
+            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport, subTotalPerGroup, totalRowFormat, HttpUtility.UrlDecode(filterDetailsText));
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".xlsx");
             Response.ContentType = "application/vnd.ms-excel";
             Response.BinaryWrite(excel);
@@ -1202,7 +1258,8 @@ namespace ReportBuilder.Web.Controllers
            string pageOrientation = "",
            string userId = "",
            bool adminMode = false,
-           bool subTotalPerGroup = false)
+           bool subTotalPerGroup = false,
+           string filterDetailsText = null)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -1216,7 +1273,7 @@ namespace ReportBuilder.Web.Controllers
             reportName = HttpUtility.UrlDecode(reportName);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
-            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, subTotalPerGroup);
+            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, subTotalPerGroup, HttpUtility.UrlDecode(filterDetailsText));
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
@@ -1237,7 +1294,8 @@ namespace ReportBuilder.Web.Controllers
             string pageSize = "",
             string pageOrientation = "",
             string userId = "",
-            bool adminMode = false)
+            bool adminMode = false, 
+            string filterDetailsText = null)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -1245,11 +1303,11 @@ namespace ReportBuilder.Web.Controllers
                 throw new Exception("User context mismatch");
             }
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql, adminMode: adminMode);            
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
-            var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation);
+            var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, HttpUtility.UrlDecode(filterDetailsText));
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             Response.BinaryWrite(word);
@@ -1322,7 +1380,7 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> DownloadAllPdf(string reportdata)
+        public async Task<ActionResult> DownloadAllPdf(string reportdata, string dashboardName = "CombinedReports")
         {
             var pdfBytesList = new List<byte[]>();
             var settings = GetSettings();
@@ -1334,11 +1392,12 @@ namespace ReportBuilder.Web.Controllers
                 pdfBytesList.Add(pdf);
             }
             var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);
-            return File(combinedPdf, "application/pdf", "CombinedReports.pdf");
+            var fileName = string.IsNullOrWhiteSpace(dashboardName) ? "CombinedReports" : dashboardName;
+            return File(combinedPdf, "application/pdf", $"{fileName}.pdf");
         }
 
         [HttpPost]
-        public async Task<ActionResult> DownloadAllPdfAlt(string reportdata)
+        public async Task<ActionResult> DownloadAllPdfAlt(string reportdata, string dashboardName = "CombinedReports")
         {
             var pdfBytesList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
@@ -1359,11 +1418,12 @@ namespace ReportBuilder.Web.Controllers
                 pdfBytesList.Add(pdf);
             }
             var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);
-            return File(combinedPdf, "application/pdf", "CombinedReports.pdf");
+            var fileName = string.IsNullOrWhiteSpace(dashboardName) ? "CombinedReports" : dashboardName;
+            return File(combinedPdf, "application/pdf", $"{fileName}.pdf");
         }
 
         [HttpPost]
-        public async Task<ActionResult> DownloadAllExcel(string reportdata)
+        public async Task<ActionResult> DownloadAllExcel(string reportdata, string dashboardName = "CombinedReports")
         {
             var excelbyteList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
@@ -1385,9 +1445,10 @@ namespace ReportBuilder.Web.Controllers
             }
             // Combine all Excel files into one workbook
             var combinedExcel = DotNetReportHelper.GetCombineExcelFile(excelbyteList, reports.Select(r => r.reportName).ToList());
+            var fileName = string.IsNullOrWhiteSpace(dashboardName) ? "CombinedReports" : dashboardName;
+            Response.AddHeader("content-disposition", $"attachment; filename={fileName}.xlsx");
             Response.ClearContent();
 
-            Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode("Dashboard") + ".xlsx");
             Response.ContentType = "application/vnd.ms-excel";
             Response.BinaryWrite(combinedExcel);
             Response.End();
@@ -1396,7 +1457,7 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> DownloadAllWord(string reportdata)
+        public async Task<ActionResult> DownloadAllWord(string reportdata, string dashboardName = "CombinedReports")
         {
             var wordbyteList = new List<byte[]>();
             var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
@@ -1416,7 +1477,8 @@ namespace ReportBuilder.Web.Controllers
                 wordbyteList.Add(wordreport);
             }
             var combinedWord = DotNetReportHelper.GetCombineWordFile(wordbyteList);
-            Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode("Dashboard") + ".docx");
+            var fileName = string.IsNullOrWhiteSpace(dashboardName) ? "CombinedReports" : dashboardName;
+            Response.AddHeader("content-disposition", $"attachment; filename ={ fileName}.docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             Response.BinaryWrite(combinedWord);
             Response.End();
