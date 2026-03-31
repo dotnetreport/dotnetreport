@@ -333,7 +333,11 @@ ko.bindingHandlers.select2 = {
     update: function (el, valueAccessor, allBindingsAccessor, viewModel) {
         var allBindings = allBindingsAccessor();
         if (!$(el).data('select2')) return;
-        if ("value" in allBindings) {
+        if (allBindings.selectedOptions && ko.isObservable(allBindings.selectedOptions)) {
+            var selectedVals = ko.unwrap(allBindings.selectedOptions) || [];
+            $(el).val(selectedVals).trigger('change.select2');
+
+        } else if ("value" in allBindings) {
             var newValue = ko.unwrap(allBindings.value);
             $(el).val(newValue != null ? newValue : null).trigger('change.select2');
         }
