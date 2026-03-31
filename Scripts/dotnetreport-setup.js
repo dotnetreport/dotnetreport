@@ -34,9 +34,18 @@ var manageViewModel = function (options) {
 	self.loadFromDatabase = function() {
 		bootbox.confirm("Confirm loading all Tables and Views from the database? Note: This action will discard unsaved changes and it may take some time.", function (r) {
 			if (r) {
-				ajaxcall({ url: options.loadSchemaUrl + '?databaseApiKey=' + self.currentConnectionKey() + '&onlyApi=false' }).done(function (model) {
+				ajaxcall({
+					url: options.loadSchemaUrl,
+					type: 'POST',
+					data: JSON.stringify({
+						databaseApiKey: self.currentConnectionKey(),
+						onlyApi: false
+					})
+				}).done(function (result) {
+					if (result.d) result = result.d;
+					if (result.Result) result = result.Result;
 					self.onlyApi(false);
-					self.Tables.refresh(model);
+					self.Tables.refresh(result);
 					self.LoadJoins();
 					self.LoadCategories();
 					self.activeTable(null)
@@ -47,8 +56,17 @@ var manageViewModel = function (options) {
 
 	self.refreshAll = function () {
 		var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
-		ajaxcall({ url: options.loadSchemaUrl + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + self.onlyApi() }).done(function (model) {
-			self.Tables.refresh(model);
+		ajaxcall({
+			url: options.loadSchemaUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				databaseApiKey: (queryParams.databaseApiKey || ''),
+				onlyApi: self.onlyApi()
+			})
+		}).done(function (result) {
+			if (result.d) result = result.d;
+			if (result.Result) result = result.Result;
+			self.Tables.refresh(result);
 			self.LoadJoins();
 			self.LoadCategories();
 			self.activeTable(null)
