@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<PropertyGroup>
-		<TargetFramework>net8.0</TargetFramework>
+		<TargetFramework>net10.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 	</PropertyGroup>
@@ -34,10 +34,9 @@
 	  <PackageReference Include="PdfSharp" Version="6.1.1" />
 	  <PackageReference Include="PuppeteerSharp" Version="20.2.4" />
 	  <PackageReference Include="Quartz" Version="3.15.1" />
-	  <PackageReference Include="System.Data.OleDb" Version="9.0.10" />
+	  <PackageReference Include="System.Data.OleDb" Version="10.0.0" />
     <PackageReference Include="MySql.Data" Version="9.5.0" />
     <PackageReference Include="Npgsql" Version="9.0.4" />
-    <PackageReference Include="System.Drawing.Common" Version="4.7.3" />
     <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
 	</ItemGroup>
 
