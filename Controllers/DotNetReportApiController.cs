@@ -416,9 +416,7 @@ namespace ReportBuilder.Web.Controllers
                         bool hasDistinct = sql.Contains("DISTINCT");
                         if (hasDistinct)
                         {
-                            int distinctIndex = sqlFrom.IndexOf("DISTINCT", StringComparison.OrdinalIgnoreCase) + 8;
-                            int fromClauseIndex = sqlFrom.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
-                            string distinctColumns = sqlFrom.Substring(distinctIndex, fromClauseIndex - distinctIndex).Trim();
+                            string distinctColumns = string.Join(", ", sqlFields);
 
                             string fromClause = sql.Substring(fromIndex).Replace("{FROM}", "FROM");
 
@@ -1509,7 +1507,8 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string userId = "",
             [FromForm] bool adminMode = false,
             [FromForm] bool subTotalPerGroup = false,
-            [FromForm] string totalRowFormat = "row")
+            [FromForm] string totalRowFormat = "row",
+            [FromForm] string filterDetailsText = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
@@ -1518,7 +1517,7 @@ namespace ReportBuilder.Web.Controllers
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(onlyAndGroupInColumnDetail));
 
-            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport, subTotalPerGroup, totalRowFormat);
+            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport, subTotalPerGroup, totalRowFormat, HttpUtility.UrlDecode(filterDetailsText));
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".xlsx");
             Response.ContentType = "application/vnd.ms-excel";
 
@@ -1578,7 +1577,8 @@ namespace ReportBuilder.Web.Controllers
            [FromForm] string pageOrientation = "",
            [FromForm] string userId = "",
            [FromForm] bool adminMode = false,
-           [FromForm] bool subTotalPerGroup = false)
+           [FromForm] bool subTotalPerGroup = false,
+           [FromForm] string filterDetailsText = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
@@ -1587,7 +1587,7 @@ namespace ReportBuilder.Web.Controllers
             reportName = HttpUtility.UrlDecode(reportName);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
-            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, subTotalPerGroup);
+            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, subTotalPerGroup, HttpUtility.UrlDecode(filterDetailsText));
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
@@ -1605,17 +1605,18 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] bool pivot = false,
             [FromForm] string pivotColumn = null,
             [FromForm] string pivotFunction = null,
-            [FromForm] string pageSize = "", 
+            [FromForm] string pageSize = "",
             [FromForm] string pageOrientation = "",
             [FromForm] string userId = "",
-            [FromForm] bool adminMode = false)
+            [FromForm] bool adminMode = false,
+            [FromForm] string filterDetailsText = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql, adminMode: adminMode);            
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
-            var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation);
+            var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, HttpUtility.UrlDecode(filterDetailsText));
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             return File(word, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", reportName + ".docx");
@@ -1668,7 +1669,7 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadAllPdf([FromForm] string reportdata)
+        public async Task<IActionResult> DownloadAllPdf([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports")
         {
             var pdfBytesList = new List<byte[]>();
             var settings = GetSettings();
@@ -1680,11 +1681,12 @@ namespace ReportBuilder.Web.Controllers
                 pdfBytesList.Add(pdf);
             }
             var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);
-            return File(combinedPdf, "application/pdf", "CombinedReports.pdf");
+            var fileName = string.IsNullOrWhiteSpace(dashboardName) ? "CombinedReports" : dashboardName;
+            return File(combinedPdf, "application/pdf", $"{fileName}.pdf");
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadAllPdfAlt([FromForm] string reportdata)
+        public async Task<IActionResult> DownloadAllPdfAlt([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports")
         {
             var pdfBytesList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
@@ -1701,11 +1703,12 @@ namespace ReportBuilder.Web.Controllers
                 pdfBytesList.Add(pdf);
             }
             var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);
-            return File(combinedPdf, "application/pdf", "CombinedReports.pdf");
+            var fileName = string.IsNullOrWhiteSpace(dashboardName) ? "CombinedReports" : dashboardName;
+            return File(combinedPdf, "application/pdf", $"{fileName}.pdf");
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadAllExcel([FromForm] string reportdata)
+        public async Task<IActionResult> DownloadAllExcel([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports")
         {
             var excelbyteList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
@@ -1723,13 +1726,14 @@ namespace ReportBuilder.Web.Controllers
             }
             // Combine all Excel files into one workbook
             var combinedExcel = DotNetReportHelper.GetCombineExcelFile(excelbyteList, reports.Select(r => r.reportName).ToList());
-            Response.Headers.Add("content-disposition", "attachment; filename=CombinedReports.xlsx");
+            var fileName = string.IsNullOrWhiteSpace(dashboardName) ? "CombinedReports" : dashboardName;
+            Response.Headers.Add("content-disposition", $"attachment; filename={fileName}.xlsx");
             Response.ContentType = "application/vnd.ms-excel";
-            return File(combinedExcel, "application/vnd.ms-excel", "CombinedReports.xlsx");
+            return File(combinedExcel, "application/vnd.ms-excel", $"{fileName}.xlsx");
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadAllWord([FromForm] string reportdata)
+        public async Task<IActionResult> DownloadAllWord([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports")
         {
             var wordbyteList = new List<byte[]>();
             var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
@@ -1745,9 +1749,10 @@ namespace ReportBuilder.Web.Controllers
                 wordbyteList.Add(wordreport);
             }
             var combinedWord = DotNetReportHelper.GetCombineWordFile(wordbyteList);
-            Response.Headers.Add("content-disposition", "attachment; filename=CombinedReports.docx");
+            var fileName = string.IsNullOrWhiteSpace(dashboardName) ? "CombinedReports" : dashboardName;
+            Response.Headers.Add("content-disposition", $"attachment; filename={fileName}.docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-            return File(combinedWord, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "CombinedReports.docx");
+            return File(combinedWord, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", $"{fileName}.docx");
         }
 
     }
