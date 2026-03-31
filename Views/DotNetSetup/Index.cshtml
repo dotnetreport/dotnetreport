@@ -314,8 +314,17 @@
                 <button class="btn btn-sm btn-primary" title="Manage Categories" data-bs-toggle="modal" data-bs-target="#category-modal">
                     <span class="fa fa-server"></span> Manage Categories
                 </button>
-                <button class="btn btn-sm btn-primary" data-bind="click: selectAll, visible: !$root.onlyApi()">
-                    <span class="fa fa-check"></span> Select All Tables
+                <button class="btn btn-sm btn-primary" data-bind="click: function() { selectAll(false)},visible: !$root.customTableMode()">
+                     Select All Tables
+                </button>
+                <button class="btn btn-sm btn-primary" data-bind="click: function() { selectAll(true)}, visible: $root.customTableMode">
+                     Select All Custom Tables
+                </button>
+                <button class="btn btn-sm btn-primary" data-bind="click: function() { unselectAll(false)},visible: !$root.customTableMode()">
+                     UnSelect All Tables
+                </button>
+                <button class="btn btn-sm btn-primary" data-bind="click: function() { unselectAll(true)}, visible: $root.customTableMode">
+                     UnSelect All Custom Tables  
                 </button>
                 <button class="btn btn-sm btn-primary" data-bind="click: function() { $root.saveChanges($root.customTableMode()) }">
                     <span class="fa fa-floppy-o"></span> Save All Tables
@@ -440,6 +449,7 @@
                                     </button>
                                     <label class="label-sm m-0"><span data-bind="text: Columns().length"></span> Columns</label>
                                     <button class="btn btn-sm btn-outline-secondary" data-bind="click: autoFormat, visible: Selected">Auto Format</button>
+                                    <button class="btn btn-sm btn-outline-secondary" data-bind="click: autoSort, visible: Selected">Auto Sort</button>
                                     <button class="btn btn-sm btn-outline-secondary" data-bind="click: unselectAllColumns, visible: Selected">Unselect All</button>
                                     <button class="btn btn-sm btn-outline-secondary" data-bind="click: selectAllColumns, visible: Selected">Select All</button>
                                 </div>

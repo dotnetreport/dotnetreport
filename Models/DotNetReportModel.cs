@@ -444,6 +444,7 @@ namespace ReportBuilder.Web.Models
         public string headerBackColor { get; set; }
         public string fontColor { get; set; }
         public string backColor { get; set; }
+        public string fieldWidth { get; set; }
     }
     public class LinkFieldItem
     {
@@ -1032,7 +1033,30 @@ namespace ReportBuilder.Web.Models
                 counter++;
             }
 
+            ApplyColumnWidths(ws, colstart, dt.Columns.Count, columns);
+        }
+
+        private static void ApplyColumnWidths(ExcelWorksheet ws, int colstart, int columnCount, List<ReportHeaderColumn> columns)
+        {
+            if (ws.Dimension == null) return;
+
             ws.Cells[ws.Dimension.Address].AutoFitColumns();
+
+            if (columns == null || !columns.Any()) return;
+
+            for (int i = 0; i < columnCount && i < columns.Count; i++)
+            {
+                var col = columns[i];
+                if (string.IsNullOrEmpty(col?.fieldWidth)) continue;
+
+                var width = col.fieldWidth.Trim().ToLower();
+                double pxValue;
+
+                if (width.EndsWith("px") && double.TryParse(width.Replace("px", ""), out pxValue) && pxValue > 0)
+                {
+                    ws.Column(colstart + i).Width = pxValue / 7;
+                }
+            }
         }
 
         public static DataTable Transpose(DataTable dt)
@@ -1502,10 +1526,18 @@ namespace ReportBuilder.Web.Models
                     {
                         try
                         {
+                            var rawValue = row[col] != null && row[col] != DBNull.Value ? row[col] : null;
+                            // Use ISO 8601 for dates so JavaScript can parse unambiguously regardless of server culture
+                            string valueStr;
+                            if (rawValue is DateTime dtVal)
+                                valueStr = dtVal.ToString("yyyy-MM-ddTHH:mm:ss");
+                            else
+                                valueStr = rawValue?.ToString();
+
                             var item = new DotNetReportDataRowItemModel
                             {
                                 Column = model.Columns[i],
-                                Value = sanitizer.Sanitize(row[col] != null ? row[col].ToString() : null),
+                                Value = sanitizer.Sanitize(valueStr),
                                 FormattedValue = sanitizer.Sanitize(GetFormattedValue(col, row, model.Columns[i].FormatType, jsonAsTable)),
                                 LabelValue = sanitizer.Sanitize(GetLabelValue(col, row))
                             };
@@ -2619,11 +2651,11 @@ namespace ReportBuilder.Web.Models
             if (includeGrandTotal && allRows.Any())
                 WriteSubTotalRow(allRows, true);
 
-            ws.Cells[ws.Dimension.Address].AutoFitColumns();
+            ApplyColumnWidths(ws, colstart, dt.Columns.Count, columns);
         }
 
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null, bool isSubReport = false, bool subTotalPerGroup = false, string totalRowFormat = "row")
+                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null, bool isSubReport = false, bool subTotalPerGroup = false, string totalRowFormat = "row", string filterDetailsText = null)
         {
             var connect = DotNetReportHelper.GetConnection();
             var dbConfig = DotNetReportHelper.GetDbConnectionSettings(connect.AccountApiKey, connect.DatabaseApiKey);
@@ -2682,6 +2714,16 @@ namespace ReportBuilder.Web.Models
                 ws.Cells[rowstart, colstart, rowend, colend].Value = reportName;
                 ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Bold = true;
                 ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Size = 14;
+
+                if (!string.IsNullOrEmpty(filterDetailsText))
+                {
+                    rowstart++;
+                    ws.Cells[rowstart, colstart, rowstart, colend].Merge = true;
+                    ws.Cells[rowstart, colstart].Value = "Filters: " + filterDetailsText;
+                    ws.Cells[rowstart, colstart].Style.Font.Italic = true;
+                    ws.Cells[rowstart, colstart].Style.Font.Size = 10;
+                    ws.Cells[rowstart, colstart].Style.Font.Color.SetColor(System.Drawing.Color.FromArgb(71, 84, 103));
+                }
 
                 rowstart += 2;
                 rowend = rowstart + dt.Rows.Count;
@@ -2985,7 +3027,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public async static Task<byte[]> GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "", bool subTotalPerGroup = false)
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "", bool subTotalPerGroup = false, string filterDetailsText = null)
         {
 
             var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
@@ -3091,7 +3133,19 @@ namespace ReportBuilder.Web.Models
                             new XRect(0, currentYPosition, page.Width, 30),
                             XStringFormats.Center);
 
-                        currentYPosition += 40;
+                        currentYPosition += 30;
+
+                        if (!string.IsNullOrEmpty(filterDetailsText))
+                        {
+                            var filterFont = new XFont("Arial", 9, XFontStyleEx.Italic);
+                            var filterBrush = new XSolidBrush(XColor.FromArgb(71, 84, 103));
+                            gfx.DrawString("Filters: " + filterDetailsText, filterFont, filterBrush,
+                                new XRect(leftMargin, currentYPosition, page.Width - leftMargin - rightMargin, 20),
+                                XStringFormats.TopLeft);
+                            currentYPosition += 20;
+                        }
+
+                        currentYPosition += 10;
 
                         if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
                         {
@@ -3307,7 +3361,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "")
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "", string filterDetailsText = null)
         {
             var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
             var subTotals = new decimal[dt.Columns.Count];
@@ -3327,6 +3381,18 @@ namespace ReportBuilder.Web.Models
                     }, new Text(reportName)));
                     header.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
                     body.AppendChild(header);
+
+                    // Add filter details if present
+                    if (!string.IsNullOrEmpty(filterDetailsText))
+                    {
+                        Paragraph filterPara = new Paragraph(new Run(new RunProperties()
+                        {
+                            FontSize = new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "18" },
+                            Italic = new Italic(),
+                            Color = new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "475467" }
+                        }, new Text("Filters: " + filterDetailsText)));
+                        body.AppendChild(filterPara);
+                    }
 
                     // Render chart
                     if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
@@ -3863,9 +3929,9 @@ namespace ReportBuilder.Web.Models
                 await page.PdfAsync(pdfFile, pdfOptions);
                 return File.ReadAllBytes(pdfFile);
             }
-            catch
+            catch (Exception ex)
             {
-                throw;
+                throw ex;
             }
             finally
             {

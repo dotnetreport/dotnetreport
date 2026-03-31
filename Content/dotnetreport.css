@@ -748,6 +748,7 @@ select.is-invalid ~ span .select2-selection {
     overflow-y: hidden; 
     white-space: nowrap;
     max-width: 100%; 
+    background-color: #fff;
 }
 
 .report-view {
@@ -865,6 +866,36 @@ h2 {
 thead th {
     border-top: 1px solid var(--bs-border-color);
     border-bottom: 1px solid var(--bs-border-color);
+}
+
+/* Default report table header styling */
+.report-view thead th,
+.report-inner thead th,
+.live-preview-area thead th,
+.list-overflow-auto thead th {
+    background-color: #f0f3f8;
+    color: #344054;
+    font-weight: bold;
+
+    padding: 10px 12px;
+    border-top: none;
+    border-bottom: 2px solid #d0d5dd;
+    white-space: nowrap;
+}
+
+.report-view thead th a,
+.report-inner thead th a,
+.live-preview-area thead th a,
+.list-overflow-auto thead th a {
+    color: #344054;
+    text-decoration: none;
+}
+
+.report-view thead th a:hover,
+.report-inner thead th a:hover,
+.live-preview-area thead th a:hover,
+.list-overflow-auto thead th a:hover {
+    color: #1570ef;
 }
 
 /* Style Blue */
@@ -1814,6 +1845,333 @@ main {
     max-height: 250px;
 }
 
+.min-width-0 { min-width: 0; }
+
+/* Sidebar layout for smarter designer */
+.compact-designer-sidebar {
+    width: 320px;
+    min-width: 320px;
+    align-self: stretch;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: sticky;
+    top: 10px;
+    max-height: 100vh;
+    border-right: 1px solid #dee2e6;
+    padding-right: 10px;
+    margin-right: 10px;
+}
+
+@media (max-width: 768px) {
+    .compact-designer-sidebar {
+        width: 100%;
+        min-width: 100%;
+        max-height: none;
+        position: relative;
+        top: 0;
+        border-right: none;
+        border-bottom: 1px solid #dee2e6;
+        padding-right: 0;
+        margin-right: 0;
+        padding-bottom: 10px;
+        margin-bottom: 10px;
+    }
+
+    /* Stack sidebar and preview vertically on mobile */
+    .d-flex:has(.compact-designer-sidebar) {
+        flex-wrap: wrap;
+    }
+
+    .compact-designer-sidebar + .report-view,
+    .compact-designer-sidebar ~ [class*="flex-grow"] {
+        width: 100%;
+        min-width: 100%;
+    }
+}
+
+.grid-stack-item .compact-designer-sidebar {
+    position: relative;
+    top: 0;
+    max-height: calc(100vh);
+}
+
+.compact-designer-sidebar .compact-filters {
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+}
+
+.compact-designer-sidebar .expandable-panel {
+    max-width: 100% !important;
+}
+
+/* Selected fields - stack name and icons vertically in sidebar */
+.compact-designer-sidebar #selectedPanel .list-group-item .row {
+    display: block;
+}
+
+.compact-designer-sidebar #selectedPanel .list-group-item .row > .col-5,
+.compact-designer-sidebar #selectedPanel .list-group-item .row > .col-7 {
+    width: 100%;
+    max-width: 100%;
+    flex: none;
+}
+
+.compact-designer-sidebar #selectedPanel .list-group-item .row > .col-7 {
+    padding-top: 4px;
+}
+
+.compact-designer-sidebar #selectedPanel .d-flex.flex-row-reverse {
+    flex-wrap: wrap;
+    gap: 2px;
+    justify-content: flex-start !important;
+    flex-direction: row !important;
+}
+
+.compact-designer-sidebar #selectedPanel .d-flex.flex-row-reverse > div {
+    padding-right: 6px !important;
+}
+
+.compact-designer-sidebar #selectedPanel .d-flex.flex-row-reverse .form-select {
+    font-size: 11px;
+    padding: 1px 4px;
+    min-width: 80px;
+    max-width: 120px;
+}
+
+.compact-designer-sidebar .collapsed-vertical {
+    flex: 0 0 auto !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    overflow: hidden;
+}
+
+.compact-designer-sidebar .expandable-panel .card-header {
+    text-align: left;
+    cursor: pointer;
+}
+
+.compact-designer-sidebar .expandable-panel .card-header::after {
+    content: '\f107';
+    font-family: FontAwesome;
+    float: right;
+    transition: transform 0.2s;
+}
+
+.compact-designer-sidebar .collapsed-vertical .card-header::after {
+    transform: rotate(-90deg);
+}
+
+.compact-designer-sidebar .collapsed-vertical .card-header {
+    writing-mode: horizontal-tb;
+    transform: none;
+    padding: 4px 8px;
+}
+
+.compact-designer-sidebar .collapsed-vertical .card-body {
+    display: none !important;
+}
+
+/* Custom field / function field modal */
+#compact-custom-field-modal .modal-dialog,
+#compact-function-field-modal .modal-dialog {
+    max-width: 550px;
+    margin: 40px auto 0 auto;
+}
+
+#compact-custom-field-modal .modal-body,
+#compact-function-field-modal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+    font-size: 13px;
+}
+
+/* Stack all form rows vertically — labels on top, inputs below */
+#compact-custom-field-modal .form-group.row,
+#compact-custom-field-modal .form-group-row,
+#compact-function-field-modal .form-group.row,
+#compact-function-field-modal .form-group-row {
+    display: block !important;
+    margin-bottom: 8px;
+}
+
+#compact-custom-field-modal .row,
+#compact-function-field-modal .row {
+    --bs-gutter-x: 0;
+}
+
+#compact-custom-field-modal [class*="col-sm-"],
+#compact-custom-field-modal [class*="col-md-"],
+#compact-function-field-modal [class*="col-sm-"],
+#compact-function-field-modal [class*="col-md-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: none !important;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+#compact-custom-field-modal .control-label,
+#compact-function-field-modal .control-label {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+#compact-custom-field-modal .d-flex.align-items-center,
+#compact-function-field-modal .d-flex.align-items-center {
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+#compact-custom-field-modal .alert,
+#compact-function-field-modal .alert {
+    font-size: 12px;
+    padding: 8px 12px;
+}
+
+#compact-custom-field-modal .btn-sm,
+#compact-function-field-modal .btn-sm {
+    font-size: 12px;
+    padding: 2px 8px;
+}
+
+/* Sidebar responsive overrides for filters */
+.compact-designer-sidebar .rules-list table {
+    display: block;
+}
+
+.compact-designer-sidebar .rules-list table thead {
+    display: none;
+}
+
+.compact-designer-sidebar .rules-list table tbody {
+    display: block;
+}
+
+.compact-designer-sidebar .rules-list table tr {
+    display: block;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.compact-designer-sidebar .rules-list table td {
+    display: block;
+}
+
+.compact-designer-sidebar .rules-list table td.row {
+    display: block;
+}
+
+.compact-designer-sidebar .rules-list .rule-container td .col-md-1,
+.compact-designer-sidebar .rules-list .rule-container td .col-md-2,
+.compact-designer-sidebar .rules-list .rule-container td .col-md-3,
+.compact-designer-sidebar .rules-list .rule-container td .col-md-4,
+.compact-designer-sidebar .rules-list .rule-container td .col-md-5 {
+    width: 100%;
+    max-width: 100%;
+    flex: none;
+    padding: 2px 8px;
+}
+
+.compact-designer-sidebar .rules-group-header .pull-left,
+.compact-designer-sidebar .rules-group-header .pull-right {
+    float: none !important;
+    margin-bottom: 4px;
+}
+
+/* Sidebar responsive overrides for sort */
+.compact-designer-sidebar .form-group.row.align-items-center.flex-nowrap {
+    flex-wrap: wrap !important;
+}
+
+.compact-designer-sidebar .form-group.row.align-items-center .col-auto.d-flex.gap-1 {
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.compact-designer-sidebar .form-group.row.align-items-center .col-auto.d-flex.gap-1 .btn {
+    font-size: 10px;
+    padding: 2px 4px;
+}
+
+/* Sidebar responsive overrides for schedule */
+.compact-designer-sidebar #schedule-builder-div .d-flex.align-items-center {
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.compact-designer-sidebar #schedule-builder-div .d-flex.align-items-center .me-3 {
+    margin-right: 0 !important;
+}
+
+.compact-designer-sidebar #schedule-builder-div .d-flex.align-items-center .ms-3 {
+    margin-left: 0 !important;
+}
+
+.compact-designer-sidebar #schedule-builder-div .d-flex.align-items-center select.form-select {
+    min-width: 60px !important;
+}
+
+.compact-designer-sidebar #schedule-builder-div .row.g-3 {
+    display: block;
+}
+
+.compact-designer-sidebar #schedule-builder-div .row.g-3 > [class*="col-"] {
+    width: 100%;
+    max-width: 100%;
+    flex: none;
+    margin-bottom: 4px;
+}
+
+.compact-designer-sidebar #schedule-builder-div .alert {
+    font-size: 11px;
+    padding: 8px;
+}
+
+/* Sidebar responsive overrides for options */
+.compact-designer-sidebar #settingsPanel .form-group.row {
+    display: block;
+}
+
+.compact-designer-sidebar #settingsPanel .form-group.row > [class*="col-"] {
+    width: 100%;
+    max-width: 100%;
+    flex: none;
+}
+
+/* Live preview label */
+.live-preview-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 8px;
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 4px;
+}
+
+/* Dashboard widget card layout: flex column so pager stays at bottom */
+.grid-stack > .grid-stack-item > .grid-stack-item-content.card {
+    display: flex;
+    flex-direction: column;
+    overflow-y: hidden;
+}
+
+.grid-stack > .grid-stack-item > .grid-stack-item-content.card > .padded-div {
+    flex: 0 0 auto;
+}
+
+.grid-stack > .grid-stack-item > .grid-stack-item-content.card .card-body.list-overflow-auto {
+    overflow-y: auto;
+    overflow-x: auto;
+    height: 100%;
+    min-height: 0;
+}
+
+.grid-stack > .grid-stack-item > .grid-stack-item-content.card > .form-inline {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+}
+
 .grid-stack-one-column-mode {
     position: relative !important;
 }
@@ -1850,5 +2208,217 @@ th[class^="pivot-group-"] {
 td[class^="pivot-group-"] {
     border-left: 2px solid #c1c1c1;
     border-right: 2px solid #c1c1c1;
+}
+
+/* Live preview designer panels in modal */
+.live-preview-designer .designer-panel .card-header {
+    cursor: pointer;
+    user-select: none;
+    font-size: 13px;
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+.live-preview-designer .designer-panel .card-header .panel-chevron {
+    transition: transform 0.2s;
+    font-size: 11px;
+    margin-top: 3px;
+}
+
+.live-preview-designer .designer-panel .card-body {
+    font-size: 12px;
+}
+
+.live-preview-designer .designer-panel .card-body select.form-select,
+.live-preview-designer .designer-panel .card-body input.form-control,
+.live-preview-designer .designer-panel .card-body textarea.form-control,
+.live-preview-designer .designer-panel .card-body .btn,
+.live-preview-designer .designer-panel .card-body label,
+.live-preview-designer .designer-panel .card-body .form-check-label,
+.live-preview-designer .designer-panel .card-body a,
+.live-preview-designer .designer-panel .card-body span,
+.live-preview-designer .designer-panel .card-body td,
+.live-preview-designer .designer-panel .card-body th,
+.live-preview-designer .designer-panel .card-body div {
+    font-size: 12px;
+}
+
+.live-preview-designer .designer-panel .card-body select.form-select,
+.live-preview-designer .designer-panel .card-body input.form-control {
+    padding: 2px 6px;
+    height: auto;
+    min-height: unset;
+}
+
+.live-preview-area .card-footer {
+    background-color: #fff;
+    border-top: 1px solid #dee2e6;
+}
+
+/* Live Preview toggle styling */
+#livePreviewSwitch {
+    cursor: pointer;
+}
+
+#livePreviewSwitch:checked {
+    background-color: #f0ad4e;
+    border-color: #f0ad4e;
+}
+
+/* Live preview designer - visualization icons smaller */
+.live-preview-designer .btn-group .btn {
+    padding: 4px 6px;
+    font-size: 10px;
+}
+
+.live-preview-designer .btn-group .btn .fa-2x {
+    font-size: 1.2em;
+}
+
+.live-preview-designer .btn-group .btn p {
+    margin-bottom: 0;
+    font-size: 10px;
+}
+
+/* Live preview designer - responsive filters */
+.live-preview-designer .rules-list table {
+    display: block;
+}
+
+.live-preview-designer .rules-list table thead {
+    display: none;
+}
+
+.live-preview-designer .rules-list table tbody {
+    display: block;
+}
+
+.live-preview-designer .rules-list table tr {
+    display: block;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.live-preview-designer .rules-list table td {
+    display: block;
+}
+
+.live-preview-designer .rules-list table td.row {
+    display: block;
+}
+
+.live-preview-designer .rules-list .rule-container td .col-md-1,
+.live-preview-designer .rules-list .rule-container td .col-md-2,
+.live-preview-designer .rules-list .rule-container td .col-md-3,
+.live-preview-designer .rules-list .rule-container td .col-md-4,
+.live-preview-designer .rules-list .rule-container td .col-md-5 {
+    width: 100%;
+    max-width: 100%;
+    flex: none;
+    padding: 2px 8px;
+}
+
+.live-preview-designer .rules-group-header .pull-left,
+.live-preview-designer .rules-group-header .pull-right {
+    float: none !important;
+    margin-bottom: 4px;
+}
+
+/* Live preview designer - responsive sort */
+.live-preview-designer .form-group.row.align-items-center.flex-nowrap {
+    flex-wrap: wrap !important;
+}
+
+.live-preview-designer .form-group.row.align-items-center .col-auto.d-flex.gap-1 {
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.live-preview-designer .form-group.row.align-items-center .col-auto.d-flex.gap-1 .btn {
+    font-size: 10px;
+    padding: 2px 4px;
+}
+
+/* Live preview designer - responsive schedule */
+.live-preview-designer #schedule-builder-div .d-flex.align-items-center {
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.live-preview-designer #schedule-builder-div .d-flex.align-items-center .me-3 {
+    margin-right: 0 !important;
+}
+
+.live-preview-designer #schedule-builder-div .d-flex.align-items-center .ms-3 {
+    margin-left: 0 !important;
+}
+
+.live-preview-designer #schedule-builder-div .d-flex.align-items-center select.form-select {
+    min-width: 60px !important;
+}
+
+.live-preview-designer #schedule-builder-div .row.g-3 {
+    display: block;
+}
+
+.live-preview-designer #schedule-builder-div .row.g-3 > [class*="col-"] {
+    width: 100%;
+    max-width: 100%;
+    flex: none;
+    margin-bottom: 4px;
+}
+
+.live-preview-designer #schedule-builder-div .alert {
+    font-size: 11px;
+    padding: 8px;
+}
+
+/* Live preview area - chart sizing */
+.live-preview-area .report-chart {
+    min-height: 300px;
+    max-height: 450px;
+    width: 100% !important;
+    overflow: hidden;
+}
+
+.live-preview-area .report-chart > div {
+    width: 100% !important;
+}
+
+.live-preview-area .chart-settings-panel,
+.live-preview-area .kpi-settings-panel {
+    position: fixed;
+    z-index: 1060;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 380px;
+    width: 380px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    border-radius: 6px;
+    background: #fff;
+}
+
+.live-preview-area .chart-container {
+    position: static;
+}
+
+/* Live preview designer - responsive options */
+.live-preview-designer .designer-options-wrap .form-group.row {
+    display: block;
+}
+
+.live-preview-designer .designer-options-wrap .form-group.row > [class*="col-"] {
+    width: 100%;
+    max-width: 100%;
+    flex: none;
+}
+
+.filter-detail-logic {
+    font-weight: 600;
+    font-size: 0.8em;
 }
 
