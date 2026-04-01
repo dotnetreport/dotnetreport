@@ -2,15 +2,31 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>dotnetreport.mvc</id>
-    <version>6.2.4</version>
+    <version>6.2.5</version>
     <authors>Dotnet Report Builder</authors>
     <owners>Dotnet Report Builder</owners>
     <projectUrl>https://dotnetreport.com/</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>Dotnet Report is a powerful .NET Embedded Analytics and Reporting Solution that simplifies adding customizable, user-friendly report-building and data visualization features to your ASP.NET Web Applications. Designed for developers, it offers seamless integration, intuitive interfaces, and robust reporting capabilities to empower end-users with actionable insights. Perfect for businesses looking to enhance data-driven decision-making and streamline reporting workflows.</description>
-    <releaseNotes>New features and bug fixes</releaseNotes>
+    <description>
+      Dotnet Report is a powerful .NET Embedded Analytics and Reporting Solution for ASP.NET Core and MVC applications. Easily add drag-and-drop report building, ad-hoc reporting, interactive dashboards, and data visualization to your web app — no extra servers or third-party dependencies required.
+
+      Key Features:
+      - Ad-hoc Report Builder: Let end-users create, filter, and export custom reports without developer involvement
+      - Interactive Dashboards: Build real-time, drill-down dashboards with charts, graphs, and KPI widgets
+      - SQL Query Builder: Visual query designer works with any SQL Server, PostgreSQL, or MySQL database
+      - Seamless ASP.NET Integration: Drop-in NuGet package compatible with .NET 6, .NET 7, .NET 8, and .NET Core
+      - Role-Based Access Control: Secure reports and dashboards per user or group
+      - Export &amp; Scheduling: Export to PDF, Excel, and CSV; schedule automated report delivery via email
+      - Fully Customizable UI: White-label ready with theming support to match your application's design
+
+      Ideal for SaaS platforms, enterprise applications, and any .NET developer who needs to embed self-service reporting and analytics for their users.
+    </description>
+    <releaseNotes>
+      New Features, Performance improvements, bug fixes, and stability enhancements.
+    </releaseNotes>
     <copyright>(c) Dotnet Report Builder</copyright>
     <tags>embedded analytics, .NET reporting tools, .NET Core report builder, SQL reporting tools, Visual Studio report designer, ad-hoc reporting, ASP.NET MVC report builder, ad-hoc reports, report viewer, SQL query builder, ASP.NET Web Forms, MVC reporting tools, custom query builder, query maker, Dotnet Report, .NET analytics solution, web reporting, interactive dashboards</tags>
+    <readme>README.md</readme>
     <dependencies>
       <dependency id="Bootbox.JS" version="6.0.0" />
       <dependency id="bootstrap" version="5.3.3" />
@@ -37,6 +53,7 @@
   </metadata>
   <files>
     <file src="readme.txt" target="" />
+    <file src="README.md" target="" />
     <file src="..\Content\img\report-logo.png" target="Content\Content\img\report-logo.png" />
     <file src="..\Content\bootstrap-editable.css" target="Content\Content\bootstrap-editable.css" />
     <file src="..\Content\bootstrap-mvc-validation.css" target="Content\Content\bootstrap-mvc-validation.css" />
