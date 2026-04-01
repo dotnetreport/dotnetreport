@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using ReportBuilder.Web.Controllers;
 using ReportBuilder.Web.Jobs;
 using ReportBuilder.Web.Models;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 var services = builder.Services;
@@ -33,8 +34,41 @@ services.ConfigureApplicationCookie(options =>
     options.LoginPath = "/Home/Login";
     options.LogoutPath = "/Home/Logout";
     options.AccessDeniedPath = "/Home/Index";
-    options.ExpireTimeSpan = TimeSpan.FromDays(365); 
+    options.ExpireTimeSpan = TimeSpan.FromDays(365);
     options.SlidingExpiration = true;
+
+    // Preserve custom claims (AllowSetupPageAccess, AllowAdminMode, etc.) across
+    // Identity's periodic SecurityStampValidator revalidation. Without this, the
+    // validator replaces the cookie principal with a bare one from the user store
+    // after ~30 minutes, stripping all DotNet Report API claims that were set at login.
+    options.Events.OnValidatePrincipal = async context =>
+    {
+        // Capture the original claims before the validator runs
+        var originalClaims = context.Principal?.Claims.ToList();
+
+        // Let Identity's default SecurityStampValidator run
+        var validator = context.HttpContext.RequestServices
+            .GetService<ISecurityStampValidator>();
+        if (validator != null)
+        {
+            await validator.ValidateAsync(context);
+        }
+
+        // If the validator replaced the principal, re-add any custom claims
+        // that were in the original cookie but are missing from the new one
+        if (context.ShouldRenew && originalClaims != null
+            && context.Principal?.Identity is ClaimsIdentity newIdentity)
+        {
+            var newClaimTypes = new HashSet<string>(newIdentity.Claims.Select(c => c.Type));
+            foreach (var claim in originalClaims)
+            {
+                if (!newClaimTypes.Contains(claim.Type))
+                {
+                    newIdentity.AddClaim(claim);
+                }
+            }
+        }
+    };
 });
 services.AddHttpClient();
 services.AddHttpContextAccessor();
