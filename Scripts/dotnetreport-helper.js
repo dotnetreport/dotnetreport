@@ -311,6 +311,10 @@ ko.bindingHandlers.select2 = {
             { width: '100%', dropdownParent: $(el).closest('.modal').length ? $(el).closest('.modal') : $(document.body) },
             ko.unwrap(valueAccessor()) || {}
         );
+        // Always use closest modal as dropdownParent if element is inside a modal
+        if ($(el).closest('.modal').length) {
+            s2opts.dropdownParent = $(el).closest('.modal');
+        }
         $(el).select2(s2opts);
         // Sync user selection back to KO value observable (Select2 v4)
         $(el).on('change.select2binding', function () {
@@ -329,7 +333,11 @@ ko.bindingHandlers.select2 = {
     update: function (el, valueAccessor, allBindingsAccessor, viewModel) {
         var allBindings = allBindingsAccessor();
         if (!$(el).data('select2')) return;
-        if ("value" in allBindings) {
+        if (allBindings.selectedOptions && ko.isObservable(allBindings.selectedOptions)) {
+            var selectedVals = ko.unwrap(allBindings.selectedOptions) || [];
+            $(el).val(selectedVals).trigger('change.select2');
+
+        } else if ("value" in allBindings) {
             var newValue = ko.unwrap(allBindings.value);
             $(el).val(newValue != null ? newValue : null).trigger('change.select2');
         }
@@ -342,7 +350,11 @@ ko.bindingHandlers.select2Value = {
         var value = ko.unwrap(valueAccessor());
 
         // Initialize select2
-        $(element).select2(allBindings.select2Value);
+        var s2ValOpts = allBindings.select2Value || {};
+        if ($(element).closest('.modal').length) {
+            s2ValOpts.dropdownParent = $(element).closest('.modal');
+        }
+        $(element).select2(s2ValOpts);
 
         // When an item is selected, update the observable with the full item object
         $(element).on('select2:select', function (e) {
