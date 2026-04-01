@@ -96,7 +96,7 @@
         <input class="form-control" type="text" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default',attr: {id: 'ctl-' + $element.closest('[data-parentprefix]').getAttribute('data-parentprefix') + '-' + uiId}" required />
         <!-- /ko -->
         <!-- /ko -->
-        <!-- ko if: hasForeignKey && $parent.Operator() != 'all' -->
+        <!-- ko if: hasForeignKey && $parent.Operator() != 'all' && $parent.Operator() != 'none' -->
         <!-- ko if: hasForeignParentKey && $parent.showParentFilter() -->
         <select multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ParentIn"></select>
         <!-- /ko -->
@@ -205,12 +205,12 @@
                 <span data-bind="html: $parent.formatKpiValue(Value, formattedVal())"></span>
 
                 <!-- ko if: $parent.Rows.length > 1 ? ($parents[$parents.length-2].showPriorInKpi != undefined ? $parents[$parents.length-2].showPriorInKpi() : $parents[$parents.length-1].showPriorInKpi()) : false -->
-                <span data-bind="style: {'color': $parent.calculateRate() > 0 ? $parent.PositiveColor : $parent.NegativeColor, 'font-size': '24px'}">
-                    <span data-bind="html: $parent.calculateRate() + '%'"></span>
-                </span>
-
-                <div data-bind="style: {'font-size': '24px', 'color': 'gray'}, css: {'text-muted': true}">
-                    Prior Period: <span data-bind="html: $parent.Rows[1].Items[0].formattedVal"></span>
+                <div data-bind="style: {'font-size': '20px'}" class="text-muted">
+                    <span data-bind="text: $parent.comparisonLabel"></span>: <span data-bind="html: $parent.formatKpiValue($parent.Rows[1].Items[0].Value, $parent.Rows[1].Items[0].formattedVal)"></span>
+                    <span data-bind="style: {'color': $parent.calculateRate() > 0 ? $parent.PositiveColor : $parent.NegativeColor, 'font-size': '20px'}">
+                        <i data-bind="css: $parent.calculateRate() > 0 ? 'fa fa-arrow-up' : 'fa fa-arrow-down'"></i>
+                        <span data-bind="html: Math.abs($parent.calculateRate()) + '%'"></span>
+                    </span>
                 </div>
                 <!-- /ko -->
 
@@ -742,6 +742,20 @@
                     <i class="fa fa-user-circle"></i> You can manage Reports/Dashboards for all users
                 </div>
             </div>
+            <div data-bind="visible: adminMode">
+                <div class="alert alert-info d-inline-block" style="font-size: 10pt; padding: 5px; max-width: 350px; white-space: normal; margin-bottom: 0;" title="Logged in user">
+                    <i class="fa fa-id-badge"></i>
+                    <span data-bind="text: currentUserName || currentUserId || 'Unknown User'"></span>
+                    <!-- ko if: currentUserRole -->
+                    <span class="bubble-badge-separator">|</span>
+                    Roles: <span data-bind="text: currentUserRole"></span>
+                    <!-- /ko -->
+                    <!-- ko if: clientId -->
+                    <span class="bubble-badge-separator">|</span>
+                    Client: <span data-bind="text: clientId"></span>
+                    <!-- /ko -->
+                </div>
+            </div>
             <div class="d-flex align-items-center">
                 <div class="bubble-badge">
                     Admin Mode
@@ -973,6 +987,16 @@
         </div>
     </div>
 </script>
+<script type="text/html" id="filter-details-summary">
+    <!-- ko if: typeof ShowFilterDetails === 'function' && ShowFilterDetails() && typeof filterDetailsSummary === 'function' && filterDetailsSummary() -->
+    <div class="mb-2 py-1 small" style="border-left: 3px solid #adb5bd; padding-left: 10px;">
+        <i class="fa fa-filter"></i>
+        <b>Filters:</b>
+        <span data-bind="html: filterDetailsSummary()"></span>
+    </div>
+    <!-- /ko -->
+</script>
+
 <script type="text/html" id="fly-filter-template">
     <div class="card" data-bind="visible: FlyFilters().length>0 || DontExecuteOnRun">
         <div class="card-header">
@@ -1070,14 +1094,14 @@
                                 <span data-bind="visible: Field() && Field().forced" class="badge bg-info">Required Filter</span>
                             </div>
                             <div class="col-md-1">
-                                <div style="display: flex; align-items: center;">
-                                    <div class="form-group" style="flex-grow: 1;">
+                                <div style="display: flex; align-items: left;">
+                                    <div class="form-group" >
                                         <button class="btn btn-sm btn-secondary" data-bind="click: $parent.RemoveFilter, hidden: Field() && Field().forced" title="Remove">
                                             <i class="fa fa-trash"></i>
                                         </button>
                                     </div>
-                                    <div class="form-group" style="flex-grow: 1;" data-bind="with: Field, hidden: document.querySelector('#filter-panel.card-body.collapse')">
-                                        <span class="btn btn-sm" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {'btn-success': filterOnFly()==true, 'btn-secondary': filterOnFly()==false}">
+                                    <div class="form-group" data-bind="with: Field, hidden: document.querySelector('#filter-panel.card-body.collapse')">
+                                        <span class="btn btn-sm" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {'btn-success': filterOnFly()==true, 'btn-secondary': !filterOnFly()}">
                                             <span class="fa fa-filter" aria-hidden="true" title="Filter on Report"></span>
                                         </span>
                                     </div>
@@ -1209,13 +1233,19 @@
                 </span>
             </div>
             <div class="mb-3">
-                <div class="row g-3">
-                    <label class="col-sm-3 col-form-label">Email to</label>
-                    <div class="col-sm-6">
-                        <input type="text" class="form-control" data-bind="value: emailTo" placeholder="Enter Email Addresses separated by comma to send the Report to" required />
+                <div class="row g-2 align-items-center">
+                    <label class="col-12 col-sm-3 col-form-label">Email to</label>
+
+                    <div class="col-12 col-sm-6">
+                        <input type="text" class="form-control"
+                               data-bind="value: emailTo"
+                               placeholder="Enter Email Addresses separated by comma"
+                               required />
                     </div>
-                    <label class="col-sm-1 col-form-label">Format</label>
-                    <div class="col-sm-2">
+
+                    <label class="col-6 col-sm-1 col-form-label">Format</label>
+
+                    <div class="col-6 col-sm-2">
                         <select class="form-select" data-bind="value: format,event: { change: onFormatChange }">
                             <option value="EXCEL">Excel</option>
                             <option data-bind="visible: $parent.canDrilldown && $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option>
@@ -1228,45 +1258,61 @@
                 </div>
             </div>
             <div class="mb-3">
-                <div class="row g-3">
-                    <label class="col-sm-3 col-form-label">Pick Time Zone</label>
-                    <div class="col-sm-9">
-                        <select class="form-select" data-bind="options: timezonOption,
-                                                            optionsText: 'displayName',
-                                                            optionsValue: 'timeZoneId',
-                                                            value: selectedTimezone,
-                                                            select2: {dropdownParent: $('#schedule-builder-div'), allowClear: true, placeholder: 'Set a time zone to send report'}">
+                <div class="row g-2 align-items-center">
+                    <label class="col-12 col-sm-3 col-form-label">Pick Time Zone</label>
+
+                    <div class="col-12 col-sm-9">
+                        <select class="form-select"
+                                data-bind="options: timezonOption,
+                                           optionsText: 'displayName',
+                                           optionsValue: 'timeZoneId',
+                                           value: selectedTimezone,
+                                           select2: {dropdownParent: $element.closest('.modal'), allowClear: true, placeholder: 'Set a time zone'}">
                         </select>
                     </div>
                 </div>
             </div>
+
             <div class="mb-3">
-                <div class="row g-3">
-                    <div class="col-sm-3">
+                <div class="row g-2">
+                    <div class="col-6 col-sm-3">
                         <div class="form-check" title="Set a date to start sending scheduled report">
-                            <input class="form-check-input" type="checkbox" data-bind="checked: hasScheduleStart" id="scheduleStartCheckbox">
+                            <input class="form-check-input" type="checkbox"
+                                   data-bind="checked: hasScheduleStart"
+                                   id="scheduleStartCheckbox">
                             <label class="form-check-label" for="scheduleStartCheckbox">
                                 Schedule Start Date
                             </label>
                         </div>
                     </div>
-                    <div class="col-sm-4" data-bind="if: hasScheduleStart">
-                        <input type="text" class="form-control" data-bind="datepicker: scheduleStart, datepickerOptions: {value: scheduleStart}" title="Scheduled Report will not be sent before this date" required />
+
+                    <div class="col-6 col-sm-4" data-bind="if: hasScheduleStart">
+                        <input type="text" class="form-control"
+                               data-bind="datepicker: scheduleStart, datepickerOptions: {value: scheduleStart}"
+                               title="Scheduled Report will not be sent before this date"
+                               required />
                     </div>
                 </div>
             </div>
+
             <div class="mb-3">
-                <div class="row g-3">
-                    <div class="col-sm-3">
-                        <div class="form-check" title="Set a date to stop sending scheduled report">
-                            <input class="form-check-input" type="checkbox" data-bind="checked: hasScheduleEnd" id="scheduleEndCheckbox">
+                <div class="row g-2">
+                    <div class="col-6 col-sm-3">
+                        <div class="form-check"  title="Set a date to stop sending scheduled report">
+                            <input class="form-check-input" type="checkbox"
+                                   data-bind="checked: hasScheduleEnd"
+                                   id="scheduleEndCheckbox">
                             <label class="form-check-label" for="scheduleEndCheckbox">
                                 Schedule End Date
                             </label>
                         </div>
                     </div>
-                    <div class="col-sm-4" data-bind="if: hasScheduleEnd">
-                        <input type="text" class="form-control" data-bind="datepicker: scheduleEnd, datepickerOptions: {value: scheduleEnd}" title="Scheduled Report will not be sent after this date" required />
+
+                    <div class="col-6 col-sm-4" data-bind="if: hasScheduleEnd">
+                        <input type="text" class="form-control"
+                               data-bind="datepicker: scheduleEnd, datepickerOptions: {value: scheduleEnd}"
+                               title="Scheduled Report will not be sent after this date"
+                               required />
                     </div>
                 </div>
             </div>
@@ -1319,7 +1365,13 @@
                     <div class="form-group row" data-bind="visible: fieldFormat()=='Date' && dateFormat()==='Custom'">
                         <label class="col-sm-5 col-md-5 control-label">Enter Custom Date Format</label>
                         <div class="col-sm-7 col-md-7">
-                            <input type="text" class="form-control" data-bind="value: customDateFormat" placeholder="dd/mm/yyyy" />
+                            <div class="input-group">
+                                <input type="text" class="form-control" data-bind="value: customDateFormat" placeholder="dd/MM/yyyy" />
+                                <button type="button" class="btn btn-outline-secondary" tabindex="-1"
+                                        data-bind="bsPopover: { trigger: 'focus', placement: 'bottom', html: true, title: 'Date Format Tokens', content: '<table class=\'table table-sm table-borderless mb-0\' style=\'font-size:12px\'><tr><td colspan=\'2\' class=\'fw-bold text-primary border-bottom pb-1\'>Day</td></tr><tr><td><code>d</code></td><td>1, 2 … 31</td></tr><tr><td><code>dd</code></td><td>01, 02 … 31</td></tr><tr><td><code>ddd</code></td><td>Mon, Tue …</td></tr><tr><td><code>dddd</code></td><td>Monday, Tuesday …</td></tr><tr><td colspan=\'2\' class=\'fw-bold text-primary border-bottom pb-1 pt-2\'>Month</td></tr><tr><td><code>M</code></td><td>1, 2 … 12</td></tr><tr><td><code>MM</code></td><td>01, 02 … 12</td></tr><tr><td><code>MMM</code></td><td>Jan, Feb …</td></tr><tr><td><code>MMMM</code></td><td>January, February …</td></tr><tr><td colspan=\'2\' class=\'fw-bold text-primary border-bottom pb-1 pt-2\'>Year</td></tr><tr><td><code>yy</code></td><td>26, 27 …</td></tr><tr><td><code>yyyy</code></td><td>2026, 2027 …</td></tr><tr><td colspan=\'2\' class=\'fw-bold text-primary border-bottom pb-1 pt-2\'>Time</td></tr><tr><td><code>h</code></td><td>1–12 (12hr)</td></tr><tr><td><code>hh</code></td><td>01–12 (12hr)</td></tr><tr><td><code>H</code></td><td>0–23 (24hr)</td></tr><tr><td><code>HH</code></td><td>00–23 (24hr)</td></tr><tr><td><code>mm</code></td><td>Minutes (00–59)</td></tr><tr><td><code>ss</code></td><td>Seconds (00–59)</td></tr><tr><td><code>tt</code></td><td>AM / PM</td></tr></table><div class=\'text-muted mt-1\' style=\'font-size:11px\'><b>Examples:</b> dd/MM/yyyy • MMM dd, yyyy • yyyy-MM-dd HH:mm</div>' }">
+                                    <i class="fa fa-question-circle"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group row">
@@ -1357,19 +1409,25 @@
                         </div>
                     </div>
                     <div class="form-group row" data-bind="visible: $parents[1].IncludeSubTotal()">
-                        <div class="col-sm-12">
+                        <div class="col-sm-12 d-flex align-items-center">
                             <div class="checkbox">
                                 <label>
                                     <input type="checkbox" data-bind="checked: dontSubTotal" />
                                     <b>Don't Show In Total Row</b>
                                 </label>
                             </div>
+                            <button class="btn btn-sm btn-secondary ms-2" title="Apply to all columns" data-bind="click: function(){ applyAllDontSubTotal(!applyAllDontSubTotal()); }">
+                                <span class="fa" data-bind="css: applyAllDontSubTotal() ? 'fa-check' : 'fa-paste'"></span>
+                            </button>
                         </div>
                     </div>
                     <div class="form-group row" data-bind="visible: $parents[1].IncludeSubTotal() && !dontSubTotal()">
                         <label class="col-sm-5 col-md-5 control-label">Total Row Aggregate</label>
-                        <div class="col-sm-7 col-md-7">
+                        <div class="col-sm-7 col-md-7 d-flex align-items-center">
                             <select class="form-select" data-bind="options: totalRowAggregateOptions, value: totalRowAggregate"></select>
+                            <button class="btn btn-sm btn-secondary ms-2" title="Apply to all columns" data-bind="click: function(){ applyAllTotalRowAggregate(!applyAllTotalRowAggregate()); }">
+                                <span class="fa" data-bind="css: applyAllTotalRowAggregate() ? 'fa-check' : 'fa-paste'"></span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1553,7 +1611,7 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-select" required data-bind="options: $parentContext.$parent.SavedReports, optionsText: 'reportName', optionsValue: 'reportId', value: LinkedToReportId, optionsCaption: 'Choose the Report to link to'"></select>
+                            <select class="form-select" required data-bind="options: savedReportsWithFolder, optionsText: function(r) { return (r.folderName ? r.folderName + ' \u203a ' : '') + r.reportName }, optionsValue: 'reportId', optionsCaption: '', value: LinkedToReportId, select2: { placeholder: 'Search reports or folders...', allowClear: true }"></select>
                         </div>
                     </div>
                     <div class="checkbox" data-bind="if: LinkedToReportId">
@@ -1565,7 +1623,7 @@
                     <div class="form-group row" data-bind="if: SendAsFilterParameter">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report Filter</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-select" required data-bind="options: allFields, optionsText: 'fieldName', optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
+                            <select class="form-select" required data-bind="options: allFields, optionsText: function(f) { return (f.tableName ? f.tableName + ' \u203a ' : '') + f.fieldName }, optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
                         </div>
                     </div>
                 </div>
@@ -1600,7 +1658,8 @@
 </script>
 
 <script type="text/html" id="designer-choose-visual">
-    <div class="btn-group" role="group" aria-label="Visualization Options">
+    <div style="overflow-x: auto;">
+    <div class="btn-group" role="group" aria-label="Visualization Options" style="flex-wrap: nowrap; min-width: max-content;">
         <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('List'); }, css: { active: ReportType()=='List' }">
             <span class="fa fa-2x fa-list-alt"></span>
             <p>List</p>
@@ -1650,6 +1709,7 @@
             <p>Transpose</p>
         </button>
     </div>
+    </div>
 </script>
 
 <script type="text/html" id="designer-choose-data">
@@ -1663,8 +1723,14 @@
             </label>
         </div>
         <div class="pull-right">
-            <a href="#" class="btn btn-secondary btn-sm" title="Add Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: cancelFormulaField, text: isFormulaField()? 'Cancel': 'Custom Field', css: {'btn-primary': !isFormulaField(), 'btn-danger': isFormulaField}"></a>
-            <a href="#" class="btn btn-secondary btn-sm" title="Add Custom Field using Function" data-bind="hidden:isFormulaField() || useStoredProc() || !ko.unwrap(appSettings.useFunctions) || ReportType() !== 'List' , click: function(){designFunctionField()}, text: isFunctionField()? 'Cancel': 'Function Field', css: {'btn-primary': !isFunctionField(), 'btn-danger': isFunctionField}"></a>
+            <a href="#" class="btn btn-sm" style="font-size: 11px; padding: 3px 8px;" title="Add Custom Field using Formula" data-bind="hidden: isFunctionField() || useStoredProc(), click: cancelFormulaField, css: {'btn-primary': !isFormulaField(), 'btn-danger btn-sm': isFormulaField}">
+                <!-- ko ifnot: isFormulaField() -->Custom Field<!-- /ko -->
+                <!-- ko if: isFormulaField() --><i class="fa fa-times"></i><!-- /ko -->
+            </a>
+            <a href="#" class="btn btn-sm" style="font-size: 11px; padding: 3px 8px;" title="Add Custom Field using Function" data-bind="hidden:isFormulaField() || useStoredProc() || !ko.unwrap(appSettings.useFunctions) || ReportType() !== 'List' , click: function(){designFunctionField()}, css: {'btn-primary': !isFunctionField(), 'btn-danger btn-sm': isFunctionField}">
+                <!-- ko ifnot: isFunctionField() -->Function Field<!-- /ko -->
+                <!-- ko if: isFunctionField() --><i class="fa fa-times"></i><!-- /ko -->
+            </a>
         </div>
     </div>
     <div class="clearfix"></div>
@@ -1688,7 +1754,7 @@
                 </span>
             </div>
 
-            <div class="data-select-tree" style="max-height:calc(100vh - 200px);overflow-y:auto">
+            <div class="data-select-tree">
                 <!-- ko foreach: CategorizedTables -->
                 <div class="mb-3">
                     <div data-bind="click: function() { isExpanded(!isExpanded()); }, visible: categoryName" style="cursor: pointer;">
@@ -2130,6 +2196,12 @@
                     Wait to Select Filters before Running Report
                 </label>
             </div>
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" data-bind="checked: ShowFilterDetails" />
+                    Include Filter Details on Report
+                </label>
+            </div>
             <div class="form-group row">
                 <div class="checkbox col-md-5">
                     <label>
@@ -2490,14 +2562,21 @@
                 data-bind="click: toggleAiChat, visible: appSettings.usePromptBuilder">
             <i class="fa fa-comment fa-lg"></i>
           </button>
-          <button type="button" class="btn btn-sm btn-light" data-bind="visible: ReportID(), click: function() {activeDesign(false); if (isExpanded) isExpanded(false);}" title="Close">
-            <i class="fa fa-times"></i> Close Designer
-          </button>
-          <button type="button" class="btn btn-sm btn-danger" data-bind="visible: !ReportID(), click: function() { if (ReportMode()=='dashboard') $parent.removeNewReport(); else cancelCreateReport(); }" title="Cancel new report">
-            <i class="fa fa-times"></i> Cancel
-          </button>
+          <div>
+              <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bind="click: function() { RunReport(false, true, ReportMode()=='dashboard'); }" title="Re-run Report">
+                  <i class="fa fa-play"></i>
+              </button>
+              <!-- Close for existing reports -->
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-bind="visible: ReportID(), click: function() {activeDesign(false); if (isExpanded) isExpanded(false);}" title="Close Designer">
+                  <i class="fa fa-times"></i>
+              </button>
+              <!-- Cancel for new reports -->
+              <button type="button" class="btn btn-sm btn-danger" data-bind="visible: !ReportID(), click: function() { if (ReportMode()=='dashboard') $parent.removeNewReport(); else cancelCreateReport(); }" title="Cancel new report">
+                  <i class="fa fa-times"></i>
+              </button>
+          </div>
         </div>
-        <div class="card-body p-1">
+        <div class="card-body p-1" style="overflow-x: auto;">
           <div data-bind="template: 'designer-choose-visual'"></div>
         </div>
       </div>
@@ -2555,25 +2634,6 @@
 
         <div class="card flex-fill expandable-panel" id="jsonFieldsPanel" data-bind="visible: lastPickedField() && lastPickedField().fieldType == 'Json'">
             <div class="card-body" data-bind="template: 'json-field-picker'"></div>
-        </div>
-
-        <!-- Custom Field -->
-        <div class="card flex-fill expandable-panel" id="customFieldPanel" data-bind="visible: isFormulaField">
-            <div class="card-header p-1">
-            <i class="fa fa-magic"></i> Custom Field
-            </div>
-            <div class="card-body p-1 custom-field-design" style="max-height: 400px; overflow-y: auto; overflow-x: hidden;">
-                <div data-bind="template: 'custom-field-designer', data: $data"></div>
-            </div>
-        </div>
-
-        <div class="card flex-fill expandable-panel" id="customFunctionPanel" data-bind="visible: isFunctionField">
-            <div class="card-header p-1">
-            <i class="fa fa-magic"></i> Function Field
-            </div>
-            <div class="card-body p-1 custom-field-design" style="max-height: 400px; overflow-y: auto; overflow-x: hidden;" data-bind="if: isFunctionField">
-                <div data-bind="template: 'custom-function-designer', data: $data"></div>
-            </div>
         </div>
 
         <!-- Field Options Panel -->
@@ -2648,7 +2708,7 @@
 
         <!-- Schedule -->
         <div class="card flex-fill expandable-panel" id="schedulePanel"
-             data-bind="css:{'collapsed-vertical': panels.isCollapsed('schedulePanel')}, visible: SaveReport() && !appSettings.showScheduling()">
+             data-bind="css:{'collapsed-vertical': panels.isCollapsed('schedulePanel')}, visible: SaveReport() && !ko.unwrap(appSettings.showScheduling)">
           <div class="card-header p-1" data-bind="click:function(){panels.togglePanel('schedulePanel')}">
             <i class="fa fa-hourglass"></i> Schedule
           </div>
@@ -2670,6 +2730,7 @@
         </div>
 
       </div>
+
     </div>
     <hr />
     <!-- AI Assistant Popup -->
@@ -2745,162 +2806,369 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" data-bind="click: onModalCloseClicked" aria-label="Close"></button>
             </div>
-            <div class="modal-body needs-validation" style="overflow-y: auto; flex-grow: 1;">
-               <div class="row">
-                    <div class="col-md-4">
-                        <div class="card card-body" id="choose-data-card"  style="min-height: calc(100vh - 200px);">
-                            <div class="form-group row align-items-center">
-                                <label class="col-sm-4 col-form-label h6">
-                                    <i class="fa fa-file"></i> Report Name
-                                </label>
-                                <div class="col-sm-8">
-                                    <input type="text" class="form-control" required placeholder="Report Name" data-bind="value: ReportName">
-                                </div>
-                            </div>
-                            <hr />
-                            <h5><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
-                            <div data-bind="template: 'designer-choose-data'"></div>
-                        </div>
-                        <br />
+            <div class="modal-body needs-validation" style="overflow-y: hidden; flex-grow: 1; display: flex; flex-direction: column;">
+               <div class="row flex-grow-1" style="min-height: 0;">
+                    <!-- LEFT PANEL -->
+                    <div class="col-md-4 h-100" style="overflow-y: auto;">
 
-                        <div class="card card-body">
+                        <!-- Live Preview Toggle -->
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" role="switch" id="livePreviewSwitch" data-bind="checked: activeDesign">
+                                <label class="form-check-label fw-semibold" for="livePreviewSwitch">
+                                    <i class="fa fa-bolt text-warning"></i> Live Preview
+                                </label>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary" data-bind="visible: activeDesign(), click: function() { RunReport(false, true); }" title="Re-run Report">
+                                <i class="fa fa-play"></i> Run
+                            </button>
+                        </div>
 
-                            <div class="form-group row">
-                                <label class="control-label h6">
-                                    <i class="fa fa-info-circle"></i> Report Description
-                                </label>
-                                <div>
-                                    <textarea class="form-control" style="width: 100%;" rows="3" placeholder="Additional details (optional)" data-bind="value: ReportDescription"></textarea>
+                        <!-- ==================== STANDARD MODE (activeDesign OFF) ==================== -->
+                        <div data-bind="visible: !activeDesign()">
+                            <div class="card card-body" id="choose-data-card" style="min-height: calc(100vh - 200px);">
+                                <div class="form-group row align-items-center">
+                                    <label class="col-sm-4 col-form-label h6">
+                                        <i class="fa fa-file"></i> Report Name
+                                    </label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" required placeholder="Report Name" data-bind="value: ReportName">
+                                    </div>
                                 </div>
+                                <hr />
+                                <h5><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
+                                <div data-bind="template: 'designer-choose-data'"></div>
                             </div>
-                            <div class="checkbox" data-bind="visible: CanSaveReports()">
-                                <label>
-                                    <input type="checkbox" data-bind="checked: SaveReport">
-                                    Save Report
-                                </label>
-                            </div>
-                            <div class="form-group row" data-bind="visible: SaveReport">
-                                <label class="control-label h6">
-                                    <i class="fa fa-folder-open"></i> Choose Folder
-                                </label>
-                                <div>
-                                    <select class="form-select" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-8">
-                        <div class="card card-body">
-                            <h5><span class="fa fa-file"></span>&nbsp;Choose Visualization</h5>
-                            <div style="overflow-x: auto; white-space: nowrap;">
-                                <div data-bind="template: 'designer-choose-visual'"></div>
-                            </div>
-                        </div>
-                        <div id="customFunctionSection" data-bind="if: isFunctionField() && ReportType() === 'List'" class="custom-field-design">
                             <br />
-                            <div class="card">
-                                <div class="card-header">
-                                    <b>Build Custom Field</b>
+                            <div class="card card-body">
+                                <div class="form-group row">
+                                    <label class="control-label h6">
+                                        <i class="fa fa-info-circle"></i> Report Description
+                                    </label>
+                                    <div>
+                                        <textarea class="form-control" style="width: 100%;" rows="3" placeholder="Additional details (optional)" data-bind="value: ReportDescription"></textarea>
+                                    </div>
                                 </div>
-                                <div class="card-body" data-bind="template: 'custom-function-designer'">
+                                <div class="checkbox" data-bind="visible: CanSaveReports()">
+                                    <label>
+                                        <input type="checkbox" data-bind="checked: SaveReport">
+                                        Save Report
+                                    </label>
+                                </div>
+                                <div class="form-group row" data-bind="visible: SaveReport">
+                                    <label class="control-label h6">
+                                        <i class="fa fa-folder-open"></i> Choose Folder
+                                    </label>
+                                    <div>
+                                        <select class="form-select" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="clearfix"></div>
                         </div>
-                        <div data-bind="template: 'json-field-picker'">
-                        </div>
-                        <div id="customFieldSection" data-bind="if: isFormulaField" class="custom-field-design">
-                            <br />
-                            <div class="card">
-                                <div class="card-header">
-                                    <b>Build Custom Field</b>
-                                </div>
-                                <div class="card-body" data-bind="template: 'custom-field-designer'">
 
+                        <!-- ==================== LIVE PREVIEW MODE (activeDesign ON) ==================== -->
+                        <div data-bind="visible: activeDesign()" class="live-preview-designer" style="font-size: 12px; display: none;">
+
+                            <!-- Data -->
+                            <div class="card mb-1 designer-panel">
+                                <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-dataPanel')}" style="cursor:pointer;">
+                                    <i class="fa fa-database"></i> Data
+                                    <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-dataPanel')}"></i>
                                 </div>
-                            </div>
-                            <div class="clearfix"></div>
-                        </div>
-                        <br />
-                        <div class="card card-body">
-                            <div class="row">
-                                <h5 class="col-8 pull-left"><span class="fa fa-table"></span>&nbsp;Selected data for the Report</h5>
-                                <div class="col-4 pull-right right-align">
-                                    <a href="#" class="small text-muted" data-bind="visible: SelectedFields().length, click: function() {SelectedFields([]);}">Clear all</a>
+                                <div class="card-body p-2" data-bind="visible: !panels.isCollapsed('lp-dataPanel')">
+                                    <div class="form-group row align-items-center mb-2">
+                                        <label class="col-sm-4 col-form-label"><i class="fa fa-file"></i> Name</label>
+                                        <div class="col-sm-8">
+                                            <input type="text" class="form-control form-control-sm" required placeholder="Report Name" data-bind="value: ReportName">
+                                        </div>
+                                    </div>
+                                    <div data-bind="template: 'designer-choose-data'"></div>
                                 </div>
                             </div>
 
-                            <div data-bind="template: 'designer-selected-data'"></div>
-                        </div>
-                        <div data-bind="if: linkedReportFields().length > 0">
-                            <br />
-                            <div class="card mb-4">
-                                <div class="card-header bg-light">
-                                <h5 class="mb-0">
-                                    <i class="fa fa-bookmark"></i> Include Sub Reports
-                                </h5>
+                            <!-- Visualization -->
+                            <div class="card mb-1 designer-panel">
+                                <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-vizPanel')}" style="cursor:pointer;">
+                                    <i class="fa fa-bar-chart"></i> Visualization
+                                    <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-vizPanel')}"></i>
                                 </div>
-                                <div class="card-body">
+                                <div class="card-body p-2" data-bind="visible: !panels.isCollapsed('lp-vizPanel')" style="overflow-x: auto;">
+                                    <div data-bind="template: 'designer-choose-visual'"></div>
+                                </div>
+                            </div>
+
+                            <!-- Selected Data -->
+                            <div class="card mb-1 designer-panel">
+                                <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-selectedPanel')}" style="cursor:pointer;">
+                                    <i class="fa fa-table"></i> Selected Data
+                                    <a href="#" class="small text-muted float-end me-3" data-bind="visible: SelectedFields().length, click: function(){SelectedFields([]);}">Clear all</a>
+                                    <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-selectedPanel')}"></i>
+                                </div>
+                                <div class="card-body p-2 designer-auto-update" data-bind="visible: !panels.isCollapsed('lp-selectedPanel')" style="max-height: 300px; overflow-y: auto;">
+                                    <div data-bind="template: 'designer-selected-data'"></div>
+                                </div>
+                            </div>
+
+                            <!-- JSON Field Picker -->
+                            <div data-bind="template: 'json-field-picker'"></div>
+
+                            <!-- Sub Reports -->
+                            <div class="card mb-1 designer-panel" data-bind="visible: linkedReportFields().length > 0">
+                                <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-subReportsPanel')}" style="cursor:pointer;">
+                                    <i class="fa fa-bookmark"></i> Sub Reports
+                                    <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-subReportsPanel')}"></i>
+                                </div>
+                                <div class="card-body p-2" data-bind="visible: !panels.isCollapsed('lp-subReportsPanel')">
                                     <div data-bind="template: 'designer-sub-report'"></div>
                                 </div>
                             </div>
-                        </div>
-                        <div data-bind="visible: ReportType()=='Html'">
-                            <br />
-                            <div class="card mb-4">
-                                <div class="card-header bg-light">
-                                <h5 class="mb-0">
-                                    <i class="fa fa-pencil"></i> Design your Report
-                                </h5>
+
+                            <!-- HTML Design -->
+                            <div class="card mb-1 designer-panel" data-bind="visible: ReportType()=='Html'">
+                                <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-htmlPanel')}" style="cursor:pointer;">
+                                    <i class="fa fa-pencil"></i> Custom Design
+                                    <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-htmlPanel')}"></i>
                                 </div>
-                                <div class="card-body">
+                                <div class="card-body p-2" data-bind="visible: !panels.isCollapsed('lp-htmlPanel')">
                                     <div data-bind="template: 'designer-html'"></div>
                                 </div>
                             </div>
-                        </div>
-                        <br />
-                        <div class="card card-body">
-                            <h5><span class="fa fa-filter"></span>&nbsp;Choose Filters</h5>
 
-                            <div class="row" style="padding: 10px 10px; overflow-x: auto;">
-                                <div data-bind="if: useStoredProc" class="col-md-12">
-                                    <div data-bind="template: {name: 'filter-parameters'}"></div>
+                            <!-- Filters -->
+                            <div class="card mb-1 designer-panel">
+                                <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-filtersPanel')}" style="cursor:pointer;">
+                                    <i class="fa fa-filter"></i> Filters
+                                    <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-filtersPanel')}"></i>
                                 </div>
-                                <div data-bind="ifnot: useStoredProc" class="col-md-12">
-                                    <div data-bind="template: {name: 'filter-group'}"></div>
+                                <div class="card-body p-2 designer-auto-update" data-bind="visible: !panels.isCollapsed('lp-filtersPanel')" style="max-height: 300px; overflow-y: auto;">
+                                    <div data-bind="visible: useStoredProc"><div data-bind="template: {name: 'filter-parameters'}"></div></div>
+                                    <div data-bind="visible: !useStoredProc()"><div data-bind="template: {name: 'filter-group'}"></div></div>
+                                    <div class="checkbox">
+                                        <label>
+                                            <input type="checkbox" data-bind="checked: EditFiltersOnReport" />
+                                            Allow setting up and saving filters on Report
+                                        </label>
+                                    </div>
                                 </div>
-
-                                <div class="checkbox col-12">
-                                    <label>
-                                        <input type="checkbox" data-bind="checked: EditFiltersOnReport" />
-                                        Allow setting up and saving filters on Report
-                                    </label>
-                                </div>
-                                <br />
                             </div>
-                        </div>
-                        <br />
-                        <div data-bind="hidden: useStoredProc" class="card card-body">
-                            <h5><span class="fa fa-sort"></span>&nbsp;Choose Sorting</h5>
-                            <div data-bind="template: 'designer-sort'"></div>
-                        </div>
-                        <br />
-                        <div data-bind="visible: SaveReport() && !appSettings.showScheduling()" class="card card-body">
-                            <h5><span class="fa fa-hourglass"></span>&nbsp;Choose Schedule</h5>
 
-                            <div style="padding: 10px 10px" data-bind="if: SaveReport">
-                                <div data-bind="template: {name: 'report-schedule'}"></div>
+                            <!-- Sort -->
+                            <div class="card mb-1 designer-panel" data-bind="visible: !useStoredProc()">
+                                <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-sortPanel')}" style="cursor:pointer;">
+                                    <i class="fa fa-sort"></i> Sort
+                                    <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-sortPanel')}"></i>
+                                </div>
+                                <div class="card-body p-2 designer-auto-update" data-bind="visible: !panels.isCollapsed('lp-sortPanel')">
+                                    <div data-bind="template: 'designer-sort'"></div>
+                                </div>
                             </div>
+
+                            <!-- Settings & Options -->
+                            <div class="card mb-1 designer-panel">
+                                <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-settingsPanel')}" style="cursor:pointer;">
+                                    <i class="fa fa-gear"></i> Options
+                                    <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-settingsPanel')}"></i>
+                                </div>
+                                <div class="card-body p-2 designer-options-wrap" data-bind="visible: !panels.isCollapsed('lp-settingsPanel')">
+                                    <div class="form-group row mb-2">
+                                        <label class="control-label"><i class="fa fa-info-circle"></i> Description</label>
+                                        <div>
+                                            <textarea class="form-control form-control-sm" rows="2" placeholder="Optional" data-bind="value: ReportDescription"></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="checkbox" data-bind="visible: CanSaveReports()">
+                                        <label><input type="checkbox" data-bind="checked: SaveReport"> Save Report</label>
+                                    </div>
+                                    <div class="form-group row mb-2" data-bind="visible: SaveReport">
+                                        <label class="control-label"><i class="fa fa-folder-open"></i> Folder</label>
+                                        <div>
+                                            <select class="form-select form-select-sm" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID"></select>
+                                        </div>
+                                    </div>
+                                    <hr class="my-1" />
+                                    <div data-bind="visible: !useStoredProc()">
+                                        <div data-bind="template: 'designer-options'"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Schedule -->
+                            <div class="card mb-1 designer-panel" data-bind="visible: SaveReport() && !ko.unwrap(appSettings.showScheduling)">
+                                <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-schedulePanel')}" style="cursor:pointer;">
+                                    <i class="fa fa-hourglass"></i> Schedule
+                                    <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-schedulePanel')}"></i>
+                                </div>
+                                <div class="card-body p-2 designer-auto-update" data-bind="visible: !panels.isCollapsed('lp-schedulePanel')">
+                                    <div data-bind="template: {name: 'report-schedule'}"></div>
+                                </div>
+                            </div>
+
+                            <!-- Access -->
+                            <div class="card mb-1 designer-panel" data-bind="visible: adminMode()">
+                                <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-accessPanel')}" style="cursor:pointer;">
+                                    <i class="fa fa-key"></i> Security
+                                    <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-accessPanel')}"></i>
+                                </div>
+                                <div class="card-body p-2" data-bind="visible: !panels.isCollapsed('lp-accessPanel')">
+                                    <div data-bind="template: {name: 'manage-access-template', data: manageAccess}"></div>
+                                </div>
+                            </div>
+
                         </div>
-                        <br />
-                        <div data-bind="ifnot: useStoredProc">
+                    </div>
+
+                    <!-- RIGHT PANEL -->
+                    <div class="col-md-8 h-100" style="overflow-y: auto;">
+
+                        <!-- ==================== STANDARD MODE (activeDesign OFF) ==================== -->
+                        <div data-bind="visible: !activeDesign()">
                             <div class="card card-body">
-                                <div data-bind="template: 'designer-options'"></div>
+                                <h5><span class="fa fa-file"></span>&nbsp;Choose Visualization</h5>
+                                <div style="overflow-x: auto; white-space: nowrap;">
+                                    <div data-bind="template: 'designer-choose-visual'"></div>
+                                </div>
+                            </div>
+                            <div id="customFunctionSection" data-bind="visible: isFunctionField() && ReportType() === 'List'" class="custom-field-design">
+                                <br />
+                                <div class="card">
+                                    <div class="card-header"><b>Build Custom Field</b></div>
+                                    <div class="card-body" data-bind="template: 'custom-function-designer'"></div>
+                                </div>
+                                <div class="clearfix"></div>
+                            </div>
+                            <div data-bind="template: 'json-field-picker'"></div>
+                            <div id="customFieldSection" data-bind="visible: isFormulaField" class="custom-field-design">
+                                <br />
+                                <div class="card">
+                                    <div class="card-header"><b>Build Custom Field</b></div>
+                                    <div class="card-body" data-bind="template: 'custom-field-designer'"></div>
+                                </div>
+                                <div class="clearfix"></div>
+                            </div>
+                            <br />
+                            <div class="card card-body">
+                                <div class="row">
+                                    <h5 class="col-8 pull-left"><span class="fa fa-table"></span>&nbsp;Selected data for the Report</h5>
+                                    <div class="col-4 pull-right right-align">
+                                        <a href="#" class="small text-muted" data-bind="visible: SelectedFields().length, click: function() {SelectedFields([]);}">Clear all</a>
+                                    </div>
+                                </div>
+                                <div data-bind="template: 'designer-selected-data'"></div>
+                            </div>
+                            <div data-bind="visible: linkedReportFields().length > 0">
+                                <br />
+                                <div class="card mb-4">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fa fa-bookmark"></i> Include Sub Reports</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div data-bind="template: 'designer-sub-report'"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div data-bind="visible: ReportType()=='Html'">
+                                <br />
+                                <div class="card mb-4">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fa fa-pencil"></i> Design your Report</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div data-bind="template: 'designer-html'"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <br />
+                            <div class="card card-body">
+                                <h5><span class="fa fa-filter"></span>&nbsp;Choose Filters</h5>
+                                <div class="row" style="padding: 10px 10px; overflow-x: auto;">
+                                    <div data-bind="visible: useStoredProc" class="col-md-12">
+                                        <div data-bind="template: {name: 'filter-parameters'}"></div>
+                                    </div>
+                                    <div data-bind="visible: !useStoredProc()" class="col-md-12">
+                                        <div data-bind="template: {name: 'filter-group'}"></div>
+                                    </div>
+                                    <div class="checkbox col-12">
+                                        <label>
+                                            <input type="checkbox" data-bind="checked: EditFiltersOnReport" />
+                                            Allow setting up and saving filters on Report
+                                        </label>
+                                    </div>
+                                    <br />
+                                </div>
+                            </div>
+                            <br />
+                            <div data-bind="visible: !useStoredProc()" class="card card-body">
+                                <h5><span class="fa fa-sort"></span>&nbsp;Choose Sorting</h5>
+                                <div data-bind="template: 'designer-sort'"></div>
+                            </div>
+                            <br />
+                            <div data-bind="visible: SaveReport() && !ko.unwrap(appSettings.showScheduling)" class="card card-body">
+                                <h5><span class="fa fa-hourglass"></span>&nbsp;Choose Schedule</h5>
+                                <div style="padding: 10px 10px" data-bind="visible: SaveReport">
+                                    <div data-bind="template: {name: 'report-schedule'}"></div>
+                                </div>
+                            </div>
+                            <br />
+                            <div data-bind="visible: !useStoredProc()">
+                                <div class="card card-body">
+                                    <div data-bind="template: 'designer-options'"></div>
+                                </div>
+                            </div>
+                            <br />
+                            <div data-bind="visible: adminMode" class="card card-body">
+                                <div data-bind="template: {name: 'manage-access-template', data: manageAccess}"></div>
                             </div>
                         </div>
-                        <br />
-                        <div data-bind="visible: adminMode" class="card card-body">
-                            <div data-bind="template: {name: 'manage-access-template', data: manageAccess}"></div>
+
+                        <!-- ==================== LIVE PREVIEW MODE (activeDesign ON) ==================== -->
+                        <div data-bind="css: {'d-flex': activeDesign(), 'd-none': !activeDesign()}" class="live-preview-area flex-column" style="height: 100%;">
+                            <!-- Custom Field (shown above preview when active) -->
+                            <div data-bind="visible: isFormulaField()" class="mb-2">
+                                <div class="card custom-field-design">
+                                    <div class="card-header py-1"><i class="fa fa-magic"></i> Build Custom Field</div>
+                                    <div class="card-body" data-bind="template: 'custom-field-designer'"></div>
+                                </div>
+                            </div>
+                            <!-- Custom Function (shown above preview when active) -->
+                            <div data-bind="visible: isFunctionField() && ReportType() === 'List'" class="mb-2">
+                                <div class="card custom-field-design">
+                                    <div class="card-header py-1"><i class="fa fa-magic"></i> Build Custom Function</div>
+                                    <div class="card-body" data-bind="template: 'custom-function-designer'"></div>
+                                </div>
+                            </div>
+                            <div class="card flex-grow-1 d-flex flex-column" style="min-height: 0;">
+                                <div class="card-header py-2 d-flex align-items-center justify-content-between bg-light">
+                                    <span><i class="fa fa-desktop"></i> Live Preview</span>
+                                    <span class="text-muted small" data-bind="visible: ReportName()">
+                                        <span data-bind="text: ReportName"></span>
+                                    </span>
+                                </div>
+                                <div class="card-body flex-grow-1" style="overflow-y: auto; min-height: 0;">
+                                    <div data-bind="if: typeof CanEdit === 'function' && CanEdit() && ReportType()!='Html' && ReportType()!='Single'">
+                                        <div data-bind="template: 'chart-settings', data: $data"></div>
+                                    </div>
+                                    <div data-bind="if: typeof CanEdit === 'function' && CanEdit() && ReportType()=='Single'">
+                                        <div data-bind="template: 'kpi-settings', data: $data"></div>
+                                    </div>
+                                    <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+                                    <div data-bind="with: ReportResult" class="small">
+                                        <div data-bind="visible: !ReportData()">
+                                            <div class="report-spinner"></div>
+                                        </div>
+                                        <div data-bind="template: 'report-template', data: $data"></div>
+                                    </div>
+                                </div>
+                                <div class="card-footer py-1">
+                                    <div class="small d-flex align-items-center justify-content-between" data-bind="with: pager">
+                                        <div data-bind="visible: totalRecords() > 1 && $parent.ReportType() != 'Single'">
+                                            <span data-bind="text: 'Total Records: ' + totalRecords()"></span>
+                                        </div>
+                                        <div data-bind="visible: pages() > 1 && $parent.ReportType() != 'Single'">
+                                            <div data-bind="template: 'pager-template', data: $data"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                     </div>
@@ -2912,7 +3180,7 @@
                 </button>
                 <a href="#" class="btn btn-danger" data-bind="click: cancelCreateReport">Cancel editing Report</a>
                 <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && CanSaveReports(), click: SaveWithoutRun" style="padding-right: 10px;">Save Report</button>
-                <button class="btn btn-primary" type="button" data-bind="text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report', click: RunReport">Run Report</button>
+                <button class="btn btn-primary" type="button" data-bind="text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report', click: SaveAndRunReport">Run Report</button>
             </div>
 
         </div>

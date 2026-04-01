@@ -2472,7 +2472,19 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 				t.autoFormat();
 			}
 		});
-
+		t.autoSort = function (e) {
+			var sorted = t.Columns().slice().sort(function (a, b) {
+				var nameA = a.DisplayName().toLowerCase();
+				var nameB = b.DisplayName().toLowerCase();
+				if (nameA < nameB) return -1;
+				if (nameA > nameB) return 1;
+				return 0;
+			});
+			_.forEach(sorted, function (col, index) {
+				col.DisplayOrder(index + 1);
+			});
+			t.Columns(sorted);
+		};
 		t.autoFormat = function (e) {
 			_.forEach(t.Columns(), function (c) {
 				var displayName = c.DisplayName();
@@ -2651,9 +2663,10 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 
 		if (!selected.length) return toastr.warning('No tables to export.');
 
-		const msg = (filtered.length < all.length
-			? `Only filtered tables (${filtered.length} of ${all.length}) will be exported.`
-			: `All ${all.length} tables will be exported.`);
+		const msg = filtered.length < all.length
+			? `Exporting ${selected.length} selected tables (filtered: ${filtered.length} of ${all.length} total).`
+			: `Exporting ${selected.length} selected of ${all.length} total tables.`;
+
 
 		bootbox.confirm({
 			title: "Confirm Export Tables",
@@ -2697,23 +2710,19 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 		self.tableFilter('');
 	}
 
-	self.selectAll = function () {
+	self.selectAll = function (customOnly) {
 		_.forEach(self.model(), function (e) {
-			if (!e.Selected()) {
+			if (customOnly ? e.CustomTable() === true : e.CustomTable() === false) {
 				e.Selected(true);
-				_.forEach(e.Columns(), function (c) {
-					c.Selected(true);
-				});
 			}
 		});
 	}
 
-	self.unselectAll = function () {
+	self.unselectAll = function (customOnly) {
 		_.forEach(self.model(), function (e) {
-			e.Selected(false);
-			_.forEach(e.Columns(), function (c) {
-				c.Selected(false);
-			});
+			if (customOnly ? e.CustomTable() === true : e.CustomTable() === false) {
+				e.Selected(false);
+			}
 		});
 	}	
 

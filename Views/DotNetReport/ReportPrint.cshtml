@@ -63,6 +63,11 @@
             left: 0 !important;
             visibility: visible !important;
         }
+
+        .filter-detail-logic {
+            font-weight: 600;
+            font-size: 0.8em;
+        }
     </style>
 </head>
 
@@ -80,6 +85,7 @@
                 <h2 data-bind="text: ReportName"></h2>
                 <p data-bind="html: ReportDescription">
                 </p>
+                <div data-bind="template: 'filter-details-summary'"></div>
             </div>
 
             <div class="report-chart" data-bind="attr: {id: 'chart_div_' + ReportID()}, visible: isChart"></div>
@@ -218,12 +224,13 @@
                     <span data-bind="html: formattedVal"></span>
 
                     <!-- ko if: $parent.Rows.length > 1 && $parents[$parents.length-2].showPriorInKpi() -->
-                    <span data-bind="style: {'color': $parent.calculateRate() > 0 ? 'green' : 'red', 'font-size': '24px'}">
-                        <span data-bind="html: $parent.calculateRate() + '%'"></span>
-                    </span>
+                    <div data-bind="style: {'font-size': '20px'}" class="text-muted">
+                        <span data-bind="text: $parent.comparisonLabel"></span>: <span data-bind="html: $parent.formatKpiValue($parent.Rows[1].Items[0].Value, $parent.Rows[1].Items[0].formattedVal)"></span>
+                        <span data-bind="style: {'color': $parent.calculateRate() > 0 ? 'green' : 'red', 'font-size': '20px'}">
+                            <i data-bind="css: $parent.calculateRate() > 0 ? 'fa fa-arrow-up' : 'fa fa-arrow-down'"></i>
+                            <span data-bind="html: Math.abs($parent.calculateRate()) + '%'"></span>
+                        </span>
 
-                    <div data-bind="style: {'font-size': '24px', 'color': 'gray'}, css: {'text-muted': true}">
-                        Prior Period: <span data-bind="html: $parent.Rows[1].Items[0].formattedVal"></span>
                     </div>
                     <!-- /ko -->
 
@@ -440,13 +447,13 @@
         
         var vm = new reportViewModel({
             runReportUrl: "@Url.Action("Report")",
-            execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
+            execReportUrl: "@Url.Action("RunReportUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId",
             runLinkReportUrl: "@Url.Action("RunReportLinkUnAuth", "DotNetReportApi")",
             reportWizard: $("#filter-panel"),
             reportHeader: "report-header",
             lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
             apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")',
-            runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
+            runReportApiUrl: '@Url.Action("RunReportApiUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId',
             reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)') || '{}',
             reportMode: "print",
             reportSql: "@Model.ReportSql",
@@ -505,7 +512,7 @@
 
         vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
             if (vm.useReportHeader()) {
-                vm.headerDesigner.init();
+                vm.headerDesigner.init(true);
             }
 
             if (vm.useStoredProc()) {
@@ -532,6 +539,16 @@
 
             });
         });
+    </script>
+
+    <script type="text/html" id="filter-details-summary">
+        <!-- ko if: typeof ShowFilterDetails === 'function' && ShowFilterDetails() && typeof filterDetailsSummary === 'function' && filterDetailsSummary() -->
+        <div style="border-left: 2px solid #adb5bd; padding-top: 4px; padding-left: 3px; padding-bottom: 4px; font-size: 0.8rem;">
+            <i class="fa fa-filter"></i>
+            <b>Filters:</b>
+            <span data-bind="html: filterDetailsSummary()"></span>
+        </div>
+        <!-- /ko -->
     </script>
 
     <script type="text/html" id="fly-filter-template">
