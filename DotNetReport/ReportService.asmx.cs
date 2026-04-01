@@ -14,7 +14,6 @@ using System.Web.Mvc;
 using System.Web.Script.Serialization;
 using System.Web.Script.Services;
 using System.Web.Services;
-using static ReportBuilder.Web.Controllers.DotNetReportApiController;
 
 namespace ReportBuilder.WebForms.DotNetReport
 {
