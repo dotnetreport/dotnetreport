@@ -2401,3 +2401,35 @@ td[class^="pivot-group-"] {
     font-size: 0.8em;
 }
 
+/* ── Field quick-format menu buttons ── */
+.field-quick-menu .field-quick-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.field-quick-menu .field-quick-label {
+    width: 46px;
+    flex-shrink: 0;
+    font-size: 11px;
+    color: #6c757d;
+}
+.field-quick-menu .field-quick-btn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    border-radius: 4px;
+    line-height: 1;
+}
+.field-quick-menu .field-quick-btn.active {
+    background-color: #0d6efd;
+    color: #fff;
+    border-color: #0d6efd;
+}
+.field-quick-menu .field-quick-btn:hover:not(.active) {
+    background-color: #e9ecef;
+}
+

@@ -167,7 +167,38 @@
                 <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
                     <span class="fa fa-ellipsis-v sortable" title="Drag to reorder"></span>
                 </a>
-                <ul data-bind="visible: !IsPivotField" class="dropdown-menu" style="z-index: 1001;">
+                <ul data-bind="visible: !IsPivotField" class="dropdown-menu field-quick-menu" style="z-index: 1001; min-width: 170px;">
+                    <li class="dropdown-item small px-2 py-1">
+                        <div class="field-quick-row">
+                            <span class="field-quick-label">Align</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Align Left"
+                                    data-bind="click: function(){ fieldAlign('Left'); }, css: {'active': fieldAlign() === 'Left'}, clickBubble: false">
+                                <i class="fa fa-align-left"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Align Center"
+                                    data-bind="click: function(){ fieldAlign('Center'); }, css: {'active': fieldAlign() === 'Center'}, clickBubble: false">
+                                <i class="fa fa-align-center"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Align Right"
+                                    data-bind="click: function(){ fieldAlign('Right'); }, css: {'active': fieldAlign() === 'Right'}, clickBubble: false">
+                                <i class="fa fa-align-right"></i>
+                            </button>
+                        </div>
+                    </li>
+                    <li class="dropdown-item small px-2 py-1" data-bind="visible: IsNumeric">
+                        <div class="field-quick-row">
+                            <span class="field-quick-label">Format</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Currency"
+                                    data-bind="click: function(){ fieldFormat(fieldFormat() === 'Currency' ? 'Auto' : 'Currency'); }, css: {'active': fieldFormat() === 'Currency'}, clickBubble: false">
+                                <i class="fa fa-dollar"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Percentage"
+                                    data-bind="click: function(){ fieldFormat(fieldFormat() === 'Percentage' ? 'Auto' : 'Percentage'); }, css: {'active': fieldFormat() === 'Percentage'}, clickBubble: false">
+                                <i class="fa fa-percent"></i>
+                            </button>
+                        </div>
+                    </li>
+                    <li><hr class="dropdown-divider my-1"></li>
                     <li class="dropdown-item small" data-bind="visible: !IsNumeric">
                         <a href="#" data-bind="click: toggleOuterGroup">
                             <span class="fa fa-clone"></span> Outer Group
@@ -175,7 +206,7 @@
                     </li>
                     <li class="dropdown-item small">
                         <a href="#" data-bind="click: setupFieldOptions">
-                            <span class="fa fa-gear"></span> Field Settings
+                            <span class="fa fa-gear"></span> More Settings
                         </a>
                     </li>
                 </ul>
@@ -3325,7 +3356,13 @@
                         </div>
                         <div class="form-group small mb-1">
                             <label class="form-label">Y-Axis Format</label>
-                            <input type="text" class="form-control form-control-sm" placeholder="#,##0.00" data-bind="value: chartOptions().yAxisFormat, event: { change: updateChart }" />
+                            <select class="form-select form-select-sm" data-bind="value: chartOptions().yAxisFormat, event: { change: function() { updateYAxisFormat(); updateChart(); } }">
+                                <option value="">Auto (from Field)</option>
+                                <option value="Currency">Currency</option>
+                                <option value="Percentage">Percentage</option>
+                                <option value="Decimal">Decimal</option>
+                                <option value="Number">Number</option>
+                            </select>
                         </div>
                         <div class="form-group small mb-1 d-flex gap-2">
                             <div class="w-50">

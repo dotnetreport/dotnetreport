@@ -6486,7 +6486,22 @@ var reportViewModel = function (options) {
 	};
 
 	self.updateChart = function () {
-		self.DrawChart(); 
+		self.DrawChart();
+	};
+	self.updateYAxisFormat = function () {
+		var fmt = self.chartOptions().yAxisFormat;
+		if (!fmt) return; // "Auto" — don't override field settings
+		var reportData = self.ReportResult() ? self.ReportResult().ReportData() : null;
+		if (!reportData || !reportData.Columns) return;
+		for (var ci = 1; ci < reportData.Columns.length; ci++) {
+			var col = reportData.Columns[ci];
+			if (col.IsNumeric && !col.groupInGraph()) {
+				if (col.fieldFormat && ko.isObservable(col.fieldFormat)) {
+					col.fieldFormat(fmt);
+				}
+				break;
+			}
+		}
 	};
 	self.updateLegend = function (selectedValue) {
 		self.chartOptions().legendPosition = selectedValue;
@@ -6514,6 +6529,15 @@ var reportViewModel = function (options) {
 		if (chartDiv._echart) {
 			chartDiv._echart.dispose();
 			chartDiv._echart = null;
+		}
+
+		// Ensure the container has dimensions before init (needed for live preview in modals)
+		if (self.activeDesign()) {
+			chartDiv.style.width = '100%';
+			chartDiv.style.minHeight = '300px';
+			if (!chartDiv.style.height || chartDiv.style.height === '0px') {
+				chartDiv.style.height = '350px';
+			}
 		}
 
 		var chart = echarts.init(chartDiv);
@@ -6742,7 +6766,8 @@ var reportViewModel = function (options) {
 			animationEasing: chartOptions.animation?.easing || 'linear',
 
 			tooltip: {
-				trigger: 'axis'
+				trigger: 'axis',
+				confine: true
 			},
 
 			legend: (function () {
@@ -6818,28 +6843,37 @@ var reportViewModel = function (options) {
 
 		var yAxisFormatter = null;
 
-		if (
-			!reportData?.Columns[1]?.groupInGraph() &&
-			reportData?.Columns[1]?.fieldFormat() === 'Currency'
-		) {
-			var prefixFormat = reportData?.Columns[1]?.currencyFormat
-				? reportData?.Columns[1]?.currencyFormat()
-				: null;
-
-			if (prefixFormat) {
-				yAxisFormatter = function (value) {
-					return prefixFormat + value;
-				};
+		// Auto-detect y-axis format from the first value column's fieldFormat
+		var valueCol = null;
+		for (var ci = 1; ci < reportData.Columns.length; ci++) {
+			if (reportData.Columns[ci].IsNumeric && !reportData.Columns[ci].groupInGraph()) {
+				valueCol = reportData.Columns[ci];
+				break;
 			}
 		}
+		if (valueCol) {
+			var vFormat = valueCol.fieldFormat ? valueCol.fieldFormat() : null;
+			var vDecimals = valueCol.decimalPlaces ? valueCol.decimalPlaces() : null;
+			var vCurrency = valueCol.currencyFormat ? valueCol.currencyFormat() : null;
 
-		if (
-			!reportData?.Columns[1]?.groupInGraph() &&
-			(reportData?.Rows?.[0]?.Items?.[1]?.FormattedValue || '').trim().endsWith('%')
-		) {
-			yAxisFormatter = function (value) {
-				return value + '%';
-			};
+			if (vFormat === 'Currency' && vCurrency) {
+				yAxisFormatter = function (value) {
+					var dp = (vDecimals != null && vDecimals !== '') ? Number(vDecimals) : 2;
+					return vCurrency + Number(value).toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
+				};
+			} else if (vFormat === 'Percentage') {
+				yAxisFormatter = function (value) {
+					if (vDecimals != null && vDecimals !== '') {
+						value = Number(value).toFixed(Number(vDecimals));
+					}
+					return value + '%';
+				};
+			} else if (vFormat === 'Decimal' && vDecimals != null && vDecimals !== '') {
+				var dp = Number(vDecimals);
+				yAxisFormatter = function (value) {
+					return Number(value).toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
+				};
+			}
 		}
 
 		if (self.colorScheme() != null && self.colorScheme().length > 0) {
@@ -6880,15 +6914,26 @@ var reportViewModel = function (options) {
 		}
 
 		if (self.ReportType() == "Bar") {
+			var isHorizontal = self.barChartHorizontal() === true;
 			_.forEach(option.series, function (s) {
 				s.type = 'bar';
 				if (self.barChartStacked() === true) {
 					s.stack = 'total';
 				}
 			});
-			option.xAxis.data = data.rows.map(function (r) {
-				return r[0];
-			});
+			var categoryData = data.rows.map(function (r) { return r[0]; });
+			if (isHorizontal) {
+				// Horizontal bar: swap axes — yAxis is category, xAxis is value
+				option.yAxis.type = 'category';
+				option.yAxis.data = categoryData;
+				option.xAxis.type = 'value';
+				option.xAxis.data = null;
+				// Swap min/max to xAxis for horizontal
+				option.xAxis.min = option.yAxis.min; option.yAxis.min = null;
+				option.xAxis.max = option.yAxis.max; option.yAxis.max = null;
+			} else {
+				option.xAxis.data = categoryData;
+			}
 		}
 
 		if (self.ReportType() == "Line") {
@@ -7188,27 +7233,10 @@ var reportViewModel = function (options) {
 			});
 		}
 
-		// Apply manual yAxisFormat setting (overrides auto-detected formatter when set)
-		var manualYAxisFormat = self.chartOptions()?.yAxisFormat;
-		if (manualYAxisFormat) {
-			var fmt = manualYAxisFormat.trim();
-			var manualFormatter = null;
-			if (fmt === '%' || fmt === '#%' || fmt === '#,##0%') {
-				manualFormatter = function (value) { return value + '%'; };
-			} else if (fmt === '%#') {
-				manualFormatter = function (value) { return '%' + value; };
-			} else if (fmt.indexOf('{value}') >= 0) {
-				manualFormatter = function (value) { return fmt.replace('{value}', value); };
-			} else {
-				// treat anything else as a prefix symbol (e.g. "$", "â‚¬", "units: ")
-				manualFormatter = function (value) { return fmt + value; };
-			}
-			yAxisFormatter = manualFormatter;
-		}
-
 		if (yAxisFormatter) {
 			var isHorizontalBar = self.barChartHorizontal() === true && self.ReportType() === 'Bar';
 			if (isHorizontalBar) {
+				// For horizontal bars, value axis is xAxis
 				option.xAxis = option.xAxis || {};
 				option.xAxis.axisLabel = option.xAxis.axisLabel || {};
 				option.xAxis.axisLabel.formatter = yAxisFormatter;
@@ -7216,6 +7244,12 @@ var reportViewModel = function (options) {
 				option.yAxis = option.yAxis || {};
 				option.yAxis.axisLabel = option.yAxis.axisLabel || {};
 				option.yAxis.axisLabel.formatter = yAxisFormatter;
+			}
+
+			// Also format tooltip values to match
+			var existingTooltip = option.tooltip || {};
+			if (existingTooltip.trigger === 'axis') {
+				option.tooltip.valueFormatter = yAxisFormatter;
 			}
 		}
 
@@ -7305,7 +7339,9 @@ var reportViewModel = function (options) {
 			chartOptions.height = '350px';
 			chartDiv.style.width = '100%';
 			chartDiv.style.maxWidth = '100%';
+			chartDiv.style.height = '350px';
 			chartDiv.style.minHeight = '300px';
+			chartDiv.style.overflow = 'hidden';
 		}
 		chartOptions.hAxis = { titleTextStyle: { color: self.chartOptions().fontColor }, textStyle: { color: self.chartOptions().fontColor } }; chartOptions.vAxis = { titleTextStyle: { color: self.chartOptions().fontColor }, textStyle: { color: self.chartOptions().fontColor } };
 		if (!chartOptions.showGridlines) { chartOptions.hAxis.gridlines = { color: 'none' }; chartOptions.vAxis.gridlines = { color: 'none' }; }
@@ -7331,13 +7367,24 @@ var reportViewModel = function (options) {
 				}
 			}
 		}
+		// In live preview, float tooltip above the container so it doesn't get clipped
+		if (self.activeDesign() && option.tooltip) {
+			option.tooltip.appendToBody = true;
+			delete option.tooltip.confine;
+		}
+
 		chart.setOption(option);
 		chart.resize();
 
+		// In live preview, the modal container may still be resizing — do a delayed resize
+		if (self.activeDesign()) {
+			setTimeout(function () { chart.resize(); }, 300);
+		}
 
-		// Add event listener for pointer down on the chart container
+		// Add event listener for pointer down on the chart container (skip in live preview mode)
+		if (self.activeDesign()) return;
 		var parentDiv = chartDiv;
-		var chartContainer = (parentDiv && parentDiv.children[0]) ? parentDiv.children[0].children[0] : null; 
+		var chartContainer = (parentDiv && parentDiv.children[0]) ? parentDiv.children[0].children[0] : null;
 		if (chartContainer) {
 			chartContainer.addEventListener('pointerdown', handlePointerDown);
 
