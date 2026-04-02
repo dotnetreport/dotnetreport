@@ -160,23 +160,11 @@
                             <i class="fa fa-pencil-square"></i>
                             <span>Manage</span>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li class="dropdown dropdown-hover" data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
-                                <a href="#" class="dropdown-toggle dropdown-item" data-bs-toggle="dropdown" role="button" aria-expanded="false" data-bind="click: function() { newReport(true) }">
+                        <ul class="dropdown-menu small">
+                            <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
+                                <a href="#" class="dropdown-item" data-bind="click: function() { newReport() }" title="Create a new report and add it to the Dashboard">
                                     <span class="fa fa-plus"></span> Add New Report
                                 </a>
-                                <ul class="dropdown-menu">
-                                    <li>
-                                        <a class="dropdown-item" href="#" data-bind="click: function() { newReport(false) }">
-                                            <span class="fa fa-pencil"></span> Add using Standard Designer
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="#" data-bind="click: function() { newReport(true) }">
-                                            <span class="fa fa-bolt"></span> Add using Smarter Designer
-                                        </a>
-                                    </li>
-                                </ul>
                             </li>
                             <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
                                 <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
@@ -187,7 +175,7 @@
                             <li>
                                 <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
                                     <i class="fa fa-dashboard"></i>
-                                    <span>Add a New Dashboard</span>
+                                    <span>Create a New Dashboard</span>
                                 </button>
                             </li>
                             <li data-bind="visible: hasDashboard()">
@@ -196,6 +184,7 @@
                                     <span>Refresh</span>
                                 </button>
                             </li>
+                            <li><hr class="dropdown-divider"></li>
                             <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
                                 <button class="dropdown-item" data-bind="click: addLineSeparator">
                                     <i class="fa fa-minus"></i>
@@ -221,7 +210,7 @@
                             <i class="fa fa-download"></i>
                             <span>Export</span>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
+                        <ul class="dropdown-menu small">
                             <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfReportsWithPageOption() : ExportAllPdfReports('',''); }, hidden: appSettings.useAltPdf"><i class="fa fa-file-pdf"></i> Pdf</a></li>
                             <li><a class="dropdown-item" href="#" data-bind="click: function() { return appSettings.showPageSize ? ExportAllPdfAltReportsWithPageOption() : ExportAllPdfAltReports('',''); }, visible: appSettings.useAltPdf"><i class="fa fa-file-pdf"></i> Pdf</a></li>
                             <li><a class="dropdown-item" href="#" data-bind="click: ExportAllExcelReports"><i class="fa fa-file-excel"></i> Excel</a></li>
@@ -392,22 +381,10 @@
                                 <span class="fa fa-filter"></span> Filter
                             </a>
                         </li>
-                        <li class="dropdown dropdown-hover">
-                            <a href="#" class="dropdown-toggle dropdown-item" data-bs-toggle="dropdown" role="button" aria-expanded="false" data-bind="click: editReportAi">
+                        <li>
+                            <a href="#" class="dropdown-item" data-bind="click: openReport">
                                 <span class="fa fa-pencil"></span> Edit
                             </a>
-                            <ul class="dropdown-menu small">
-                                <li>
-                                    <a class="dropdown-item" href="#" data-bind="click: openReport">
-                                        <span class="fa fa-pencil"></span> Edit Standard
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="#" data-bind="click: editReportAi">
-                                        <span class="fa fa-bolt"></span> Edit Smarter
-                                    </a>
-                                </li>
-                            </ul>
                         </li>
                         <li class="dropdown dropdown-hover" data-bind="visible: ReportType()!='Single'">
                             <a href="#" class="dropdown-toggle dropdown-item">
@@ -484,11 +461,9 @@
                     </div>
                 </div>
             </div>
-            <div data-bind="if: activeDesign()">
-                <div data-bind="template: 'report-designer-compact'"></div>
-            </div>
             <div class="card-body list-overflow-auto" style="padding-top: 0; margin-top: 0;">
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+                <div data-bind="template: 'filter-details-summary'"></div>
                 <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
                 <div data-bind="with: ReportResult" class="small">
                     <div data-bind="visible: !ReportData()">
@@ -497,12 +472,12 @@
                     <div data-bind="template: 'report-template', data: $data"></div>
                 </div>
             </div>
-            <div class="form-inline" data-bind="ifnot: noDashboardBorders">
+            <div class="form-inline" data-bind="visible: !noDashboardBorders()">
                 <div class="small" data-bind="with: pager">
-                    <div class="form-group float-start total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
-                        <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                    <div class="form-group float-start total-records" data-bind="visible: totalRecords()>1 && $parent.ReportType() != 'Single'">
+                        <span data-bind="text: 'Total Records: ' + totalRecords()"></span>
                     </div>
-                    <div class="form-group float-end" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
+                    <div class="form-group float-end" data-bind="visible: pages()>1 && $parent.ReportType() != 'Single'">
                         <div data-bind="template: 'pager-template', data: $data"></div>
                     </div>
                     <div class="clearfix"></div>
