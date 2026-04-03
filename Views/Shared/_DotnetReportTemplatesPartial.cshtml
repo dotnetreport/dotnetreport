@@ -1691,57 +1691,140 @@
 <script type="text/html" id="designer-choose-visual">
     <div style="overflow-x: auto;">
     <div class="btn-group" role="group" aria-label="Visualization Options" style="flex-wrap: nowrap; min-width: max-content;">
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('List'); }, css: { active: ReportType()=='List' }">
+        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('List'); }, css: { active: ReportType()=='List' }, attr: { 'data-chart-id': 'List' }">
             <span class="fa fa-2x fa-list-alt"></span>
             <p>List</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Summary'); }, css: { active: ReportType()=='Summary',disabled: hasFunctionField() }">
+        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Summary'); }, css: { active: ReportType()=='Summary',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Summary' }">
             <span class="fa fa-2x fa-table"></span>
             <p>Summary</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Bar'); }, css: { active: ReportType()=='Bar',disabled: hasFunctionField() }">
+        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Bar'); }, css: { active: ReportType()=='Bar',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Bar' }">
             <span class="fa fa-2x fa-bar-chart"></span>
             <p>Bar</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Pie'); }, css: { active: ReportType()=='Pie',disabled: hasFunctionField() }">
+        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Pie'); }, css: { active: ReportType()=='Pie',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Pie' }">
             <span class="fa fa-2x fa-pie-chart"></span>
             <p>Pie</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Line'); }, css: { active: ReportType()=='Line',disabled: hasFunctionField() }">
+        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Line'); }, css: { active: ReportType()=='Line',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Line' }">
             <span class="fa fa-2x fa-line-chart"></span>
             <p>Line</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Combo'); }, css: { active: ReportType()=='Combo',disabled: hasFunctionField() }">
+        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Combo'); }, css: { active: ReportType()=='Combo',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Combo' }">
             <span class="fa fa-2x fa-signal"></span>
             <p>Combo</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Html'); }, css: { active: ReportType()=='Html',disabled: hasFunctionField() }">
+        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Html'); }, css: { active: ReportType()=='Html',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Html' }">
             <span class="fa fa-2x fa-code"></span>
             <p>Custom</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Map'); }, css: { active: ReportType().indexOf('Map')==0,disabled: hasFunctionField() }">
+        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Map'); }, css: { active: ReportType().indexOf('Map')==0,disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Map' }">
             <span class="fa fa-2x fa-globe"></span>
             <p>Map</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('HeatMap'); }, css: { active: ReportType().indexOf('HeatMap')==0,disabled: hasFunctionField() }">
-            <span class="fa fa-2x fa-map"></span>
-            <p>HeatMap</p>
-        </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Single'); }, css: { active: ReportType()=='Single',disabled: hasFunctionField() }">
+        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Single'); }, css: { active: ReportType()=='Single',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Single' }">
             <span class="fa fa-2x fa-window-maximize"></span>
             <p>KPI</p>
         </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Treemap'); }, css: { active: ReportType()=='Treemap',disabled: hasFunctionField() }">
-            <span class="fa fa-2x fa-window-restore"></span>
-            <p>Treemap</p>
-        </button>
-        <button class="btn btn-outline-secondary" data-bind="click: function(){ setReportType('Pivot'); }, css: { active: ReportType()=='Pivot',disabled: hasFunctionField() }">
-            <span class="fa fa-2x fa-random"></span>
-            <p>Transpose</p>
+        <button class="btn btn-outline-secondary" data-bind="click: showMoreCharts" title="Explore more visualization options">
+            <span class="fa fa-2x fa-th-large"></span>
+            <p>More...</p>
         </button>
     </div>
+    </div>
+    <!-- Smart Suggestion -->
+    <div class="smart-suggestion mt-2" data-bind="visible: smartSuggestion()">
+        <i class="fa fa-lightbulb-o text-warning"></i>
+        <span data-bind="text: smartSuggestion"></span>
+        <a href="#" class="ms-2 small" data-bind="click: applySuggestion">
+            <i class="fa fa-check"></i> Apply
+        </a>
     </div>
 </script>
+
+<!-- ══════════════════ MORE CHARTS MODAL ══════════════════ -->
+<div class="modal" id="moreChartsModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h5 class="modal-title" id="moreChartsModalLabel">
+                    <i class="fa fa-th-large"></i> Choose a Visualization
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" data-bind="if: $data.moreChartCategories">
+                <div class="d-flex more-charts-layout">
+                    <!-- Left: Chart Type Grid -->
+                    <div class="more-charts-grid-panel">
+                        <!-- ko foreach: moreChartCategories() -->
+                        <h6 class="text-muted text-uppercase small fw-bold mt-3 mb-2 px-3" data-bind="text: $data"></h6>
+                        <div class="row g-2 px-3">
+                            <!-- ko foreach: $root.getChartsForCategory($data) -->
+                            <div class="col-6 col-md-4">
+                                <div class="chart-card card h-100 text-center p-2" style="cursor:pointer;"
+                                     data-bind="click: function(){ $root.selectMoreChart($data); },
+                                                css: { 'active-chart': $root.ReportType() === id,
+                                                       'chart-card-selected': $root.selectedMoreChart() && $root.selectedMoreChart().id === id,
+                                                       'chart-card-disabled': !available }">
+                                    <div class="chart-card-icon mb-1">
+                                        <i class="fa fa-2x" data-bind="css: icon"></i>
+                                    </div>
+                                    <div class="fw-semibold small" data-bind="text: name"></div>
+                                    <div class="text-muted" style="font-size: 10px;" data-bind="text: desc"></div>
+                                    <!-- ko if: !available -->
+                                    <span class="badge bg-secondary mt-1" style="font-size: 9px;">Coming Soon</span>
+                                    <!-- /ko -->
+                                </div>
+                            </div>
+                            <!-- /ko -->
+                        </div>
+                        <!-- /ko -->
+                        <div class="pb-3"></div>
+                    </div>
+                    <!-- Right: Detail Preview Panel -->
+                    <div class="more-charts-detail-panel">
+                        <!-- ko if: selectedMoreChart() -->
+                        <div class="p-3">
+                            <div class="text-center mb-2">
+                                <h5 class="fw-bold mb-1" data-bind="text: selectedMoreChart().name"></h5>
+                                <span class="badge bg-light text-dark" data-bind="text: selectedMoreChart().category"></span>
+                            </div>
+                            <div class="mb-3 more-chart-preview-svg p-2" data-bind="html: selectedMoreChart().svg"></div>
+                            <p class="mb-3" data-bind="text: selectedMoreChart().detail" style="font-size: 13px; line-height: 1.5;"></p>
+                            <div class="mb-3">
+                                <div class="fw-semibold small text-uppercase text-muted mb-1"><i class="fa fa-lightbulb-o"></i> Best For</div>
+                                <p class="small mb-0" data-bind="text: selectedMoreChart().bestFor" style="line-height: 1.5;"></p>
+                            </div>
+                            <div class="mb-3">
+                                <div class="fw-semibold small text-uppercase text-muted mb-1"><i class="fa fa-database"></i> Data Requirements</div>
+                                <p class="small mb-0" data-bind="text: selectedMoreChart().needs" style="line-height: 1.5;"></p>
+                            </div>
+                            <!-- ko ifnot: selectedMoreChart().available -->
+                            <div class="alert alert-secondary small py-2 mb-3"><i class="fa fa-clock-o"></i> This visualization is coming soon and not yet available.</div>
+                            <!-- /ko -->
+                            <!-- ko if: selectedMoreChart().available -->
+                            <button class="btn btn-primary w-100" data-bind="click: confirmMoreChart">
+                                <i class="fa fa-check"></i> Use This Visualization
+                            </button>
+                            <!-- /ko -->
+                        </div>
+                        <!-- /ko -->
+                        <!-- ko ifnot: selectedMoreChart() -->
+                        <div class="p-3 text-center text-muted d-flex flex-column align-items-center justify-content-center h-100">
+                            <i class="fa fa-hand-pointer-o fa-3x mb-3" style="opacity: 0.3;"></i>
+                            <p class="mb-0">Select a chart type to see details and preview</p>
+                        </div>
+                        <!-- /ko -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script type="text/html" id="designer-choose-data">
     <div>
@@ -1995,8 +2078,12 @@
                     </span>
                 </div>
                 <div class="col-7 d-flex flex-row-reverse">
-                    <div  style="margin-top: -5px;" data-bind="if: $parent.AggregateReport() && !$parent.useStoredProc()">
-                        <select class="form-select form-control-sm" data-bind="options: $parent.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate"></select>
+                    <div style="margin-top: -5px;" data-bind="if: $parent.AggregateReport() && !$parent.useStoredProc()">
+                        <div class="d-flex align-items-center">
+                            <select class="form-select form-control-sm" data-bind="options: $parent.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate"></select>
+                            <i class="fa fa-info-circle ms-1 text-muted aggregate-help-tip" style="cursor:help; font-size:12px;"
+                               data-bind="visible: $parent.showHints(), attr: { 'data-agg-tooltip': $parent.getAggregateTooltip($data) }"></i>
+                        </div>
                     </div>
 
                     <div  style="padding-right: 10px;" data-bind="ifnot: $parent.useStoredProc">
@@ -2849,17 +2936,66 @@
                     <!-- LEFT PANEL -->
                     <div class="col-md-4 h-100" style="overflow-y: auto;">
 
-                        <!-- Live Preview Toggle -->
-                        <div class="d-flex align-items-center justify-content-between mb-2">
+                        <!-- Designer Toolbar Toggles -->
+                        <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
                             <div class="form-check form-switch mb-0">
                                 <input class="form-check-input" type="checkbox" role="switch" id="livePreviewSwitch" data-bind="checked: activeDesign">
                                 <label class="form-check-label fw-semibold" for="livePreviewSwitch">
                                     <i class="fa fa-bolt text-warning"></i> Live Preview
                                 </label>
                             </div>
-                            <button class="btn btn-sm btn-outline-primary" data-bind="visible: activeDesign(), click: function() { RunReport(false, true); }" title="Re-run Report">
+                            <div class="form-check form-switch mb-0" data-bind="visible: hasAiConfigured()">
+                                <input class="form-check-input" type="checkbox" role="switch" id="aiAssistSwitch" data-bind="checked: aiAssistantEnabled">
+                                <label class="form-check-label small" for="aiAssistSwitch">
+                                    <i class="fa fa-magic text-primary"></i> AI Assist
+                                </label>
+                            </div>                            
+                            <div class="form-check form-switch mb-0" data-bind="visible: ko.unwrap(appSettings.showDesignerHints)">
+                                <input class="form-check-input" type="checkbox" role="switch" id="hintsSwitch" data-bind="checked: showHints">
+                                <label class="form-check-label small" for="hintsSwitch">
+                                    <i class="fa fa-question-circle text-info"></i> Tips
+                                </label>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary ms-auto" data-bind="visible: activeDesign(), click: function() { RunReport(false, true); }" title="Re-run Report">
                                 <i class="fa fa-play"></i> Run
                             </button>
+                        </div>
+
+                        <!-- AI Assistant Panel (visible in both modes) -->
+                        <div class="card mb-2 designer-panel ai-assistant-panel" data-bind="visible: aiAssistantEnabled()" style="display:none; font-size: 12px;">
+                            <div class="card-header p-2 d-flex align-items-center bg-primary text-white" style="cursor:pointer;">
+                                <i class="fa fa-magic me-1"></i> AI Assistant
+                                <button class="btn btn-sm btn-link text-white ms-auto p-0" data-bind="click: clearAiAssistant" title="Clear chat"><i class="fa fa-trash"></i></button>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="ai-assist-messages" data-bind="foreach: aiAssistantMessages" style="max-height: 200px; overflow-y: auto; padding: 8px;">
+                                    <div class="mb-2" data-bind="css: { 'text-end': role === 'user', 'text-start': role !== 'user' }">
+                                        <div class="ai-msg-bubble d-inline-block p-2 rounded-3" style="max-width: 90%; white-space: pre-wrap; font-size: 12px;"
+                                             data-bind="text: content, css: role === 'user' ? 'bg-primary text-white' : 'bg-light border'"></div>
+                                    </div>
+                                </div>
+                                <div class="text-center p-2" data-bind="visible: aiAssistantLoading()">
+                                    <i class="fa fa-spinner fa-spin text-primary"></i> <span class="small text-muted">Thinking...</span>
+                                </div>
+                                <!-- Quick Actions -->
+                                <div class="p-2 border-top" data-bind="visible: aiAssistantMessages().length === 0 && !aiAssistantLoading()">
+                                    <div class="small text-muted mb-1"><i class="fa fa-lightbulb-o text-warning"></i> Quick actions:</div>
+                                    <button class="btn btn-sm btn-outline-secondary mb-1 me-1" data-bind="click: getAiRecommendation">
+                                        <i class="fa fa-bar-chart"></i> Recommend a chart
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary mb-1" data-bind="click: function(){ aiAssistantInput('What fields should I add to show sales trends?'); sendAiAssistantMessage(); }">
+                                        <i class="fa fa-database"></i> Suggest fields
+                                    </button>
+                                </div>
+                                <!-- Chat Input -->
+                                <div class="d-flex align-items-center p-2 border-top">
+                                    <input type="text" class="form-control form-control-sm me-1" placeholder="Ask anything about your report..."
+                                           data-bind="value: aiAssistantInput, valueUpdate: 'afterkeydown', event: { keypress: function(d,e){ if(e.keyCode===13){ sendAiAssistantMessage(); return false; } return true; } }">
+                                    <button class="btn btn-sm btn-primary" data-bind="click: sendAiAssistantMessage, enable: aiAssistantInput() && !aiAssistantLoading()">
+                                        <i class="fa fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- ==================== STANDARD MODE (activeDesign OFF) ==================== -->
@@ -2911,6 +3047,7 @@
                             <div class="card mb-1 designer-panel">
                                 <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-dataPanel')}" style="cursor:pointer;">
                                     <i class="fa fa-database"></i> Data
+                                    <i class="hint-tip fa fa-info-circle text-info ms-1" data-bind="visible: showHints()" data-bs-toggle="tooltip" title="<b>1. Pick a Table</b> from the dropdown &mdash; this is your data source.<br><b>2. Check fields</b> to add them to your report.<br><b>3. Join Tables:</b> If you need data from multiple tables, select additional tables and they&rsquo;ll be auto-joined if relationships exist.<br><b>Dynamic vs Stored Proc:</b> Dynamic builds SQL from your selections; Stored Proc calls a predefined database procedure."></i>
                                     <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-dataPanel')}"></i>
                                 </div>
                                 <div class="card-body p-2" data-bind="visible: !panels.isCollapsed('lp-dataPanel')">
@@ -2928,6 +3065,7 @@
                             <div class="card mb-1 designer-panel">
                                 <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-vizPanel')}" style="cursor:pointer;">
                                     <i class="fa fa-bar-chart"></i> Visualization
+                                    <i class="hint-tip fa fa-info-circle text-info ms-1" data-bind="visible: showHints()" data-bs-toggle="tooltip" title="<b>List:</b> Raw data rows &mdash; detail reports, exports.<br><b>Summary:</b> Grouped with totals (needs aggregate functions like Sum/Count).<br><b>Bar:</b> Compare categories side by side. Use <i>Stacked</i> or <i>Horizontal</i> in chart options.<br><b>Pie:</b> Proportions of a whole (best with &lt;8 slices). Enable <i>Donut</i> in options.<br><b>Line:</b> Trends over time. Great with date fields on x-axis.<br><b>KPI:</b> Single big number metric (needs one numeric field with aggregate).<br><b>More...</b> opens Scatter, Gauge, Funnel, Radar, and more."></i>
                                     <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-vizPanel')}"></i>
                                 </div>
                                 <div class="card-body p-2" data-bind="visible: !panels.isCollapsed('lp-vizPanel')" style="overflow-x: auto;">
@@ -2939,6 +3077,7 @@
                             <div class="card mb-1 designer-panel">
                                 <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-selectedPanel')}" style="cursor:pointer;">
                                     <i class="fa fa-table"></i> Selected Data
+                                    <i class="hint-tip fa fa-info-circle text-info ms-1" data-bind="visible: showHints()" data-bs-toggle="tooltip" title="<b>Aggregate Functions</b> (for Summary/Charts):<br>&bull; <b>Group:</b> Group rows by this field (e.g., by Month, by Category)<br>&bull; <b>Sum:</b> Add up all values<br>&bull; <b>Count:</b> Count number of rows<br>&bull; <b>Avg:</b> Calculate average<br>&bull; <b>Min/Max:</b> Find smallest/largest value<br><br><b>Group in Graph:</b> Creates separate series/colors in charts (e.g., one line per product).<br><b>Field Settings</b> (click column &crarr; icon): Format as Currency/Percentage, set alignment, decimal places, conditional formatting, custom labels, and more."></i>
                                     <a href="#" class="small text-muted float-end me-3" data-bind="visible: SelectedFields().length, click: function(){SelectedFields([]);}">Clear all</a>
                                     <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-selectedPanel')}"></i>
                                 </div>
@@ -2976,6 +3115,7 @@
                             <div class="card mb-1 designer-panel">
                                 <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-filtersPanel')}" style="cursor:pointer;">
                                     <i class="fa fa-filter"></i> Filters
+                                    <i class="hint-tip fa fa-info-circle text-info ms-1" data-bind="visible: showHints()" data-bs-toggle="tooltip" title="<b>Filter Operators:</b><br>&bull; <b>=, &gt;, &lt;, &ge;, &le;:</b> Standard comparisons<br>&bull; <b>Between:</b> Range (e.g., dates from/to)<br>&bull; <b>Like:</b> Pattern match (use % as wildcard)<br>&bull; <b>In / Not In:</b> Match a list of values<br>&bull; <b>Is Blank / Is Not Blank:</b> Null checks<br><br><b>Date Shortcuts:</b> Today, This Week, This Month, This Year, Last 30 Days, Last Year<br><br><b>AND/OR Logic:</b> Combine multiple filters. Add filter groups for complex logic like (A AND B) OR (C AND D).<br><br><b>Allow Filters on Report:</b> Check this to let viewers add their own filters when viewing."></i>
                                     <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-filtersPanel')}"></i>
                                 </div>
                                 <div class="card-body p-2 designer-auto-update" data-bind="visible: !panels.isCollapsed('lp-filtersPanel')" style="max-height: 300px; overflow-y: auto;">
@@ -2994,6 +3134,7 @@
                             <div class="card mb-1 designer-panel" data-bind="visible: !useStoredProc()">
                                 <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-sortPanel')}" style="cursor:pointer;">
                                     <i class="fa fa-sort"></i> Sort
+                                    <i class="hint-tip fa fa-info-circle text-info ms-1" data-bind="visible: showHints()" data-bs-toggle="tooltip" title="<b>Sort Order:</b> Drag fields to set priority. First sort is primary, second is tie-breaker, etc.<br><b>Ascending:</b> A&rarr;Z, 1&rarr;9, oldest&rarr;newest<br><b>Descending:</b> Z&rarr;A, 9&rarr;1, newest&rarr;oldest<br><br><b>For Charts:</b> Sort controls x-axis order (e.g., sort by date for chronological, by value for ranked bars).<br><b>Top N:</b> Combine sort descending + page size to show &ldquo;Top 10&rdquo; results."></i>
                                     <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-sortPanel')}"></i>
                                 </div>
                                 <div class="card-body p-2 designer-auto-update" data-bind="visible: !panels.isCollapsed('lp-sortPanel')">
@@ -3005,6 +3146,7 @@
                             <div class="card mb-1 designer-panel">
                                 <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-settingsPanel')}" style="cursor:pointer;">
                                     <i class="fa fa-gear"></i> Options
+                                    <i class="hint-tip fa fa-info-circle text-info ms-1" data-bind="visible: showHints()" data-bs-toggle="tooltip" title="<b>Options Available:</b><br>&bull; <b>Show Total Row:</b> Adds a totals row at the bottom (Sum/Count of numeric columns)<br>&bull; <b>Page Size:</b> Number of rows per page (affects List/Summary reports)<br>&bull; <b>Show Data with Graph:</b> Display both the chart AND a data table below it<br>&bull; <b>Max Records:</b> Limit total records returned (0 = no limit)<br>&bull; <b>No Header Sort:</b> Disable column header click-to-sort on the report page<br>&bull; <b>Chart Options:</b> Colors, legend position, axis labels, gridlines, stacking, horizontal orientation"></i>
                                     <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-settingsPanel')}"></i>
                                 </div>
                                 <div class="card-body p-2 designer-options-wrap" data-bind="visible: !panels.isCollapsed('lp-settingsPanel')">

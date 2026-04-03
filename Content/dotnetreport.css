@@ -2433,3 +2433,123 @@ td[class^="pivot-group-"] {
     background-color: #e9ecef;
 }
 
+/* ── Smart Suggestion Bar ── */
+.smart-suggestion {
+    background: #fef9e7;
+    border: 1px solid #f9e79f;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: #7d6608;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.smart-suggestion a {
+    color: #2e7d32;
+    font-weight: 600;
+    text-decoration: none;
+}
+.smart-suggestion a:hover { text-decoration: underline; }
+
+/* ── Hint Tooltips ── */
+.hint-tip {
+    font-size: 11px;
+    cursor: help;
+    opacity: 0;
+    animation: hintFadeIn 0.3s ease forwards;
+}
+@keyframes hintFadeIn {
+    to { opacity: 0.7; }
+}
+.hint-tip:hover { opacity: 1; }
+.tooltip .tooltip-inner {
+    max-width: 360px;
+    text-align: left;
+    font-size: 12px;
+    line-height: 1.5;
+    padding: 10px 14px;
+}
+
+/* ── More Charts Modal Gallery ── */
+.chart-card {
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 8px;
+    transition: all 0.15s ease;
+}
+.chart-card:hover {
+    border-color: var(--bs-primary, #0d6efd);
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.15);
+    transform: translateY(-1px);
+}
+.chart-card.active-chart {
+    border-color: var(--bs-primary, #0d6efd);
+    background-color: var(--bs-primary-bg-subtle, #cfe2ff);
+}
+.chart-card-disabled {
+    opacity: 0.5;
+    cursor: not-allowed !important;
+}
+.chart-card-disabled:hover {
+    border-color: #dee2e6;
+    box-shadow: none;
+    transform: none;
+}
+.chart-card-icon {
+    color: var(--bs-primary, #0d6efd);
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.chart-card-disabled .chart-card-icon { color: #adb5bd; }
+
+/* ── More Charts Two-Panel Layout ── */
+.more-charts-layout { min-height: 420px; }
+.more-charts-detail-panel {
+    width: 320px; min-width: 320px;
+    border-left: 1px solid var(--bs-border-color, #dee2e6);
+    background: var(--bs-light, #f8f9fa);
+}
+.more-charts-grid-panel {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 520px;
+}
+.more-chart-preview-svg {
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 6px;
+    background: #fff;
+}
+.chart-card-selected {
+    border-color: var(--bs-primary, #0d6efd) !important;
+    background: var(--bs-primary-bg-subtle, #cfe2ff);
+    box-shadow: 0 0 0 2px rgba(13,110,253,.25);
+}
+
+/* ── AI Assistant Panel ── */
+.ai-assistant-panel .card-body { background: #fafbff; }
+.ai-assistant-panel .ai-msg-bubble.bg-light { background-color: #f0f0f5 !important; }
+.ai-assist-messages:empty::before {
+    content: 'Ask me anything about your report design, or click a quick action below.';
+    color: #9ca3af;
+    font-size: 11px;
+    font-style: italic;
+    display: block;
+    text-align: center;
+    padding: 16px 8px;
+}
+
+/* ── Dark mode for new components ── */
+body.dark-mode .smart-suggestion { background: #2d2a1a; border-color: #5a4e1e; color: #d4c876; }
+body.dark-mode .smart-suggestion a { color: #66bb6a; }
+body.dark-mode .chart-card { border-color: #2d3748; background: #1a1f2e; color: #cdd6e0; }
+body.dark-mode .chart-card:hover { border-color: #6ea8fe; box-shadow: 0 2px 8px rgba(110, 168, 254, 0.2); }
+body.dark-mode .chart-card.active-chart { border-color: #6ea8fe; background-color: #031633; }
+body.dark-mode .chart-card-selected { border-color: #6ea8fe !important; background: #031633; box-shadow: 0 0 0 2px rgba(110,168,254,.3); }
+body.dark-mode .more-charts-detail-panel { background: #161b27; border-color: #2d3748; }
+body.dark-mode .more-chart-preview-svg { background: #1a1f2e; border-color: #2d3748; }
+body.dark-mode .ai-assistant-panel .card-body { background: #161b27; }
+body.dark-mode .ai-assistant-panel .ai-msg-bubble.bg-light { background-color: #1a2035 !important; color: #cdd6e0; }
+

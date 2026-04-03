@@ -1631,8 +1631,489 @@ var reportViewModel = function (options) {
 		useFunctions: ko.observable(false),
 		canCopyReport: ko.observable(true),
 		showScheduling: ko.observable(false),
+		showDesignerHints: ko.observable(true),
+		aiProvider: ko.observable('')
 	};
 	self.appSettings = options && options.appSettings ? options.appSettings : self.appSettings;
+
+	// ── Hints Toggle ──
+	self.showHints = ko.observable(false);
+	self.showHints.subscribe(function (on) {
+		setTimeout(function () {
+			var tooltipEls = document.querySelectorAll('.hint-tip[data-bs-toggle="tooltip"]');
+			tooltipEls.forEach(function (el) {
+				if (!bootstrap.Tooltip.getInstance(el)) {
+					new bootstrap.Tooltip(el, { trigger: 'hover focus', html: true });
+				}
+			});
+			if (on) self.initAggregateHelpTips();
+		}, 100);
+	});
+
+	self.initAggregateHelpTips = function () {
+		document.querySelectorAll('.aggregate-help-tip').forEach(function (el) {
+			var existing = bootstrap.Tooltip.getInstance(el);
+			if (existing) existing.dispose();
+			var html = el.getAttribute('data-agg-tooltip');
+			if (html) {
+				new bootstrap.Tooltip(el, { title: html, html: true, sanitize: false, placement: 'left', trigger: 'hover focus', container: 'body' });
+			}
+		});
+	};
+
+	// ── Aggregate Help Tooltips ──
+	var _aggDescriptions = {
+		'Group': { icon: 'fa-object-group', desc: 'Group rows by this field — used as label/category' },
+		'Count': { icon: 'fa-hashtag', desc: 'Count rows per group' },
+		'Sum': { icon: 'fa-plus', desc: 'Total of all values per group' },
+		'Average': { icon: 'fa-balance-scale', desc: 'Average value per group' },
+		'Min': { icon: 'fa-arrow-down', desc: 'Smallest value per group' },
+		'Max': { icon: 'fa-arrow-up', desc: 'Largest value per group' },
+		'Pivot': { icon: 'fa-random', desc: 'Turn values into column headers (cross-tab)' },
+		'Only in Detail': { icon: 'fa-eye-slash', desc: 'Only show when drilling down into detail' },
+		'Group in Detail': { icon: 'fa-indent', desc: 'Group rows in the drilldown detail view' },
+		'Csv': { icon: 'fa-list', desc: 'Comma-separated list of values per group' }
+	};
+
+	self.getAggregateTooltip = function (field) {
+		var opts = field.fieldAggregate || [];
+		if (!opts.length) return '';
+		var lines = [];
+		_.forEach(opts, function (opt) {
+			var info = _aggDescriptions[opt];
+			if (info) {
+				lines.push('<div><i class="fa ' + info.icon + '" style="width:16px;text-align:center;"></i> <b>' + opt + '</b> — ' + info.desc + '</div>');
+			}
+		});
+		return '<div style="max-width:260px;text-align:left;font-size:11px;line-height:1.6;">' + lines.join('') + '</div>';
+	};
+
+	// ── AI Assistant ──
+	self.aiAssistantEnabled = ko.observable(false);
+	self.aiAssistantMessages = ko.observableArray([]);
+	self.aiAssistantLoading = ko.observable(false);
+	self.aiAssistantInput = ko.observable('');
+
+	self.hasAiConfigured = ko.computed(function () {
+		if (!self.appSettings.aiProvider) return false;
+		var provider = ko.isObservable(self.appSettings.aiProvider) ? self.appSettings.aiProvider() : self.appSettings.aiProvider;
+		return provider && provider !== 'none';
+	});
+
+	self.callAiProvider = function (systemPrompt, userMessage) {
+		if (!self.hasAiConfigured()) {
+			return Promise.reject('AI provider not configured. Go to Setup > Settings to configure AI Assistant.');
+		}
+
+		// Route through backend API — API key is stored securely on the server
+		return new Promise(function (resolve, reject) {
+			ajaxcall({
+				url: options.apiUrl,
+				type: 'POST',
+				data: JSON.stringify({
+					method: "/ReportApi/RunAiAssistant",
+					model: JSON.stringify({
+						systemPrompt: systemPrompt,
+						userMessage: userMessage
+					})
+				}),
+				noBlocking: true
+			}).done(function (result) {
+				if (result && result.success === false) {
+					reject(result.message || 'AI request failed');
+				} else if (result && result.response) {
+					resolve(result.response);
+				} else if (typeof result === 'string') {
+					resolve(result);
+				} else {
+					reject('Unexpected response from AI service');
+				}
+			}).fail(function (xhr) {
+				var msg = 'AI request failed';
+				try {
+					var resp = typeof xhr.responseJSON === 'object' ? xhr.responseJSON : JSON.parse(xhr.responseText);
+					if (resp && resp.message) msg = resp.message;
+				} catch (e) { }
+				if (msg === 'AI request failed' && xhr.status) msg += ' (HTTP ' + xhr.status + ')';
+				reject(msg);
+			});
+		});
+	};
+
+	self.getAiSystemPrompt = function () {
+		return 'You are an expert report design assistant for Dotnet Report Builder. ' +
+			'You help users create effective reports by giving specific, actionable step-by-step instructions.\n\n' +
+			'IMPORTANT: Always give specific actionable steps the user can follow in the UI. Reference exact panel names, dropdowns, and options.\n\n' +
+			'Available visualization types: List (tabular rows), Summary (grouped/aggregated table), Bar (compare categories, supports horizontal/stacked), ' +
+			'Line (trends over time), Pie (proportions, best <8 categories), Combo (mix bar+line), Single/KPI (single big number), ' +
+			'Map (geographic), HeatMap (density), Treemap (hierarchical), Pivot/Transpose (cross-tab matrix).\n\n' +
+			'UI Panels and how to use them:\n' +
+			'- DATA panel: Select table, drag fields to "Selected Fields". Click field gear icon to open Field Settings.\n' +
+			'- FIELD SETTINGS (gear icon on each field): Set Aggregate (Sum, Count, Avg, Min, Max), Format (Currency, Percentage, Date), ' +
+			'  Group in Graph (groups series by this field), Link/Drilldown, Font Color, Background Color, Column Width, Header Label, ' +
+			'  Field Alignment, Hide from Detail, Custom Format.\n' +
+			'- VISUALIZATION panel: Click chart type buttons. Use "More Charts" for full gallery.\n' +
+			'- FILTERS panel: Add WHERE conditions. Operators include equals, contains, starts with, between, greater than, less than, is blank, in list. ' +
+			'  Date shortcuts: "Today", "This Month", "Last 30 Days", etc. Combine with AND/OR logic.\n' +
+			'- SORT panel: Set sort order. First sort field has highest priority.\n' +
+			'- OPTIONS panel: Report title, page size, Top N records, Show Total row, Expand All Groups, Show Data with Graph.\n' +
+			'- CHART OPTIONS (after selecting a chart type): Bar/Line/Pie colors, chart background color, show/hide legend, label position.\n\n' +
+			'When suggesting changes, use this format:\n' +
+			'1. State what to do (e.g., "Change chart type to Bar")\n' +
+			'2. Explain where in the UI (e.g., "In the Visualization panel, click the Bar icon")\n' +
+			'3. Explain why (e.g., "Bar charts are best for comparing categories side by side")\n\n' +
+			'Keep responses concise but specific. Always reference the actual UI elements the user needs to click or change.';
+	};
+
+	self.buildFieldContext = function () {
+		var fields = self.SelectedFields();
+		if (!fields || fields.length === 0) return 'No fields selected yet.';
+		var desc = 'Current report state:\n';
+		desc += 'Visualization: ' + (self.ReportType() || 'None') + '\n';
+		desc += 'Selected fields:\n';
+		_.forEach(fields, function (f) {
+			var name = f.fieldName || f.FieldName || 'Unknown';
+			var type = f.fieldType || 'Unknown';
+			var fmt = f.fieldFormat ? (ko.isObservable(f.fieldFormat) ? f.fieldFormat() : f.fieldFormat) : '';
+			var agg = f.aggregateFunction ? (ko.isObservable(f.aggregateFunction) ? f.aggregateFunction() : f.aggregateFunction) : '';
+			var grp = f.groupInGraph ? (ko.isObservable(f.groupInGraph) ? f.groupInGraph() : f.groupInGraph) : false;
+			var fColor = f.fontColor ? (ko.isObservable(f.fontColor) ? f.fontColor() : f.fontColor) : '';
+			var bColor = f.backColor ? (ko.isObservable(f.backColor) ? f.backColor() : f.backColor) : '';
+			desc += '- ' + name + ' (type: ' + type;
+			if (fmt) desc += ', format: ' + fmt;
+			if (agg) desc += ', aggregate: ' + agg;
+			if (grp) desc += ', groupInGraph: true';
+			if (fColor) desc += ', fontColor: ' + fColor;
+			if (bColor) desc += ', bgColor: ' + bColor;
+			desc += ')\n';
+		});
+		if (self.ReportFilter && self.ReportFilter()) desc += 'Has filters: Yes\n';
+		if (self.SortBy && self.SortBy()) desc += 'Has sorting: Yes\n';
+		return desc;
+	};
+
+	self.getAiRecommendation = function () {
+		if (!self.hasAiConfigured()) return;
+		var fields = self.SelectedFields();
+		if (!fields || fields.length === 0) return;
+
+		self.aiAssistantLoading(true);
+		var context = self.buildFieldContext();
+		var prompt = context + '\nBased on these fields, what visualization type would you recommend and why? Also suggest any useful options (e.g., stacking, horizontal bars, grouping).';
+
+		self.callAiProvider(self.getAiSystemPrompt(), prompt).then(function (response) {
+			self.aiAssistantMessages.push({ role: 'assistant', content: response });
+			self.aiAssistantLoading(false);
+		}).catch(function (err) {
+			self.aiAssistantMessages.push({ role: 'assistant', content: 'Error: ' + (err || 'Could not reach AI provider.') });
+			self.aiAssistantLoading(false);
+		});
+	};
+
+	self.sendAiAssistantMessage = function () {
+		var msg = self.aiAssistantInput().trim();
+		if (!msg) return;
+		self.aiAssistantMessages.push({ role: 'user', content: msg });
+		self.aiAssistantInput('');
+		self.aiAssistantLoading(true);
+
+		var context = self.buildFieldContext();
+		var fullMsg = context + '\nUser question: ' + msg;
+
+		self.callAiProvider(self.getAiSystemPrompt(), fullMsg).then(function (response) {
+			self.aiAssistantMessages.push({ role: 'assistant', content: response });
+			self.aiAssistantLoading(false);
+		}).catch(function (err) {
+			self.aiAssistantMessages.push({ role: 'assistant', content: 'Error: ' + (err || 'Could not reach AI provider.') });
+			self.aiAssistantLoading(false);
+		});
+	};
+
+	self.clearAiAssistant = function () {
+		self.aiAssistantMessages([]);
+	};
+
+	// ── Smart Suggestions (rule-based, no AI) ──
+	self.smartSuggestion = ko.observable('');
+	self.suggestedType = ko.observable('');
+
+	self.computeSmartSuggestion = ko.computed(function () {
+		var fields = self.SelectedFields();
+		if (!fields || fields.length < 2) { self.smartSuggestion(''); self.suggestedType(''); return; }
+
+		var hasDate = false, numericCount = 0, categoricalCount = 0;
+		_.forEach(fields, function (f) {
+			var type = (f.fieldType || '').toLowerCase();
+			var fmt = f.fieldFormat ? (ko.isObservable(f.fieldFormat) ? f.fieldFormat() : f.fieldFormat) : '';
+			if (type === 'date' || type === 'datetime' || fmt === 'Date' || fmt === 'Date and Time') hasDate = true;
+			else if (type === 'int' || type === 'decimal' || type === 'money' || type === 'float' || type === 'double' || type === 'bigint' ||
+				fmt === 'Currency' || fmt === 'Percentage' || fmt === 'Decimal' || fmt === 'Number') numericCount++;
+			else categoricalCount++;
+		});
+
+		var agg = _.some(fields, function (f) {
+			var a = f.aggregateFunction ? (ko.isObservable(f.aggregateFunction) ? f.aggregateFunction() : f.aggregateFunction) : '';
+			return a && a !== 'None' && a !== '';
+		});
+
+		if (hasDate && numericCount >= 1 && agg) {
+			self.smartSuggestion('Tip: You have date + numeric data \u2014 a Line chart is great for showing trends over time');
+			self.suggestedType('Line');
+		} else if (categoricalCount >= 1 && numericCount >= 1 && agg) {
+			if (categoricalCount === 1 && fields.length <= 6) {
+				self.smartSuggestion('Tip: Categorical + numeric data \u2014 try a Bar chart to compare values, or Pie for proportions');
+				self.suggestedType('Bar');
+			} else {
+				self.smartSuggestion('Tip: Multiple categories with values \u2014 a Summary table or Bar chart works well');
+				self.suggestedType('Summary');
+			}
+		} else if (numericCount === 1 && fields.length === 1 && agg) {
+			self.smartSuggestion('Tip: Single metric \u2014 try the KPI widget for a prominent display');
+			self.suggestedType('Single');
+		} else {
+			self.smartSuggestion('');
+			self.suggestedType('');
+		}
+	});
+
+	self.applySuggestion = function () {
+		if (self.suggestedType()) self.setReportType(self.suggestedType());
+	};
+
+	// ── More Visualizations ──
+	var _svgBar = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="70" width="28" height="40" rx="2" fill="#0d6efd"/><rect x="58" y="40" width="28" height="70" rx="2" fill="#0d6efd"/><rect x="96" y="20" width="28" height="90" rx="2" fill="#0d6efd"/><rect x="134" y="55" width="28" height="55" rx="2" fill="#0d6efd"/><line x1="15" y1="112" x2="175" y2="112" stroke="#adb5bd" stroke-width="1"/><line x1="15" y1="10" x2="15" y2="112" stroke="#adb5bd" stroke-width="1"/><text x="30" y="8" font-size="8" fill="#6c757d">Sales by Region</text></svg>';
+	var _svgBarH = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="30" y="12" width="120" height="18" rx="2" fill="#0d6efd"/><rect x="30" y="38" width="90" height="18" rx="2" fill="#0d6efd"/><rect x="30" y="64" width="150" height="18" rx="2" fill="#0d6efd"/><rect x="30" y="90" width="60" height="18" rx="2" fill="#0d6efd"/><line x1="28" y1="8" x2="28" y2="112" stroke="#adb5bd" stroke-width="1"/><line x1="28" y1="112" x2="185" y2="112" stroke="#adb5bd" stroke-width="1"/></svg>';
+	var _svgBarS = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="30" width="28" height="50" rx="0" fill="#0d6efd"/><rect x="20" y="80" width="28" height="30" rx="0" fill="#6ea8fe"/><rect x="58" y="15" width="28" height="55" rx="0" fill="#0d6efd"/><rect x="58" y="70" width="28" height="40" rx="0" fill="#6ea8fe"/><rect x="96" y="40" width="28" height="40" rx="0" fill="#0d6efd"/><rect x="96" y="80" width="28" height="30" rx="0" fill="#6ea8fe"/><rect x="134" y="25" width="28" height="45" rx="0" fill="#0d6efd"/><rect x="134" y="70" width="28" height="40" rx="0" fill="#6ea8fe"/><line x1="15" y1="112" x2="175" y2="112" stroke="#adb5bd" stroke-width="1"/></svg>';
+	var _svgLine = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><polyline points="20,80 55,50 90,60 125,25 160,35 180,15" fill="none" stroke="#0d6efd" stroke-width="2.5"/><circle cx="20" cy="80" r="3" fill="#0d6efd"/><circle cx="55" cy="50" r="3" fill="#0d6efd"/><circle cx="90" cy="60" r="3" fill="#0d6efd"/><circle cx="125" cy="25" r="3" fill="#0d6efd"/><circle cx="160" cy="35" r="3" fill="#0d6efd"/><circle cx="180" cy="15" r="3" fill="#0d6efd"/><line x1="15" y1="105" x2="185" y2="105" stroke="#adb5bd" stroke-width="1"/><line x1="15" y1="5" x2="15" y2="105" stroke="#adb5bd" stroke-width="1"/></svg>';
+	var _svgArea = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><polygon points="20,95 55,60 90,70 125,35 160,45 180,25 180,105 20,105" fill="#0d6efd" opacity="0.2"/><polyline points="20,95 55,60 90,70 125,35 160,45 180,25" fill="none" stroke="#0d6efd" stroke-width="2"/><line x1="15" y1="105" x2="185" y2="105" stroke="#adb5bd" stroke-width="1"/><line x1="15" y1="5" x2="15" y2="105" stroke="#adb5bd" stroke-width="1"/></svg>';
+	var _svgPie = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><path d="M100,60 L100,15 A45,45 0 0,1 138,38 Z" fill="#0d6efd"/><path d="M100,60 L138,38 A45,45 0 0,1 140,80 Z" fill="#6ea8fe"/><path d="M100,60 L140,80 A45,45 0 0,1 80,100 Z" fill="#0a58ca"/><path d="M100,60 L80,100 A45,45 0 0,1 60,40 Z" fill="#9ec5fe"/><path d="M100,60 L60,40 A45,45 0 0,1 100,15 Z" fill="#3d8bfd"/></svg>';
+	var _svgDonut = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><path d="M100,60 L100,15 A45,45 0 0,1 138,38 Z" fill="#0d6efd"/><path d="M100,60 L138,38 A45,45 0 0,1 140,80 Z" fill="#6ea8fe"/><path d="M100,60 L140,80 A45,45 0 0,1 80,100 Z" fill="#0a58ca"/><path d="M100,60 L80,100 A45,45 0 0,1 60,40 Z" fill="#9ec5fe"/><path d="M100,60 L60,40 A45,45 0 0,1 100,15 Z" fill="#3d8bfd"/><circle cx="100" cy="60" r="22" fill="white"/></svg>';
+	var _svgCombo = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="25" y="55" width="22" height="50" rx="2" fill="#0d6efd"/><rect x="62" y="35" width="22" height="70" rx="2" fill="#0d6efd"/><rect x="99" y="45" width="22" height="60" rx="2" fill="#0d6efd"/><rect x="136" y="25" width="22" height="80" rx="2" fill="#0d6efd"/><polyline points="36,45 73,28 110,35 147,18" fill="none" stroke="#dc3545" stroke-width="2.5"/><circle cx="36" cy="45" r="3" fill="#dc3545"/><circle cx="73" cy="28" r="3" fill="#dc3545"/><circle cx="110" cy="35" r="3" fill="#dc3545"/><circle cx="147" cy="18" r="3" fill="#dc3545"/><line x1="15" y1="107" x2="175" y2="107" stroke="#adb5bd" stroke-width="1"/></svg>';
+	var _svgList = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="10" width="170" height="18" rx="2" fill="#0d6efd" opacity="0.15"/><text x="20" y="23" font-size="9" font-weight="bold" fill="#0d6efd">Name</text><text x="80" y="23" font-size="9" font-weight="bold" fill="#0d6efd">Amount</text><text x="140" y="23" font-size="9" font-weight="bold" fill="#0d6efd">Date</text><line x1="15" y1="30" x2="185" y2="30" stroke="#dee2e6" stroke-width="0.5"/><text x="20" y="44" font-size="8" fill="#495057">Acme Corp</text><text x="80" y="44" font-size="8" fill="#495057">$12,400</text><text x="140" y="44" font-size="8" fill="#495057">Jan 15</text><line x1="15" y1="50" x2="185" y2="50" stroke="#dee2e6" stroke-width="0.5"/><text x="20" y="64" font-size="8" fill="#495057">Beta Inc</text><text x="80" y="64" font-size="8" fill="#495057">$8,200</text><text x="140" y="64" font-size="8" fill="#495057">Feb 03</text><line x1="15" y1="70" x2="185" y2="70" stroke="#dee2e6" stroke-width="0.5"/><text x="20" y="84" font-size="8" fill="#495057">Gamma LLC</text><text x="80" y="84" font-size="8" fill="#495057">$15,600</text><text x="140" y="84" font-size="8" fill="#495057">Mar 22</text><line x1="15" y1="90" x2="185" y2="90" stroke="#dee2e6" stroke-width="0.5"/><text x="20" y="104" font-size="8" fill="#495057">Delta Co</text><text x="80" y="104" font-size="8" fill="#495057">$6,300</text><text x="140" y="104" font-size="8" fill="#495057">Apr 10</text></svg>';
+	var _svgSummary = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="10" width="170" height="18" rx="2" fill="#0d6efd" opacity="0.15"/><text x="20" y="23" font-size="9" font-weight="bold" fill="#0d6efd">Category</text><text x="100" y="23" font-size="9" font-weight="bold" fill="#0d6efd">Sum</text><text x="150" y="23" font-size="9" font-weight="bold" fill="#0d6efd">Count</text><line x1="15" y1="30" x2="185" y2="30" stroke="#dee2e6" stroke-width="0.5"/><text x="20" y="44" font-size="8" font-weight="bold" fill="#495057">Electronics</text><line x1="15" y1="50" x2="185" y2="50" stroke="#dee2e6" stroke-width="0.5"/><text x="30" y="63" font-size="8" fill="#6c757d">Laptops</text><text x="100" y="63" font-size="8" fill="#495057">$24,500</text><text x="155" y="63" font-size="8" fill="#495057">18</text><line x1="15" y1="69" x2="185" y2="69" stroke="#dee2e6" stroke-width="0.5"/><text x="30" y="82" font-size="8" fill="#6c757d">Phones</text><text x="100" y="82" font-size="8" fill="#495057">$18,200</text><text x="155" y="82" font-size="8" fill="#495057">32</text><line x1="15" y1="88" x2="185" y2="88" stroke="#dee2e6" stroke-width="0.5"/><rect x="15" y="93" width="170" height="18" rx="2" fill="#e9ecef"/><text x="20" y="106" font-size="8" font-weight="bold" fill="#495057">Total</text><text x="100" y="106" font-size="8" font-weight="bold" fill="#495057">$42,700</text><text x="155" y="106" font-size="8" font-weight="bold" fill="#495057">50</text></svg>';
+	var _svgKpi = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="15" width="160" height="90" rx="8" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1"/><text x="100" y="50" font-size="10" fill="#6c757d" text-anchor="middle">Total Revenue</text><text x="100" y="82" font-size="28" font-weight="bold" fill="#0d6efd" text-anchor="middle">$124.5K</text><text x="100" y="98" font-size="9" fill="#198754" text-anchor="middle">+12.3% vs last month</text></svg>';
+	var _svgPivot = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="8" width="40" height="16" rx="2" fill="#e9ecef"/><rect x="55" y="8" width="40" height="16" rx="2" fill="#0d6efd" opacity="0.15"/><rect x="100" y="8" width="40" height="16" rx="2" fill="#0d6efd" opacity="0.15"/><rect x="145" y="8" width="40" height="16" rx="2" fill="#0d6efd" opacity="0.15"/><text x="62" y="20" font-size="7" fill="#0d6efd">Q1</text><text x="107" y="20" font-size="7" fill="#0d6efd">Q2</text><text x="152" y="20" font-size="7" fill="#0d6efd">Q3</text><rect x="10" y="28" width="40" height="16" rx="0" fill="#0d6efd" opacity="0.08"/><text x="14" y="39" font-size="7" fill="#495057">Widgets</text><text x="68" y="39" font-size="7" fill="#495057">450</text><text x="113" y="39" font-size="7" fill="#495057">520</text><text x="158" y="39" font-size="7" fill="#495057">480</text><rect x="10" y="48" width="40" height="16" rx="0" fill="#0d6efd" opacity="0.08"/><text x="14" y="59" font-size="7" fill="#495057">Gadgets</text><text x="68" y="59" font-size="7" fill="#495057">310</text><text x="113" y="59" font-size="7" fill="#495057">290</text><text x="158" y="59" font-size="7" fill="#495057">380</text><rect x="10" y="68" width="40" height="16" rx="0" fill="#0d6efd" opacity="0.08"/><text x="14" y="79" font-size="7" fill="#495057">Tools</text><text x="68" y="79" font-size="7" fill="#495057">180</text><text x="113" y="79" font-size="7" fill="#495057">210</text><text x="158" y="79" font-size="7" fill="#495057">195</text><line x1="10" y1="26" x2="185" y2="26" stroke="#dee2e6" stroke-width="0.5"/><line x1="52" y1="8" x2="52" y2="86" stroke="#dee2e6" stroke-width="0.5"/></svg>';
+	var _svgMap = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect width="200" height="120" fill="#dbeafe" rx="4"/>' +
+		'<path d="M18,42 L22,38 L28,36 L30,32 L26,28 L28,24 L34,22 L38,26 L42,24 L44,28 L48,26 L52,22 L56,24 L58,28 L54,34 L50,38 L46,36 L44,40 L48,44 L52,46 L50,50 L46,52 L42,48 L38,50 L34,48 L30,52 L24,50 L20,46 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<path d="M90,18 L96,16 L102,14 L110,16 L118,14 L124,18 L126,24 L122,30 L118,34 L124,38 L128,44 L124,48 L118,46 L112,42 L106,44 L100,48 L94,50 L88,46 L84,42 L80,46 L76,42 L78,36 L82,30 L86,26 L88,22 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<path d="M130,20 L138,18 L146,20 L154,18 L162,22 L168,28 L172,34 L176,30 L180,34 L178,40 L174,46 L168,50 L162,48 L156,52 L150,56 L144,54 L138,50 L132,46 L128,40 L126,34 L128,28 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<path d="M86,58 L92,56 L98,58 L104,62 L108,68 L112,74 L108,80 L102,84 L96,82 L90,78 L86,72 L84,66 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<path d="M150,62 L158,58 L166,60 L172,66 L176,72 L180,80 L176,86 L170,90 L162,92 L154,88 L148,82 L146,74 L148,68 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<circle cx="36" cy="38" r="4" fill="#dc3545" opacity="0.85"/><circle cx="42" cy="42" r="3" fill="#dc3545" opacity="0.85"/>' +
+		'<circle cx="106" cy="32" r="5" fill="#dc3545" opacity="0.85"/><circle cx="118" cy="40" r="3.5" fill="#dc3545" opacity="0.85"/>' +
+		'<circle cx="152" cy="36" r="4" fill="#dc3545" opacity="0.85"/><circle cx="168" cy="44" r="3" fill="#dc3545" opacity="0.85"/>' +
+		'<circle cx="98" cy="68" r="3" fill="#dc3545" opacity="0.85"/><circle cx="164" cy="76" r="3.5" fill="#dc3545" opacity="0.85"/></svg>';
+	var _svgHeatMap = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect width="200" height="120" fill="#dbeafe" rx="4"/>' +
+		'<path d="M18,42 L22,38 L28,36 L30,32 L26,28 L28,24 L34,22 L38,26 L42,24 L44,28 L48,26 L52,22 L56,24 L58,28 L54,34 L50,38 L46,36 L44,40 L48,44 L52,46 L50,50 L46,52 L42,48 L38,50 L34,48 L30,52 L24,50 L20,46 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<path d="M90,18 L96,16 L102,14 L110,16 L118,14 L124,18 L126,24 L122,30 L118,34 L124,38 L128,44 L124,48 L118,46 L112,42 L106,44 L100,48 L94,50 L88,46 L84,42 L80,46 L76,42 L78,36 L82,30 L86,26 L88,22 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<path d="M130,20 L138,18 L146,20 L154,18 L162,22 L168,28 L172,34 L176,30 L180,34 L178,40 L174,46 L168,50 L162,48 L156,52 L150,56 L144,54 L138,50 L132,46 L128,40 L126,34 L128,28 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<path d="M86,58 L92,56 L98,58 L104,62 L108,68 L112,74 L108,80 L102,84 L96,82 L90,78 L86,72 L84,66 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<path d="M150,62 L158,58 L166,60 L172,66 L176,72 L180,80 L176,86 L170,90 L162,92 L154,88 L148,82 L146,74 L148,68 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<circle cx="38" cy="38" r="18" fill="#dc3545" opacity="0.25"/><circle cx="38" cy="38" r="10" fill="#dc3545" opacity="0.35"/>' +
+		'<circle cx="108" cy="32" r="22" fill="#dc3545" opacity="0.2"/><circle cx="108" cy="32" r="12" fill="#dc3545" opacity="0.35"/>' +
+		'<circle cx="155" cy="38" r="16" fill="#fd7e14" opacity="0.25"/><circle cx="155" cy="38" r="8" fill="#fd7e14" opacity="0.4"/>' +
+		'<circle cx="165" cy="75" r="14" fill="#ffc107" opacity="0.3"/><circle cx="165" cy="75" r="7" fill="#ffc107" opacity="0.4"/></svg>';
+	var _svgTreemap = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="110" height="65" rx="2" fill="#0d6efd"/><rect x="125" y="10" width="65" height="35" rx="2" fill="#6ea8fe"/><rect x="125" y="50" width="65" height="25" rx="2" fill="#3d8bfd"/><rect x="10" y="80" width="70" height="30" rx="2" fill="#9ec5fe"/><rect x="85" y="80" width="50" height="30" rx="2" fill="#0a58ca"/><rect x="140" y="80" width="50" height="30" rx="2" fill="#6ea8fe" opacity="0.7"/><text x="50" y="48" font-size="9" fill="white" text-anchor="middle">Product A</text><text x="157" y="32" font-size="7" fill="white" text-anchor="middle">Product B</text></svg>';
+	var _svgScatter = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="105" x2="185" y2="105" stroke="#adb5bd" stroke-width="1"/><line x1="20" y1="10" x2="20" y2="105" stroke="#adb5bd" stroke-width="1"/><circle cx="40" cy="80" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="60" cy="65" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="55" cy="75" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="85" cy="50" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="100" cy="40" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="95" cy="55" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="120" cy="35" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="140" cy="25" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="130" cy="45" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="160" cy="20" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="75" cy="60" r="4" fill="#0d6efd" opacity="0.7"/><line x1="35" y1="85" x2="165" y2="18" stroke="#dc3545" stroke-width="1" stroke-dasharray="4"/></svg>';
+	var _svgGauge = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><path d="M40,90 A60,60 0 0,1 160,90" fill="none" stroke="#e9ecef" stroke-width="14" stroke-linecap="round"/><path d="M40,90 A60,60 0 0,1 136,42" fill="none" stroke="#198754" stroke-width="14" stroke-linecap="round"/><text x="100" y="85" font-size="22" font-weight="bold" fill="#495057" text-anchor="middle">73%</text><text x="100" y="100" font-size="8" fill="#6c757d" text-anchor="middle">Performance</text></svg>';
+	var _svgFunnel = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><polygon points="20,15 180,15 170,35 30,35" fill="#0d6efd"/><polygon points="35,40 165,40 150,60 50,60" fill="#3d8bfd"/><polygon points="55,65 145,65 135,85 65,85" fill="#6ea8fe"/><polygon points="70,90 130,90 120,110 80,110" fill="#9ec5fe"/><text x="100" y="28" font-size="8" fill="white" text-anchor="middle">Leads: 1000</text><text x="100" y="53" font-size="8" fill="white" text-anchor="middle">Qualified: 450</text><text x="100" y="78" font-size="8" fill="white" text-anchor="middle">Proposals: 180</text><text x="100" y="103" font-size="7" fill="#0d6efd" text-anchor="middle">Won: 45</text></svg>';
+	var _svgRadar = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><polygon points="100,20 155,45 145,90 55,90 45,45" fill="none" stroke="#dee2e6" stroke-width="0.5"/><polygon points="100,35 140,52 133,82 67,82 60,52" fill="none" stroke="#dee2e6" stroke-width="0.5"/><polygon points="100,50 125,60 120,75 80,75 75,60" fill="none" stroke="#dee2e6" stroke-width="0.5"/><polygon points="100,28 148,50 125,88 60,78 52,42" fill="#0d6efd" opacity="0.2" stroke="#0d6efd" stroke-width="1.5"/><circle cx="100" cy="28" r="2.5" fill="#0d6efd"/><circle cx="148" cy="50" r="2.5" fill="#0d6efd"/><circle cx="125" cy="88" r="2.5" fill="#0d6efd"/><circle cx="60" cy="78" r="2.5" fill="#0d6efd"/><circle cx="52" cy="42" r="2.5" fill="#0d6efd"/></svg>';
+	var _svgWaterfall = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="25" width="24" height="80" rx="2" fill="#0d6efd"/><rect x="48" y="25" width="24" height="30" rx="2" fill="#198754"/><line x1="48" y1="55" x2="72" y2="55" stroke="#adb5bd" stroke-width="0.5" stroke-dasharray="2"/><rect x="81" y="35" width="24" height="20" rx="2" fill="#198754"/><rect x="114" y="55" width="24" height="25" rx="2" fill="#dc3545"/><rect x="147" y="20" width="24" height="85" rx="2" fill="#0d6efd"/><line x1="10" y1="107" x2="180" y2="107" stroke="#adb5bd" stroke-width="1"/></svg>';
+	var _svgSunburst = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><circle cx="100" cy="60" r="45" fill="none" stroke="#dee2e6" stroke-width="0.5"/><path d="M100,60 L100,15 A45,45 0 0,1 145,60 Z" fill="#0d6efd" opacity="0.3"/><path d="M100,60 L145,60 A45,45 0 0,1 100,105 Z" fill="#6ea8fe" opacity="0.3"/><path d="M100,60 L100,105 A45,45 0 0,1 55,60 Z" fill="#0a58ca" opacity="0.3"/><path d="M100,60 L55,60 A45,45 0 0,1 100,15 Z" fill="#3d8bfd" opacity="0.3"/><circle cx="100" cy="60" r="25" fill="white"/><path d="M100,60 L100,35 A25,25 0 0,1 125,60 Z" fill="#0d6efd" opacity="0.5"/><path d="M100,60 L125,60 A25,25 0 0,1 100,85 Z" fill="#6ea8fe" opacity="0.5"/><path d="M100,60 L100,85 A25,25 0 0,1 75,60 Z" fill="#0a58ca" opacity="0.5"/><path d="M100,60 L75,60 A25,25 0 0,1 100,35 Z" fill="#3d8bfd" opacity="0.5"/><circle cx="100" cy="60" r="10" fill="white"/></svg>';
+	var _svgHtml = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="10" width="170" height="100" rx="4" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1"/><text x="25" y="30" font-size="9" fill="#0d6efd" font-family="monospace">&lt;div class=&quot;card&quot;&gt;</text><text x="35" y="45" font-size="9" fill="#495057" font-family="monospace">&lt;h2&gt;{{Title}}&lt;/h2&gt;</text><text x="35" y="60" font-size="9" fill="#495057" font-family="monospace">&lt;p&gt;{{Value}}&lt;/p&gt;</text><text x="25" y="75" font-size="9" fill="#0d6efd" font-family="monospace">&lt;/div&gt;</text><rect x="25" y="82" width="60" height="20" rx="3" fill="#0d6efd" opacity="0.1" stroke="#0d6efd" stroke-width="0.5"/><text x="35" y="96" font-size="8" fill="#0d6efd">Preview</text></svg>';
+
+	self.moreChartTypes = [
+		{ category: 'Basic', id: 'Bar', name: 'Bar Chart', icon: 'fa-bar-chart', desc: 'Compare values across categories', available: true,
+			detail: 'Vertical bars compare values across different categories. Great for showing rankings, comparisons, and distributions.',
+			bestFor: 'Sales by region, product comparison, monthly totals',
+			needs: '1 categorical field + 1 numeric field with aggregate (Sum, Count, etc.)',
+			svg: _svgBar },
+		{ category: 'Basic', id: 'Bar-horizontal', name: 'Horizontal Bar', icon: 'fa-bars', desc: 'Horizontal bars, great for long labels', available: true,
+			detail: 'Same as bar chart but horizontal. Perfect when category names are long (e.g., product names, full addresses).',
+			bestFor: 'Top 10 lists, long category names, survey responses',
+			needs: '1 categorical field + 1 numeric field with aggregate',
+			svg: _svgBarH,
+			modifier: function () { self.setReportType('Bar'); self.barChartHorizontal(true); } },
+		{ category: 'Basic', id: 'Bar-stacked', name: 'Stacked Bar', icon: 'fa-tasks', desc: 'Show composition within categories', available: true,
+			detail: 'Bars are divided into colored segments showing how each category is composed. Use "Group in Graph" on a second field to create segments.',
+			bestFor: 'Revenue by product per quarter, expenses breakdown, composition analysis',
+			needs: '1 categorical field + 1 numeric field + 1 field set to "Group in Graph"',
+			svg: _svgBarS,
+			modifier: function () { self.setReportType('Bar'); self.barChartStacked(true); } },
+		{ category: 'Basic', id: 'Line', name: 'Line Chart', icon: 'fa-line-chart', desc: 'Show trends and changes over time', available: true,
+			detail: 'Connect data points with lines to show trends, patterns, and changes over a continuous axis (usually time).',
+			bestFor: 'Monthly revenue trends, daily user counts, year-over-year comparison',
+			needs: '1 date/time field (grouped) + 1 numeric field with aggregate',
+			svg: _svgLine },
+		{ category: 'Basic', id: 'Line-area', name: 'Area Chart', icon: 'fa-area-chart', desc: 'Line with filled area, shows volume', available: true,
+			detail: 'Like a line chart but the area beneath is filled, emphasizing the magnitude of values over time.',
+			bestFor: 'Revenue volume, cumulative totals, stacked area comparisons',
+			needs: '1 date/time field (grouped) + 1 numeric field with aggregate',
+			svg: _svgArea,
+			modifier: function () { self.setReportType('Line'); self.lineChartArea(true); } },
+		{ category: 'Basic', id: 'Pie', name: 'Pie Chart', icon: 'fa-pie-chart', desc: 'Show proportions of a whole', available: true,
+			detail: 'Circular chart divided into slices showing percentage of a whole. Best with fewer than 8 categories.',
+			bestFor: 'Market share, budget allocation, status distribution',
+			needs: '1 categorical field + 1 numeric field with aggregate. Keep categories under 8 for readability.',
+			svg: _svgPie },
+		{ category: 'Basic', id: 'Pie-donut', name: 'Donut Chart', icon: 'fa-circle-o', desc: 'Pie with center cutout, modern look', available: true,
+			detail: 'A pie chart with a hollow center. Looks more modern and the center can conceptually hold a total or label.',
+			bestFor: 'Same as pie chart, but with a cleaner modern aesthetic',
+			needs: '1 categorical field + 1 numeric field with aggregate',
+			svg: _svgDonut,
+			modifier: function () { self.setReportType('Pie'); self.pieChartDonut(true); } },
+		{ category: 'Basic', id: 'Combo', name: 'Combo Chart', icon: 'fa-signal', desc: 'Mix bar and line in one chart', available: true,
+			detail: 'Combine bars and lines in one chart. Use "Series Type" in field settings to set each series as bar or line.',
+			bestFor: 'Revenue (bars) vs profit margin % (line), quantity vs average price',
+			needs: '1 categorical field + 2+ numeric fields. Set Series Type per field in Field Settings.',
+			svg: _svgCombo },
+		{ category: 'Tables & KPI', id: 'List', name: 'Data List', icon: 'fa-list-alt', desc: 'Detailed tabular rows', available: true,
+			detail: 'A flat table showing every row of data. Supports sorting, paging, drilldown, conditional formatting, and export.',
+			bestFor: 'Order details, customer lists, transaction logs, any detailed record view',
+			needs: 'Any fields. No aggregate functions needed.',
+			svg: _svgList },
+		{ category: 'Tables & KPI', id: 'Summary', name: 'Summary', icon: 'fa-table', desc: 'Grouped table with aggregates', available: true,
+			detail: 'Groups data by one or more fields and shows aggregate values (Sum, Count, Avg). Supports totals row and sub-grouping.',
+			bestFor: 'Sales by category, monthly summaries, employee performance rollups',
+			needs: 'At least 1 field set to "Group" + 1 field with aggregate (Sum, Count, etc.)',
+			svg: _svgSummary },
+		{ category: 'Tables & KPI', id: 'Single', name: 'KPI Widget', icon: 'fa-window-maximize', desc: 'Single metric, big number display', available: true,
+			detail: 'Displays a single big number prominently \u2014 perfect for dashboards. Customize font size, color, and background.',
+			bestFor: 'Total revenue, active users count, average order value',
+			needs: '1 numeric field with an aggregate function (Sum, Count, Avg, etc.)',
+			svg: _svgKpi },
+		{ category: 'Tables & KPI', id: 'Pivot', name: 'Pivot / Transpose', icon: 'fa-random', desc: 'Cross-tab matrix layout', available: true,
+			detail: 'Creates a matrix/crosstab with row headers, column headers, and values at intersections. Like an Excel pivot table.',
+			bestFor: 'Sales by product AND by month, region vs category matrix',
+			needs: '1 field set to "Group" (rows) + 1 field set to "Pivot" (columns) + 1 numeric field with aggregate',
+			svg: _svgPivot },
+		{ category: 'Geographic', id: 'Map', name: 'Map', icon: 'fa-globe', desc: 'Plot data on a geographic map', available: true,
+			detail: 'Plots data points on an interactive map using latitude/longitude or region names. Supports choropleth coloring.',
+			bestFor: 'Store locations, sales by state/country, geographic distribution',
+			needs: 'Fields with geographic data (lat/long, country names, or state codes)',
+			svg: _svgMap },
+		{ category: 'Geographic', id: 'HeatMap', name: 'Heat Map', icon: 'fa-map', desc: 'Geographic intensity visualization', available: true,
+			detail: 'Shows data density/intensity on a map with color gradients. Hot spots glow brighter.',
+			bestFor: 'Customer density, incident hotspots, delivery concentration areas',
+			needs: 'Latitude + Longitude numeric fields + optional intensity value field',
+			svg: _svgHeatMap },
+		{ category: 'Advanced', id: 'Treemap', name: 'Treemap', icon: 'fa-window-restore', desc: 'Hierarchical nested rectangles', available: true,
+			detail: 'Displays hierarchical data as nested rectangles. Size represents value, color represents category.',
+			bestFor: 'Budget breakdown, disk usage, organizational hierarchy with values',
+			needs: '1 categorical field + 1 numeric field with aggregate',
+			svg: _svgTreemap },
+		{ category: 'Advanced', id: 'Scatter', name: 'Scatter Plot', icon: 'fa-braille', desc: 'Show correlation between two numeric fields', available: false,
+			detail: 'Plots individual data points on X/Y axes to reveal correlations, clusters, and outliers between two numeric variables.',
+			bestFor: 'Price vs quantity, age vs income, any two-variable correlation',
+			needs: '2 numeric fields (one for each axis)',
+			svg: _svgScatter },
+		{ category: 'Advanced', id: 'Gauge', name: 'Gauge', icon: 'fa-tachometer', desc: 'Single value against a target range', available: false,
+			detail: 'A speedometer-style gauge showing a single value against min/max ranges. Great for KPI dashboards with targets.',
+			bestFor: 'Achievement vs target, system health %, completion rate',
+			needs: '1 numeric field with aggregate + configured min/max range',
+			svg: _svgGauge },
+		{ category: 'Advanced', id: 'Funnel', name: 'Funnel', icon: 'fa-filter', desc: 'Sequential stages with drop-off', available: false,
+			detail: 'Shows values decreasing through stages of a process. Each stage is narrower than the previous, showing conversion/drop-off.',
+			bestFor: 'Sales pipeline, conversion funnel, recruitment process stages',
+			needs: '1 categorical field (stages) + 1 numeric field (values), sorted by stage order',
+			svg: _svgFunnel },
+		{ category: 'Advanced', id: 'Radar', name: 'Radar / Spider', icon: 'fa-snowflake-o', desc: 'Compare multiple dimensions', available: false,
+			detail: 'Plots multiple variables on axes radiating from a center point. Great for comparing profiles across many dimensions.',
+			bestFor: 'Product feature comparison, employee skill assessment, multi-criteria scoring',
+			needs: '3+ numeric fields representing different dimensions',
+			svg: _svgRadar },
+		{ category: 'Advanced', id: 'Waterfall', name: 'Waterfall', icon: 'fa-sort-amount-desc', desc: 'Show cumulative additions/subtractions', available: false,
+			detail: 'Shows how an initial value is affected by a series of positive and negative changes, ending at a final value.',
+			bestFor: 'Profit waterfall, budget variance, cash flow analysis',
+			needs: '1 categorical field (steps) + 1 numeric field (positive/negative values)',
+			svg: _svgWaterfall },
+		{ category: 'Advanced', id: 'Sunburst', name: 'Sunburst', icon: 'fa-sun-o', desc: 'Multi-level hierarchical ring chart', available: false,
+			detail: 'A multi-ring donut chart showing hierarchical data. Inner rings are parent categories, outer rings are children.',
+			bestFor: 'Organization hierarchy, product category drill-down, file system visualization',
+			needs: '2+ categorical fields (hierarchy levels) + 1 numeric field',
+			svg: _svgSunburst },
+		{ category: 'Custom', id: 'Html', name: 'Custom HTML', icon: 'fa-code', desc: 'Full custom HTML template', available: true,
+			detail: 'Write your own HTML template with full control. Use data binding tokens to inject field values. Supports CSS, images, and custom layouts.',
+			bestFor: 'Custom invoices, branded reports, letter-style layouts, complex cards',
+			needs: 'HTML/CSS knowledge. Use {{FieldName}} tokens to inject data.',
+			svg: _svgHtml }
+	];
+
+	self.moreChartCategories = ko.computed(function () {
+		var cats = [];
+		var seen = {};
+		_.forEach(self.moreChartTypes, function (t) {
+			if (!seen[t.category]) { cats.push(t.category); seen[t.category] = true; }
+		});
+		return cats;
+	});
+
+	self.getChartsForCategory = function (category) {
+		return _.filter(self.moreChartTypes, { category: category });
+	};
+
+	self.getChartPreviewSvg = function (chartId) {
+		var chart = _.find(self.moreChartTypes, function (t) { return t.id === chartId; });
+		return chart && chart.svg ? chart.svg : '';
+	};
+
+	self.getChartTooltip = function (chartId) {
+		var chart = _.find(self.moreChartTypes, function (t) { return t.id === chartId; });
+		if (!chart) return '';
+		return '<div style="width:220px;padding:4px;">' +
+			(chart.svg ? '<div style="background:#fff;border-radius:4px;padding:4px;margin-bottom:6px;">' + chart.svg + '</div>' : '') +
+			'<div style="font-size:12px;font-weight:600;">' + chart.name + '</div>' +
+			'<div style="font-size:11px;opacity:0.85;">' + chart.desc + '</div></div>';
+	};
+
+	self.selectedMoreChart = ko.observable(null);
+
+	self.showMoreCharts = function () {
+		self.selectedMoreChart(null);
+		var modal = document.getElementById('moreChartsModal');
+		if (modal) {
+			new bootstrap.Modal(modal).show();
+		}
+	};
+
+	self.initChartTooltips = function () {
+		setTimeout(function () {
+			document.querySelectorAll('.chart-type-btn[data-chart-id]').forEach(function (btn) {
+				if (bootstrap.Tooltip.getInstance(btn)) return;
+				var chartId = btn.getAttribute('data-chart-id');
+				var html = self.getChartTooltip(chartId);
+				if (html) {
+					new bootstrap.Tooltip(btn, {
+						title: html,
+						html: true,
+						sanitize: false,
+						placement: 'bottom',
+						trigger: 'hover',
+						delay: { show: 300, hide: 100 },
+						container: 'body'
+					});
+				}
+			});
+		}, 500);
+	};
+
+	self.selectMoreChart = function (chart) {
+		if (!chart.available) return;
+		self.selectedMoreChart(chart);
+	};
+
+	self.confirmMoreChart = function () {
+		var chart = self.selectedMoreChart();
+		if (!chart) return;
+		if (chart.modifier) {
+			chart.modifier();
+		} else {
+			self.setReportType(chart.id);
+		}
+		self.selectedMoreChart(null);
+		var modal = bootstrap.Modal.getInstance(document.getElementById('moreChartsModal'));
+		if (modal) modal.hide();
+	};
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
 		self.resetQuery(false);
@@ -3062,6 +3543,7 @@ var reportViewModel = function (options) {
 				});
 			});
 			self.reportChanged();
+			if (self.showHints()) self.initAggregateHelpTips();
 		}, 500);
 
 		var newField = fields.length > 0 ? fields[fields.length - 1] : null;
@@ -8535,6 +9017,7 @@ var reportViewModel = function (options) {
 
 		self.loadTables();
 		self.loadProcs();
+		self.initChartTooltips();
 		self.loadAppSettings().done(function () {
 			if (self.ReportMode() != "dashboard") {
 				self.loadFolders().done(function () {
@@ -8584,6 +9067,8 @@ var reportViewModel = function (options) {
 			self.appSettings.canCopyReport(x.canCopyReport);
 			self.appSettings.useFunctions(x.useFunctions);
 			self.appSettings.showScheduling(x.showScheduling);
+			self.appSettings.showDesignerHints(x.showDesignerHints !== false);
+			self.appSettings.aiProvider(x.aiProvider || '');
 		});
 	}
 

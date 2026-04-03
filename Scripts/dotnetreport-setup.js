@@ -3065,6 +3065,27 @@ var settingPageViewModel = function (options) {
 	self.canCopyReport = ko.observable(true);
 	self.useFunctions = ko.observable(false);
 	self.showScheduling = ko.observable(true);
+	self.showDesignerHints = ko.observable(true);
+	self.aiProvider = ko.observable('');
+	self.aiApiKey = ko.observable('');
+	self.aiApiKeyChanged = false;
+	self.aiModel = ko.observable('');
+	self.aiModelOptions = ko.computed(function () {
+		if (self.aiProvider() === 'openai') {
+			return [
+				{ id: 'gpt-4o', name: 'GPT-4o (Recommended)' },
+				{ id: 'gpt-4o-mini', name: 'GPT-4o Mini (Faster)' },
+				{ id: 'gpt-4.1', name: 'GPT-4.1' },
+				{ id: 'o3-mini', name: 'o3-mini (Reasoning)' }
+			];
+		} else if (self.aiProvider() === 'anthropic') {
+			return [
+				{ id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4 (Recommended)' },
+				{ id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku (Faster)' }
+			];
+		}
+		return [];
+	});
 
 	self.appThemes = ko.observableArray([
 		{ name: 'Default', value: 'default' },
@@ -3146,7 +3167,11 @@ var settingPageViewModel = function (options) {
 							showImportExport: self.showImportExport(),
 							canCopyReport: self.canCopyReport(),
 							useFunctions: self.isEnterprise() ? self.useFunctions() : false,
-							showScheduling: self.showScheduling()
+							showScheduling: self.showScheduling(),
+								showDesignerHints: self.showDesignerHints(),
+								aiProvider: self.aiProvider(),
+								aiApiKey: self.aiApiKeyChanged ? self.aiApiKey() : undefined,
+								aiModel: self.aiModel()
 						})
 					})
 				})
@@ -3215,6 +3240,11 @@ var settingPageViewModel = function (options) {
 					self.useFunctions(false);
 				}			
 				self.showScheduling(settings.showScheduling);
+				self.showDesignerHints(settings.showDesignerHints !== false);
+				self.aiProvider(settings.aiProvider || '');
+				self.aiApiKey(settings.aiApiKey || '');
+				self.aiApiKeyChanged = false;
+				self.aiModel(settings.aiModel || '');
 ;
 				//// Optionally, you can manually trigger change event for select elements
 				$('#themeSelect').trigger('change');

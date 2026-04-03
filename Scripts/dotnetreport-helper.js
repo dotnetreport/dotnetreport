@@ -213,6 +213,12 @@ function downloadJson(content, fileName, contentType) {
     window.URL.revokeObjectURL(url);
 }
    // knockout binding extenders
+ko.bindingHandlers.stopBindings = {
+    init: function () {
+        return { controlsDescendantBindings: true };
+    }
+};
+
 ko.bindingHandlers.bsPopover = {
     init: function (element, valueAccessor) {
         var opts = valueAccessor() || {};
