@@ -1632,7 +1632,8 @@ var reportViewModel = function (options) {
 		canCopyReport: ko.observable(true),
 		showScheduling: ko.observable(false),
 		showDesignerHints: ko.observable(true),
-		aiProvider: ko.observable('')
+		aiProvider: ko.observable(''),
+		aiEnabled: ko.observable(false)
 	};
 	self.appSettings = options && options.appSettings ? options.appSettings : self.appSettings;
 
@@ -1688,150 +1689,541 @@ var reportViewModel = function (options) {
 		return '<div style="max-width:260px;text-align:left;font-size:11px;line-height:1.6;">' + lines.join('') + '</div>';
 	};
 
-	// ── AI Assistant ──
+	// ── AI Assistant (Action-Driven Architecture)
 	self.aiAssistantEnabled = ko.observable(false);
 	self.aiAssistantMessages = ko.observableArray([]);
 	self.aiAssistantLoading = ko.observable(false);
 	self.aiAssistantInput = ko.observable('');
+	self.aiConversationHistory = [];
+	self.aiReportApplied = ko.observable(false);
 
 	self.hasAiConfigured = ko.computed(function () {
+		if (self.appSettings.aiEnabled) {
+			var enabled = ko.isObservable(self.appSettings.aiEnabled) ? self.appSettings.aiEnabled() : self.appSettings.aiEnabled;
+			if (enabled) return true;
+		}
 		if (!self.appSettings.aiProvider) return false;
 		var provider = ko.isObservable(self.appSettings.aiProvider) ? self.appSettings.aiProvider() : self.appSettings.aiProvider;
-		return provider && provider !== 'none';
+		return provider && provider !== '' && provider !== 'none';
 	});
 
-	self.callAiProvider = function (systemPrompt, userMessage) {
-		if (!self.hasAiConfigured()) {
-			return Promise.reject('AI provider not configured. Go to Setup > Settings to configure AI Assistant.');
+	// ── Build lightweight current report state for AI context ──
+	self.buildCurrentReportContext = function () {
+		var fields = self.SelectedFields();
+		if (!fields || fields.length === 0) return null;
+
+		var fieldList = [];
+		_.forEach(fields, function (f) {
+			var entry = {
+				table: f.tableName || '',
+				field: f.fieldName || '',
+				aggregate: f.selectedAggregate ? ko.unwrap(f.selectedAggregate) : 'None',
+				groupInGraph: f.groupInGraph ? ko.unwrap(f.groupInGraph) : false
+			};
+			// Include formatting info so AI knows what's already set
+			var fmt = f.fieldFormat ? ko.unwrap(f.fieldFormat) : '';
+			if (fmt && fmt !== 'Auto') entry.fieldFormat = fmt;
+			var fc = f.fontColor ? ko.unwrap(f.fontColor) : '';
+			if (fc) entry.fontColor = fc;
+			var bc = f.backColor ? ko.unwrap(f.backColor) : '';
+			if (bc) entry.backColor = bc;
+			// Flag custom SQL fields
+			if (f.isFormulaField === true && f.formulaType === 'sql') {
+				entry.isCustomSqlField = true;
+			}
+			fieldList.push(entry);
+		});
+
+		// Collect current filters
+		var filterList = [];
+		var filterGroups = self.FilterGroups();
+		if (filterGroups && filterGroups.length > 0) {
+			var fg = filterGroups[0];
+			if (fg && fg.Filters) {
+				_.forEach(ko.unwrap(fg.Filters), function (filter) {
+					var field = ko.unwrap(filter.Field);
+					if (field) {
+						filterList.push({
+							table: field.tableName || '',
+							field: field.fieldName || '',
+							operator: ko.unwrap(filter.Operator) || '=',
+							value: ko.unwrap(filter.Value) || '',
+							value2: ko.unwrap(filter.Value2) || ''
+						});
+					}
+				});
+			}
 		}
 
-		// Route through backend API — API key is stored securely on the server
-		return new Promise(function (resolve, reject) {
-			ajaxcall({
-				url: options.apiUrl,
-				type: 'POST',
-				data: JSON.stringify({
-					method: "/ReportApi/RunAiAssistant",
-					model: JSON.stringify({
-						systemPrompt: systemPrompt,
-						userMessage: userMessage
-					})
-				}),
-				noBlocking: true
-			}).done(function (result) {
-				if (result && result.success === false) {
-					reject(result.message || 'AI request failed');
-				} else if (result && result.response) {
-					resolve(result.response);
-				} else if (typeof result === 'string') {
-					resolve(result);
-				} else {
-					reject('Unexpected response from AI service');
-				}
-			}).fail(function (xhr) {
-				var msg = 'AI request failed';
-				try {
-					var resp = typeof xhr.responseJSON === 'object' ? xhr.responseJSON : JSON.parse(xhr.responseText);
-					if (resp && resp.message) msg = resp.message;
-				} catch (e) { }
-				if (msg === 'AI request failed' && xhr.status) msg += ' (HTTP ' + xhr.status + ')';
-				reject(msg);
-			});
-		});
+		return {
+			reportName: self.ReportName() || '',
+			reportType: self.ReportType() || 'List',
+			fields: fieldList,
+			filters: filterList
+		};
 	};
 
-	self.getAiSystemPrompt = function () {
-		return 'You are an expert report design assistant for Dotnet Report Builder. ' +
-			'You help users create effective reports by giving specific, actionable step-by-step instructions.\n\n' +
-			'IMPORTANT: Always give specific actionable steps the user can follow in the UI. Reference exact panel names, dropdowns, and options.\n\n' +
-			'Available visualization types: List (tabular rows), Summary (grouped/aggregated table), Bar (compare categories, supports horizontal/stacked), ' +
-			'Line (trends over time), Pie (proportions, best <8 categories), Combo (mix bar+line), Single/KPI (single big number), ' +
-			'Map (geographic), HeatMap (density), Treemap (hierarchical), Pivot/Transpose (cross-tab matrix).\n\n' +
-			'UI Panels and how to use them:\n' +
-			'- DATA panel: Select table, drag fields to "Selected Fields". Click field gear icon to open Field Settings.\n' +
-			'- FIELD SETTINGS (gear icon on each field): Set Aggregate (Sum, Count, Avg, Min, Max), Format (Currency, Percentage, Date), ' +
-			'  Group in Graph (groups series by this field), Link/Drilldown, Font Color, Background Color, Column Width, Header Label, ' +
-			'  Field Alignment, Hide from Detail, Custom Format.\n' +
-			'- VISUALIZATION panel: Click chart type buttons. Use "More Charts" for full gallery.\n' +
-			'- FILTERS panel: Add WHERE conditions. Operators include equals, contains, starts with, between, greater than, less than, is blank, in list. ' +
-			'  Date shortcuts: "Today", "This Month", "Last 30 Days", etc. Combine with AND/OR logic.\n' +
-			'- SORT panel: Set sort order. First sort field has highest priority.\n' +
-			'- OPTIONS panel: Report title, page size, Top N records, Show Total row, Expand All Groups, Show Data with Graph.\n' +
-			'- CHART OPTIONS (after selecting a chart type): Bar/Line/Pie colors, chart background color, show/hide legend, label position.\n\n' +
-			'When suggesting changes, use this format:\n' +
-			'1. State what to do (e.g., "Change chart type to Bar")\n' +
-			'2. Explain where in the UI (e.g., "In the Visualization panel, click the Bar icon")\n' +
-			'3. Explain why (e.g., "Bar charts are best for comparing categories side by side")\n\n' +
-			'Keep responses concise but specific. Always reference the actual UI elements the user needs to click or change.';
-	};
-
-	self.buildFieldContext = function () {
-		var fields = self.SelectedFields();
-		if (!fields || fields.length === 0) return 'No fields selected yet.';
-		var desc = 'Current report state:\n';
-		desc += 'Visualization: ' + (self.ReportType() || 'None') + '\n';
-		desc += 'Selected fields:\n';
-		_.forEach(fields, function (f) {
-			var name = f.fieldName || f.FieldName || 'Unknown';
-			var type = f.fieldType || 'Unknown';
-			var fmt = f.fieldFormat ? (ko.isObservable(f.fieldFormat) ? f.fieldFormat() : f.fieldFormat) : '';
-			var agg = f.aggregateFunction ? (ko.isObservable(f.aggregateFunction) ? f.aggregateFunction() : f.aggregateFunction) : '';
-			var grp = f.groupInGraph ? (ko.isObservable(f.groupInGraph) ? f.groupInGraph() : f.groupInGraph) : false;
-			var fColor = f.fontColor ? (ko.isObservable(f.fontColor) ? f.fontColor() : f.fontColor) : '';
-			var bColor = f.backColor ? (ko.isObservable(f.backColor) ? f.backColor() : f.backColor) : '';
-			desc += '- ' + name + ' (type: ' + type;
-			if (fmt) desc += ', format: ' + fmt;
-			if (agg) desc += ', aggregate: ' + agg;
-			if (grp) desc += ', groupInGraph: true';
-			if (fColor) desc += ', fontColor: ' + fColor;
-			if (bColor) desc += ', bgColor: ' + bColor;
-			desc += ')\n';
-		});
-		if (self.ReportFilter && self.ReportFilter()) desc += 'Has filters: Yes\n';
-		if (self.SortBy && self.SortBy()) desc += 'Has sorting: Yes\n';
-		return desc;
-	};
-
-	self.getAiRecommendation = function () {
-		if (!self.hasAiConfigured()) return;
-		var fields = self.SelectedFields();
-		if (!fields || fields.length === 0) return;
-
-		self.aiAssistantLoading(true);
-		var context = self.buildFieldContext();
-		var prompt = context + '\nBased on these fields, what visualization type would you recommend and why? Also suggest any useful options (e.g., stacking, horizontal bars, grouping).';
-
-		self.callAiProvider(self.getAiSystemPrompt(), prompt).then(function (response) {
-			self.aiAssistantMessages.push({ role: 'assistant', content: response });
-			self.aiAssistantLoading(false);
-		}).catch(function (err) {
-			self.aiAssistantMessages.push({ role: 'assistant', content: 'Error: ' + (err || 'Could not reach AI provider.') });
-			self.aiAssistantLoading(false);
-		});
-	};
-
+	// ── Send AI message ──
 	self.sendAiAssistantMessage = function () {
 		var msg = self.aiAssistantInput().trim();
 		if (!msg) return;
+
 		self.aiAssistantMessages.push({ role: 'user', content: msg });
 		self.aiAssistantInput('');
 		self.aiAssistantLoading(true);
 
-		var context = self.buildFieldContext();
-		var fullMsg = context + '\nUser question: ' + msg;
+		var currentContext = self.buildCurrentReportContext();
+		self.aiConversationHistory.push({ role: 'user', content: msg });
 
-		self.callAiProvider(self.getAiSystemPrompt(), fullMsg).then(function (response) {
-			self.aiAssistantMessages.push({ role: 'assistant', content: response });
+		ajaxcall({
+			url: options.apiUrl.replace('CallReportApi', 'CallPostReportApi'),
+			type: 'POST',
+			data: JSON.stringify({
+				method: "/ReportApi/RunAiReportAssistant",
+				model: JSON.stringify({
+					userMessage: msg,
+					conversationHistory: JSON.stringify(self.aiConversationHistory),
+					currentReportJson: currentContext ? JSON.stringify(currentContext) : null
+				})
+			}),
+			noBlocking: true
+		}).done(function (result) {
+			if (result.d) result = result.d;
+			if (result.result) result = result.result;
+
+			if (result && result.success === false) {
+				self.aiAssistantMessages.push({ role: 'assistant', content: result.message || 'Error processing request.' });
+				self.aiConversationHistory.push({ role: 'assistant', content: result.message || 'Error' });
+				self.aiAssistantLoading(false);
+				return;
+			}
+
+			var aiMessage = result.message || 'Done.';
+			self.aiAssistantMessages.push({ role: 'assistant', content: aiMessage });
+			self.aiConversationHistory.push({ role: 'assistant', content: aiMessage });
+
+			// If AI returned actions, apply them to the designer via UI functions
+			if (result.actions) {
+				var actions = result.actions;
+				// Handle case where actions comes as a string (parse it)
+				if (typeof actions === 'string') {
+					try { actions = JSON.parse(actions); } catch (e) { console.error('AI: could not parse actions string:', e); }
+				}
+				console.log('AI actions received:', actions);
+				self.applyAiActions(actions);
+			}
+
 			self.aiAssistantLoading(false);
-		}).catch(function (err) {
-			self.aiAssistantMessages.push({ role: 'assistant', content: 'Error: ' + (err || 'Could not reach AI provider.') });
+		}).fail(function (xhr) {
+			var errMsg = 'AI request failed';
+			try {
+				var resp = typeof xhr.responseJSON === 'object' ? xhr.responseJSON : JSON.parse(xhr.responseText);
+				if (resp && resp.message) errMsg = resp.message;
+			} catch (e) { }
+			self.aiAssistantMessages.push({ role: 'assistant', content: 'Error: ' + errMsg });
+			self.aiConversationHistory.push({ role: 'assistant', content: 'Error: ' + errMsg });
 			self.aiAssistantLoading(false);
 		});
 	};
 
+	// ── Apply AI actions by driving existing UI functions ──
+	// Fields go through loadTableFields → setupField — the exact same path as manual use.
+	self.applyAiActions = function (actions) {
+		try {
+			console.log('AI: applying actions:', JSON.stringify(actions));
+
+			// Set report name/description
+			if (actions.reportName) self.ReportName(actions.reportName);
+			if (actions.reportDescription) self.ReportDescription(actions.reportDescription);
+
+			// Determine if we should clear existing fields
+			var shouldClear = actions.clearExisting !== false; // default true
+			var hasNewFields = actions.fields && actions.fields.length > 0;
+
+			if (shouldClear && hasNewFields) {
+				self.SelectedFields([]);
+				// Clear filters too when building fresh
+				if (self.FilterGroups() && self.FilterGroups().length > 0) {
+					self.FilterGroups()[0].Filters([]);
+				}
+			}
+
+			// ── Load fields from tables using existing UI functions ──
+			if (hasNewFields) {
+				// Group requested fields by table
+				var fieldsByTable = {};
+				_.forEach(actions.fields, function (f) {
+					var tbl = (f.table || '').toLowerCase();
+					if (!fieldsByTable[tbl]) fieldsByTable[tbl] = [];
+					fieldsByTable[tbl].push(f);
+				});
+
+				var tableNames = Object.keys(fieldsByTable);
+				var tableIndex = 0;
+
+				// Log available tables for debugging
+				console.log('AI: available tables:', _.map(self.Tables(), function (t) { return { name: t.tableName, display: t.displayName }; }));
+				console.log('AI: requested tables:', tableNames);
+
+				// Process tables sequentially (each loadTableFields is async)
+				var processNextTable = function () {
+					if (tableIndex >= tableNames.length) {
+						console.log('AI: all tables processed, SelectedFields count:', self.SelectedFields().length);
+						// All tables processed — now apply report type, filters, settings, and run
+						self._applyAiPostFields(actions);
+						return;
+					}
+
+					var tblKey = tableNames[tableIndex];
+					var requestedFields = fieldsByTable[tblKey];
+					tableIndex++;
+
+					// Find the table in available Tables — flexible matching
+					var table = _.find(self.Tables(), function (t) {
+						var tn = (t.tableName || '').toLowerCase();
+						var td = (t.displayName || '').toLowerCase();
+						var key = tblKey.toLowerCase();
+						return tn === key || td === key
+							|| tn.replace(/[\s_]/g, '') === key.replace(/[\s_]/g, '')
+							|| td.replace(/[\s_]/g, '') === key.replace(/[\s_]/g, '');
+					});
+
+					if (!table) {
+						console.warn('AI: table not found:', tblKey, '— available:', _.map(self.Tables(), 'tableName').join(', '));
+						processNextTable();
+						return;
+					}
+
+					console.log('AI: loading fields for table:', table.tableName, '(id:', table.tableId, ')');
+
+					// Load fields for this table (same as user clicking a table in the UI)
+					var loadPromise = self.loadTableFields(table);
+					if (loadPromise && loadPromise.done) {
+						loadPromise.done(function () {
+							console.log('AI: fields loaded for', table.tableName, '— available fields:', _.map(self.ChooseFields(), function (cf) { return cf.fieldName; }));
+
+							// Fields are now in self.ChooseFields() — find and select the ones AI wants
+							_.forEach(requestedFields, function (rf) {
+								var rfName = (rf.field || '').toLowerCase().replace(/[\s_]/g, '');
+								var chosenField = _.find(self.ChooseFields(), function (cf) {
+									var cfName = (cf.fieldName || '').toLowerCase().replace(/[\s_]/g, '');
+									var cfDbName = (cf.fieldDbName || '').toLowerCase().replace(/[\s_]/g, '');
+									return cfName === rfName || cfDbName === rfName;
+								});
+
+								if (chosenField) {
+									console.log('AI: matched field:', rf.field, '→', chosenField.fieldName, '(id:', chosenField.fieldId, ')');
+
+									// Check if already selected
+									var alreadySelected = _.find(self.SelectedFields(), function (sf) {
+										return sf.fieldId === chosenField.fieldId && sf.tableName === chosenField.tableName;
+									});
+									if (!alreadySelected) {
+										self.SelectedFields.push(chosenField);
+									} else {
+										chosenField = alreadySelected; // Use existing reference for aggregate/label setting
+									}
+
+									// Set aggregate if specified — always apply (even if field already existed, AI may be changing it)
+									if (rf.aggregate && chosenField.selectedAggregate) {
+										// Validate the aggregate is in the field's allowed options
+										var allowedAggs = (chosenField.fieldAggregate || []).concat(chosenField.fieldAggregateWithDrilldown || []);
+										var aggToSet = rf.aggregate;
+										if (aggToSet !== 'None' && allowedAggs.length > 0 && allowedAggs.indexOf(aggToSet) < 0) {
+											// Try case-insensitive match
+											var matched = _.find(allowedAggs, function (a) { return a.toLowerCase() === aggToSet.toLowerCase(); });
+											if (matched) aggToSet = matched;
+											else console.warn('AI: aggregate "' + aggToSet + '" not in allowed options:', allowedAggs.join(', '));
+										}
+										chosenField.selectedAggregate(aggToSet);
+										console.log('AI: set aggregate on', chosenField.fieldName, '→', aggToSet);
+									}
+
+									// Set groupInGraph
+									if (rf.groupInGraph && chosenField.groupInGraph) {
+										chosenField.groupInGraph(true);
+									}
+
+									// Set custom label
+									if (rf.label && chosenField.fieldLabel) {
+										chosenField.fieldLabel(rf.label);
+									}
+
+									// Set field formatting (only if AI provided these)
+									if (rf.fieldFormat && chosenField.fieldFormat) chosenField.fieldFormat(rf.fieldFormat);
+									if (rf.currencyFormat && chosenField.currencyFormat) chosenField.currencyFormat(rf.currencyFormat);
+									if (rf.decimalPlaces != null && chosenField.decimalPlaces) chosenField.decimalPlaces(rf.decimalPlaces);
+									if (rf.fontColor && chosenField.fontColor) chosenField.fontColor(rf.fontColor);
+									if (rf.backColor && chosenField.backColor) chosenField.backColor(rf.backColor);
+									if (rf.headerFontColor && chosenField.headerFontColor) chosenField.headerFontColor(rf.headerFontColor);
+									if (rf.headerBackColor && chosenField.headerBackColor) chosenField.headerBackColor(rf.headerBackColor);
+									if (rf.fontBold === true && chosenField.fontBold) chosenField.fontBold(true);
+									if (rf.headerFontBold === true && chosenField.headerFontBold) chosenField.headerFontBold(true);
+									if (rf.fieldAlign && chosenField.fieldAlign) chosenField.fieldAlign(rf.fieldAlign);
+								} else {
+									console.warn('AI: field not found:', rf.field, '(normalized:', rfName, ') — available:', _.map(self.ChooseFields(), function (cf) { return cf.fieldName; }).join(', '));
+								}
+							});
+
+							processNextTable();
+						}).fail(function () {
+							console.warn('AI: failed to load fields for table:', tblKey);
+							processNextTable();
+						});
+					} else {
+						console.warn('AI: loadTableFields returned no promise for:', tblKey);
+						processNextTable();
+					}
+				};
+
+				processNextTable();
+			} else {
+				// No new fields — just apply type/filters/settings changes
+				self._applyAiPostFields(actions);
+			}
+
+		} catch (e) {
+			console.error('Error applying AI actions:', e);
+			self.aiAssistantMessages.push({
+				role: 'assistant',
+				content: 'Had trouble applying the changes to the designer. Error: ' + e.message
+			});
+		}
+	};
+
+	// ── Apply report type, filters, settings after fields are loaded ──
+	self._applyAiPostFields = function (actions) {
+		try {
+			// Set report type
+			if (actions.reportType) {
+				self.ReportType(actions.reportType);
+			}
+
+			// Apply HTML template for Html report type
+			if (actions.htmlTemplate && actions.reportType === 'Html') {
+				// Delay to let KO render the Summernote editor after ReportType changes to 'Html'
+				var htmlContent = actions.htmlTemplate;
+				setTimeout(function () {
+					self.reportHtml(htmlContent);
+					// Also push directly into Summernote editor in case the binding update doesn't catch it
+					if (self.reportHtml.editor) {
+						self.reportHtml.editor.summernote('code', htmlContent);
+					}
+					console.log('AI: set HTML template, length:', htmlContent.length);
+				}, 500);
+			}
+
+			// Apply filters
+			if (actions.filters && actions.filters.length > 0 && self.FilterGroups().length > 0) {
+				var fg = self.FilterGroups()[0];
+				_.forEach(actions.filters, function (f) {
+					// Find the matching field in SelectedFields
+					var fName = (f.field || '').toLowerCase().replace(/\s/g, '');
+					var tName = (f.table || '').toLowerCase().replace(/\s/g, '');
+					var matchedField = _.find(self.SelectedFields(), function (sf) {
+						var sfName = (sf.fieldName || '').toLowerCase().replace(/\s/g, '');
+						var sfTable = (sf.tableName || '').toLowerCase().replace(/\s/g, '');
+						return sfName === fName && (!tName || sfTable === tName);
+					});
+
+					if (matchedField) {
+						fg.AddFilter({
+							FieldId: matchedField.fieldId,
+							Operator: f.operator || '=',
+							Value1: f.value || '',
+							Value2: f.value2 || '',
+							AndOr: 'AND'
+						});
+					} else {
+						console.warn('AI: filter field not found in selected fields:', f.field);
+					}
+				});
+			}
+
+			// Apply chart settings
+			if (actions.settings) {
+				var s = actions.settings;
+				if (s.barChartHorizontal && self.barChartHorizontal) self.barChartHorizontal(true);
+				if (s.barChartStacked && self.barChartStacked) self.barChartStacked(true);
+				if (s.pieChartDonut && self.pieChartDonut) self.pieChartDonut(true);
+				if (s.lineChartArea && self.lineChartArea) self.lineChartArea(true);
+				if (s.showDataWithGraph && self.ShowDataWithGraph) self.ShowDataWithGraph(true);
+				if (s.onlyTop && self.OnlyTop) self.OnlyTop(s.onlyTop);
+
+				// Apply chart colors/appearance
+				if (self.chartOptions) {
+					var opts = self.chartOptions();
+					var updated = false;
+					if (s.seriesColors && s.seriesColors.length > 0) {
+						opts = Object.assign({}, opts, { seriesColors: s.seriesColors });
+						updated = true;
+					}
+					if (s.backgroundColor) {
+						opts = Object.assign({}, opts, { backgroundColor: s.backgroundColor });
+						updated = true;
+					}
+					if (s.fontColor) {
+						opts = Object.assign({}, opts, { fontColor: s.fontColor });
+						updated = true;
+					}
+					if (s.fontSize) {
+						opts = Object.assign({}, opts, { fontSize: s.fontSize });
+						updated = true;
+					}
+					if (updated) {
+						self.chartOptions(opts);
+					}
+				}
+			}
+
+			// Apply custom SQL fields
+			if (actions.customFields && actions.customFields.length > 0) {
+				_.forEach(actions.customFields, function (cf) {
+					try {
+						console.log('AI: creating custom SQL field:', cf.label, 'function:', cf.sqlFunction);
+
+						// Set up the formula state
+						self.formulaFieldLabel(cf.label || 'Custom');
+						self.formulaDataFormat(cf.dataFormat || 'String');
+						self.formulaType('sql');
+
+						// Configure the customSqlField model
+						var sqlField = self.customSqlField;
+						sqlField.clear();
+						sqlField.selectedSqlFunction(cf.sqlFunction || 'Other');
+
+						// Set field reference if provided
+						if (cf.fieldRef) {
+							var parts = cf.fieldRef.split('>');
+							var fieldDisplayName = (parts.length > 1 ? parts[1] : parts[0]).trim();
+							sqlField.selectedField(fieldDisplayName);
+							// Find the table ID for the field
+							if (parts.length > 1) {
+								var tblName = parts[0].trim().toLowerCase().replace(/[\s_]/g, '');
+								var matchedTable = _.find(self.Tables(), function (t) {
+									return (t.tableName || '').toLowerCase().replace(/[\s_]/g, '') === tblName
+										|| (t.displayName || '').toLowerCase().replace(/[\s_]/g, '') === tblName;
+								});
+								if (matchedTable) sqlField.selectedFieldTableId(matchedTable.tableId);
+							}
+						}
+
+						// Set input value for functions that need it (LEFT, RIGHT, SUBSTRING)
+						if (cf.inputValue) sqlField.inputValue(cf.inputValue);
+
+						// Set conditions for conditional functions
+						if (cf.conditions && cf.conditions.length > 0) {
+							var conditions = cf.conditions.map(function (c) {
+								return {
+									field: c.field || '',
+									operator: c.operator || '=',
+									value: c.value || '',
+									result: c.result || '',
+									conditionDisplay: (c.field || '') + ' ' + (c.operator || '=') + ' ' + (c.value || '') + ' THEN ' + (c.result || '')
+								};
+							});
+							sqlField.conditions(conditions);
+						}
+
+						// Set else case
+						if (cf.elseCase) {
+							var elseEl = document.getElementById('condition-else');
+							if (elseEl) elseEl.textContent = cf.elseCase;
+						}
+
+						// For "Other" (raw SQL), set the custom SQL directly
+						if (cf.sqlFunction === 'Other' && cf.customSQL) {
+							sqlField.customSQL(cf.customSQL);
+							sqlField.fieldSql(cf.customSQL);
+							var customSqlEl = document.getElementById('custom-sql');
+							if (customSqlEl) customSqlEl.textContent = cf.customSQL;
+						}
+
+						// Generate the SQL and create the field
+						var generatedSql = sqlField.generateSQL();
+						console.log('AI: generated SQL for custom field:', generatedSql);
+
+						// Create the field using existing formula field infrastructure
+						var field = self.getEmptyFormulaField();
+						field.fieldName = cf.label || 'Custom';
+						field.fieldFormat = cf.dataFormat || 'String';
+						field.formulaType = 'sql';
+						field.customSqlField = sqlField.toJSON();
+						field.fieldSettings = {
+							formulaType: 'sql',
+							customSqlField: sqlField.toJSON()
+						};
+
+						var setupField = self.setupField(field);
+
+						// Set aggregate if specified
+						if (cf.aggregate && cf.aggregate !== 'None' && setupField.selectedAggregate) {
+							setupField.selectedAggregate(cf.aggregate);
+						}
+
+						self.SelectedFields.push(setupField);
+						console.log('AI: custom SQL field added:', cf.label);
+
+					} catch (cfError) {
+						console.error('AI: error creating custom field:', cf.label, cfError);
+					}
+				});
+
+				// Clean up formula state
+				self.clearFormulaField();
+			}
+
+			// Detect aggregate report
+			var hasAggregate = _.some(self.SelectedFields(), function (f) {
+				var agg = f.selectedAggregate ? ko.unwrap(f.selectedAggregate) : '';
+				return agg && agg !== 'None' && agg !== '' && agg !== 'Only in Detail' && agg !== 'Group in Detail';
+			});
+			if (hasAggregate && self.IsAggregateReport) {
+				self.IsAggregateReport(true);
+				if (self.IncludeSubTotal) self.IncludeSubTotal(true);
+			}
+
+			self.aiReportApplied(true);
+
+			// Auto-run the report so user sees results immediately
+			// For Html reports, delay to let the template get applied first
+			if (self.SelectedFields().length > 0) {
+				var isHtmlReport = (actions.reportType === 'Html' && actions.htmlTemplate);
+				if (isHtmlReport) {
+					setTimeout(function () { self.RunReport(false, true); }, 800);
+				} else {
+					self.RunReport(false, true);
+				}
+			}
+
+			toastr.success('AI has updated your report');
+
+		} catch (e) {
+			console.error('Error in _applyAiPostFields:', e);
+		}
+	};
+
+	// ── Quick action: Ask AI to recommend a chart based on current fields ──
+	self.getAiRecommendation = function () {
+		if (!self.hasAiConfigured()) return;
+		self.aiAssistantInput('Based on my current data fields, recommend the best visualization type and configure it for me.');
+		self.sendAiAssistantMessage();
+	};
+
+	// ── Clear AI conversation ──
 	self.clearAiAssistant = function () {
 		self.aiAssistantMessages([]);
+		self.aiConversationHistory = [];
+		self.aiReportApplied(false);
 	};
+
+	// Auto-scroll AI chat to bottom on new messages
+	self.aiAssistantMessages.subscribe(function () {
+		setTimeout(function () {
+			var el = document.querySelector('.ai-assist-messages');
+			if (el) el.scrollTop = el.scrollHeight;
+		}, 50);
+	});
 
 	// ── Smart Suggestions (rule-based, no AI) ──
 	self.smartSuggestion = ko.observable('');
@@ -2309,6 +2701,30 @@ var reportViewModel = function (options) {
 	self.pager.pageSize.subscribe(function () {
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries, true);
 	});
+
+	self.startOverReport = function () {
+		bootbox.confirm("Are you sure you want to start over? This will clear all fields, filters, and settings.", function (result) {
+			if (result) {
+				self.clearReport();
+				self.ReportResult().ReportData(null);
+				self.ReportResult().HasError(false);
+				self.ReportResult().ReportSql(null);
+				self.ReportResult().SubTotals([]);
+				self.SaveReport(false);
+				self.clearAiChat(true);
+				self.clearAiAssistant();
+				self.activeDesignRunning = false;
+				if (self.usingAi()) {
+					self.activeDesign(true);
+					self.ReportMode("design");
+				} else {
+					self.activeDesign(false);
+					self.ReportMode("generate");
+				}
+				self.manageAccess.applyDefaultSettings();
+			}
+		});
+	};
 
 	self.createNewReport = function () {
 		self.clearReport();
@@ -3373,6 +3789,8 @@ var reportViewModel = function (options) {
 		self.clearKpiSettings(true);
 		self.subReports([]);
 		self.clearManageAccess();	
+
+		self.clearAiAssistant();
 	};
 	self.currentUserManageAccess = function () {
 		self.manageAccess.clientId('');
@@ -9069,6 +9487,7 @@ var reportViewModel = function (options) {
 			self.appSettings.showScheduling(x.showScheduling);
 			self.appSettings.showDesignerHints(x.showDesignerHints !== false);
 			self.appSettings.aiProvider(x.aiProvider || '');
+			self.appSettings.aiEnabled(x.aiEnabled === true || (x.aiProvider && x.aiProvider !== ''));
 		});
 	}
 

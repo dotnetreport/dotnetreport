@@ -2947,7 +2947,7 @@
                             <div class="form-check form-switch mb-0" data-bind="visible: hasAiConfigured()">
                                 <input class="form-check-input" type="checkbox" role="switch" id="aiAssistSwitch" data-bind="checked: aiAssistantEnabled">
                                 <label class="form-check-label small" for="aiAssistSwitch">
-                                    <i class="fa fa-magic text-primary"></i> AI Assist
+                                    <i class="fa fa-magic text-primary"></i> AI Assist <span class="badge bg-warning text-dark" style="font-size: 9px; vertical-align: middle;">BETA</span>
                                 </label>
                             </div>                            
                             <div class="form-check form-switch mb-0" data-bind="visible: ko.unwrap(appSettings.showDesignerHints)">
@@ -2964,36 +2964,82 @@
                         <!-- AI Assistant Panel (visible in both modes) -->
                         <div class="card mb-2 designer-panel ai-assistant-panel" data-bind="visible: aiAssistantEnabled()" style="display:none; font-size: 12px;">
                             <div class="card-header p-2 d-flex align-items-center bg-primary text-white" style="cursor:pointer;">
-                                <i class="fa fa-magic me-1"></i> AI Assistant
-                                <button class="btn btn-sm btn-link text-white ms-auto p-0" data-bind="click: clearAiAssistant" title="Clear chat"><i class="fa fa-trash"></i></button>
+                                <i class="fa fa-magic me-1"></i> AI Report Builder
+                                <span class="badge bg-light text-primary ms-1" data-bind="visible: aiReportApplied()" style="font-size:9px;">Modified</span>
+                                <button class="btn btn-sm btn-link text-white ms-auto p-0" data-bind="click: clearAiAssistant" title="Clear conversation"><i class="fa fa-trash"></i></button>
                             </div>
                             <div class="card-body p-0">
-                                <div class="ai-assist-messages" data-bind="foreach: aiAssistantMessages" style="max-height: 200px; overflow-y: auto; padding: 8px;">
+                                <!-- Messages -->
+                                <div class="ai-assist-messages" data-bind="foreach: aiAssistantMessages" style="max-height: 350px; overflow-y: auto; padding: 8px;">
                                     <div class="mb-2" data-bind="css: { 'text-end': role === 'user', 'text-start': role !== 'user' }">
                                         <div class="ai-msg-bubble d-inline-block p-2 rounded-3" style="max-width: 90%; white-space: pre-wrap; font-size: 12px;"
                                              data-bind="text: content, css: role === 'user' ? 'bg-primary text-white' : 'bg-light border'"></div>
                                     </div>
                                 </div>
+                                <!-- Loading -->
                                 <div class="text-center p-2" data-bind="visible: aiAssistantLoading()">
-                                    <i class="fa fa-spinner fa-spin text-primary"></i> <span class="small text-muted">Thinking...</span>
+                                    <div class="d-flex align-items-center justify-content-center gap-2">
+                                        <i class="fa fa-spinner fa-spin text-primary"></i>
+                                        <span class="small text-muted">Building your report...</span>
+                                    </div>
                                 </div>
-                                <!-- Quick Actions -->
-                                <div class="p-2 border-top" data-bind="visible: aiAssistantMessages().length === 0 && !aiAssistantLoading()">
-                                    <div class="small text-muted mb-1"><i class="fa fa-lightbulb-o text-warning"></i> Quick actions:</div>
-                                    <button class="btn btn-sm btn-outline-secondary mb-1 me-1" data-bind="click: getAiRecommendation">
-                                        <i class="fa fa-bar-chart"></i> Recommend a chart
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary mb-1" data-bind="click: function(){ aiAssistantInput('What fields should I add to show sales trends?'); sendAiAssistantMessage(); }">
-                                        <i class="fa fa-database"></i> Suggest fields
-                                    </button>
+                                <!-- Quick Actions (shown when no messages) -->
+                                <div class="p-2" data-bind="visible: aiAssistantMessages().length === 0 && !aiAssistantLoading()">
+                                    <div class="small text-muted mb-1" style="font-style: italic;">
+                                        Ask me anything about your report design, or click a quick action below.
+                                    </div>
+                                    <div class="small text-muted mb-2">
+                                        <i class="fa fa-magic text-primary"></i> Tell me what report to build, or try:
+                                    </div>
+                                    <div class="small text-muted mb-2" style="background: #f0f7ff; padding: 6px 8px; border-radius: 4px; border-left: 3px solid #0d6efd;">
+                                        <i class="fa fa-lightbulb-o text-warning"></i> <strong>Tip:</strong> For best results, mention the data table name (e.g., "build a report using the Orders table")
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: function(){ aiAssistantInput('Build a sales summary report with a bar chart'); sendAiAssistantMessage(); }">
+                                            <i class="fa fa-bar-chart"></i> Sales summary
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: function(){ aiAssistantInput('Create an invoice report using HTML template'); sendAiAssistantMessage(); }">
+                                            <i class="fa fa-file-text-o"></i> Invoice report
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: function(){ aiAssistantInput('Show me a trend line chart of data over time'); sendAiAssistantMessage(); }">
+                                            <i class="fa fa-line-chart"></i> Trend analysis
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: function(){ aiAssistantInput('Create a KPI dashboard widget showing a key metric'); sendAiAssistantMessage(); }">
+                                            <i class="fa fa-tachometer"></i> KPI widget
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: getAiRecommendation, visible: SelectedFields().length > 0">
+                                            <i class="fa fa-lightbulb-o"></i> Recommend chart
+                                        </button>
+                                    </div>
                                 </div>
                                 <!-- Chat Input -->
                                 <div class="d-flex align-items-center p-2 border-top">
-                                    <input type="text" class="form-control form-control-sm me-1" placeholder="Ask anything about your report..."
-                                           data-bind="value: aiAssistantInput, valueUpdate: 'afterkeydown', event: { keypress: function(d,e){ if(e.keyCode===13){ sendAiAssistantMessage(); return false; } return true; } }">
+                                    <input type="text" class="form-control form-control-sm me-1"
+                                           placeholder="Describe the report you want to build..."
+                                           data-bind="value: aiAssistantInput, valueUpdate: 'afterkeydown',
+                                                      event: { keypress: function(d,e){ if(e.keyCode===13){ sendAiAssistantMessage(); return false; } return true; } },
+                                                      attr: { disabled: aiAssistantLoading() }">
                                     <button class="btn btn-sm btn-primary" data-bind="click: sendAiAssistantMessage, enable: aiAssistantInput() && !aiAssistantLoading()">
                                         <i class="fa fa-paper-plane"></i>
                                     </button>
+                                </div>
+                                <!-- Follow-up suggestions (shown after AI applies a report) -->
+                                <div class="p-2 border-top" data-bind="visible: aiReportApplied() && !aiAssistantLoading() && aiAssistantMessages().length > 0" style="display:none;">
+                                    <div class="small text-muted mb-1"><i class="fa fa-comments-o"></i> Follow-up:</div>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        <button class="btn btn-sm btn-outline-primary" data-bind="click: function(){ aiAssistantInput('Add a filter for this year'); sendAiAssistantMessage(); }">
+                                            + Filter this year
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-primary" data-bind="click: function(){ aiAssistantInput('Change to a bar chart'); sendAiAssistantMessage(); }">
+                                            Change chart type
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-primary" data-bind="click: function(){ aiAssistantInput('Break it down by month'); sendAiAssistantMessage(); }">
+                                            By month
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-primary" data-bind="click: function(){ aiAssistantInput('Add a top 10 limit'); sendAiAssistantMessage(); }">
+                                            Top 10
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -3357,6 +3403,9 @@
             <div class="modal-footer">
                 <button class="btn btn-primary" data-bind="visible: adminMode, click: RunReportSqlPreview">
                     <i class="fa fa-code"></i> Preview Report Code
+                </button>
+                <button class="btn btn-outline-secondary" type="button" data-bind="visible: !SaveReport() || !ReportID(), click: startOverReport" title="Clear everything and start a new report">
+                    <i class="fa fa-refresh"></i> Start Over
                 </button>
                 <a href="#" class="btn btn-danger" data-bind="click: cancelCreateReport">Cancel editing Report</a>
                 <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && CanSaveReports(), click: SaveWithoutRun" style="padding-right: 10px;">Save Report</button>

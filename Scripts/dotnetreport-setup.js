@@ -3070,21 +3070,14 @@ var settingPageViewModel = function (options) {
 	self.aiApiKey = ko.observable('');
 	self.aiApiKeyChanged = false;
 	self.aiModel = ko.observable('');
-	self.aiModelOptions = ko.computed(function () {
-		if (self.aiProvider() === 'openai') {
-			return [
-				{ id: 'gpt-4o', name: 'GPT-4o (Recommended)' },
-				{ id: 'gpt-4o-mini', name: 'GPT-4o Mini (Faster)' },
-				{ id: 'gpt-4.1', name: 'GPT-4.1' },
-				{ id: 'o3-mini', name: 'o3-mini (Reasoning)' }
-			];
-		} else if (self.aiProvider() === 'anthropic') {
-			return [
-				{ id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4 (Recommended)' },
-				{ id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku (Faster)' }
-			];
+	self.aiEnabled = ko.observable(false);
+	// Sync aiEnabled with aiProvider for backward compatibility
+	self.aiEnabled.subscribe(function (enabled) {
+		if (enabled && !self.aiProvider()) {
+			self.aiProvider('dotnetreport'); // Use our managed AI service
+		} else if (!enabled) {
+			self.aiProvider('');
 		}
-		return [];
 	});
 
 	self.appThemes = ko.observableArray([
@@ -3171,7 +3164,8 @@ var settingPageViewModel = function (options) {
 								showDesignerHints: self.showDesignerHints(),
 								aiProvider: self.aiProvider(),
 								aiApiKey: self.aiApiKeyChanged ? self.aiApiKey() : undefined,
-								aiModel: self.aiModel()
+								aiModel: self.aiModel(),
+								aiEnabled: self.aiEnabled()
 						})
 					})
 				})
@@ -3245,7 +3239,7 @@ var settingPageViewModel = function (options) {
 				self.aiApiKey(settings.aiApiKey || '');
 				self.aiApiKeyChanged = false;
 				self.aiModel(settings.aiModel || '');
-;
+				self.aiEnabled(settings.aiEnabled === true || (settings.aiProvider && settings.aiProvider !== ''));
 				//// Optionally, you can manually trigger change event for select elements
 				$('#themeSelect').trigger('change');
 				$('#timezoneSelect').trigger('change');
