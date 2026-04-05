@@ -2464,13 +2464,22 @@ var reportViewModel = function (options) {
 		self.selectedMoreChart(null);
 		var modal = document.getElementById('moreChartsModal');
 		if (modal) {
+			// Re-bind the entire modal content to the current report VM
+			// (needed for dashboard where the page-level VM doesn't have chart type data)
+			var content = modal.querySelector('.modal-content');
+			if (content && modal._koBound !== self) {
+				ko.cleanNode(content);
+				ko.applyBindings(self, content);
+				modal._koBound = self;
+			}
 			new bootstrap.Modal(modal).show();
 		}
 	};
 
-	self.initChartTooltips = function () {
+	self.initChartTooltips = function (contextEl) {
 		setTimeout(function () {
-			document.querySelectorAll('.chart-type-btn[data-chart-id]').forEach(function (btn) {
+			var root = contextEl || document;
+			root.querySelectorAll('.chart-type-btn[data-chart-id]').forEach(function (btn) {
 				if (bootstrap.Tooltip.getInstance(btn)) return;
 				var chartId = btn.getAttribute('data-chart-id');
 				var html = self.getChartTooltip(chartId);
@@ -7409,7 +7418,7 @@ var reportViewModel = function (options) {
 	};
 	self.skipDraw = options.skipDraw === true ? true : false;
 	self.DrawChart = function () {
-		if (!self.isChart() || self.skipDraw === true) return;
+		if (!self.isChart() || (self.skipDraw === true && !self.activeDesign())) return;
 		// Create the data table.
 		var reportData = self.ReportResult().ReportData();
 		if (!reportData) return;
@@ -7442,6 +7451,115 @@ var reportViewModel = function (options) {
 
 		var chart = echarts.init(chartDiv);
 		chartDiv._echart = chart;
+
+		// ── Shared resize helpers (used by Map, Treemap, and all other chart types) ──
+		var chartWidth; var chartHeight;
+		var edgeThreshold = 20;
+		var isNearEdge = false;
+		function handlePointerDown(event) {
+			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
+			if (!isNearEdge) return;
+			event.preventDefault();
+			document.addEventListener('pointermove', handlePointerMove);
+			document.addEventListener('pointerup', handlePointerUp);
+		}
+		function handlePointerMove(event) {
+			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
+			event.preventDefault();
+			chartWidth = event.clientX - chartDiv.getBoundingClientRect().left;
+			chartHeight = event.clientY - chartDiv.getBoundingClientRect().top;
+			chartWidth = Math.max(100, chartWidth);
+			chartHeight = Math.max(100, chartHeight);
+			var el = document.getElementById('chart_div_' + self.ReportID());
+			el.style.width = chartWidth + 'px';
+			el.style.height = chartHeight + 'px';
+			if (el._echart) el._echart.resize();
+		}
+		function handlePointerUp(event) {
+			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
+			event.preventDefault();
+			document.removeEventListener('pointermove', handlePointerMove);
+			document.removeEventListener('pointerup', handlePointerUp);
+			saveDimensions();
+		}
+		function saveDimensions() {
+			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID()) || '{}';
+			var dimensions = JSON.parse(storedDimensions);
+			if (options.arrangeDashboard && !self.isExpanded()) {
+				dimensions.width = chartWidth;
+				dimensions.height = chartHeight;
+			} else {
+				dimensions.fullWidth = chartWidth;
+				dimensions.fullHeight = chartHeight;
+			}
+			localStorage.setItem('chart_dimensions_' + self.ReportID(), JSON.stringify(dimensions));
+		}
+		function retrieveDimensions() {
+			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID());
+			var chartElement = chartDiv;
+			var containerWidth = chartElement.parentElement.clientWidth;
+			var parentElementHeight = chartElement.parentElement.parentElement.parentElement.offsetHeight;
+			if (storedDimensions) {
+				var dimensions = JSON.parse(storedDimensions);
+				var savedWidth = parseInt(dimensions.width || dimensions.fullWidth || 0);
+				var appliedWidth = savedWidth > 0 ? Math.min(savedWidth, containerWidth) + 'px' : '100%';
+				var appliedHeight;
+				if (options.arrangeDashboard && !self.isExpanded()) {
+					appliedHeight = dimensions.height || '450px';
+				} else {
+					appliedWidth = dimensions.fullWidth ? (parseInt(dimensions.fullWidth) > 0 ? Math.min(parseInt(dimensions.fullWidth), containerWidth) + 'px' : '100%') : appliedWidth;
+					appliedHeight = dimensions.fullHeight || '450px';
+				}
+				chartElement.style.width = appliedWidth;
+				chartElement.style.height = typeof appliedHeight === 'number' ? appliedHeight + 'px' : appliedHeight;
+			} else {
+				chartElement.style.width = '100%';
+				chartElement.style.maxWidth = '100%';
+				var defaultHeight = '450px';
+				if (options.reportMode == 'dashboard' && !self.ShowDataWithGraph() && parentElementHeight > 10) {
+					defaultHeight = (parentElementHeight - 10) + 'px';
+				}
+				chartElement.style.height = defaultHeight;
+			}
+			chartElement.style.maxWidth = '100%';
+		}
+		function setupResizeHandlers() {
+			if (self.activeDesign()) return;
+			var parentDiv = chartDiv;
+			var chartContainer = (parentDiv && parentDiv.children[0]) ? parentDiv.children[0].children[0] : null;
+			if (chartContainer) {
+				chartContainer.addEventListener('pointerdown', handlePointerDown);
+				if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
+				chartContainer.addEventListener('pointermove', function (e) {
+					var rect = chartContainer.getBoundingClientRect();
+					var nearRight = (rect.right - e.clientX) <= edgeThreshold;
+					var nearBottom = (rect.bottom - e.clientY) <= edgeThreshold;
+					isNearEdge = nearRight || nearBottom;
+					if (nearRight && nearBottom) {
+						chartContainer.style.cursor = 'nwse-resize';
+					} else if (nearRight) {
+						chartContainer.style.cursor = 'ew-resize';
+					} else if (nearBottom) {
+						chartContainer.style.cursor = 'ns-resize';
+					} else {
+						chartContainer.style.cursor = 'default';
+					}
+					if (isNearEdge) {
+						chartContainer.style.border = '1px dashed #aaa';
+						chartContainer.style.boxSizing = 'content-box';
+					} else {
+						chartContainer.style.border = 'none';
+						chartContainer.style.boxSizing = 'border-box';
+					}
+				});
+				chartContainer.addEventListener('pointerleave', function () {
+					chartContainer.style.cursor = 'default';
+					chartContainer.style.border = 'none';
+					chartContainer.style.boxSizing = 'border-box';
+					isNearEdge = false;
+				});
+			}
+		}
 
 		if (self.ReportType() === "HeatMap") {
 			if (chartDiv.offsetHeight === 0) {
@@ -7995,8 +8113,23 @@ var reportViewModel = function (options) {
 					};
 				}
 
+				// Apply saved dimensions
+				if (self.ReportMode() != 'print') retrieveDimensions();
+
+				if (self.activeDesign()) {
+					chartDiv.style.width = '100%';
+					chartDiv.style.maxWidth = '100%';
+					chartDiv.style.height = '350px';
+					chartDiv.style.minHeight = '300px';
+					chartDiv.style.overflow = 'hidden';
+				}
+
 				chart.setOption(mapOption);
 				chart.resize();
+
+				if (self.activeDesign()) {
+					setTimeout(function () { chart.resize(); }, 300);
+				}
 
 				chart.off('finished');
 				chart.on('finished', function () {
@@ -8004,6 +8137,19 @@ var reportViewModel = function (options) {
 					self.ChartData(img);
 					window.chartImageUrl = img;
 				});
+
+				// Map click → drilldown
+				chart.off('click');
+				chart.on('click', function (params) {
+					if (params && params.dataIndex != null && reportData.Rows && reportData.Rows[params.dataIndex]) {
+						self.ChartDrillDownData(null);
+						reportData.Rows[params.dataIndex].expand();
+						$("#drilldownModal").modal('show');
+					}
+				});
+
+				// Enable edge-drag resize for map charts
+				setupResizeHandlers();
 			}
 
 			// Fetch pure GeoJSON, register with ECharts, then render.
@@ -8056,73 +8202,142 @@ var reportViewModel = function (options) {
 		}
 
 		if (self.ReportType() == 'Treemap') {
-
-			var rootCount = 0;
+			// Build ECharts treemap data from rows
+			// Expected columns: Item (name), Parent (parent name), Value (size)
 			var isInvalid = false;
-			var dt = [['Item', 'Parent', 'Value']];
+			var colors = self.colorScheme().length ? self.colorScheme() : ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9da7', '#9c755f', '#bab0ab'];
 
-			// Check for root nodes and validate
-			_.forEach(reportData.Rows, function (e, index) {
-				if (!e.Items[1].Value) {
-					rootCount++;
-					return;
+			// Build a lookup of parent→children
+			var nodeMap = {}; // name → { name, value, children[] }
+			var childNames = {};
+			var parentNames = {};
+
+			_.forEach(reportData.Rows, function (e) {
+				var itemName = (e.Items[0].FormattedValue || e.Items[0].Value || '').toString();
+				var parentName = e.Items[1].Value ? (e.Items[1].FormattedValue || e.Items[1].Value || '').toString() : null;
+				var val = e.Items.length > 2 ? parseFloat(e.Items[2].Value) : 1;
+				if (isNaN(val)) val = 0;
+
+				if (!nodeMap[itemName]) {
+					nodeMap[itemName] = { name: itemName, value: val, children: [] };
+				} else {
+					nodeMap[itemName].value = val;
+				}
+
+				if (parentName) {
+					childNames[itemName] = parentName;
+					if (!nodeMap[parentName]) {
+						nodeMap[parentName] = { name: parentName, value: 0, children: [] };
+					}
+					parentNames[parentName] = true;
 				}
 			});
 
-			if (rootCount > 1) {
-				toastr.error('More than one root node detected.');
-				isInvalid = true;
-			} else if (rootCount === 0) {
-				// Add a custom root node if none exists
-				dt.push(['Root', null, 0]);
-				var distinctFirstColumnValues = _.uniq(_.map(reportData.Rows, function (e) {
-					return e.Items[1].Value;
-				}));
+			// Link children to parents
+			_.forEach(childNames, function (parentName, childName) {
+				if (nodeMap[parentName] && nodeMap[childName]) {
+					nodeMap[parentName].children.push(nodeMap[childName]);
+				}
+			});
 
-				distinctFirstColumnValues.forEach(function (value) {
-					dt.push([value, 'Root', 1]);
+			// Find root nodes (nodes that are not children of anyone)
+			var roots = [];
+			_.forEach(nodeMap, function (node, name) {
+				if (!childNames[name]) {
+					roots.push(node);
+				}
+			});
+
+			// If multiple roots, wrap in a single root
+			var treemapData;
+			if (roots.length === 1) {
+				treemapData = roots[0].children.length > 0 ? roots[0].children : roots;
+			} else if (roots.length > 1) {
+				treemapData = roots;
+			} else {
+				toastr.error('No valid treemap data found.');
+				return;
+			}
+
+			// For leaf nodes (no children), remove empty children array so treemap sizes by value
+			function cleanLeaves(nodes) {
+				_.forEach(nodes, function (n) {
+					if (n.children && n.children.length === 0) {
+						delete n.children;
+					} else if (n.children) {
+						cleanLeaves(n.children);
+					}
 				});
 			}
-			_.forEach(reportData.Rows, function (e) {
-				if (e.Items[1].Value !== null) {
-					if (typeof e.Items[0].Value !== 'string' || typeof e.Items[1].Value !== 'string') {
-						toastr.error('Invalid data format: Columns 1 and 2 must be strings.');
-						isInvalid = true;
-					} 
-				}
-				dt.push([e.Items[0].Value, e.Items[1].Value, isNaN(parseInt(e.Items[2].Value)) ? 0 : parseInt(e.Items[2].Value)]);
-			});
+			cleanLeaves(treemapData);
 
-			if (isInvalid) return;
-			data = google.visualization.arrayToDataTable(dt);
-
-			chart = new google.visualization.TreeMap(chartDiv);
-			chartOptions = {
-				minColor: self.colorScheme()[0] || styleBlue[0],
-				midColor: self.colorScheme()[2] || styleBlue[2],
-				maxColor: self.colorScheme()[4] || styleBlue[4],
-				headerHeight: 15,
-				fontColor: 'black',
-				showScale: true,
-				maxDepth: 2,
-				maxPostDepth: 2,
-				useWeightedAverageForAggregation: true,
-				colorByRowLabel: true
+			option = {
+				tooltip: {
+					formatter: function (info) {
+						var val = info.value;
+						return info.name + ': ' + (val != null ? val : '');
+					}
+				},
+				series: [{
+					type: 'treemap',
+					data: treemapData,
+					leafDepth: 2,
+					roam: false,
+					breadcrumb: { show: true },
+					label: {
+						show: true,
+						formatter: '{b}',
+						fontSize: 12
+					},
+					upperLabel: {
+						show: true,
+						height: 20,
+						color: '#fff',
+						fontSize: 11
+					},
+					itemStyle: {
+						borderColor: '#fff',
+						borderWidth: 2,
+						gapWidth: 1
+					},
+					levels: [
+						{
+							itemStyle: {
+								borderColor: '#555',
+								borderWidth: 3,
+								gapWidth: 3
+							},
+							upperLabel: { show: true }
+						},
+						{
+							colorSaturation: [0.35, 0.5],
+							itemStyle: {
+								borderColorSaturation: 0.6,
+								gapWidth: 1
+							}
+						}
+					],
+					color: colors
+				}]
 			};
+
+			// Remove default axis config — treemap doesn't use axes
+			option.xAxis = null;
+			option.yAxis = null;
+			option.grid = null;
 		}
-		if (self.ReportType() != 'Treemap') {
-
-			chart.off('finished');
-			chart.on('finished', function () {
-				var img = chart.getDataURL({
-					type: 'png',
-					pixelRatio: 2,
-					backgroundColor: chartOptions.backgroundColor || '#fff'
-				});
-				self.ChartData(img);
-				window.chartImageUrl = img;
+		chart.off('finished');
+		chart.on('finished', function () {
+			var img = chart.getDataURL({
+				type: 'png',
+				pixelRatio: 2,
+				backgroundColor: chartOptions.backgroundColor || '#fff'
 			});
+			self.ChartData(img);
+			window.chartImageUrl = img;
+		});
 
+		if (self.ReportType() != 'Treemap') {
 			chart.off('click');
 			chart.on('click', function (params) {
 				if (params && params.dataIndex != null) {
@@ -8153,84 +8368,7 @@ var reportViewModel = function (options) {
 			}
 		}
 
-		var chartWidth; var chartHeight;
-		var edgeThreshold = 20; // pixels from edge to show resize cursor
-		var isNearEdge = false;
-		function handlePointerDown(event) {
-			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
-			if (!isNearEdge) return; // Only allow resize drag from edges
-			event.preventDefault(); // Prevent default browser behavior
-			document.addEventListener('pointermove', handlePointerMove);
-			document.addEventListener('pointerup', handlePointerUp);
-		}
-		function handlePointerMove(event) {
-			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
-			event.preventDefault();
-			chartWidth = event.clientX - chartDiv.getBoundingClientRect().left;
-			chartHeight = event.clientY - chartDiv.getBoundingClientRect().top;
-			chartWidth = Math.max(100, chartWidth); // Ensure a minimum width
-			chartHeight = Math.max(100, chartHeight); // Ensure a minimum height
-			var el = document.getElementById('chart_div_' + self.ReportID());
-			el.style.width = chartWidth + 'px';
-			el.style.height = chartHeight + 'px';
-			if (el._echart) el._echart.resize();
-		}
-		function handlePointerUp(event) {
-			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
-			event.preventDefault(); // Prevent default browser behavior
-			document.removeEventListener('pointermove', handlePointerMove);
-			document.removeEventListener('pointerup', handlePointerUp);
-			saveDimensions();
-		}
-
-		function saveDimensions() {
-			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID()) || '{}';
-			var dimensions = JSON.parse(storedDimensions);
-			if (options.arrangeDashboard && !self.isExpanded()) {
-				dimensions.width = chartWidth;
-				dimensions.height = chartHeight;
-			} else {
-				dimensions.fullWidth = chartWidth;
-				dimensions.fullHeight = chartHeight;
-			}
-
-			localStorage.setItem('chart_dimensions_' + self.ReportID(), JSON.stringify(dimensions));
-		}
-		function retrieveDimensions() {
-			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID());
-			var chartElement = chartDiv;
-			var containerWidth = chartElement.parentElement.clientWidth;
-			var parentElementHeight = chartElement.parentElement.parentElement.parentElement.offsetHeight;
-
-			if (storedDimensions) {
-				var dimensions = JSON.parse(storedDimensions);
-				var savedWidth = parseInt(dimensions.width || dimensions.fullWidth || 0);
-				var appliedWidth = savedWidth > 0 ? Math.min(savedWidth, containerWidth) + 'px' : '100%';
-				var appliedHeight;
-
-				if (options.arrangeDashboard && !self.isExpanded()) {
-					appliedHeight = dimensions.height || '450px';
-				} else {
-					appliedWidth = dimensions.fullWidth ? (parseInt(dimensions.fullWidth) > 0 ? Math.min(parseInt(dimensions.fullWidth), containerWidth) + 'px' : '100%') : appliedWidth;
-					appliedHeight = dimensions.fullHeight || '450px';
-				}
-
-				chartElement.style.width = appliedWidth;
-				chartElement.style.height = typeof appliedHeight === 'number' ? appliedHeight + 'px' : appliedHeight;
-			} else {
-				chartElement.style.width = '100%';
-				chartElement.style.maxWidth = '100%';
-				var defaultHeight = '450px';
-				if (options.reportMode == 'dashboard' && !self.ShowDataWithGraph() && parentElementHeight > 10) {
-					defaultHeight = (parentElementHeight - 10) + 'px';
-				}
-				chartElement.style.height = defaultHeight;
-			}
-
-			chartElement.style.maxWidth = '100%';
-		}
-		
-		// Call retrieveDimensions to load saved dimensions when the chart is initialized
+		// Apply saved dimensions
 		if (self.ReportMode() != 'print') retrieveDimensions();
 
 		// In live preview mode, override dimensions to fit the preview container
@@ -8281,45 +8419,8 @@ var reportViewModel = function (options) {
 			setTimeout(function () { chart.resize(); }, 300);
 		}
 
-		// Add event listener for pointer down on the chart container (skip in live preview mode)
-		if (self.activeDesign()) return;
-		var parentDiv = chartDiv;
-		var chartContainer = (parentDiv && parentDiv.children[0]) ? parentDiv.children[0].children[0] : null;
-		if (chartContainer) {
-			chartContainer.addEventListener('pointerdown', handlePointerDown);
-
-			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
-
-			chartContainer.addEventListener('pointermove', function (e) {
-				var rect = chartContainer.getBoundingClientRect();
-				var nearRight = (rect.right - e.clientX) <= edgeThreshold;
-				var nearBottom = (rect.bottom - e.clientY) <= edgeThreshold;
-				isNearEdge = nearRight || nearBottom;
-				if (nearRight && nearBottom) {
-					chartContainer.style.cursor = 'nwse-resize';
-				} else if (nearRight) {
-					chartContainer.style.cursor = 'ew-resize';
-				} else if (nearBottom) {
-					chartContainer.style.cursor = 'ns-resize';
-				} else {
-					chartContainer.style.cursor = 'default';
-				}
-				// Show border hint only when near edge
-				if (isNearEdge) {
-					chartContainer.style.border = '1px dashed #aaa';
-					chartContainer.style.boxSizing = 'content-box';
-				} else {
-					chartContainer.style.border = 'none';
-					chartContainer.style.boxSizing = 'border-box';
-				}
-			});
-			chartContainer.addEventListener('pointerleave', function () {
-				chartContainer.style.cursor = 'default';
-				chartContainer.style.border = 'none';
-				chartContainer.style.boxSizing = 'border-box';
-				isNearEdge = false;
-			});
-		}
+		// Enable edge-drag resize for non-map charts
+		setupResizeHandlers();
 	};
 
 	ko.computed(function () {
@@ -10264,7 +10365,10 @@ var dashboardViewModel = function (options) {
 		showImportExport: false,
 		canCopyReport: true,
 		useFunctions: false,
-		showScheduling: false
+		showScheduling: false,
+		showDesignerHints: true,
+		aiProvider: '',
+		aiEnabled: false
 	};
 
 	self.loadAppSettings = function () {
@@ -10297,6 +10401,9 @@ var dashboardViewModel = function (options) {
 			self.appSettings.canCopyReport = x.canCopyReport;
 			self.appSettings.useFunctions = x.useFunctions;
 			self.appSettings.showScheduling = x.showScheduling;
+			self.appSettings.showDesignerHints = x.showDesignerHints !== false;
+			self.appSettings.aiProvider = x.aiProvider || '';
+			self.appSettings.aiEnabled = x.aiEnabled === true || (x.aiProvider && x.aiProvider !== '');
 		});
 	}
 
@@ -10972,6 +11079,13 @@ var dashboardViewModel = function (options) {
 		var report = self.selectedReport();
 		if (report && !report.ReportID()) {
 			self.cancelNewReport(report);
+		}
+	});
+
+	$('#modal-reportbuilder').on('shown.bs.modal', function () {
+		var report = self.selectedReport();
+		if (report && report.initChartTooltips) {
+			report.initChartTooltips(document.getElementById('modal-reportbuilder'));
 		}
 	});
 

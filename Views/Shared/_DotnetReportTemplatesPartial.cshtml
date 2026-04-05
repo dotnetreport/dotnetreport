@@ -1734,7 +1734,7 @@
     </div>
     </div>
     <!-- Smart Suggestion -->
-    <div class="smart-suggestion mt-2" data-bind="visible: smartSuggestion()">
+    <div class="smart-suggestion mt-2" data-bind="visible: smartSuggestion() && (showHints() || activeDesign())">
         <i class="fa fa-lightbulb-o text-warning"></i>
         <span data-bind="text: smartSuggestion"></span>
         <a href="#" class="ms-2 small" data-bind="click: applySuggestion">
