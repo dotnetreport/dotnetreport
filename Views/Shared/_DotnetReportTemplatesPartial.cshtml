@@ -1611,7 +1611,12 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-select" required data-bind="options: savedReportsWithFolder, optionsText: function(r) { return (r.folderName ? r.folderName + ' \u203a ' : '') + r.reportName }, optionsValue: 'reportId', optionsCaption: '', value: LinkedToReportId, select2: { placeholder: 'Search reports or folders...', allowClear: true }"></select>
+                            <div class="d-flex gap-2 align-items-start">
+                                <select class="form-select" required data-bind="options: savedReportsWithFolder, optionsText: function(r) { return (r.folderName ? r.folderName + ' \u203a ' : '') + r.reportName }, optionsValue: 'reportId', optionsCaption: '', value: LinkedToReportId, select2: { placeholder: 'Search reports or folders...', allowClear: true }"></select>
+                                <button type="button" class="btn btn-sm btn-outline-success text-nowrap" title="Create a new report to link to" data-bind="click: createNewLinkedReport">
+                                    New
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="checkbox" data-bind="if: LinkedToReportId">
@@ -1624,6 +1629,17 @@
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report Filter</label>
                         <div class="col-sm-7 col-md-7">
                             <select class="form-select" required data-bind="options: allFields, optionsText: function(f) { return (f.tableName ? f.tableName + ' \u203a ' : '') + f.fieldName }, optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
+                        </div>
+                    </div>
+                    <div data-bind="if: LinkedToReportId">
+                        <div class="mt-2 mb-1">
+                            <label class="form-check-label">
+                                <input type="checkbox" class="form-check-input" data-bind="checked: isSubReportOnly, click: function() { toggleLinkedReportSubReportOnly(); return true; }" />
+                                <span class="small">Only use as sub/linked report</span>
+                            </label>
+                            <div class="small text-muted ms-4">
+                                When checked, this report will be hidden from report folders and search results, and will only be run as a linked or sub report from the parent report.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1651,6 +1667,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" data-bind="click: removeLinkField">Remove Link</button>
+                <button type="button" class="btn btn-outline-primary" data-bind="visible: linkFieldItem.LinkedToReportId(), click: function() { saveLinkField(); linkFieldItem.editLinkedReport(); }">Edit Linked Report</button>
                 <button type="button" class="btn btn-primary" data-bind="click: saveLinkField">Save Changes</button>
             </div>
         </div>
@@ -2045,15 +2062,32 @@
                         data: subReports,
                         options: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight' }
                     }">
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-            <span>
-                <i class="fa fa-bars sortable me-2" style="cursor:move;"></i>
-                <span data-bind="text: name"></span>
-            </span>
-            <button type="button" class="btn btn-sm btn-outline-danger"
-                    data-bind="click: $parent.removeSubReport">
-                Delete
-            </button>
+        <li class="list-group-item">
+            <div class="d-flex justify-content-between align-items-center">
+                <span>
+                    <i class="fa fa-bars sortable me-2" style="cursor:move;"></i>
+                    <span data-bind="text: name"></span>
+                </span>
+                <span>
+                    <button type="button" class="btn btn-sm btn-outline-primary me-1" title="Edit sub report"
+                            data-bind="click: $parent.editSubReport">
+                        <i class="fa fa-edit"></i> Edit
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            data-bind="click: $parent.removeSubReport">
+                        Delete
+                    </button>
+                </span>
+            </div>
+            <div class="mt-2">
+                <label class="form-check-label">
+                    <input type="checkbox" class="form-check-input" data-bind="checked: isSubReportOnly, click: function() { setTimeout(function() { $parent.toggleSubReportOnly($data); }, 0); return true; }" />
+                    <span class="small">Only use as sub report</span>
+                </label>
+                <div class="small text-muted ms-4">
+                    When checked, this report will be hidden from report folders and search results, and will only run as a sub report from here.
+                </div>
+            </div>
         </li>
     </ul>
 </script>
@@ -2551,6 +2585,16 @@
 <script type="text/html" id="report-designer-compact">
     <div class="designer-container compact-designer" id="choose-data-design" style="font-size:12px;">
 
+      <div class="alert alert-info mb-2 d-flex align-items-center justify-content-between py-2 px-3" style="border-left: 4px solid #0d6efd; font-size: 13px;" data-bind="visible: editingSubReportParentId()">
+          <span>
+              <i class="fa fa-info-circle me-1"></i>
+              Editing sub report from <strong data-bind="text: editingSubReportParentName"></strong>.
+          </span>
+          <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bind="click: returnToParentReport">
+              <i class="fa fa-arrow-left me-1"></i> Back to parent
+          </button>
+      </div>
+
       <!-- Visualization Toolbar -->
       <div class="card p-1 mb-2">
          <div class="card-header p-1 d-flex justify-content-between align-items-center">
@@ -2693,6 +2737,12 @@
                     Save Report
                 </label>
             </div>
+            <div class="checkbox" data-bind="visible: adminMode() && ReportID()">
+                <label>
+                    <input type="checkbox" data-bind="checked: isSubReportOnly, click: function() { setTimeout(function() { toggleIsSubReportOnly(); }, 0); return true; }">
+                    Only use as sub report
+                </label>
+            </div>
             <div class="form-group row" data-bind="visible: SaveReport">
                 <label class="control-label h6">
                     <i class="fa fa-folder-open"></i> Choose Folder
@@ -2802,9 +2852,27 @@
         <div class="modal-content" style="display: flex; flex-direction: column; height: 100%;">
             <div class="modal-header">
                 <h5 class="modal-title" id="myModalLabel">
-                    <a title="Need help setting up a report?" target="_blank" href="https://dotnetreport.com/blogs/docs/designing-reports"><span class="fa fa-question-circle"></span></a> Design your Report
+                    <a title="Need help setting up a report?" target="_blank" href="https://dotnetreport.com/blogs/docs/designing-reports"><span class="fa fa-question-circle"></span></a>
+                    <!-- ko if: editingSubReportParentId() -->
+                    <i class="fa fa-link"></i> Editing Sub Report
+                    <!-- /ko -->
+                    <!-- ko ifnot: editingSubReportParentId() -->
+                    Design your Report
+                    <!-- /ko -->
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" data-bind="click: onModalCloseClicked" aria-label="Close"></button>
+            </div>
+            <div class="alert alert-info mb-0 rounded-0 py-2 px-3" style="border-left: 4px solid #0d6efd;" data-bind="visible: editingSubReportParentId()">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span>
+                        <i class="fa fa-info-circle me-1"></i>
+                        You are editing a sub report linked from <strong data-bind="text: editingSubReportParentName"></strong>.
+                    </span>
+                    <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bind="click: returnToParentReport">
+                        <i class="fa fa-arrow-left me-1"></i> Back to parent report
+                    </button>
+                </div>
+                <small class="text-muted">When you save, you'll be returned to the parent report. You can also click "Back to parent report" to return without saving.</small>
             </div>
             <div class="modal-body needs-validation" style="overflow-y: hidden; flex-grow: 1; display: flex; flex-direction: column;">
                <div class="row flex-grow-1" style="min-height: 0;">
@@ -2853,6 +2921,12 @@
                                     <label>
                                         <input type="checkbox" data-bind="checked: SaveReport">
                                         Save Report
+                                    </label>
+                                </div>
+                                <div class="checkbox" data-bind="visible: adminMode() && ReportID()">
+                                    <label>
+                                        <input type="checkbox" data-bind="checked: isSubReportOnly, click: function() { setTimeout(function() { toggleIsSubReportOnly(); }, 0); return true; }">
+                                        Only use as sub report
                                     </label>
                                 </div>
                                 <div class="form-group row" data-bind="visible: SaveReport">
@@ -2978,6 +3052,9 @@
                                     </div>
                                     <div class="checkbox" data-bind="visible: CanSaveReports()">
                                         <label><input type="checkbox" data-bind="checked: SaveReport"> Save Report</label>
+                                    </div>
+                                    <div class="checkbox" data-bind="visible: adminMode() && ReportID()">
+                                        <label><input type="checkbox" data-bind="checked: isSubReportOnly, click: function() { setTimeout(function() { toggleIsSubReportOnly(); }, 0); return true; }"> Only use as sub report</label>
                                     </div>
                                     <div class="form-group row mb-2" data-bind="visible: SaveReport">
                                         <label class="control-label"><i class="fa fa-folder-open"></i> Folder</label>
@@ -3180,7 +3257,7 @@
                 </button>
                 <a href="#" class="btn btn-danger" data-bind="click: cancelCreateReport">Cancel editing Report</a>
                 <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && CanSaveReports(), click: SaveWithoutRun" style="padding-right: 10px;">Save Report</button>
-                <button class="btn btn-primary" type="button" data-bind="text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report', click: SaveAndRunReport">Run Report</button>
+                <button class="btn btn-primary" type="button" data-bind="text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report', click: SaveAndRunReport, visible: !editingSubReportParentId()">Run Report</button>
             </div>
 
         </div>
