@@ -1245,7 +1245,7 @@ var reportViewModel = function (options) {
 	self.activeDesignRunning = false;
 	self._reportChangedTimer = null;
 	self.reportChanged = function () {
-		if (self._suppressReportChanged || self.executingReport) return;
+		if (self._suppressReportChanged || self._suppressLinkedNavRun || self.executingReport) return;
 		self.isDirty(true);
 		if (self.activeDesign()) {
 			if (self.activeDesignRunning) return;
@@ -5254,6 +5254,14 @@ var reportViewModel = function (options) {
 						if (linkItem.SendAsFilterParameter && r.Value) {
 							link += '&filterId=' + linkItem.SelectedFilterId + '&filterValue=' + r.Value.replace(/['"]+/g, '');
 						}
+						(function (lnkItem, rowVal) {
+							r._runLinkedReportInPlace = function () {
+								var fid = lnkItem.SendAsFilterParameter ? (lnkItem.SelectedFilterId || 0) : 0;
+								var fval = (lnkItem.SendAsFilterParameter && rowVal) ? rowVal.replace(/['"]+/g, '') : '0';
+								self.runLinkedReportInPlace(lnkItem.LinkedToReportId, fid, fval);
+								return false;
+							};
+						})(linkItem, r.Value);
 					}
 					else {
 						link = linkItem.LinkToUrl + (linkItem.SendAsQueryParameter ? ('?' + linkItem.QueryParameterName + '=' + (r.LabelValue ? r.LabelValue.replace(/['"]+/g, '') : '')) : '');
@@ -7977,24 +7985,28 @@ var reportViewModel = function (options) {
 			})).join(",");
 		}
 
+		if (self._skipPopulateReportRun) {
+			return;
+		}
 		if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard" || self.ReportMode() == "linked" || self.ReportMode() == 'design' || self.ReportMode() == 'subreport') {
 
 			if (self.ReportMode() == "linked") {
 
 				var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
+				var override = self._linkedRunOverride;
 
 				return ajaxcall({
 					url: options.runLinkReportUrl,
 					data: {
 						reportId: self.ReportID(),
 						adminMode: self.adminMode(),
-						filterId: queryParams.filterId || 0,
-						filterValue: queryParams.filterValue || '0'
+						filterId: override ? override.filterId : (queryParams.filterId || 0),
+						filterValue: override ? override.filterValue : (queryParams.filterValue || '0')
 					}
 				}).done(function (linkedReport) {
 					if (linkedReport.d) { linkedReport = linkedReport.d; }
 					if (linkedReport.result) { linkedReport = linkedReport.result; }
-					if (queryParams.noparent == 'true') self.ReportMode('execute');
+					if (!override && queryParams.noparent == 'true') self.ReportMode('execute');
 
 					return self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, reportSeries);
 				});
@@ -8008,6 +8020,62 @@ var reportViewModel = function (options) {
 	}
 	self.RefreshReport = function () {
 		self.LoadReport(self.ReportID(), true, '');
+	};
+
+	// === In-place linked report navigation ===
+	self.linkedReportStack = ko.observableArray([]);
+	self._linkedRunOverride = null;
+	self.canGoBackToParent = ko.computed(function () {
+		return self.linkedReportStack().length > 0 || self.ReportMode() == 'linked';
+	});
+
+	self.runLinkedReportInPlace = function (linkedReportId, filterId, filterValue) {
+		if (!linkedReportId) return false;
+		var wizardOpen = options.reportWizard && options.reportWizard.hasClass && options.reportWizard.hasClass('show');
+		var inLivePreview = wizardOpen && (self.activeDesign() || (self._parentVM && self._parentVM.activeDesign && self._parentVM.activeDesign()));
+		if (inLivePreview) {
+			toastr.info("Linked report will not run in preview");
+			return false;
+		}
+		// Push current state onto the stack so we can return
+		self.linkedReportStack.push({
+			reportId: self.ReportID(),
+			reportMode: self.ReportMode(),
+			override: self._linkedRunOverride
+		});
+		self._linkedRunOverride = { filterId: filterId || 0, filterValue: filterValue || '0' };
+		self.ReportMode('linked');
+		self._suppressLinkedNavRun = true;
+		self.LoadReport(linkedReportId, false, '').always(function () {
+			setTimeout(function () { self._suppressLinkedNavRun = false; }, 1500);
+		});
+		return false;
+	};
+
+	self.backToParentReport = function () {
+		if (self.linkedReportStack().length === 0) {
+			// Came from a direct URL with linkedreport=true — fall back to history
+			if (typeof history !== 'undefined' && history.length > 1) {
+				history.back();
+			}
+			return;
+		}
+		var prev = self.linkedReportStack.pop();
+		self._linkedRunOverride = prev.override || null;
+		self.ReportMode(prev.reportMode || 'execute');
+		self._suppressLinkedNavRun = true;
+		// Skip PopulateReport's auto-execute since we'll call RunReport explicitly to
+		// ensure the parent gets a fresh run and replaces the linked report's table data.
+		self._skipPopulateReportRun = true;
+		self.LoadReport(prev.reportId, false, '').done(function () {
+			self._skipPopulateReportRun = false;
+			// Now run the parent report fresh — RunReport rebuilds SQL from current state and executes.
+			self.RunReport(false, true);
+		}).fail(function () {
+			self._skipPopulateReportRun = false;
+		}).always(function () {
+			setTimeout(function () { self._suppressLinkedNavRun = false; }, 2000);
+		});
 	};
 
 	self.PrepFields = function (report) {
@@ -9710,6 +9778,20 @@ var dashboardViewModel = function (options) {
 					return;
 				}
 
+				var current = self.currentDashboard();
+				if (current) {
+					self.dashboard.Id(current.id);
+					self.dashboard.Name(current.name);
+					self.dashboard.Description(current.description);
+					self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.users, current.userId || '');
+					self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.userRoles, current.userRoles || '');
+					self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUserRoles, current.viewOnlyUserRoles || '');
+					self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.viewOnlyUsers, current.viewOnlyUserId || '');
+					self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUserRoles, current.deleteOnlyUserRoles || '');
+					self.dashboard.manageAccess.setupList(self.dashboard.manageAccess.deleteOnlyUsers, current.deleteOnlyUserId || '');
+					self.dashboard.manageAccess.clientId(current.clientId || '');
+				}
+
 				var match = false;
 
 				var selectedReports = (self.currentDashboard().selectedReports || '').split(',');
@@ -9725,6 +9807,8 @@ var dashboardViewModel = function (options) {
 
 				if (match) {
 					self.saveDashboard();
+				} else {
+					toastr.warning("Report not found in current dashboard list");
 				}
 			}
 		});

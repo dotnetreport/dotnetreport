@@ -342,7 +342,12 @@
     <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')}">
         <div data-bind="style: {'width': fieldWidth }, css: { 'text-wrap': fieldWidth }">
             <!-- ko if: LinkTo-->
+            <!-- ko if: $data._runLinkedReportInPlace -->
+            <a href="#" data-bind="click: $data._runLinkedReportInPlace"><span data-bind="html: formattedVal"></span></a>
+            <!-- /ko -->
+            <!-- ko ifnot: $data._runLinkedReportInPlace -->
             <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
+            <!-- /ko -->
             <!-- /ko-->
             <!-- ko ifnot: LinkTo-->
             <span data-bind="html: formattedVal"></span>
@@ -1656,7 +1661,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" data-bind="click: removeLinkField">Remove Link</button>
-                <button type="button" class="btn btn-outline-primary" data-bind="visible: linkFieldItem.LinkedToReportId(), click: function() { saveLinkField(); linkFieldItem.editLinkedReport(); }">Edit Linked Report</button>
+                <button type="button" class="btn btn-outline-primary" data-bind="visible: linkFieldItem.LinksToReport() && linkFieldItem.LinkedToReportId(), click: function() { saveLinkField(); linkFieldItem.editLinkedReport(); }">Edit Linked Report</button>
                 <button type="button" class="btn btn-primary" data-bind="click: saveLinkField">Save Changes</button>
             </div>
         </div>
@@ -3562,7 +3567,12 @@
                                 <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal' }">
                                     <div data-bind="style: {'width': fieldWidth }">
                                         <!-- ko if: LinkTo-->
+                                        <!-- ko if: $data._runLinkedReportInPlace -->
+                                        <a href="#" data-bind="click: $data._runLinkedReportInPlace"><span data-bind="html: formattedVal"></span></a>
+                                        <!-- /ko -->
+                                        <!-- ko ifnot: $data._runLinkedReportInPlace -->
                                         <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
+                                        <!-- /ko -->
                                         <!-- /ko-->
                                         <!-- ko ifnot: LinkTo-->
                                         <span data-bind="html: formattedVal"></span>

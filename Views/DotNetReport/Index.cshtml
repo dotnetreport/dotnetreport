@@ -604,7 +604,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <i class="fa fa-arrow-left"></i>
                                 <span>Back to Reports</span>
                             </button>
-                            <button class="btn btn-light btn-sm" data-bind="visible: ReportMode()=='linked'">
+                            <button class="btn btn-light btn-sm" data-bind="visible: canGoBackToParent(), click: backToParentReport">
                                 <i class="fa fa-arrow-circle-left"></i>
                                 <span>Back to Parent Report</span>
                             </button>
