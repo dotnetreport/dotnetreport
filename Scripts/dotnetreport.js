@@ -1028,6 +1028,7 @@ function filterGroupViewModel(args) {
 var headerDesigner = function (options) {
 	var self = this;
 	self.UseReportHeader = ko.observable(options.useReportHeader === true ? true : false);
+	self.IncludeOnEveryPage = ko.observable(false);
 
 	self.headerHtml = ko.observable('');
 	self.clientId = ko.observable();
@@ -1076,6 +1077,13 @@ var headerDesigner = function (options) {
 		self.loadHtmlHeader(false);
 	};
 
+	self.insertPlaceholder = function (placeholder) {
+		try {
+			$('#report-header-editor').summernote('focus');
+			$('#report-header-editor').summernote('pasteHTML', placeholder);
+		} catch (e) { }
+	};
+
 	self.saveHtmlHeader = function () {
 		var htmlContent = $('#report-header-editor').summernote('code');
 		var data = encodeURIComponent(htmlContent);
@@ -1086,6 +1094,7 @@ var headerDesigner = function (options) {
 				method: "/ReportApi/SaveReportHeader",
 				headerJson: data,
 				useReportHeader: self.UseReportHeader(),
+				includeOnEveryPage: self.IncludeOnEveryPage(),
 				headerClientId: self.UseReportHeader() ? self.headerClientId(): '' ?? ''
 			})
 		}).done(function (result) {
@@ -1117,6 +1126,7 @@ var headerDesigner = function (options) {
 			if (!editing) {
 				self.UseReportHeader(result.useReportHeader);
 			}
+			self.IncludeOnEveryPage(result.includeOnEveryPage === true);
 			self.headerHtml(decodeURIComponent(result.headerJson));
 			self.clientListIds(result.clientIds);
 			$('#report-header-editor').summernote('code', decodeURIComponent(result.headerJson) || '');
@@ -1124,6 +1134,115 @@ var headerDesigner = function (options) {
 
 	}
 }
+var footerDesigner = function (options) {
+	var self = this;
+	self.UseReportFooter = ko.observable(options.useReportFooter === true ? true : false);
+	self.IncludeOnEveryPage = ko.observable(false);
+
+	self.footerHtml = ko.observable('');
+	self.clientId = ko.observable();
+	self.clientListIds = ko.observableArray([]);
+	self.selectedFooterClientId = ko.observable('');
+	self.footerClientId = ko.observable('');
+	self.executeMode = false;
+	self.init = function (executeMode) {
+		$('#report-footer-editor').summernote({
+			height: 150,
+			popover: {
+				image: [
+					['image', ['resizeFull', 'resizeHalf', 'resizeQuarter', 'resizeNone']],
+					['float', ['floatLeft', 'floatRight', 'floatNone']],
+					['remove', ['removeMedia']]
+				],
+				link: [
+					['link', ['linkDialogShow', 'unlink']]
+				],
+				table: [
+					['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
+					['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
+					['color', ['bgcolor', 'tablefullwidth']]
+				],
+				air: [
+					['color', ['color']],
+					['font', ['bold', 'underline', 'clear']],
+					['para', ['ul', 'paragraph']],
+					['table', ['table']],
+					['insert', ['link', 'picture']]
+				]
+			},
+			toolbar: [
+				['style', ['style']],
+				['font', ['bold', 'italic', 'underline', 'clear']],
+				['fontname', ['fontname', 'fontsize']],
+				['color', ['color']],
+				['para', ['ul', 'ol', 'paragraph']],
+				['table', ['table']],
+				['insert', ['link', 'picture', 'hr']],
+				['view', ['fullscreen', 'codeview']]
+			],
+			tableresize: true
+		});
+		self.executeMode = executeMode;
+		self.loadHtmlFooter(false);
+	};
+
+	self.insertPlaceholder = function (placeholder) {
+		try {
+			$('#report-footer-editor').summernote('focus');
+			$('#report-footer-editor').summernote('pasteHTML', placeholder);
+		} catch (e) { }
+	};
+
+	self.saveHtmlFooter = function () {
+		var htmlContent = $('#report-footer-editor').summernote('code');
+		var data = encodeURIComponent(htmlContent);
+		return ajaxcall({
+			url: options.apiUrl.replace('CallReportApi', 'PostReportApi'),
+			type: "POST",
+			data: JSON.stringify({
+				method: "/ReportApi/SaveReportFooter",
+				footerJson: data,
+				useReportFooter: self.UseReportFooter(),
+				includeOnEveryPage: self.IncludeOnEveryPage(),
+				footerClientId: self.UseReportFooter() ? self.footerClientId() : '' ?? ''
+			})
+		}).done(function (result) {
+			if (result.d) { result = result.d; }
+			if (result.result) { result = result.result; }
+			toastr.success('Report Footer changes saved');
+			var selectedId = self.footerClientId();
+			if (selectedId && self.clientListIds().indexOf(selectedId) < 0) {
+				self.clientListIds.push(selectedId);
+			}
+			self.selectedFooterClientId(selectedId);
+		});
+	}
+
+	self.selectedFooterClientId.subscribe(function (newValue) {
+		self.footerClientId(newValue);
+	})
+
+	self.loadHtmlFooter = function (editing) {
+		return ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/GetReportFooter",
+				model: JSON.stringify({ footerClientId: self.selectedFooterClientId(), forceGlobal: !self.executeMode })
+			}
+		}).done(function (result) {
+			if (result.d) { result = result.d; }
+			if (result.result) { result = result.result; }
+			if (!editing) {
+				self.UseReportFooter(result.useReportFooter);
+			}
+			self.IncludeOnEveryPage(result.includeOnEveryPage === true);
+			self.footerHtml(decodeURIComponent(result.footerJson || ''));
+			self.clientListIds(result.clientIds);
+			$('#report-footer-editor').summernote('code', decodeURIComponent(result.footerJson || '') || '');
+		});
+	}
+}
+
 var reportViewModel = function (options) {
 	var self = this;
 
@@ -1187,6 +1306,8 @@ var reportViewModel = function (options) {
 	self.EditFiltersOnReport = ko.observable(false);
 	self.UseReportHeader = ko.observable(false);
 	self.HideReportHeader = ko.observable(false);
+	self.UseReportFooter = ko.observable(false);
+	self.HideReportFooter = ko.observable(false);
 	self.maxRecords = ko.observable(false);
 	self.changePageSize = ko.observable(false);
 	self.noHeaderRow = ko.observable(false);
@@ -1315,6 +1436,7 @@ var reportViewModel = function (options) {
 	self.CanManageFolders = ko.observable(true);
 	self.CanEdit = ko.observable(true);
 	self.useReportHeader = ko.observable(false);
+	self.useReportFooter = ko.observable(false);
 	self.searchReports = ko.observable();
 	self.reportHtml = ko.observable();
 
@@ -1476,6 +1598,11 @@ var reportViewModel = function (options) {
 		apiUrl: options.apiUrl,
 		isExpanded: self.isExpanded
 	});
+	self.designingFooter = ko.observable(false);
+	self.footerDesigner = new footerDesigner({
+		apiUrl: options.apiUrl,
+		isExpanded: self.isExpanded
+	});
 	self.dateFormatMappings = {
 		'United States': 'mm/dd/yy',
 		'United Kingdom': 'dd/mm/yy',
@@ -1486,9 +1613,34 @@ var reportViewModel = function (options) {
 	};
 
 	self.initHeaderDesigner = function (executeMode) {
+		self.designingFooter(false);
 		self.headerDesigner.init(executeMode);
 		self.designingHeader(true);
 	}
+
+	self.initFooterDesigner = function (executeMode) {
+		self.designingHeader(false);
+		self.footerDesigner.init(executeMode);
+		self.designingFooter(true);
+	}
+
+	// Substitute header/footer system placeholders for on-screen display.
+	// {page.number} uses the pager's current page; {page.total} uses pager total pages.
+	// PDF/Word exports do their own substitution server-side / via Puppeteer tokens.
+	self.substituteReportPlaceholders = function (html) {
+		if (html == null) return '';
+		var userName = self.currentUserName || self.currentUserId || '';
+		var userRoles = self.currentUserRole || '';
+		var nowStr = new Date().toLocaleString();
+		var curPage = (self.pager && self.pager.currentPage) ? self.pager.currentPage() : 1;
+		var totPages = (self.pager && self.pager.pages) ? (self.pager.pages() || 1) : 1;
+		return String(html)
+			.replace(/\{page\.number\}/g, curPage)
+			.replace(/\{page\.total\}/g, totPages)
+			.replace(/\{current\.user\.roles\}/g, userRoles)
+			.replace(/\{current\.user\}/g, userName)
+			.replace(/\{current\.datetime\}/g, nowStr);
+	};
 
 	self.layout = ko.observable('list');
 	self.toggleLayout = function (data, event) {
@@ -1664,6 +1816,19 @@ var reportViewModel = function (options) {
 	self.adminMode = ko.observable(false);
 	self.allExpanded = ko.observable(false);
 	self.pager.currentPage(1);
+
+	// Reactive substituted header/footer html for on-screen rendering.
+	// Re-evaluates when the source html, current page, or total pages change.
+	self.displayHeaderHtml = ko.computed(function () {
+		var html = self.headerDesigner ? self.headerDesigner.headerHtml() : '';
+		self.pager.currentPage(); self.pager.pages();
+		return self.substituteReportPlaceholders(html);
+	});
+	self.displayFooterHtml = ko.computed(function () {
+		var html = self.footerDesigner ? self.footerDesigner.footerHtml() : '';
+		self.pager.currentPage(); self.pager.pages();
+		return self.substituteReportPlaceholders(html);
+	});
 
 	self.x = ko.observable(0);
 	self.y = ko.observable(0);
@@ -1864,6 +2029,7 @@ var reportViewModel = function (options) {
 	self.resetSearch = function () {
 		self.SelectedFolder(null);
 		self.designingHeader(false);
+		self.designingFooter(false);
 		self.searchReports('');
 	}
 
@@ -1950,6 +2116,12 @@ var reportViewModel = function (options) {
 	});
 
 	self.adminMode.subscribe(function (newValue) {
+		// Always exit any header/footer designer when admin mode toggles so the user
+		// returns to the manage reports / start view rather than being stuck on a panel
+		// that's only visible in admin mode.
+		self.designingHeader(false);
+		self.designingFooter(false);
+
 		if (self.ReportMode() != "dashboard" && self.ReportMode() != "subreport" && !self.inInit) {
 			self.loadFolders().done(function () {
 				self.LoadAllSavedReports();
@@ -4404,6 +4576,8 @@ var reportViewModel = function (options) {
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : (self.ReportType() == 'List' || self.ReportType() == 'Treemap' || self.dontGroupCustom() ? false : self.AggregateReport()),
 			ShowDataWithGraph: self.ShowDataWithGraph(),
 			ShowOnDashboard: self.ShowOnDashboard(),
+			HideReportHeader: self.HideReportHeader(),
+			HideReportFooter: self.HideReportFooter(),
 			SortBy: self.SortByField(),
 			SortDesc: self.SortDesc(),
 			SelectedSorts: _.map(self.SortFields(), function (x) {
@@ -4814,6 +4988,9 @@ var reportViewModel = function (options) {
 
 							if (self.useReportHeader()) {
 								self.headerDesigner.init(true);
+							}
+							if (self.useReportFooter()) {
+								self.footerDesigner.init(true);
 							}
 						}
 						else {
@@ -7862,8 +8039,10 @@ var reportViewModel = function (options) {
 		self.SortFields([]);
 		self.scheduleBuilder.fromJs(report.Schedule);
 		self.HideReportHeader(report.HideReportHeader);
+		self.HideReportFooter(report.HideReportFooter);
 		self.isSubReportOnly(report.IsSubReportOnly || false);
 		self.useReportHeader(report.UseReportHeader && !report.HideReportHeader);
+		self.useReportFooter(report.UseReportFooter && !report.HideReportFooter);
 
 		var reportSettings = JSON.parse(report.ReportSettings || "{}");
 		self.selectedStyle(reportSettings.SelectedStyle || 'default');
@@ -7924,6 +8103,9 @@ var reportViewModel = function (options) {
 		if (self.ReportMode() == "execute" || self.ReportMode() == "linked") {
 			if (self.useReportHeader()) {
 				self.headerDesigner.init(true);
+			}
+			if (self.useReportFooter()) {
+				self.footerDesigner.init(true);
 			}
 		}
 
@@ -8885,6 +9067,10 @@ var reportViewModel = function (options) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
+		var headerHtml = (self.useReportHeader() && self.headerDesigner) ? (self.headerDesigner.headerHtml() || '') : '';
+		var footerHtml = (self.useReportFooter() && self.footerDesigner) ? (self.footerDesigner.footerHtml() || '') : '';
+		var headerEveryPage = self.headerDesigner && self.headerDesigner.IncludeOnEveryPage ? self.headerDesigner.IncludeOnEveryPage() : false;
+		var footerEveryPage = self.footerDesigner && self.footerDesigner.IncludeOnEveryPage ? self.footerDesigner.IncludeOnEveryPage() : false;
 		return {
 			adminMode: self.adminMode(),
 			reportSql: self.currentSql(),
@@ -8902,7 +9088,13 @@ var reportViewModel = function (options) {
 			pivotFunction: pivotData.pivotFunction,
 			pageSize: pageSize,
 			pageOrientation: pageOrientation,
-			filterDetailsText: self.ShowFilterDetails() ? self.buildFilterDetailsPlainText(self.FilterGroups(), false) : ''
+			filterDetailsText: self.ShowFilterDetails() ? self.buildFilterDetailsPlainText(self.FilterGroups(), false) : '',
+			headerHtml: encodeURIComponent(headerHtml),
+			footerHtml: encodeURIComponent(footerHtml),
+			headerEveryPage: headerEveryPage,
+			footerEveryPage: footerEveryPage,
+			currentUserName: self.currentUserName || self.currentUserId || '',
+			currentUserRoles: self.currentUserRole || ''
 		};
 	}
 

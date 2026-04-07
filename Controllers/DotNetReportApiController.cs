@@ -114,10 +114,14 @@ namespace ReportBuilder.Web.Controllers
 
         public class PostReportApiCallMode
         {
-            public string method { get; set; }
-            public string headerJson { get; set; }
+            public string? method { get; set; }
+            public string? headerJson { get; set; } = "";
             public bool useReportHeader { get; set; }
-            public string headerClientId { get; set; } = "";
+            public string? headerClientId { get; set; } = "";
+            public string? footerJson { get; set; } = "";
+            public bool useReportFooter { get; set; }
+            public string? footerClientId { get; set; } = "";
+            public bool includeOnEveryPage { get; set; }
             public string? userId { get; set; }
 
         }
@@ -1282,14 +1286,26 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string pageOrientation = "",
             [FromForm] string userId = "",
             [FromForm] bool adminMode = false,
-            [FromForm] string filterDetailsText = null)
+            [FromForm] string filterDetailsText = null,
+            [FromForm] string headerHtml = null,
+            [FromForm] string footerHtml = null,
+            [FromForm] bool headerEveryPage = false,
+            [FromForm] bool footerEveryPage = false,
+            [FromForm] string currentUserName = null,
+            [FromForm] string currentUserRoles = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
-            var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, HttpUtility.UrlDecode(filterDetailsText));
+            var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, HttpUtility.UrlDecode(filterDetailsText),
+                headerHtml: headerHtml != null ? HttpUtility.UrlDecode(headerHtml) : null,
+                footerHtml: footerHtml != null ? HttpUtility.UrlDecode(footerHtml) : null,
+                headerEveryPage: headerEveryPage,
+                footerEveryPage: footerEveryPage,
+                currentUserName: currentUserName,
+                currentUserRoles: currentUserRoles);
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             return File(word, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", reportName + ".docx");

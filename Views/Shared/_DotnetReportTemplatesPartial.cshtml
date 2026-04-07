@@ -2113,12 +2113,22 @@
             </ul>
         </div>
         <!-- ko if: subReports().length > 0 -->
-        <div class="col-auto dropdown">
+        <div class="col-auto dropdown d-flex align-items-center gap-2">
             <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Insert a selected sub report inline at cursor position">
-            <i class="fa fa-bookmark"></i> Insert Sub Report
+                <i class="fa fa-bookmark"></i> Insert Sub Report
             </button>
+            <i class="fa fa-info-circle text-muted"
+               data-bs-toggle="tooltip"
+               data-bs-placement="top"
+               title="Note: If you insert Sub Reports in custom report, only inserted sub reports will show and other sub reports will not render">
+            </i>
+
             <ul class="dropdown-menu" data-bind="foreach: subReports">
-                <li><a class="dropdown-item" href="#" data-bind="text: name, click: function() { $parent.insertSubReportPlaceholder($data); }"></a></li>
+                <li>
+                    <a class="dropdown-item" href="#"
+                       data-bind="text: name, click: function() { $parent.insertSubReportPlaceholder($data); }">
+                    </a>
+                </li>
             </ul>
         </div>
         <!-- /ko -->

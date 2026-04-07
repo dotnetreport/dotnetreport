@@ -98,6 +98,9 @@
             <div data-bind="with: ReportResult" class="report-inner" style="display: none;">
                 <div data-bind="template: 'report-template', data: $data"></div>
             </div>
+            <div style="margin-left: 25px;" data-bind="visible: useReportFooter">
+                <div id="report-footer" width="900" data-bind="html: footerDesigner.footerHtml"></div>
+            </div>
             <br />
         </div>
         <!-- /ko -->
@@ -495,6 +498,57 @@
             if (vm.useReportHeader()) {
                 vm.headerDesigner.init(true);
             }
+            if (vm.useReportFooter()) {
+                vm.footerDesigner.init(true);
+            }
+
+            setTimeout(function () {
+                try {
+                    var userName = vm.currentUserName || vm.currentUserId || '';
+                    var userRoles = vm.currentUserRole || '';
+                    var nowStr = new Date().toLocaleString();
+
+                    function substitutePlaceholders(html) {
+                        if (!html) return html;
+                        return html
+                            .replace(/\{current\.user\}/g, userName)
+                            .replace(/\{CURRENTUSER\}/g, userName)
+                            .replace(/\{current\.user\.roles\}/g, userRoles)
+                            .replace(/\{CURRENTUSERROLES\}/g, userRoles)
+                            .replace(/\{current\.datetime\}/g, nowStr)
+                            .replace(/\{CURRENTDATETIME\}/g, nowStr)
+                            .replace(/\{page\.number\}/g, '1')
+                            .replace(/\{page\.total\}/g, '1');
+                    }
+
+                    var $h = $('#report-header');
+                    if ($h.length) { $h.html(substitutePlaceholders($h.html())); }
+                    var $f = $('#report-footer');
+                    if ($f.length) { $f.html(substitutePlaceholders($f.html())); }
+
+                    window.reportHeaderHtml = $h.length ? $h.html() : '';
+                    window.reportFooterHtml = $f.length ? $f.html() : '';
+                    window.reportHeaderIncludeOnEveryPage = vm.headerDesigner && vm.headerDesigner.IncludeOnEveryPage ? vm.headerDesigner.IncludeOnEveryPage() : false;
+                    window.reportFooterIncludeOnEveryPage = vm.footerDesigner && vm.footerDesigner.IncludeOnEveryPage ? vm.footerDesigner.IncludeOnEveryPage() : false;
+
+                    function measureHtmlHeightInches(html) {
+                        if (!html) return 0;
+                        var d = document.createElement('div');
+                        d.style.position = 'absolute';
+                        d.style.visibility = 'hidden';
+                        d.style.left = '-99999px';
+                        d.style.top = '0';
+                        d.style.width = '7.5in';
+                        d.innerHTML = html;
+                        document.body.appendChild(d);
+                        var px = d.offsetHeight;
+                        d.parentNode.removeChild(d);
+                        return px / 96.0;
+                    }
+                    window.reportHeaderHeightIn = $h.length ? measureHtmlHeightInches($h.html()) : 0;
+                    window.reportFooterHeightIn = $f.length ? measureHtmlHeightInches($f.html()) : 0;
+                } catch (e) { console.log('placeholder substitution failed', e); }
+            }, 600);
 
             if (vm.useStoredProc()) {
                 setTimeout(function(){
