@@ -1980,6 +1980,8 @@ var reportViewModel = function (options) {
 
 	self.createNewReport = function () {
 		self.clearReport();
+		self.resetQuery(false);
+		self.reportRan(false);
 		self.ReportMode("generate");
 		self.setupDirtyCheck();
 		self.manageAccess.applyDefaultSettings();
@@ -2190,6 +2192,11 @@ var reportViewModel = function (options) {
 	self.editSubReport = function (item) {
 		var parentId = self.ReportID();
 		var parentName = self.ReportName();
+		// Validate parent report has been named/saved before allowing sub report edit
+		if (!parentName || !parentName.trim()) {
+			toastr.error("Please enter a Report Name and save the parent report before editing a sub report");
+			return;
+		}
 		// Detect if we're in designer (modal visible) vs ran/executed view
 		var wasInDesigner = options.reportWizard && options.reportWizard.hasClass('show');
 		self._editingSubReportPreviousMode = wasInDesigner ? 'generate' : 'execute';

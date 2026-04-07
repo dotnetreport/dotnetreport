@@ -2967,6 +2967,18 @@
                         <!-- ==================== LIVE PREVIEW MODE (activeDesign ON) ==================== -->
                         <div data-bind="visible: activeDesign()" class="live-preview-designer" style="font-size: 12px; display: none;">
 
+                            <!-- Report Name (always visible at top in live preview) -->
+                            <div class="card mb-1 designer-panel">
+                                <div class="card-body p-2">
+                                    <div class="form-group row align-items-center mb-0">
+                                        <label class="col-sm-4 col-form-label"><i class="fa fa-file"></i> Report Name</label>
+                                        <div class="col-sm-8">
+                                            <input type="text" class="form-control form-control-sm" required placeholder="Report Name" data-bind="value: ReportName">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Data -->
                             <div class="card mb-1 designer-panel">
                                 <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-dataPanel')}" style="cursor:pointer;">
@@ -2974,12 +2986,6 @@
                                     <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-dataPanel')}"></i>
                                 </div>
                                 <div class="card-body p-2" data-bind="visible: !panels.isCollapsed('lp-dataPanel')">
-                                    <div class="form-group row align-items-center mb-2">
-                                        <label class="col-sm-4 col-form-label"><i class="fa fa-file"></i> Name</label>
-                                        <div class="col-sm-8">
-                                            <input type="text" class="form-control form-control-sm" required placeholder="Report Name" data-bind="value: ReportName">
-                                        </div>
-                                    </div>
                                     <div data-bind="template: 'designer-choose-data'"></div>
                                 </div>
                             </div>
