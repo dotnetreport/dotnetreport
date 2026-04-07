@@ -162,7 +162,8 @@
     <!-- ko foreach: Columns -->
     <th data-bind="attr: { id: !IsPivotField ? fieldId : 'pivot--' + fieldName }, style: {'text-align': fieldAlign() ? fieldAlign() : (IsNumeric ? 'right' : 'left'), 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
 
-        <div class="pull-left" data-bind="if: !$parent.IsDrillDown()" style="padding-right: 5px;">
+        <!-- ko if: !$parent.IsDrillDown() && !$parent.IsSubReport() -->
+        <div class="pull-left" style="padding-right: 5px;">
             <div class="dropup">
                 <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
                     <span class="fa fa-ellipsis-v sortable" title="Drag to reorder"></span>
@@ -181,6 +182,7 @@
                 </ul>
             </div>
         </div>
+        <!-- /ko -->
         <div data-bind="style: {'width': fieldWidth}">
             <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
             <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
@@ -467,34 +469,7 @@
                 <tr>
                     <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
                         <div data-bind="foreach: subReportsRan">
-                            <div class="">
-                                <div class="" style="padding-bottom: 20px;" >
-                                    <h2 class="pull-left" data-bind="text: ReportName"></h2>
-
-                                    <div class="clearfix"></div>
-                                    <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
-                                        <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
-
-                                        <div data-bind="with: ReportResult" class="small">
-                                            <div data-bind="visible: !ReportData()">
-                                                <div class="report-spinner"></div>
-                                            </div>
-                                            <div data-bind="template: 'report-template', data: $data"></div>
-                                        </div>
-                                    </div>
-                                    <div class="form-inline">
-                                        <div class="small" data-bind="with: pager">
-                                            <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
-                                                <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
-                                            </div>
-                                            <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
-                                                <div data-bind="template: 'pager-template', data: $data"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
+                            <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
                         </div>
                     </td>
                 </tr>
@@ -598,35 +573,49 @@
             <div data-bind="html: renderedHtml, css: { 'card-view': $parents[$parents.length-1].cardView }"></div>
 
             <div data-bind="foreach: subReportsRan">
-                <div class="">
-                    <div class="" style="padding-bottom: 20px;">
-                        <h2 data-bind="text: ReportName"></h2>
-                        <div class="clearfix"></div>
-                        <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
-                            <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
-                            <div data-bind="with: ReportResult" class="small">
-                                <div data-bind="visible: !ReportData()">
-                                    <div class="report-spinner"></div>
-                                </div>
-                                <div data-bind="template: 'report-template', data: $data"></div>
-                            </div>
-                        </div>
-                        <div class="form-inline">
-                            <div class="small" data-bind="with: pager">
-                                <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
-                                    <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
-                                </div>
-                                <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
-                                    <div data-bind="template: 'pager-template', data: $data"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!-- ko if: !_isInline -->
+                <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
+                <!-- /ko -->
+                <!-- ko if: _isInline -->
+                <div style="display:none" data-bind="moveToInlineContainer: $data"></div>
+                <!-- /ko -->
             </div>
         </div>
     </div>
     <div class="clearfix"></div>
+</script>
+
+<script type="text/html" id="subreport-content">
+    <div class="" style="padding-bottom: 20px; position: relative;">
+        <a href="#" class="text-muted" title="Edit sub report" style="position: absolute; right: 5px; top: 2px;" data-bind="visible: CanEdit(), click: function() { var vm = _parentVM || $root; vm.editSubReport({ reportId: ReportID() }); }">
+            <span class="fa fa-pencil"></span>
+        </a>
+        <h2 data-bind="text: ReportName, visible: !_hideTitle"></h2>
+        <div class="clearfix"></div>
+        <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
+            <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+            <div data-bind="with: ReportResult" class="small">
+                <div data-bind="visible: !ReportData()">
+                    <div class="report-spinner"></div>
+                </div>
+                <!-- ko if: !$parent._isPlaceholder -->
+                <div data-bind="template: 'report-template', data: $data"></div>
+                <!-- /ko -->
+            </div>
+        </div>
+        <!-- ko if: !$data._isPlaceholder -->
+        <div class="form-inline" data-bind="visible: !_hidePager">
+            <div class="small" data-bind="with: pager">
+                <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
+                    <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                </div>
+                <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
+                    <div data-bind="template: 'pager-template', data: $data"></div>
+                </div>
+            </div>
+        </div>
+        <!-- /ko -->
+    </div>
 </script>
 
 
@@ -2079,14 +2068,20 @@
                     </button>
                 </span>
             </div>
-            <div class="mt-2">
-                <label class="form-check-label">
+            <div class="mt-1 d-flex gap-3 align-items-center flex-wrap">
+                <label class="form-check-label small">
                     <input type="checkbox" class="form-check-input" data-bind="checked: isSubReportOnly, click: function() { setTimeout(function() { $parent.toggleSubReportOnly($data); }, 0); return true; }" />
-                    <span class="small">Only use as sub report</span>
+                    Sub report only
+                    <i class="fa fa-question-circle text-muted" title="When checked, this report will be hidden from folders and search, and can only run as a child report from here"></i>
                 </label>
-                <div class="small text-muted ms-4">
-                    When checked, this report will be hidden from report folders and search results, and will only run as a sub report from here.
-                </div>
+                <label class="form-check-label small">
+                    <input type="checkbox" class="form-check-input" data-bind="checked: hideTitle" />
+                    Hide title
+                </label>
+                <label class="form-check-label small">
+                    <input type="checkbox" class="form-check-input" data-bind="checked: hidePager" />
+                    Hide pager
+                </label>
             </div>
         </li>
     </ul>
@@ -2112,8 +2107,17 @@
                 <li><a class="dropdown-item" href="#" data-bind="click: insertFooterBreak">Add Footer Break</a></li>
             </ul>
         </div>
-
-        <div class="col-md-auto ms-2">
+        <!-- ko if: subReports().length > 0 -->
+        <div class="col-auto dropdown">
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Insert a selected sub report inline at cursor position">
+            <i class="fa fa-bookmark"></i> Insert Sub Report
+            </button>
+            <ul class="dropdown-menu" data-bind="foreach: subReports">
+                <li><a class="dropdown-item" href="#" data-bind="text: name, click: function() { $parent.insertSubReportPlaceholder($data); }"></a></li>
+            </ul>
+        </div>
+        <!-- /ko -->
+        <div class="col-md-auto ms-auto">
         <label class="form-check-label">
             <input class="form-check-input me-2" type="checkbox" data-bind="checked: cardView">
             Card Layout
@@ -2585,14 +2589,24 @@
 <script type="text/html" id="report-designer-compact">
     <div class="designer-container compact-designer" id="choose-data-design" style="font-size:12px;">
 
-      <div class="alert alert-info mb-2 d-flex align-items-center justify-content-between py-2 px-3" style="border-left: 4px solid #0d6efd; font-size: 13px;" data-bind="visible: editingSubReportParentId()">
-          <span>
-              <i class="fa fa-info-circle me-1"></i>
-              Editing sub report from <strong data-bind="text: editingSubReportParentName"></strong>.
-          </span>
-          <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bind="click: returnToParentReport">
-              <i class="fa fa-arrow-left me-1"></i> Back to parent
-          </button>
+      <div class="alert alert-info mb-2 py-2 px-3" style="border-left: 4px solid #0d6efd; font-size: 13px;" data-bind="visible: editingSubReportParentId()">
+          <!-- ko if: _editingSubReportLoading() -->
+          <div class="d-flex align-items-center">
+              <span class="fa fa-spinner fa-spin me-2"></span>
+              <span>Loading sub report...</span>
+          </div>
+          <!-- /ko -->
+          <!-- ko ifnot: _editingSubReportLoading() -->
+          <div class="d-flex align-items-center justify-content-between">
+              <span>
+                  <i class="fa fa-info-circle me-1"></i>
+                  Editing sub report from <strong data-bind="text: editingSubReportParentName"></strong>.
+              </span>
+              <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bind="click: returnToParentReport">
+                  <i class="fa fa-arrow-left me-1"></i> Back to parent
+              </button>
+          </div>
+          <!-- /ko -->
       </div>
 
       <!-- Visualization Toolbar -->
@@ -2632,7 +2646,7 @@
         <div class="card flex-fill expandable-panel" id="dataPanel" style="max-width: 300px"
              data-bind="css:{'collapsed-vertical': panels.isCollapsed('dataPanel')}">
           <div class="card-header p-1" data-bind="click:function(){panels.togglePanel('dataPanel')}">
-            <i class="fa fa-database"></i> Data
+            <i class="fa fa-database"></i> Available Data
           </div>
 
           <div class="card-body p-1">
@@ -2863,6 +2877,13 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" data-bind="click: onModalCloseClicked" aria-label="Close"></button>
             </div>
             <div class="alert alert-info mb-0 rounded-0 py-2 px-3" style="border-left: 4px solid #0d6efd;" data-bind="visible: editingSubReportParentId()">
+                <!-- ko if: _editingSubReportLoading() -->
+                <div class="d-flex align-items-center py-1">
+                    <span class="fa fa-spinner fa-spin me-2"></span>
+                    <span>Loading sub report...</span>
+                </div>
+                <!-- /ko -->
+                <!-- ko ifnot: _editingSubReportLoading() -->
                 <div class="d-flex align-items-center justify-content-between">
                     <span>
                         <i class="fa fa-info-circle me-1"></i>
@@ -2873,6 +2894,7 @@
                     </button>
                 </div>
                 <small class="text-muted">When you save, you'll be returned to the parent report. You can also click "Back to parent report" to return without saving.</small>
+                <!-- /ko -->
             </div>
             <div class="modal-body needs-validation" style="overflow-y: hidden; flex-grow: 1; display: flex; flex-direction: column;">
                <div class="row flex-grow-1" style="min-height: 0;">
@@ -2946,7 +2968,7 @@
                             <!-- Data -->
                             <div class="card mb-1 designer-panel">
                                 <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-dataPanel')}" style="cursor:pointer;">
-                                    <i class="fa fa-database"></i> Data
+                                    <i class="fa fa-database"></i> Available Data
                                     <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-dataPanel')}"></i>
                                 </div>
                                 <div class="card-body p-2" data-bind="visible: !panels.isCollapsed('lp-dataPanel')">
@@ -3256,8 +3278,14 @@
                     <i class="fa fa-code"></i> Preview Report Code
                 </button>
                 <a href="#" class="btn btn-danger" data-bind="click: cancelCreateReport">Cancel editing Report</a>
-                <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && CanSaveReports(), click: SaveWithoutRun" style="padding-right: 10px;">Save Report</button>
-                <button class="btn btn-primary" type="button" data-bind="text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report', click: SaveAndRunReport, visible: !editingSubReportParentId()">Run Report</button>
+                <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && CanSaveReports(), click: SaveWithoutRun, disable: savingReport() || savingAndRunning()" style="padding-right: 10px;">
+                    <!-- ko if: savingReport() --><span class="fa fa-spinner fa-spin me-1"></span>Saving...<!-- /ko -->
+                    <!-- ko ifnot: savingReport() -->Save Report<!-- /ko -->
+                </button>
+                <button class="btn btn-primary" type="button" data-bind="click: SaveAndRunReport, visible: !editingSubReportParentId(), disable: savingReport() || savingAndRunning()">
+                    <!-- ko if: savingAndRunning() --><span class="fa fa-spinner fa-spin me-1"></span>Saving...<!-- /ko -->
+                    <!-- ko ifnot: savingAndRunning() --><!-- ko text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report' --><!-- /ko --><!-- /ko -->
+                </button>
             </div>
 
         </div>

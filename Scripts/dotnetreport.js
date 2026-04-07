@@ -192,18 +192,7 @@ function linkFieldViewModel(args, options, adminMode, savedReports, allFolders, 
 
 				// Save the parent report with the new link, then open the sub report for editing
 				if (parentViewModel && parentViewModel.ReportID()) {
-					var pId = parentViewModel.ReportID();
-					var pName = parentViewModel.ReportName();
-					parentViewModel._silentSaveParent().done(function () {
-						parentViewModel.editingSubReportParentId(pId);
-						parentViewModel.editingSubReportParentName(pName);
-						parentViewModel.LoadReport(result.reportId).done(function () {
-							parentViewModel.editingSubReportParentId(pId);
-							parentViewModel.editingSubReportParentName(pName);
-							parentViewModel.SaveReport(true);
-							parentViewModel.ReportMode("generate");
-						});
-					});
+					parentViewModel.editSubReport({ reportId: result.reportId });
 				} else {
 					toastr.success('Report created and linked');
 				}
@@ -216,18 +205,8 @@ function linkFieldViewModel(args, options, adminMode, savedReports, allFolders, 
 	self.editLinkedReport = function () {
 		var reportId = self.LinkedToReportId();
 		if (!reportId || !parentViewModel) return;
-		var pId = parentViewModel.ReportID();
-		var pName = parentViewModel.ReportName();
-		parentViewModel._silentSaveParent().done(function () {
-			parentViewModel.editingSubReportParentId(pId);
-			parentViewModel.editingSubReportParentName(pName);
-			parentViewModel.LoadReport(reportId).done(function () {
-				parentViewModel.editingSubReportParentId(pId);
-				parentViewModel.editingSubReportParentName(pName);
-				parentViewModel.SaveReport(true);
-				parentViewModel.ReportMode("generate");
-			});
-		});
+		if (options.linkModal) options.linkModal.modal('hide');
+		parentViewModel.editSubReport({ reportId: reportId });
 	};
 
 	self.LinkToUrl = ko.observable(args.LinkToUrl);
@@ -1228,7 +1207,7 @@ var reportViewModel = function (options) {
 	self.cardView = ko.observable(false);
 	self.dontGroupCustom = ko.observable(false);
 	self.isDirty = ko.observable(false);
-	self.activeDesign = ko.observable(localStorage.getItem('reportLivePreview') === 'true');
+	self.activeDesign = ko.observable(options.reportMode !== 'subreport' && localStorage.getItem('reportLivePreview') === 'true');
 	self.panels = new DesignerViewModel();
 	self.selectMode = ko.observable(false);
 
@@ -1245,7 +1224,9 @@ var reportViewModel = function (options) {
 	});
 
 	self.activeDesign.subscribe(function (newValue) {
-		localStorage.setItem('reportLivePreview', newValue ? 'true' : 'false');
+		if (options.reportMode !== 'subreport') {
+			localStorage.setItem('reportLivePreview', newValue ? 'true' : 'false');
+		}
 		if (newValue) {
 			self.setupActiveDesignCheck();
 		} else {
@@ -1264,9 +1245,10 @@ var reportViewModel = function (options) {
 	self.activeDesignRunning = false;
 	self._reportChangedTimer = null;
 	self.reportChanged = function () {
+		if (self._suppressReportChanged || self.executingReport) return;
 		self.isDirty(true);
 		if (self.activeDesign()) {
-			if (self.activeDesignRunning || self.executingReport) return;
+			if (self.activeDesignRunning) return;
 			if (self._reportChangedTimer) clearTimeout(self._reportChangedTimer);
 			self._reportChangedTimer = setTimeout(function () {
 				if (self.activeDesignRunning || self.executingReport) return;
@@ -2015,6 +1997,7 @@ var reportViewModel = function (options) {
 	}
 
 	self.ReportType.subscribe(function (newvalue) {
+		if (self._suppressReportChanged) return;
 		if (newvalue == 'List' || newvalue == 'Treemap' || self.dontGroupCustom()) {
 			self.AggregateReport(false);
 		}
@@ -2027,6 +2010,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.dontGroupCustom.subscribe(function (newValue) {
+		if (self._suppressReportChanged) return;
 		self.AggregateReport(!newValue);
 	});
 
@@ -2037,6 +2021,19 @@ var reportViewModel = function (options) {
 		if (self.reportHtml.editor) {
 			self.reportHtml.editor.summernote('pasteHTML', placeholder);
 		}
+		setTimeout(function () { self.SelectFieldToInsert(null); }, 0);
+	});
+
+	self.insertSubReportPlaceholder = function (item) {
+		if (!self.reportHtml.editor) return;
+		var placeholder = `<div class="subreport-placeholder" data-subreport-id="${item.reportId}" data-field-id="${item.fieldId}" style="border: 1px dashed #999; padding: 10px; margin: 5px 0; background: #f9f9f9;">{{subreport:${item.name}}}</div><p><br/></p>`;
+		self.reportHtml.editor.summernote('pasteHTML', placeholder);
+	};
+
+	self.hasHtmlSubReportPlaceholders = ko.computed(function () {
+		var html = self.reportHtml ? self.reportHtml() : '';
+		if (!html) return false;
+		return html.indexOf('{{subreport:') >= 0 || html.indexOf('%7B%7Bsubreport:') >= 0;
 	});
 
 	self.insertFieldTableTransposed = function () {
@@ -2134,6 +2131,8 @@ var reportViewModel = function (options) {
 			if (!self.subReports().some(r => r.fieldId === newVal.fieldId && r.reportId === newVal.reportId)) {
 				var report = self.SavedReports().find(r => r.reportId === newVal.reportId);
 				newVal.isSubReportOnly = ko.observable(report ? (report.isSubReportOnly ? report.isSubReportOnly() : false) : false);
+				newVal.hideTitle = ko.observable(false);
+				newVal.hidePager = ko.observable(false);
 				self.subReports.push(newVal);
 			} else {
 				toastr.error('Sub Report was already added');
@@ -2183,37 +2182,83 @@ var reportViewModel = function (options) {
 		});
 	};
 
+	self._editingSubReportPreviousMode = null;
+	self._editingSubReportLoading = ko.observable(false);
 	self.editSubReport = function (item) {
 		var parentId = self.ReportID();
 		var parentName = self.ReportName();
-		// Save parent report silently, then open child report for editing
-		self._silentSaveParent().done(function (result) {
-			if (result.d) { result = result.d; }
-			if (result.result) { result = result.result; }
+		// Detect if we're in designer (modal visible) vs ran/executed view
+		var wasInDesigner = options.reportWizard && options.reportWizard.hasClass('show');
+		self._editingSubReportPreviousMode = wasInDesigner ? 'generate' : 'execute';
+
+		// Build save data NOW before we modify the VM state
+		var saveData = JSON.stringify(self.BuildReportData());
+
+		// Set editing state immediately so banner shows right away
+		self.editingSubReportParentId(parentId);
+		self.editingSubReportParentName(parentName);
+		self._editingSubReportLoading(true);
+
+		// Ensure modal is open for the sub report editor
+		if (!wasInDesigner && options.reportWizard) {
+			options.reportWizard.modal('show');
+		}
+
+		// Fire save in background — don't wait for it
+		ajaxcall({
+			url: options.runReportApiUrl,
+			type: "POST",
+			data: JSON.stringify({
+				method: "/ReportApi/RunReport",
+				SaveReport: true,
+				ReportJson: saveData,
+				adminMode: self.adminMode(),
+				userIdForFilter: self.userIdForFilter,
+				SubTotalMode: false
+			}),
+			noBlocking: true
+		});
+
+		// Load sub report immediately — don't wait for save
+		self.LoadReport(item.reportId, false, '', true).done(function () {
+			self._editingSubReportLoading(false);
 			self.editingSubReportParentId(parentId);
 			self.editingSubReportParentName(parentName);
-			self.LoadReport(item.reportId).done(function () {
-				self.editingSubReportParentId(parentId);
-				self.editingSubReportParentName(parentName);
-				self.SaveReport(true);
-				self.ReportMode("generate");
-			});
+			self.SaveReport(true);
+			self.ReportMode("generate");
 		});
 	};
 
 	self.returnToParentReport = function () {
 		var parentId = self.editingSubReportParentId();
+		var previousMode = self._editingSubReportPreviousMode || 'generate';
 		self.editingSubReportParentId(null);
 		self.editingSubReportParentName('');
+		self._editingSubReportPreviousMode = null;
 		if (parentId) {
-			self.LoadReport(parentId).done(function () {
-				self.SaveReport(true);
-				self.ReportMode("generate");
-			});
+			if (previousMode == 'execute') {
+				// Came from pencil icon on running report — close modal and re-run parent
+				options.reportWizard.modal('hide');
+				self.LoadReport(parentId, false, '', true).done(function () {
+					self.SaveReport(false);
+					self.ReportMode('execute');
+					self.activeDesign(false);
+					self.RunReport(false, true);
+				});
+			} else {
+				// Came from Edit button in designer — stay in editor modal
+				self.LoadReport(parentId, false, '', true).done(function () {
+					self.SaveReport(true);
+					self.ReportMode("generate");
+					if (options.reportWizard) options.reportWizard.modal('show');
+				});
+			}
 		}
 	};
 
+	self._suppressReportChanged = false;
 	self.subReports.subscribe(function (list) {
+		self._suppressReportChanged = true;
 		if (list.length > 0) {
 			self.DefaultPageSize(1);
 			self.changePageSize(true);
@@ -2223,6 +2268,7 @@ var reportViewModel = function (options) {
 			self.changePageSize(false);
 			self.pager.pageSizeOptions([1, 10, 30, 50, 100, 150, 200, 500, 1000]);
 		}
+		setTimeout(function () { self._suppressReportChanged = false; }, 100);
 	});
 
 	self.linkedReportFields = ko.computed(function () {
@@ -2284,7 +2330,8 @@ var reportViewModel = function (options) {
 			$(".designer-auto-update").on(
 				"change",
 				"input, select, .form-select, .form-control, .btn, .list-group-item",
-				function () {
+				function (e) {
+					if ($(e.target).closest('.subreport-inline-container, [data-bind*="subreport-content"]').length) return;
 					self.reportChanged();
 				}
 			);
@@ -2303,11 +2350,12 @@ var reportViewModel = function (options) {
 		options.reportWizard.on(
 			"change",
 			"input, select, .form-select, .form-control, .btn, .list-group-item",
-			function () {
+			function (e) {
 				if (options.reportMode === "dashboard") {
 					var activeId = options.reportWizard.data('report-id');
 					if (activeId != null && activeId != self.ReportID()) return;
 				}
+				if ($(e.target).closest('.subreport-inline-container, [data-bind*="subreport-content"]').length) return;
 				self.reportChanged();
 			}
 		);
@@ -4124,12 +4172,16 @@ var reportViewModel = function (options) {
 		})[0];
 	};
 	self._userInitiatedSave = false;
+	self.savingReport = ko.observable(false);
+	self.savingAndRunning = ko.observable(false);
 	self.SaveWithoutRun = function () {
 		self._userInitiatedSave = true;
+		self.savingReport(true);
 		self.RunReport(true);
 	};
 
 	self.SaveAndRunReport = function () {
+		self.savingAndRunning(true);
 		self.RunReport(false,false,false);
 	};
 
@@ -4330,7 +4382,7 @@ var reportViewModel = function (options) {
 				queryPrompt: self.queryPrompt,
 				cardView: self.cardView(),
 				dontGroupCustom: self.dontGroupCustom(),
-				subReports: self.subReports().map(function (sr) { return { fieldId: sr.fieldId, reportId: sr.reportId, name: sr.name, uiId: sr.uiId }; }),
+				subReports: self.subReports().map(function (sr) { return { fieldId: sr.fieldId, reportId: sr.reportId, name: sr.name, uiId: sr.uiId, hideTitle: sr.hideTitle ? sr.hideTitle() : false, hidePager: sr.hidePager ? sr.hidePager() : false }; }),
 				tableSettings: self.tableSettings(),
 				kpiSettings: ko.toJS(self.kpiSettings()),
 				includeColumnTotal: self.IncludeColumnTotal(),
@@ -4339,7 +4391,7 @@ var reportViewModel = function (options) {
 				ShowFilterDetails: self.ShowFilterDetails(),
 			}),
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
-			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : self.AggregateReport(),
+			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : (self.ReportType() == 'List' || self.ReportType() == 'Treemap' || self.dontGroupCustom() ? false : self.AggregateReport()),
 			ShowDataWithGraph: self.ShowDataWithGraph(),
 			ShowOnDashboard: self.ShowOnDashboard(),
 			SortBy: self.SortByField(),
@@ -4514,6 +4566,7 @@ var reportViewModel = function (options) {
 		self.ReportResult().HasError(false);
 		saveOnly = saveOnly === true ? true : false;
 		skipValidation = skipValidation === true ? true : false;
+		var _resetSaving = function () { self.savingReport(false); self.savingAndRunning(false); };
 		self.setFlyFilters();
 		var saveAlertFlag = false;
 		if (!importJson) {
@@ -4524,7 +4577,7 @@ var reportViewModel = function (options) {
 			if (self.ReportType() == 'Single') {
 				if (self.enabledFields().length != 1) {
 					toastr.error("All data fields except one must be hidden for Widget type report");
-					return;
+					_resetSaving(); return;
 				}
 			}
 			if (self.SelectedFields().length === 0) {
@@ -4532,34 +4585,34 @@ var reportViewModel = function (options) {
 					toastr.error("Please select at least one data field");
 				}
 				self.activeDesignRunning = false;
-				return;
+				_resetSaving(); return;
 			}
 			var s = self.SelectedFields();
 			var idx = _.map(_.filter(s, f => f.selectedAggregate() == 'Pivot'), f => _.indexOf(s, f));
 			if (idx.length > 1 && _.max(idx) - _.min(idx) + 1 != idx.length) {
 				toastr.error("All Pivot fields must be next to each other.");
-				return;
+				_resetSaving(); return;
 			}
 			if (_.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Pivot' }).length > 1) {
 				toastr.error("Select only one data field for Pivot.");
-				return;
+				_resetSaving(); return;
 			}
 			if (self.SelectedFields().slice(-1)[0]?.selectedAggregate() === 'Pivot') {
 				toastr.error("Pivot field cannot be the last column.");
-				return;
+				_resetSaving(); return;
 			}
 			if (self.IsDynamicFieldFirstColumn(0) || self.IsAllDynamicFieldSelected()) {
 				toastr.error("Dynamic cannot be first column.\n Cannot be only dynamic without a parent field.");
-				return;
+				_resetSaving(); return;
 			}
 			if (!skipValidation && !self.validateReport()) {
 				toastr.error("Please correct validation issues");
-				return;
+				_resetSaving(); return;
 			}
 			let field = self.FilterGroups()[0]?.FilterGroups()[0]?.Filters()[0]?.Field();
 			if (field && field.fieldId === 0 && field.dynamicTableId != null) {
 				toastr.error("You can not use dynamic field is first in filter group");
-				return;
+				_resetSaving(); return;
 			}
 		}
 		return self.ValidateTableJoins().done(function (isValid) {
@@ -4617,6 +4670,7 @@ var reportViewModel = function (options) {
 							if (previewOnly !== true && (self.SaveReport() || saveOnly)) {
 								if (saveOnly && !saveAlertFlag) {
 									saveAlertFlag = true;
+									_resetSaving();
 									if (!self._navigatingToSubReport) {
 										toastr.success(importJson ? ((importJson.ReportName ?? 'Report') + ' Imported') : ((self.ReportName() ?? 'Report') + ' Saved'));
 									}
@@ -4677,6 +4731,7 @@ var reportViewModel = function (options) {
 					}
 
 					if (!isAutoRun) {
+						_resetSaving();
 						if (_saveReport) {
 							toastr.success((self.ReportName() || 'Report') + ' Saved');
 							if (self.editingSubReportParentId() && self._userInitiatedSave) {
@@ -4759,7 +4814,7 @@ var reportViewModel = function (options) {
 								includeSubTotal: self.IncludeSubTotal(),
 								includeColumnTotal: self.IncludeColumnTotal(),
 								showUniqueRecords: self.ShowUniqueRecords(),
-								aggregateReport: self.AggregateReport(),
+								aggregateReport: (self.ReportType() == 'List' || self.ReportType() == 'Treemap' || self.dontGroupCustom()) ? false : self.AggregateReport(),
 								showDataWithGraph: self.ShowDataWithGraph(),
 								reportSql: self.allSqlQueries(),
 								connectKey: _result.connectKey,
@@ -5196,6 +5251,46 @@ var reportViewModel = function (options) {
 					r.LinkTo = link;
 
 					if (self.subReports().find(sr => (sr.fieldId || 0) == col.fieldId && sr.reportId == linkItem.LinkedToReportId)) {
+						// Create a lightweight placeholder immediately so the spinner shows right away
+						var srConfig = self.subReports().find(function (sr) { return (sr.fieldId || 0) == col.fieldId && sr.reportId == linkItem.LinkedToReportId; });
+						var srOrder = _.findIndex(self.subReports(), function (sr) { return (sr.fieldId || 0) == col.fieldId && sr.reportId == linkItem.LinkedToReportId; });
+						var srIsInline = self.ReportType() == 'Html' && self.hasHtmlSubReportPlaceholders();
+						var placeholder = {
+							_subReportOrder: srOrder,
+							_hideTitle: srConfig && srConfig.hideTitle ? srConfig.hideTitle() : false,
+							_hidePager: true,
+							_isInline: srIsInline,
+							_inlineFieldId: col.fieldId || 0,
+							_inlineReportId: linkItem.LinkedToReportId,
+							_parentReportId: self.ReportID(),
+							_parentVM: self,
+							_isPlaceholder: true,
+							ReportName: ko.observable(''),
+							ReportDescription: ko.observable(''),
+							CanEdit: function () { return false; },
+							ReportID: ko.observable(linkItem.LinkedToReportId),
+							ReportType: ko.observable('List'),
+							isChart: ko.observable(false),
+							ShowDataWithGraph: ko.observable(false),
+							IsSubReport: ko.observable(true),
+							ReportMode: ko.observable('subreport'),
+							ReportResult: ko.observable({
+								ReportData: ko.observable(null),
+								HasError: ko.observable(false),
+								Exception: ko.observable(''),
+								Warnings: ko.observable(''),
+								ReportDebug: ko.observable(''),
+								ReportSql: ko.observable('')
+							}),
+							pager: {
+								totalRecords: ko.observable(0),
+								pages: ko.observable(0),
+								currentPage: ko.observable(1),
+								pageSize: ko.observable(10)
+							}
+						};
+						subreportsRan.push(placeholder);
+
 						// run sub report
 						ajaxcall({
 							url: options.runLinkReportUrl,
@@ -5204,11 +5299,12 @@ var reportViewModel = function (options) {
 								adminMode: self.adminMode(),
 								filterId: linkItem.SendAsFilterParameter ? linkItem.SelectedFilterId || 0 : 0,
 								filterValue: linkItem.SendAsFilterParameter && r.Value ? r.Value.replace(/['"]+/g, '') || '0' : '0'
-							}
+							},
+							noBlocking: true
 						}).done(function (linkedReport) {
 							if (linkedReport.d) { linkedReport = linkedReport.d; }
 							if (linkedReport.result) { linkedReport = linkedReport.result; }
-							
+
 							var report = new reportViewModel({
 								runReportUrl: options.runReportUrl,
 								runExportUrl: options.runExportUrl,
@@ -5235,8 +5331,24 @@ var reportViewModel = function (options) {
 							report.adminMode(self.adminMode());
 							report.LoadReport(linkItem.LinkedToReportId, true, '', true, false);
 
-						report._subReportOrder = _.findIndex(self.subReports(), sr => (sr.fieldId || 0) == col.fieldId && sr.reportId == linkItem.LinkedToReportId);
+						report._subReportOrder = srOrder;
+						report._hideTitle = srConfig && srConfig.hideTitle ? srConfig.hideTitle() : false;
+						report._hidePager = srConfig && srConfig.hidePager ? srConfig.hidePager() : false;
+						report._parentReportId = self.ReportID();
+						report._parentVM = self;
+
+						// Mark if this sub report should render inline (HTML report with placeholder)
+						report._isInline = srIsInline;
+						report._inlineFieldId = col.fieldId || 0;
+						report._inlineReportId = linkItem.LinkedToReportId;
+
+						// Replace placeholder with actual report VM
+						var placeholderIdx = subreportsRan.indexOf(placeholder);
+						if (placeholderIdx >= 0) {
+							subreportsRan.splice(placeholderIdx, 1, report);
+						} else {
 							subreportsRan.push(report);
+						}
 						});
 					}
 				}
@@ -5498,6 +5610,29 @@ var reportViewModel = function (options) {
 				}
 
 			});
+			// Replace subreport placeholders with container divs
+			if (self.ReportType() == 'Html') {				
+				var findSubReport = function (name) {
+					var decoded = decodeHtmlEntities(name);
+					return self.subReports().find(function (s) { return s.name === decoded || s.name === name; });
+				};
+				// Replace the full placeholder div (including wrapper) or just the {{subreport:...}} tag
+				renderedHtml = renderedHtml.replace(/<div[^>]*class="subreport-placeholder"[^>]*>[\s\S]*?\{\{subreport:([^}]+)\}\}[\s\S]*?<\/div>/g, function (match, name) {
+					var sr = findSubReport(name);
+					if (sr) {
+						return '<div class="subreport-inline-container" data-subreport-report-id="' + sr.reportId + '" data-subreport-field-id="' + (sr.fieldId || 0) + '"></div>';
+					}
+					return '';
+				});
+				// Fallback: replace any remaining bare {{subreport:...}} tags
+				renderedHtml = renderedHtml.replace(/\{\{subreport:([^}]+)\}\}/g, function (match, name) {
+					var sr = findSubReport(name);
+					if (sr) {
+						return '<div class="subreport-inline-container" data-subreport-report-id="' + sr.reportId + '" data-subreport-field-id="' + (sr.fieldId || 0) + '"></div>';
+					}
+					return '';
+				});
+			}
 			renderedHtml = renderedHtml.replace(/\{\{[^}]+>[^}]+\}\}/g, "");
 
 
@@ -5510,6 +5645,8 @@ var reportViewModel = function (options) {
 		}
 		var validFieldNames = _.map(result.ReportData.Columns, 'SqlField');
 		result.ReportData.IsDrillDown = ko.observable(false);
+		result.ReportData.IsSubReport = ko.observable(self.ReportMode() == 'subreport');
+		result.ReportData.SubReportId = self.ReportID();
 		result.ReportData.CanExpandOption = ko.computed(function () { return self.ShowExpandOption(); });
 		result.ReportData.comparisonLabel = self.AdditionalSeries().length > 0 ? self.AdditionalSeries()[0].Value() : 'Prior Period';
 		result.ReportData.calculateRate = function () {
@@ -5736,6 +5873,9 @@ var reportViewModel = function (options) {
 				return subReportsRanUnsorted().slice().sort(function(a, b) {
 					return (a._subReportOrder || 0) - (b._subReportOrder || 0);
 				});
+			});
+			e.nonInlineSubReports = ko.computed(function () {
+				return e.subReportsRan().filter(function (sr) { return !sr._isInline; });
 			});
 			var outerGroupIndicesToSuppress = null;
 			if (self.ReportType() == 'Html' && self.OuterGroupColumns().length > 0) {
@@ -6228,12 +6368,15 @@ var reportViewModel = function (options) {
 				useAltPivot: self.appSettings.useAltPivot,
 				adminMode: self.adminMode(),
 			}),
-			noBlocking: self.ReportMode() == 'dashboard' || self.activeDesign()
+			noBlocking: self.ReportMode() == 'dashboard' || self.activeDesign() || self.ReportMode() == 'subreport'
 		}).done(function (result) {
 			self.activeDesignRunning = false;
 			if (result.d) { result = result.d; }
 			if (result.result) { result = result.result; }
+			self._suppressReportChanged = true;
 			self.processReportResult(result, reportSql, connectKey, reportSeries, previewOnly);
+			// Keep suppressed briefly while DOM settles after render
+			setTimeout(function () { self._suppressReportChanged = false; }, 300);
 		});
 	};
 
@@ -7646,6 +7789,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.PopulateReport = function (report, filterOnFly, reportSeries) {
+		self._suppressReportChanged = true;
 
 		self.ReportID(report.ReportID);
 		self.mapRegion('');
@@ -7744,6 +7888,8 @@ var reportViewModel = function (options) {
 		var loadedSubReports = (reportSettings.subReports || []).map(function (sr) {
 			var report = self.SavedReports().find(function (r) { return r.reportId === sr.reportId; });
 			sr.isSubReportOnly = ko.observable(report && report.isSubReportOnly ? report.isSubReportOnly() : false);
+			sr.hideTitle = ko.observable(sr.hideTitle || false);
+			sr.hidePager = ko.observable(sr.hidePager || false);
 			return sr;
 		});
 		self.subReports(loadedSubReports);
@@ -7751,7 +7897,7 @@ var reportViewModel = function (options) {
 			self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
 			self.changePageSize(self.DefaultPageSize() != '30');
 		}
-		setTimeout(function () { self.isDirty(false); }, 500);
+		setTimeout(function () { self.isDirty(false); self._suppressReportChanged = false; }, 500);
 		
 		if (self.ReportMode() == "execute" || self.ReportMode() == "linked") {
 			if (self.useReportHeader()) {
