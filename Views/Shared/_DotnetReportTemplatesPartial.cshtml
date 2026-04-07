@@ -2266,10 +2266,12 @@
                                     value: DefaultPageSize,
                                     disable: subReports().length > 0">
                 </select>
+                </div>
                 <!-- Force default to 1 if sub reports selected -->
-                <small class="text-danger" data-bind="visible: subReports().length > 0">
-                    Page size is restricted to 1 when sub reports are selected.
-                </small>
+                <div class="col-12 mt-1" data-bind="visible: subReports().length > 0">
+                    <small class="text-danger">
+                        Page size is restricted to 1 when sub reports are selected.
+                    </small>
                 </div>
             </div>
         </div>

@@ -5329,18 +5329,17 @@ var reportViewModel = function (options) {
 							});
 
 							report.adminMode(self.adminMode());
+							// Set parent linkage BEFORE LoadReport so async renderTable can detect live preview
+							report._subReportOrder = srOrder;
+							report._hideTitle = srConfig && srConfig.hideTitle ? srConfig.hideTitle() : false;
+							report._hidePager = srConfig && srConfig.hidePager ? srConfig.hidePager() : false;
+							report._parentReportId = self.ReportID();
+							report._parentVM = self;
+							report._isInline = srIsInline;
+							report._inlineFieldId = col.fieldId || 0;
+							report._inlineReportId = linkItem.LinkedToReportId;
+
 							report.LoadReport(linkItem.LinkedToReportId, true, '', true, false);
-
-						report._subReportOrder = srOrder;
-						report._hideTitle = srConfig && srConfig.hideTitle ? srConfig.hideTitle() : false;
-						report._hidePager = srConfig && srConfig.hidePager ? srConfig.hidePager() : false;
-						report._parentReportId = self.ReportID();
-						report._parentVM = self;
-
-						// Mark if this sub report should render inline (HTML report with placeholder)
-						report._isInline = srIsInline;
-						report._inlineFieldId = col.fieldId || 0;
-						report._inlineReportId = linkItem.LinkedToReportId;
 
 						// Replace placeholder with actual report VM
 						var placeholderIdx = subreportsRan.indexOf(placeholder);
@@ -5634,9 +5633,10 @@ var reportViewModel = function (options) {
 				});
 			}
 			renderedHtml = renderedHtml.replace(/\{\{[^}]+>[^}]+\}\}/g, "");
+			// Strip summernote tableresize plugin handles from rendered HTML
+			renderedHtml = renderedHtml.replace(/<div[^>]*class="resize-(?:col|row|corner)"[^>]*><\/div>/g, "");
 
-
-			return renderedHtml;			
+			return renderedHtml;
 		}
 		self.ReportColumns(result.ReportData.Columns);
 		processCols(result.ReportData.Columns);
@@ -6121,7 +6121,11 @@ var reportViewModel = function (options) {
 
 		function renderTable(data, colspan) {
 			var tableBody, tableHead;
-			if (self.activeDesign()) {
+			// If this VM (or its parent) is in active design / live preview mode,
+			// scope DOM lookups to the live-preview-area to avoid hitting the
+			// hidden duplicate instances rendered in the report-view container.
+			var inLivePreview = self.activeDesign() || (self._parentVM && self._parentVM.activeDesign && self._parentVM.activeDesign());
+			if (inLivePreview) {
 				var modal = document.querySelector('.modal.show .live-preview-area');
 				if (modal) {
 					tableBody = modal.querySelector('[id="report-table-body' + self.ReportID() + '"]');
