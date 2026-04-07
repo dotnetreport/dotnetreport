@@ -1291,6 +1291,9 @@ var reportViewModel = function (options) {
 		var reportId = self.ReportID();
 		if (!reportId) return;
 		var newVal = self.isSubReportOnly();
+		if (newVal && self.scheduleBuilder) {
+			self.scheduleBuilder.clear();
+		}
 		ajaxcall({
 			url: options.apiUrl,
 			data: {
@@ -4462,7 +4465,7 @@ var reportViewModel = function (options) {
 					TotalRowAggregate: x.totalRowAggregate()
 				};
 			}),
-			Schedule: self.scheduleBuilder.toJs(),
+			Schedule: self.isSubReportOnly() ? null : self.scheduleBuilder.toJs(),
 			DrillDownRow: drilldown,
 			UserId: self.manageAccess.getAsList(self.manageAccess.users),
 			ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),

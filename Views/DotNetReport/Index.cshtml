@@ -313,8 +313,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <a class="dropdown-item" href="#" data-bind="visible: hasDrilldown, click: function() {exportReport('excel-sub');}">
                                                                 <span class="fa fa-file-excel-o"></span> Download Excel (Expanded)
                                                             </a>
-                                                            <div class="dropdown-divider"></div>
-                                                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-schedule-report" data-bind="click: function() { $parent.openScheduleModal($data); }">
+                                                            <div class="dropdown-divider" data-bind="visible: !isSubReportOnly()"></div>
+                                                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-schedule-report" data-bind="visible: !isSubReportOnly(), click: function() { $parent.openScheduleModal($data); }">
                                                                 <span class="fa fa-hourglass"></span> Schedule Report
                                                             </a>
                                                         </div>
@@ -349,8 +349,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <a class="dropdown-item" href="#" data-bind="visible: hasDrilldown, click: function() {exportReport('excel-sub');}">
                                                                 <span class="fa fa-file-excel-o"></span> Download Excel with inner rows
                                                             </a>
-                                                            <div class="dropdown-divider"></div>
-                                                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-schedule-report" data-bind="click: function() { $parent.openScheduleModal($data); }">
+                                                            <div class="dropdown-divider" data-bind="visible: !isSubReportOnly()"></div>
+                                                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-schedule-report" data-bind="visible: !isSubReportOnly(), click: function() { $parent.openScheduleModal($data); }">
                                                                 <span class="fa fa-hourglass"></span> Schedule Report
                                                             </a>
                                                         </div>
@@ -547,8 +547,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                     </li>
                                                                 </ul>
                                                             </li>
-                                                            <li><hr class="dropdown-divider"></li>
-                                                            <li>
+                                                            <li data-bind="visible: !isSubReportOnly()"><hr class="dropdown-divider"></li>
+                                                            <li data-bind="visible: !isSubReportOnly()">
                                                                 <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-schedule-report" data-bind="click: function() { $parent.openScheduleModal($data); }">
                                                                     <span class="fa fa-hourglass"></span> Schedule Report
                                                                 </a>

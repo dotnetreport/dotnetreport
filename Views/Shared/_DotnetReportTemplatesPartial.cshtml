@@ -2774,7 +2774,7 @@
 
         <!-- Schedule -->
         <div class="card flex-fill expandable-panel" id="schedulePanel"
-             data-bind="css:{'collapsed-vertical': panels.isCollapsed('schedulePanel')}, visible: SaveReport() && !ko.unwrap(appSettings.showScheduling)">
+             data-bind="css:{'collapsed-vertical': panels.isCollapsed('schedulePanel')}, visible: SaveReport() && !ko.unwrap(appSettings.showScheduling) && !isSubReportOnly()">
           <div class="card-header p-1" data-bind="click:function(){panels.togglePanel('schedulePanel')}">
             <i class="fa fa-hourglass"></i> Schedule
           </div>
@@ -3094,7 +3094,7 @@
                             </div>
 
                             <!-- Schedule -->
-                            <div class="card mb-1 designer-panel" data-bind="visible: SaveReport() && !ko.unwrap(appSettings.showScheduling)">
+                            <div class="card mb-1 designer-panel" data-bind="visible: SaveReport() && !ko.unwrap(appSettings.showScheduling) && !isSubReportOnly()">
                                 <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-schedulePanel')}" style="cursor:pointer;">
                                     <i class="fa fa-hourglass"></i> Schedule
                                     <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-schedulePanel')}"></i>
@@ -3203,7 +3203,7 @@
                                 <div data-bind="template: 'designer-sort'"></div>
                             </div>
                             <br />
-                            <div data-bind="visible: SaveReport() && !ko.unwrap(appSettings.showScheduling)" class="card card-body">
+                            <div data-bind="visible: SaveReport() && !ko.unwrap(appSettings.showScheduling) && !isSubReportOnly()" class="card card-body">
                                 <h5><span class="fa fa-hourglass"></span>&nbsp;Choose Schedule</h5>
                                 <div style="padding: 10px 10px" data-bind="visible: SaveReport">
                                     <div data-bind="template: {name: 'report-schedule'}"></div>
