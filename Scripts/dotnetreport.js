@@ -1,6 +1,6 @@
-/// dotnet Report Builder view model v6.2.4
+/// dotnet Report Builder view model v6.2.5
 /// License must be purchased for commercial use
-/// 2025 (c) www.dotnetreport.com
+/// 2026 (c) www.dotnetreport.com
 
 function formulaFieldViewModel(args) {
 	args = args || {};
