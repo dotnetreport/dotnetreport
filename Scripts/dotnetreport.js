@@ -1365,8 +1365,10 @@ var reportViewModel = function (options) {
 
 	self.activeDesignRunning = false;
 	self._reportChangedTimer = null;
+	self.isExporting = false;
 	self.reportChanged = function () {
-		if (self._suppressReportChanged || self._suppressLinkedNavRun || self.executingReport) return;
+		if (self._suppressReportChanged || self._suppressLinkedNavRun || self.executingReport || self.isExporting) return;
+		if (self.ReportMode() && self.ReportMode().indexOf('export-') == 0) return;
 		self.isDirty(true);
 		if (self.activeDesign()) {
 			if (self.activeDesignRunning) return;
@@ -2116,9 +2118,6 @@ var reportViewModel = function (options) {
 	});
 
 	self.adminMode.subscribe(function (newValue) {
-		// Always exit any header/footer designer when admin mode toggles so the user
-		// returns to the manage reports / start view rather than being stuck on a panel
-		// that's only visible in admin mode.
 		self.designingHeader(false);
 		self.designingFooter(false);
 
@@ -4948,18 +4947,21 @@ var reportViewModel = function (options) {
 					}
 
 					if (isExecuteReportQuery === false) {
-						if (self.ReportMode().indexOf('export-') == 0) {
-
+						if (self.ReportMode().indexOf('export-' ) == 0) {
+							if (self._reportChangedTimer) {
+								clearTimeout(self._reportChangedTimer);
+								self._reportChangedTimer = null;
+							}
 							self.ReportID(_result.reportId);
 							self.currentSql(_result.sql);
 							self.currentConnectKey(_result.connectKey);
+							var useAltPdf = ko.unwrap(self.appSettings && self.appSettings.useAltPdf);
 							switch (self.ReportMode()) {
 								case 'export-pdf':
-									self.downloadPdf(); break;
-								case 'export-pdf-debug':
-									self.downloadPdf(true); break;
 								case 'export-pdfalt':
-									self.downloadPdfAlt(); break;
+									if (useAltPdf) self.downloadPdfAlt(); else self.downloadPdf(); break;
+								case 'export-pdf-debug':
+									self.downloadPdf(true); break;									
 								case 'export-excel':
 									self.downloadExcel(); break;
 								case 'export-excel-sub':
@@ -8397,6 +8399,7 @@ var reportViewModel = function (options) {
 						_.forEach(columns, function (e, i) {
 							self.columnDetails.push(ko.toJS(e));
 						});
+						self.isExporting = true;
 						self.ReportMode('export-' + format);
 						e.runReport();
 					})
@@ -9020,6 +9023,7 @@ var reportViewModel = function (options) {
 					$.unblockUI();
 				}
 				this.hideProgress();
+				self.isExporting = false;
 			},
 			error: function () {
 				if ($.unblockUI) {
@@ -9027,6 +9031,7 @@ var reportViewModel = function (options) {
 				}
 				toastr.error("Error downloading file");
 				this.hideProgress();
+				self.isExporting = false;
 			}
 		});
 	}
@@ -9076,6 +9081,7 @@ var reportViewModel = function (options) {
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
+			reportDescription: typeof self.ReportDescription === 'function' ? (self.ReportDescription() || '') : '',
 			allExpanded: false,
 			expandSqls: JSON.stringify(reportData),
 			chartData: self.ChartData() || '',
@@ -9181,6 +9187,7 @@ var reportViewModel = function (options) {
 	self.downloadReportJson = function () {
 		var reportData = self.BuildReportData();
 		downloadJson(JSON.stringify(reportData, null, 2), self.ReportName(), 'application/json')
+		self.isExporting = false;
 	};
 	self.downloadXml = function () {
 		var data = self.getExportJson();
@@ -10796,6 +10803,7 @@ var dashboardViewModel = function (options) {
 				reportSql: report.currentSql(),
 				connectKey: report.currentConnectKey(),
 				reportName: report.ReportName(),
+				reportDescription: typeof report.ReportDescription === 'function' ? (report.ReportDescription() || '') : '',
 				expandAll: report.allExpanded(),
 				printUrl: options.printReportUrl,
 				clientId: report.clientid || '',
@@ -10803,6 +10811,10 @@ var dashboardViewModel = function (options) {
 				userRoles: report.currentUserRole || '',
 				dataFilters: JSON.stringify(options.dataFilters),
 				expandSqls: JSON.stringify(reportData),
+				chartData: report.ChartData() || '',
+				columnDetails: report.getColumnDetails(),
+				includeSubTotal: report.IncludeSubTotal(),
+				pivot: report.ReportType() == 'Pivot',
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
 				pageSize: pageSize,
