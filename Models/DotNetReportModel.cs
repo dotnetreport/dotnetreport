@@ -456,6 +456,7 @@ namespace ReportBuilder.Web.Models
         public string reportSql { get; set; }
         public string connectKey { get; set; }
         public string reportName { get; set; }
+        public string reportDescription { get; set; }
         public bool expandAll { get; set; }
         public string printUrl { get; set; }
         public string clientId { get; set; }
@@ -974,7 +975,14 @@ namespace ReportBuilder.Web.Models
                         {
                             var increment = rowstart==3 ? 1 : 0;
                             var hyperlinkAddress = formatColumn.LinkFieldItem.SendAsQueryParameter ? $"{formatColumn.LinkFieldItem.LinkToUrl}?{formatColumn.LinkFieldItem.QueryParameterName}={cellValue}" : formatColumn.LinkFieldItem.LinkToUrl;
-                            ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = new Uri(hyperlinkAddress);
+                            if (Uri.TryCreate(hyperlinkAddress, UriKind.Absolute, out var absLinkUri))
+                            {
+                                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = absLinkUri;
+                            }
+                            else if (Uri.TryCreate(hyperlinkAddress, UriKind.Relative, out var relLinkUri))
+                            {
+                                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = relLinkUri;
+                            }
                             ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
                             ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
                         }
@@ -994,7 +1002,14 @@ namespace ReportBuilder.Web.Models
                             {
                                 hyperlinkAddress += $"&filterId={formatColumn.LinkFieldItem.SelectedFilterId}&filterValue={cellValue.Replace("'", "").Replace("\"", "")}";
                             }
-                            ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = new Uri(hyperlinkAddress);
+                            if (Uri.TryCreate(hyperlinkAddress, UriKind.Absolute, out var absRptUri))
+                            {
+                                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = absRptUri;
+                            }
+                            else if (Uri.TryCreate(hyperlinkAddress, UriKind.Relative, out var relRptUri))
+                            {
+                                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = relRptUri;
+                            }
                             ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
                             ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
                         }
@@ -3001,7 +3016,7 @@ namespace ReportBuilder.Web.Models
         }
 
         public async static Task<byte[]> GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "", bool subTotalPerGroup = false, string filterDetailsText = null)
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "", bool subTotalPerGroup = false, string filterDetailsText = null, string reportDescription = null)
         {
             var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
             var allRowsList = new List<DataRow>();
@@ -3110,6 +3125,20 @@ namespace ReportBuilder.Web.Models
 
                         currentYPosition += 30;
 
+                        if (!string.IsNullOrEmpty(reportDescription))
+                        {
+                            var descFont = new XFont("Arial", 10, XFontStyleEx.Italic);
+                            var descBrush = new XSolidBrush(XColor.FromArgb(102, 112, 133));
+                            var descRect = new XRect(leftMargin, currentYPosition, page.Width - leftMargin - rightMargin, 40);
+                            tfx.Alignment = XParagraphAlignment.Center;
+                            tfx.DrawString(reportDescription, descFont, descBrush, descRect, XStringFormats.TopLeft);
+                            tfx.Alignment = XParagraphAlignment.Left;
+                            // Estimate height: ~13px per line
+                            var descWidth = page.Width - leftMargin - rightMargin;
+                            var approxLines = Math.Max(1, (int)Math.Ceiling(gfx.MeasureString(reportDescription, descFont).Width / descWidth));
+                            currentYPosition += 13 * approxLines + 5;
+                        }
+
                         if (!string.IsNullOrEmpty(filterDetailsText))
                         {
                             var filterFont = new XFont("Arial", 9, XFontStyleEx.Italic);
@@ -3159,8 +3188,12 @@ namespace ReportBuilder.Web.Models
 
                     for (int k = 0; k < dt.Columns.Count; k++)
                     {
-                        var columnFormatting = columns.Count > k ? columns[k] : new ReportHeaderColumn();
-                        var columnName = !string.IsNullOrEmpty(columnFormatting.fieldLabel) ? columnFormatting.fieldLabel : columnFormatting.fieldName;
+                        var columnFormatting = columns != null && columns.Count > k ? columns[k] : new ReportHeaderColumn();
+                        var columnName = !string.IsNullOrEmpty(columnFormatting.fieldLabel)
+                            ? columnFormatting.fieldLabel
+                            : (!string.IsNullOrEmpty(columnFormatting.fieldName)
+                                ? columnFormatting.fieldName
+                                : dt.Columns[k].ColumnName);
                         rect = new XRect(currentXPosition, currentYPosition, columnWidths[k], 20);
                         gfx.DrawRectangle(XPens.LightGray, rect);
                         rect.Inflate(-cellPadding, -cellPadding);
