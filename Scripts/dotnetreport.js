@@ -9193,8 +9193,43 @@ var reportViewModel = function (options) {
 		var data = self.getExportJson();
 		self.downloadExport("DownloadXml", data, 'xml');
 	}
+	self.getRenderedHtmlOutput = function () {
+		if (self.ReportType() != 'Html') return '';
+		try {
+			var $candidates = $('.report-canvas .report-inner').filter(':visible');
+			if (!$candidates.length) $candidates = $('.report-canvas .report-inner');
+			var $inner = null;
+			$candidates.each(function () {
+				var vm = ko.dataFor(this);
+				if (vm === self) { $inner = $(this); return false; }
+			});
+			if (!$inner && $candidates.length) $inner = $candidates.first();
+			if ($inner && $inner.length) {
+				var $area = $inner.find('.report-expanded-scroll').first();
+				if (!$area.length) $area = $inner;
+				var $clone = $area.clone();
+				$clone.find('.report-spinner').remove();
+				$clone.find('a[title="Edit sub report"]').remove();
+				$clone.find('script').remove();
+				var html = $clone.html() || '';
+				if (html.trim()) return html;
+			}
+		} catch (e) { /* fall through to data-based fallback */ }
+
+		var rd = self.ReportResult() && self.ReportResult().ReportData ? self.ReportResult().ReportData() : null;
+		if (!rd || !rd.Rows || !rd.Rows.length) return '';
+		var combined = '';
+		for (var i = 0; i < rd.Rows.length; i++) {
+			if (rd.Rows[i].renderedHtml) combined += rd.Rows[i].renderedHtml;
+		}
+		return combined;
+	};
+
 	self.downloadWord = function (pageSize, pageOrientation) {
-		var data = self.getExportJson(pageSize, pageOrientation);		
+		var data = self.getExportJson(pageSize, pageOrientation);
+		if (self.ReportType() == 'Html') {
+			data.customHtml = encodeURIComponent(self.getRenderedHtmlOutput() || '');
+		}
 		self.downloadExport("DownloadWord", data, 'docx');
 	}
 	self.WordPage = new WordPageViewModel(self.downloadWord);

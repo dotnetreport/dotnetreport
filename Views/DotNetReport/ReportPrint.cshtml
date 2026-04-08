@@ -516,18 +516,26 @@
                             .replace(/\{current\.user\.roles\}/g, userRoles)
                             .replace(/\{CURRENTUSERROLES\}/g, userRoles)
                             .replace(/\{current\.datetime\}/g, nowStr)
-                            .replace(/\{CURRENTDATETIME\}/g, nowStr)
+                            .replace(/\{CURRENTDATETIME\}/g, nowStr);
+                    }
+                    function substituteInDocPagePlaceholders(html) {
+                        if (!html) return html;
+                        return html
                             .replace(/\{page\.number\}/g, '1')
                             .replace(/\{page\.total\}/g, '1');
                     }
 
                     var $h = $('#report-header');
-                    if ($h.length) { $h.html(substitutePlaceholders($h.html())); }
                     var $f = $('#report-footer');
-                    if ($f.length) { $f.html(substitutePlaceholders($f.html())); }
 
-                    window.reportHeaderHtml = $h.length ? $h.html() : '';
-                    window.reportFooterHtml = $f.length ? $f.html() : '';
+                    var rawHeaderHtml = $h.length ? substitutePlaceholders($h.html()) : '';
+                    var rawFooterHtml = $f.length ? substitutePlaceholders($f.html()) : '';
+
+                    if ($h.length) { $h.html(substituteInDocPagePlaceholders(substitutePlaceholders($h.html()))); }
+                    if ($f.length) { $f.html(substituteInDocPagePlaceholders(substitutePlaceholders($f.html()))); }
+
+                    window.reportHeaderHtml = rawHeaderHtml;
+                    window.reportFooterHtml = rawFooterHtml;
                     window.reportHeaderIncludeOnEveryPage = vm.headerDesigner && vm.headerDesigner.IncludeOnEveryPage ? vm.headerDesigner.IncludeOnEveryPage() : false;
                     window.reportFooterIncludeOnEveryPage = vm.footerDesigner && vm.footerDesigner.IncludeOnEveryPage ? vm.footerDesigner.IncludeOnEveryPage() : false;
 

@@ -1293,7 +1293,8 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] bool headerEveryPage = false,
             [FromForm] bool footerEveryPage = false,
             [FromForm] string currentUserName = null,
-            [FromForm] string currentUserRoles = null)
+            [FromForm] string currentUserRoles = null,
+            [FromForm] string customHtml = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
@@ -1306,7 +1307,8 @@ namespace ReportBuilder.Web.Controllers
                 headerEveryPage: headerEveryPage,
                 footerEveryPage: footerEveryPage,
                 currentUserName: currentUserName,
-                currentUserRoles: currentUserRoles);
+                currentUserRoles: currentUserRoles,
+                customHtml: !string.IsNullOrEmpty(customHtml) ? HttpUtility.UrlDecode(customHtml) : null);
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             return File(word, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", reportName + ".docx");

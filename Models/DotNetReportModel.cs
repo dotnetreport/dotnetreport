@@ -3427,9 +3427,12 @@ namespace ReportBuilder.Web.Models
 
         public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
             string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "", string filterDetailsText = null,
-            string headerHtml = null, string footerHtml = null, bool headerEveryPage = false, bool footerEveryPage = false, string currentUserName = null, string currentUserRoles = null)
+            string headerHtml = null, string footerHtml = null, bool headerEveryPage = false, bool footerEveryPage = false, string currentUserName = null, string currentUserRoles = null,
+            string customHtml = null)
         {
-            var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
+            bool hasCustomHtml = !string.IsNullOrWhiteSpace(customHtml);
+            // Only fetch tabular data when we are not rendering a custom HTML report.
+            var dt = hasCustomHtml ? new DataTable() : await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
             var subTotals = new decimal[dt.Columns.Count];
             bool hasHeaderHtml = !string.IsNullOrWhiteSpace(headerHtml);
             bool hasFooterHtml = !string.IsNullOrWhiteSpace(footerHtml);
@@ -3549,8 +3552,20 @@ namespace ReportBuilder.Web.Models
                             AddImageToBody(wordDocument, mainPart.GetIdOfPart(imagePart), widthInEmus, heightInEmus);
                         }
                     }
+                    if (hasCustomHtml)
+                    {
+                        var altBodyPart = mainPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
+                        var altBodyRelId = mainPart.GetIdOfPart(altBodyPart);
+                        var fullBodyHtml = WrapHtmlForWord(customHtml);
+                        using (var ms = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(fullBodyHtml)))
+                        {
+                            altBodyPart.FeedData(ms);
+                        }
+                        body.AppendChild(new AltChunk() { Id = altBodyRelId });
+                        body.AppendChild(new Paragraph());
+                    }
                     // Add data in table format
-                    if (dt.Rows.Count > 0)
+                    else if (dt.Rows.Count > 0)
                     {
                         // Create table
                         Table table = new Table();
@@ -3950,11 +3965,13 @@ namespace ReportBuilder.Web.Models
             int averageCharWidthInTwips = 120;
             return text.Length * averageCharWidthInTwips;
         }
-        public async static Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
-                      string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
-                      string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false,string pageSize="",string pageOrientation="",bool subTotalMode=false,bool includeColumnTotal=false, bool isSubreport = false,
-        int pageNumber = 1,
-        int currentPageSize = 1)
+
+        private async static Task<(IBrowser browser, IPage page)> LaunchAndLoadReportPrintPageAsync(
+            string printUrl, int reportId, string reportSql, string connectKey,
+            string userId, string clientId, string currentUserRole, string dataFilters,
+            bool expandAll, string expandSqls, string pivotColumn, string pivotFunction,
+            bool subTotalMode, bool includeColumnTotal, bool isSubreport,
+            int pageNumber, int currentPageSize, bool debug)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
@@ -3966,15 +3983,16 @@ namespace ReportBuilder.Web.Models
             }
 
             var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = !debug, ExecutablePath = executablePath });
-            var page = await browser.NewPageAsync();
-            await page.SetRequestInterceptionAsync(true);
-
+            IPage page = null;
             try
             {
+                page = await browser.NewPageAsync();
+                await page.SetRequestInterceptionAsync(true);
+
+                // Build the report data model so the print page can render without re-querying.
                 var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
                 IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
                 var data = await GetDataTable(reportSql, connectKey);
-
                 var qry = data.qry;
                 var sqlFields = data.sqlFields;
                 var dt = data.dt;
@@ -3983,7 +4001,7 @@ namespace ReportBuilder.Web.Models
                 {
                     if (!useAltPivot)
                     {
-                        var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false,false, subTotalMode, includeColumnTotal);
+                        var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false, false, subTotalMode, includeColumnTotal);
                         dt = pd.dt;
                         if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
                     }
@@ -3994,19 +4012,18 @@ namespace ReportBuilder.Web.Models
                     }
                     var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
                     sqlFields = sqlFields
-                        .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                        .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))
                         .ToList();
                     sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
                 }
+
                 if (isSubreport)
                 {
                     int skip = (pageNumber - 1) * currentPageSize;
                     var pagedRows = dt.AsEnumerable().Skip(skip).Take(currentPageSize);
-                    if (pagedRows.Any())
-                        dt = pagedRows.CopyToDataTable();
-                    else
-                        dt = dt.Clone(); 
+                    dt = pagedRows.Any() ? pagedRows.CopyToDataTable() : dt.Clone();
                 }
+
                 var model = new DotNetReportResultModel
                 {
                     ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
@@ -4022,7 +4039,6 @@ namespace ReportBuilder.Web.Models
                     }
                 };
 
-                var formPosted = false;
                 var formData = new StringBuilder();
                 formData.AppendLine("<html><body>");
                 formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
@@ -4041,6 +4057,7 @@ namespace ReportBuilder.Web.Models
                 formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
                 formData.AppendLine("</body></html>");
 
+                var formPosted = false;
                 page.Request += async (sender, e) =>
                 {
                     if (formPosted)
@@ -4057,27 +4074,41 @@ namespace ReportBuilder.Web.Models
 
                     formPosted = true;
                 };
-                page.Console += (sender, e) =>
-                {
-                    Console.WriteLine("[Console Error] " + e.Message);
-                };
-
-                page.PageError += (sender, error) =>
-                {
-                    Console.WriteLine("[Page Error] " + error.Message);
-                };
-
-                page.RequestFailed += (sender, e) =>
-                {
-                    Console.WriteLine($"[Request Failed] {e.Request.Url} - {e.Request.FailureText}");
-                };
+                page.Console += (sender, e) => Console.WriteLine("[Console Error] " + e.Message);
+                page.PageError += (sender, error) => Console.WriteLine("[Page Error] " + error.Message);
+                page.RequestFailed += (sender, e) => Console.WriteLine($"[Request Failed] {e.Request.Url} - {e.Request.FailureText}");
 
                 await page.GoToAsync(printUrl, new NavigationOptions
                 {
                     WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
                 });
-
                 await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
+
+                return (browser, page);
+            }
+            catch
+            {
+                if (page != null) await page.DisposeAsync();
+                await browser.DisposeAsync();
+                throw;
+            }
+        }
+
+        public async static Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
+                      string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
+                      string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false,string pageSize="",string pageOrientation="",bool subTotalMode=false,bool includeColumnTotal=false, bool isSubreport = false,
+        int pageNumber = 1,
+        int currentPageSize = 1)
+        {
+            var (browser, page) = await LaunchAndLoadReportPrintPageAsync(
+                printUrl, reportId, reportSql, connectKey,
+                userId, clientId, currentUserRole, dataFilters,
+                expandAll, expandSqls, pivotColumn, pivotFunction,
+                subTotalMode, includeColumnTotal, isSubreport,
+                pageNumber, currentPageSize, debug);
+
+            try
+            {
                 if (imageOnly)
                 {
                     try
@@ -4250,6 +4281,49 @@ namespace ReportBuilder.Web.Models
             catch (Exception ex)
             {
                 throw ex;
+            }
+            finally
+            {
+                if (page != null) await page.DisposeAsync();
+                if (browser != null) await browser.DisposeAsync();
+            }
+        }
+
+        public async static Task<string> GetReportRenderedHtml(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
+            string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
+            string pivotColumn = null, string pivotFunction = null)
+        {
+            IBrowser browser = null;
+            IPage page = null;
+            try
+            {
+                (browser, page) = await LaunchAndLoadReportPrintPageAsync(
+                    printUrl, reportId, reportSql, connectKey,
+                    userId, clientId, currentUserRole, dataFilters,
+                    expandAll, expandSqls, pivotColumn, pivotFunction,
+                    subTotalMode: false, includeColumnTotal: false, isSubreport: false,
+                    pageNumber: 1, currentPageSize: 99999, debug: false);
+
+                await Task.Delay(750);
+
+                var html = await page.EvaluateExpressionAsync<string>(@"
+                    (function () {
+                        var $area = $('.report-inner .report-expanded-scroll').first();
+                        if (!$area.length) $area = $('.report-inner').first();
+                        if (!$area.length) return '';
+                        var $clone = $area.clone();
+                        $clone.find('.report-spinner').remove();
+                        $clone.find('a[title=""Edit sub report""]').remove();
+                        $clone.find('script').remove();
+                        return $clone.html() || '';
+                    })();
+                ");
+
+                return html ?? "";
+            }
+            catch (Exception)
+            {
+                return "";
             }
             finally
             {
