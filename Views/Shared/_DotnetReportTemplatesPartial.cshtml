@@ -162,7 +162,8 @@
     <!-- ko foreach: Columns -->
     <th data-bind="attr: { id: !IsPivotField ? fieldId : 'pivot--' + fieldName }, style: {'text-align': fieldAlign() ? fieldAlign() : (IsNumeric ? 'right' : 'left'), 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
 
-        <div class="pull-left" data-bind="if: !$parent.IsDrillDown()" style="padding-right: 5px;">
+        <!-- ko if: !$parent.IsDrillDown() && !$parent.IsSubReport() -->
+        <div class="pull-left" style="padding-right: 5px;">
             <div class="dropup">
                 <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
                     <span class="fa fa-ellipsis-v sortable" title="Drag to reorder"></span>
@@ -212,6 +213,7 @@
                 </ul>
             </div>
         </div>
+        <!-- /ko -->
         <div data-bind="style: {'width': fieldWidth}">
             <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
             <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
@@ -371,7 +373,12 @@
     <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')}">
         <div data-bind="style: {'width': fieldWidth }, css: { 'text-wrap': fieldWidth }">
             <!-- ko if: LinkTo-->
+            <!-- ko if: $data._runLinkedReportInPlace -->
+            <a href="#" data-bind="click: $data._runLinkedReportInPlace"><span data-bind="html: formattedVal"></span></a>
+            <!-- /ko -->
+            <!-- ko ifnot: $data._runLinkedReportInPlace -->
             <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
+            <!-- /ko -->
             <!-- /ko-->
             <!-- ko ifnot: LinkTo-->
             <span data-bind="html: formattedVal"></span>
@@ -498,34 +505,7 @@
                 <tr>
                     <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
                         <div data-bind="foreach: subReportsRan">
-                            <div class="">
-                                <div class="" style="padding-bottom: 20px;" >
-                                    <h2 class="pull-left" data-bind="text: ReportName"></h2>
-
-                                    <div class="clearfix"></div>
-                                    <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
-                                        <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
-
-                                        <div data-bind="with: ReportResult" class="small">
-                                            <div data-bind="visible: !ReportData()">
-                                                <div class="report-spinner"></div>
-                                            </div>
-                                            <div data-bind="template: 'report-template', data: $data"></div>
-                                        </div>
-                                    </div>
-                                    <div class="form-inline">
-                                        <div class="small" data-bind="with: pager">
-                                            <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
-                                                <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
-                                            </div>
-                                            <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
-                                                <div data-bind="template: 'pager-template', data: $data"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
+                            <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
                         </div>
                     </td>
                 </tr>
@@ -629,35 +609,49 @@
             <div data-bind="html: renderedHtml, css: { 'card-view': $parents[$parents.length-1].cardView }"></div>
 
             <div data-bind="foreach: subReportsRan">
-                <div class="">
-                    <div class="" style="padding-bottom: 20px;">
-                        <h2 data-bind="text: ReportName"></h2>
-                        <div class="clearfix"></div>
-                        <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
-                            <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
-                            <div data-bind="with: ReportResult" class="small">
-                                <div data-bind="visible: !ReportData()">
-                                    <div class="report-spinner"></div>
-                                </div>
-                                <div data-bind="template: 'report-template', data: $data"></div>
-                            </div>
-                        </div>
-                        <div class="form-inline">
-                            <div class="small" data-bind="with: pager">
-                                <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
-                                    <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
-                                </div>
-                                <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
-                                    <div data-bind="template: 'pager-template', data: $data"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!-- ko if: !_isInline -->
+                <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
+                <!-- /ko -->
+                <!-- ko if: _isInline -->
+                <div style="display:none" data-bind="moveToInlineContainer: $data"></div>
+                <!-- /ko -->
             </div>
         </div>
     </div>
     <div class="clearfix"></div>
+</script>
+
+<script type="text/html" id="subreport-content">
+    <div class="" style="padding-bottom: 20px; position: relative;">
+        <a href="#" class="text-muted" title="Edit sub report" style="position: absolute; right: 5px; top: 2px;" data-bind="visible: CanEdit(), click: function() { var vm = _parentVM || $root; vm.editSubReport({ reportId: ReportID() }); }">
+            <span class="fa fa-pencil"></span>
+        </a>
+        <h2 data-bind="text: ReportName, visible: !_hideTitle"></h2>
+        <div class="clearfix"></div>
+        <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
+            <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+            <div data-bind="with: ReportResult" class="small">
+                <div data-bind="visible: !ReportData()">
+                    <div class="report-spinner"></div>
+                </div>
+                <!-- ko if: !$parent._isPlaceholder -->
+                <div data-bind="template: 'report-template', data: $data"></div>
+                <!-- /ko -->
+            </div>
+        </div>
+        <!-- ko if: !$data._isPlaceholder -->
+        <div class="form-inline" data-bind="visible: !_hidePager">
+            <div class="small" data-bind="with: pager">
+                <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
+                    <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                </div>
+                <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
+                    <div data-bind="template: 'pager-template', data: $data"></div>
+                </div>
+            </div>
+        </div>
+        <!-- /ko -->
+    </div>
 </script>
 
 
@@ -1642,7 +1636,12 @@
                     <div class="form-group row">
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report</label>
                         <div class="col-sm-7 col-md-7">
-                            <select class="form-select" required data-bind="options: savedReportsWithFolder, optionsText: function(r) { return (r.folderName ? r.folderName + ' \u203a ' : '') + r.reportName }, optionsValue: 'reportId', optionsCaption: '', value: LinkedToReportId, select2: { placeholder: 'Search reports or folders...', allowClear: true }"></select>
+                            <div class="d-flex gap-2 align-items-start">
+                                <select class="form-select" required data-bind="options: savedReportsWithFolder, optionsText: function(r) { return (r.folderName ? r.folderName + ' \u203a ' : '') + r.reportName }, optionsValue: 'reportId', optionsCaption: '', value: LinkedToReportId, select2: { placeholder: 'Search reports or folders...', allowClear: true }"></select>
+                                <button type="button" class="btn btn-sm btn-outline-success text-nowrap" title="Create a new report to link to" data-bind="click: createNewLinkedReport">
+                                    New
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="checkbox" data-bind="if: LinkedToReportId">
@@ -1655,6 +1654,17 @@
                         <label class="col-sm-5 col-md-5 control-label">Link to this Report Filter</label>
                         <div class="col-sm-7 col-md-7">
                             <select class="form-select" required data-bind="options: allFields, optionsText: function(f) { return (f.tableName ? f.tableName + ' \u203a ' : '') + f.fieldName }, optionsValue: 'fieldId', value: SelectedFilterId, optionsCaption: 'Choose the Field to Filter by value'"></select>
+                        </div>
+                    </div>
+                    <div data-bind="if: LinkedToReportId">
+                        <div class="mt-2 mb-1">
+                            <label class="form-check-label">
+                                <input type="checkbox" class="form-check-input" data-bind="checked: isSubReportOnly, click: function() { toggleLinkedReportSubReportOnly(); return true; }" />
+                                <span class="small">Only use as sub/linked report</span>
+                            </label>
+                            <div class="small text-muted ms-4">
+                                When checked, this report will be hidden from report folders and search results, and will only be run as a linked or sub report from the parent report.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1682,6 +1692,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" data-bind="click: removeLinkField">Remove Link</button>
+                <button type="button" class="btn btn-outline-primary" data-bind="visible: linkFieldItem.LinksToReport() && linkFieldItem.LinkedToReportId(), click: function() { saveLinkField(); linkFieldItem.editLinkedReport(); }">Edit Linked Report</button>
                 <button type="button" class="btn btn-primary" data-bind="click: saveLinkField">Save Changes</button>
             </div>
         </div>
@@ -2170,15 +2181,38 @@
                         data: subReports,
                         options: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight' }
                     }">
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-            <span>
-                <i class="fa fa-bars sortable me-2" style="cursor:move;"></i>
-                <span data-bind="text: name"></span>
-            </span>
-            <button type="button" class="btn btn-sm btn-outline-danger"
-                    data-bind="click: $parent.removeSubReport">
-                Delete
-            </button>
+        <li class="list-group-item">
+            <div class="d-flex justify-content-between align-items-center">
+                <span>
+                    <i class="fa fa-bars sortable me-2" style="cursor:move;"></i>
+                    <span data-bind="text: name"></span>
+                </span>
+                <span>
+                    <button type="button" class="btn btn-sm btn-outline-primary me-1" title="Edit sub report"
+                            data-bind="click: $parent.editSubReport">
+                        <i class="fa fa-edit"></i> Edit
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            data-bind="click: $parent.removeSubReport">
+                        Delete
+                    </button>
+                </span>
+            </div>
+            <div class="mt-1 d-flex gap-3 align-items-center flex-wrap">
+                <label class="form-check-label small">
+                    <input type="checkbox" class="form-check-input" data-bind="checked: isSubReportOnly, click: function() { setTimeout(function() { $parent.toggleSubReportOnly($data); }, 0); return true; }" />
+                    Sub report only
+                    <i class="fa fa-question-circle text-muted" title="When checked, this report will be hidden from folders and search, and can only run as a child report from here"></i>
+                </label>
+                <label class="form-check-label small">
+                    <input type="checkbox" class="form-check-input" data-bind="checked: hideTitle" />
+                    Hide title
+                </label>
+                <label class="form-check-label small">
+                    <input type="checkbox" class="form-check-input" data-bind="checked: hidePager" />
+                    Hide pager
+                </label>
+            </div>
         </li>
     </ul>
 </script>
@@ -2203,8 +2237,27 @@
                 <li><a class="dropdown-item" href="#" data-bind="click: insertFooterBreak">Add Footer Break</a></li>
             </ul>
         </div>
+        <!-- ko if: subReports().length > 0 -->
+        <div class="col-auto dropdown d-flex align-items-center gap-2">
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Insert a selected sub report inline at cursor position">
+                <i class="fa fa-bookmark"></i> Insert Sub Report
+            </button>
+            <i class="fa fa-info-circle text-muted"
+               data-bs-toggle="tooltip"
+               data-bs-placement="top"
+               title="Note: If you insert Sub Reports in custom report, only inserted sub reports will show and other sub reports will not render">
+            </i>
 
-        <div class="col-md-auto ms-2">
+            <ul class="dropdown-menu" data-bind="foreach: subReports">
+                <li>
+                    <a class="dropdown-item" href="#"
+                       data-bind="text: name, click: function() { $parent.insertSubReportPlaceholder($data); }">
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <!-- /ko -->
+        <div class="col-md-auto ms-auto">
         <label class="form-check-label">
             <input class="form-check-input me-2" type="checkbox" data-bind="checked: cardView">
             Card Layout
@@ -2397,10 +2450,12 @@
                                     value: DefaultPageSize,
                                     disable: subReports().length > 0">
                 </select>
+                </div>
                 <!-- Force default to 1 if sub reports selected -->
-                <small class="text-danger" data-bind="visible: subReports().length > 0">
-                    Page size is restricted to 1 when sub reports are selected.
-                </small>
+                <div class="col-12 mt-1" data-bind="visible: subReports().length > 0">
+                    <small class="text-danger">
+                        Page size is restricted to 1 when sub reports are selected.
+                    </small>
                 </div>
             </div>
         </div>
@@ -2731,6 +2786,26 @@
 <script type="text/html" id="report-designer-compact">
     <div class="designer-container compact-designer" id="choose-data-design" style="font-size:12px;">
 
+      <div class="alert alert-info mb-2 py-2 px-3" style="border-left: 4px solid #0d6efd; font-size: 13px;" data-bind="visible: editingSubReportParentId()">
+          <!-- ko if: _editingSubReportLoading() -->
+          <div class="d-flex align-items-center">
+              <span class="fa fa-spinner fa-spin me-2"></span>
+              <span>Loading sub report...</span>
+          </div>
+          <!-- /ko -->
+          <!-- ko ifnot: _editingSubReportLoading() -->
+          <div class="d-flex align-items-center justify-content-between">
+              <span>
+                  <i class="fa fa-info-circle me-1"></i>
+                  Editing sub report from <strong data-bind="text: editingSubReportParentName"></strong>.
+              </span>
+              <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bind="click: returnToParentReport">
+                  <i class="fa fa-arrow-left me-1"></i> Back to parent
+              </button>
+          </div>
+          <!-- /ko -->
+      </div>
+
       <!-- Visualization Toolbar -->
       <div class="card p-1 mb-2">
          <div class="card-header p-1 d-flex justify-content-between align-items-center">
@@ -2768,7 +2843,7 @@
         <div class="card flex-fill expandable-panel" id="dataPanel" style="max-width: 300px"
              data-bind="css:{'collapsed-vertical': panels.isCollapsed('dataPanel')}">
           <div class="card-header p-1" data-bind="click:function(){panels.togglePanel('dataPanel')}">
-            <i class="fa fa-database"></i> Data
+            <i class="fa fa-database"></i> Available Data
           </div>
 
           <div class="card-body p-1">
@@ -2873,6 +2948,12 @@
                     Save Report
                 </label>
             </div>
+            <div class="checkbox" data-bind="visible: adminMode() && ReportID()">
+                <label>
+                    <input type="checkbox" data-bind="checked: isSubReportOnly, click: function() { setTimeout(function() { toggleIsSubReportOnly(); }, 0); return true; }">
+                    Only use as sub report
+                </label>
+            </div>
             <div class="form-group row" data-bind="visible: SaveReport">
                 <label class="control-label h6">
                     <i class="fa fa-folder-open"></i> Choose Folder
@@ -2888,7 +2969,7 @@
 
         <!-- Schedule -->
         <div class="card flex-fill expandable-panel" id="schedulePanel"
-             data-bind="css:{'collapsed-vertical': panels.isCollapsed('schedulePanel')}, visible: SaveReport() && !ko.unwrap(appSettings.showScheduling)">
+             data-bind="css:{'collapsed-vertical': panels.isCollapsed('schedulePanel')}, visible: SaveReport() && !ko.unwrap(appSettings.showScheduling) && !isSubReportOnly()">
           <div class="card-header p-1" data-bind="click:function(){panels.togglePanel('schedulePanel')}">
             <i class="fa fa-hourglass"></i> Schedule
           </div>
@@ -2982,9 +3063,35 @@
         <div class="modal-content" style="display: flex; flex-direction: column; height: 100%;">
             <div class="modal-header">
                 <h5 class="modal-title" id="myModalLabel">
-                    <a title="Need help setting up a report?" target="_blank" href="https://dotnetreport.com/blogs/docs/designing-reports"><span class="fa fa-question-circle"></span></a> Design your Report
+                    <a title="Need help setting up a report?" target="_blank" href="https://dotnetreport.com/blogs/docs/designing-reports"><span class="fa fa-question-circle"></span></a>
+                    <!-- ko if: editingSubReportParentId() -->
+                    <i class="fa fa-link"></i> Editing Sub Report
+                    <!-- /ko -->
+                    <!-- ko ifnot: editingSubReportParentId() -->
+                    Design your Report
+                    <!-- /ko -->
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" data-bind="click: onModalCloseClicked" aria-label="Close"></button>
+            </div>
+            <div class="alert alert-info mb-0 rounded-0 py-2 px-3" style="border-left: 4px solid #0d6efd;" data-bind="visible: editingSubReportParentId()">
+                <!-- ko if: _editingSubReportLoading() -->
+                <div class="d-flex align-items-center py-1">
+                    <span class="fa fa-spinner fa-spin me-2"></span>
+                    <span>Loading sub report...</span>
+                </div>
+                <!-- /ko -->
+                <!-- ko ifnot: _editingSubReportLoading() -->
+                <div class="d-flex align-items-center justify-content-between">
+                    <span>
+                        <i class="fa fa-info-circle me-1"></i>
+                        You are editing a sub report linked from <strong data-bind="text: editingSubReportParentName"></strong>.
+                    </span>
+                    <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bind="click: returnToParentReport">
+                        <i class="fa fa-arrow-left me-1"></i> Back to parent report
+                    </button>
+                </div>
+                <small class="text-muted">When you save, you'll be returned to the parent report. You can also click "Back to parent report" to return without saving.</small>
+                <!-- /ko -->
             </div>
             <div class="modal-body needs-validation" style="overflow-y: hidden; flex-grow: 1; display: flex; flex-direction: column;">
                <div class="row flex-grow-1" style="min-height: 0;">
@@ -3130,6 +3237,12 @@
                                         Save Report
                                     </label>
                                 </div>
+                                <div class="checkbox" data-bind="visible: adminMode() && ReportID()">
+                                    <label>
+                                        <input type="checkbox" data-bind="checked: isSubReportOnly, click: function() { setTimeout(function() { toggleIsSubReportOnly(); }, 0); return true; }">
+                                        Only use as sub report
+                                    </label>
+                                </div>
                                 <div class="form-group row" data-bind="visible: SaveReport">
                                     <label class="control-label h6">
                                         <i class="fa fa-folder-open"></i> Choose Folder
@@ -3144,20 +3257,26 @@
                         <!-- ==================== LIVE PREVIEW MODE (activeDesign ON) ==================== -->
                         <div data-bind="visible: activeDesign()" class="live-preview-designer" style="font-size: 12px; display: none;">
 
-                            <!-- Data -->
+                            <!-- Report Name (always visible at top in live preview) -->
                             <div class="card mb-1 designer-panel">
-                                <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-dataPanel')}" style="cursor:pointer;">
-                                    <i class="fa fa-database"></i> Data
-                                    <i class="hint-tip fa fa-info-circle text-info ms-1" data-bind="visible: showHints()" data-bs-toggle="tooltip" title="<b>1. Pick a Table</b> from the dropdown &mdash; this is your data source.<br><b>2. Check fields</b> to add them to your report.<br><b>3. Join Tables:</b> If you need data from multiple tables, select additional tables and they&rsquo;ll be auto-joined if relationships exist.<br><b>Dynamic vs Stored Proc:</b> Dynamic builds SQL from your selections; Stored Proc calls a predefined database procedure."></i>
-                                    <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-dataPanel')}"></i>
-                                </div>
-                                <div class="card-body p-2" data-bind="visible: !panels.isCollapsed('lp-dataPanel')">
-                                    <div class="form-group row align-items-center mb-2">
-                                        <label class="col-sm-4 col-form-label"><i class="fa fa-file"></i> Name</label>
+                                <div class="card-body p-2">
+                                    <div class="form-group row align-items-center mb-0">
+                                        <label class="col-sm-4 col-form-label"><i class="fa fa-file"></i> Report Name</label>
                                         <div class="col-sm-8">
                                             <input type="text" class="form-control form-control-sm" required placeholder="Report Name" data-bind="value: ReportName">
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- Data -->
+                            <div class="card mb-1 designer-panel">
+                                <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-dataPanel')}" style="cursor:pointer;">
+                                    <i class="fa fa-database"></i> Available Data
+                                    <i class="hint-tip fa fa-info-circle text-info ms-1" data-bind="visible: showHints()" data-bs-toggle="tooltip" title="<b>1. Pick a Table</b> from the dropdown &mdash; this is your data source.<br><b>2. Check fields</b> to add them to your report.<br><b>3. Join Tables:</b> If you need data from multiple tables, select additional tables and they&rsquo;ll be auto-joined if relationships exist.<br><b>Dynamic vs Stored Proc:</b> Dynamic builds SQL from your selections; Stored Proc calls a predefined database procedure."></i>
+                                    <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-dataPanel')}"></i>
+                                </div>
+                                <div class="card-body p-2" data-bind="visible: !panels.isCollapsed('lp-dataPanel')">
                                     <div data-bind="template: 'designer-choose-data'"></div>
                                 </div>
                             </div>
@@ -3260,6 +3379,9 @@
                                     <div class="checkbox" data-bind="visible: CanSaveReports()">
                                         <label><input type="checkbox" data-bind="checked: SaveReport"> Save Report</label>
                                     </div>
+                                    <div class="checkbox" data-bind="visible: adminMode() && ReportID()">
+                                        <label><input type="checkbox" data-bind="checked: isSubReportOnly, click: function() { setTimeout(function() { toggleIsSubReportOnly(); }, 0); return true; }"> Only use as sub report</label>
+                                    </div>
                                     <div class="form-group row mb-2" data-bind="visible: SaveReport">
                                         <label class="control-label"><i class="fa fa-folder-open"></i> Folder</label>
                                         <div>
@@ -3274,7 +3396,7 @@
                             </div>
 
                             <!-- Schedule -->
-                            <div class="card mb-1 designer-panel" data-bind="visible: SaveReport() && !ko.unwrap(appSettings.showScheduling)">
+                            <div class="card mb-1 designer-panel" data-bind="visible: SaveReport() && !ko.unwrap(appSettings.showScheduling) && !isSubReportOnly()">
                                 <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-schedulePanel')}" style="cursor:pointer;">
                                     <i class="fa fa-hourglass"></i> Schedule
                                     <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-schedulePanel')}"></i>
@@ -3383,7 +3505,7 @@
                                 <div data-bind="template: 'designer-sort'"></div>
                             </div>
                             <br />
-                            <div data-bind="visible: SaveReport() && !ko.unwrap(appSettings.showScheduling)" class="card card-body">
+                            <div data-bind="visible: SaveReport() && !ko.unwrap(appSettings.showScheduling) && !isSubReportOnly()" class="card card-body">
                                 <h5><span class="fa fa-hourglass"></span>&nbsp;Choose Schedule</h5>
                                 <div style="padding: 10px 10px" data-bind="visible: SaveReport">
                                     <div data-bind="template: {name: 'report-schedule'}"></div>
@@ -3463,8 +3585,14 @@
                     <i class="fa fa-refresh"></i> Start Over
                 </button>
                 <a href="#" class="btn btn-danger" data-bind="click: cancelCreateReport">Cancel editing Report</a>
-                <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && CanSaveReports(), click: SaveWithoutRun" style="padding-right: 10px;">Save Report</button>
-                <button class="btn btn-primary" type="button" data-bind="text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report', click: SaveAndRunReport">Run Report</button>
+                <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && CanSaveReports(), click: SaveWithoutRun, disable: savingReport() || savingAndRunning()" style="padding-right: 10px;">
+                    <!-- ko if: savingReport() --><span class="fa fa-spinner fa-spin me-1"></span>Saving...<!-- /ko -->
+                    <!-- ko ifnot: savingReport() -->Save Report<!-- /ko -->
+                </button>
+                <button class="btn btn-primary" type="button" data-bind="click: SaveAndRunReport, visible: !editingSubReportParentId(), disable: savingReport() || savingAndRunning()">
+                    <!-- ko if: savingAndRunning() --><span class="fa fa-spinner fa-spin me-1"></span>Saving...<!-- /ko -->
+                    <!-- ko ifnot: savingAndRunning() --><!-- ko text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report' --><!-- /ko --><!-- /ko -->
+                </button>
             </div>
 
         </div>
@@ -3740,7 +3868,12 @@
                                 <td data-bind="hidden: outerGroup, style: {'background-color': backColor, 'color': fontColor, 'font-weight': fontBold() ? 'bold' : 'normal' }">
                                     <div data-bind="style: {'width': fieldWidth }">
                                         <!-- ko if: LinkTo-->
+                                        <!-- ko if: $data._runLinkedReportInPlace -->
+                                        <a href="#" data-bind="click: $data._runLinkedReportInPlace"><span data-bind="html: formattedVal"></span></a>
+                                        <!-- /ko -->
+                                        <!-- ko ifnot: $data._runLinkedReportInPlace -->
                                         <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
+                                        <!-- /ko -->
                                         <!-- /ko-->
                                         <!-- ko ifnot: LinkTo-->
                                         <span data-bind="html: formattedVal"></span>
@@ -4006,7 +4139,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-success" data-bs-dismiss="modal" data-bind="click: download">
-                    <i class="fa fa-download me-1"></i> Download WORD
+                    <i class="fa fa-download me-1"></i> Download Word
                 </button>
             </div>
         </div>

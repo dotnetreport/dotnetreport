@@ -98,6 +98,9 @@
             <div data-bind="with: ReportResult" class="report-inner" style="display: none;">
                 <div data-bind="template: 'report-template', data: $data"></div>
             </div>
+            <div style="margin-left: 25px;" data-bind="visible: useReportFooter">
+                <div id="report-footer" width="900" data-bind="html: footerDesigner.footerHtml"></div>
+            </div>
             <br />
         </div>
         <!-- /ko -->
@@ -124,38 +127,46 @@
           <div data-bind="html: renderedHtml, css: { 'card-view': $parents[$parents.length-1].cardView }"></div>
 
           <div data-bind="foreach: subReportsRan">
-              <div class="">
-                  <div class="" style="padding-bottom: 20px;" >
-                      <h2 data-bind="text: ReportName"></h2>
-
-                      <div class="clearfix"></div>
-                      <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
-                          <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
-
-                          <div data-bind="with: ReportResult" class="small">
-                              <div data-bind="visible: !ReportData()">
-                                  <div class="report-spinner"></div>
-                              </div>
-                              <div data-bind="template: 'report-template', data: $data"></div>
-                          </div>
-                      </div>
-                      <div class="form-inline">
-                          <div class="small" data-bind="with: pager">
-                              <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
-                                  <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
-                              </div>
-                              <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
-                                  <div data-bind="template: 'pager-template', data: $data"></div>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-
-              </div>
+              <!-- ko if: !_isInline -->
+              <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
+              <!-- /ko -->
+              <!-- ko if: _isInline -->
+              <div style="display:none" data-bind="moveToInlineContainer: $data"></div>
+              <!-- /ko -->
           </div>
         </div>
         </div>
         <div class="clearfix"></div>
+    </script>
+
+    <script type="text/html" id="subreport-content">
+        <div class="" style="padding-bottom: 20px;">
+            <h2 data-bind="text: ReportName, visible: !_hideTitle"></h2>
+            <div class="clearfix"></div>
+            <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
+                <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+                <div data-bind="with: ReportResult" class="small">
+                    <div data-bind="visible: !ReportData()">
+                        <div class="report-spinner"></div>
+                    </div>
+                    <!-- ko if: !$parent._isPlaceholder -->
+                    <div data-bind="template: 'report-template', data: $data"></div>
+                    <!-- /ko -->
+                </div>
+            </div>
+            <!-- ko if: !$data._isPlaceholder -->
+            <div class="form-inline" data-bind="visible: !_hidePager">
+                <div class="small" data-bind="with: pager">
+                    <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
+                        <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                    </div>
+                    <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
+                        <div data-bind="template: 'pager-template', data: $data"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- /ko -->
+        </div>
     </script>
 
     <script type="text/html" id="report-template">
@@ -345,34 +356,7 @@
                 <tr>
                     <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
                         <div data-bind="foreach: subReportsRan">
-                            <div class="">
-                                <div class="" style="padding-bottom: 20px;" >
-                                    <h2 data-bind="text: ReportName"></h2>
-
-                                    <div class="clearfix"></div>
-                                    <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
-                                        <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
-
-                                        <div data-bind="with: ReportResult" class="small">
-                                            <div data-bind="visible: !ReportData()">
-                                                <div class="report-spinner"></div>
-                                            </div>
-                                            <div data-bind="template: 'report-template', data: $data"></div>
-                                        </div>
-                                    </div>
-                                    <div class="form-inline">
-                                        <div class="small" data-bind="with: pager">
-                                            <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
-                                                <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
-                                            </div>
-                                            <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
-                                                <div data-bind="template: 'pager-template', data: $data"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
+                            <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
                         </div>
                     </td>
                 </tr>
@@ -514,6 +498,65 @@
             if (vm.useReportHeader()) {
                 vm.headerDesigner.init(true);
             }
+            if (vm.useReportFooter()) {
+                vm.footerDesigner.init(true);
+            }
+
+            setTimeout(function () {
+                try {
+                    var userName = vm.currentUserName || vm.currentUserId || '';
+                    var userRoles = vm.currentUserRole || '';
+                    var nowStr = new Date().toLocaleString();
+
+                    function substitutePlaceholders(html) {
+                        if (!html) return html;
+                        return html
+                            .replace(/\{current\.user\}/g, userName)
+                            .replace(/\{CURRENTUSER\}/g, userName)
+                            .replace(/\{current\.user\.roles\}/g, userRoles)
+                            .replace(/\{CURRENTUSERROLES\}/g, userRoles)
+                            .replace(/\{current\.datetime\}/g, nowStr)
+                            .replace(/\{CURRENTDATETIME\}/g, nowStr);
+                    }
+                    function substituteInDocPagePlaceholders(html) {
+                        if (!html) return html;
+                        return html
+                            .replace(/\{page\.number\}/g, '1')
+                            .replace(/\{page\.total\}/g, '1');
+                    }
+
+                    var $h = $('#report-header');
+                    var $f = $('#report-footer');
+
+                    var rawHeaderHtml = $h.length ? substitutePlaceholders($h.html()) : '';
+                    var rawFooterHtml = $f.length ? substitutePlaceholders($f.html()) : '';
+
+                    if ($h.length) { $h.html(substituteInDocPagePlaceholders(substitutePlaceholders($h.html()))); }
+                    if ($f.length) { $f.html(substituteInDocPagePlaceholders(substitutePlaceholders($f.html()))); }
+
+                    window.reportHeaderHtml = rawHeaderHtml;
+                    window.reportFooterHtml = rawFooterHtml;
+                    window.reportHeaderIncludeOnEveryPage = vm.headerDesigner && vm.headerDesigner.IncludeOnEveryPage ? vm.headerDesigner.IncludeOnEveryPage() : false;
+                    window.reportFooterIncludeOnEveryPage = vm.footerDesigner && vm.footerDesigner.IncludeOnEveryPage ? vm.footerDesigner.IncludeOnEveryPage() : false;
+
+                    function measureHtmlHeightInches(html) {
+                        if (!html) return 0;
+                        var d = document.createElement('div');
+                        d.style.position = 'absolute';
+                        d.style.visibility = 'hidden';
+                        d.style.left = '-99999px';
+                        d.style.top = '0';
+                        d.style.width = '7.5in';
+                        d.innerHTML = html;
+                        document.body.appendChild(d);
+                        var px = d.offsetHeight;
+                        d.parentNode.removeChild(d);
+                        return px / 96.0;
+                    }
+                    window.reportHeaderHeightIn = $h.length ? measureHtmlHeightInches($h.html()) : 0;
+                    window.reportFooterHeightIn = $f.length ? measureHtmlHeightInches($f.html()) : 0;
+                } catch (e) { console.log('placeholder substitution failed', e); }
+            }, 600);
 
             if (vm.useStoredProc()) {
                 setTimeout(function(){

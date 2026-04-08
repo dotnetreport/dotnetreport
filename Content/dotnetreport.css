@@ -9,6 +9,18 @@
     background-color: #fff;
 }
 
+/* Hide summernote tableresize plugin handles outside the editor (when running/printing reports) */
+.resize-col,
+.resize-row,
+.resize-corner {
+    display: none !important;
+}
+.note-editable .resize-col,
+.note-editable .resize-row,
+.note-editable .resize-corner {
+    display: block !important;
+}
+
 .listbox {
     min-width: 200px;
     width: 100%;
