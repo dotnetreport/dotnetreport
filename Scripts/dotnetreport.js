@@ -1053,6 +1053,25 @@ var reportViewModel = function (options) {
 	self.IncludeColumnTotal = ko.observable(false);
 	self.ShowUniqueRecords = ko.observable(false);
 	self.ShowExpandOption = ko.observable(false);
+	self.availableDataFilterIds = ko.observableArray([]);
+	self.bypassEnabled = ko.observable(false);
+	self.bypassMode = ko.observable("all"); // "all" | "specific"
+	self.bypassSpecificIds = ko.observableArray([]);
+	self.bypassSpecificIdsText = ko.computed({
+		read: function () { return self.bypassSpecificIds().join(","); },
+		write: function (val) { self.bypassSpecificIds(val.split(",").map(function (s) { return s.trim(); }).filter(Boolean)); }
+	});
+	self.bypassEnabled.subscribe(function (val) {
+		if (val && self.adminMode() && self.availableDataFilterIds.peek().length === 0) {
+			ajaxcall({
+				url: (options.runReportApiUrl || '').replace('RunReportApi', 'GetDataFilterKeys'),
+				type: 'GET'
+			}).done(function (result) {
+				if (result && result.d) result = result.d;
+				self.availableDataFilterIds(result || []);
+			});
+		}
+	});
 	self.DontExecuteOnRun = ko.observable(false);
 	self.AggregateReport = ko.observable(false);
 	self.ShowFilterDetails = ko.observable(false);
@@ -1080,10 +1099,223 @@ var reportViewModel = function (options) {
 	self.isModalOpen = ko.observable(false);
 	self.cardView = ko.observable(false);
 	self.dontGroupCustom = ko.observable(false);
+	self.customJoins = ko.observableArray([]);
+	self.selectedReport = self;
+	self.detectedJoins = ko.observableArray([]);
+	self.baseTableIdOverride = ko.observable(null);
+	self.joinBaseTables = ko.observableArray([]);
 	self.isDirty = ko.observable(false);
 	self.activeDesign = ko.observable(false);
 	self.panels = new DesignerViewModel();
 	self.selectMode = ko.observable(false);
+
+	self.swapJoinDirection = function (join) {
+		var swapped = {
+			tableId: join.joinedTableId,
+			tableName: join.joinedTableName,
+			fieldName: join.joinFieldName,
+			joinedTableId: join.tableId,
+			joinedTableName: join.tableName,
+			joinFieldName: join.fieldName,
+			joinType: join.joinType,
+			joinOrder: join.joinOrder,
+			isForeignKey: join.isForeignKey,
+			fieldId: join.fieldId
+		};
+
+		var all = self.detectedJoins();
+		var idx = all.indexOf(join);
+		if (idx >= 0) {
+			self.detectedJoins.splice(idx, 1, swapped);
+		}
+
+		// Refresh base tables list
+		self._refreshJoinBaseTables();
+	};
+
+	self._refreshJoinBaseTables = function () {
+		var tableMap = {};
+		_.forEach(self.detectedJoins(), function (j) {
+			if (j.tableId) tableMap[j.tableId] = j.tableName;
+			if (j.joinedTableId) tableMap[j.joinedTableId] = j.joinedTableName;
+		});
+		// Also include tables from selected fields (covers base tables)
+		_.forEach(self.SelectedFields(), function (f) {
+			if (f.tableId && !tableMap[f.tableId]) tableMap[f.tableId] = f.tableName;
+			// For FK fields, resolve the foreign table ID by looking up table name
+			if (f.hasForeignKey && f.foreignTable) {
+				var fkTableName = f.foreignTable.toLowerCase().indexOf(' as') > -1 ? f.foreignTable.split(' ')[0] : f.foreignTable;
+				var fkTableObj = _.find(self.Tables(), function (t) { return t.tableName === fkTableName; });
+				if (fkTableObj && !tableMap[fkTableObj.tableId]) {
+					tableMap[fkTableObj.tableId] = fkTableObj.tableName;
+				}
+			}
+		});
+		var tables = [];
+		_.forEach(tableMap, function (name, id) {
+			tables.push({ id: parseInt(id), name: name });
+		});
+		tables.sort(function (a, b) { return a.name.localeCompare(b.name); });
+		self.joinBaseTables(tables);
+	};
+
+	self.detectJoinsForReport = function () {
+		// Collect unique tableIds from selected fields
+		var tableIds = [];
+		_.forEach(self.SelectedFields(), function (f) {
+			if (f.tableId && tableIds.indexOf(f.tableId) === -1) {
+				tableIds.push(f.tableId);
+			}
+		});
+
+		if (tableIds.length < 2) {
+			self.detectedJoins([]);
+			toastr.info('This report uses only one table. No joins to configure.');
+			return;
+		}
+
+		ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/GetRelationsForTables",
+				model: JSON.stringify({
+					tableIds: JSON.stringify(tableIds)
+				})
+			}
+		}).done(function (result) {
+			if (result.d) { result = result.d; }
+			if (result.result) { result = result.result; }
+
+			var existingOverrides = ko.toJS(self.customJoins());
+			var seenPairs = {};
+			var joins = [];
+
+			// Add relation-based joins from API
+			_.forEach(result, function (r) {
+				var pairKey = Math.min(r.TableId, r.JoinedTableId) + '_' + Math.max(r.TableId, r.JoinedTableId);
+				if (seenPairs[pairKey]) return;
+				seenPairs[pairKey] = true;
+
+				var existingOverride = _.find(existingOverrides, function (o) {
+					return !o.isForeignKey &&
+						((o.tableId === r.TableId && o.joinedTableId === r.JoinedTableId) ||
+						 (o.tableId === r.JoinedTableId && o.joinedTableId === r.TableId));
+				});
+
+				// If override swapped direction, use its tableId/joinedTableId
+				var tableId = r.TableId, joinedTableId = r.JoinedTableId;
+				var tableName = r.TableName, joinedTableName = r.JoinedTableName;
+				var fieldName = r.FieldName, joinFieldName = r.JoinFieldName;
+
+				if (existingOverride) {
+					tableId = existingOverride.tableId;
+					joinedTableId = existingOverride.joinedTableId;
+					tableName = existingOverride.tableName || r.TableName;
+					joinedTableName = existingOverride.joinedTableName || r.JoinedTableName;
+					fieldName = existingOverride.fieldName || r.FieldName;
+					joinFieldName = existingOverride.joinFieldName || r.JoinFieldName;
+				}
+
+				joins.push({
+					tableId: tableId,
+					joinedTableId: joinedTableId,
+					tableName: tableName,
+					joinedTableName: joinedTableName,
+					joinType: ko.observable(existingOverride ? existingOverride.joinType : r.JoinType),
+					fieldName: fieldName,
+					joinFieldName: joinFieldName,
+					joinOrder: ko.observable(existingOverride && existingOverride.joinOrder != null ? existingOverride.joinOrder : r.JoinOrder),
+					isForeignKey: false
+				});
+			});
+
+			_.forEach(self.SelectedFields(), function (f) {
+				if (f.hasForeignKey && !f.foreignFilterOnly && f.foreignTable) {
+					var fkTableName = f.foreignTable.toLowerCase().indexOf(' as') > -1 ? f.foreignTable.split(' ')[0] : f.foreignTable;
+					var alreadyCovered = _.find(joins, function (j) {
+						return !j.isForeignKey &&
+							((j.tableName === f.tableName && j.joinedTableName === fkTableName) ||
+							 (j.tableName === fkTableName && j.joinedTableName === f.tableName));
+					});
+					if (alreadyCovered) return;
+
+					var fkKey = 'fk_' + f.tableId + '_' + f.fieldId;
+					if (seenPairs[fkKey]) return;
+					seenPairs[fkKey] = true;
+
+					var existingOverride = _.find(existingOverrides, function (o) {
+						return o.isForeignKey && o.fieldId === f.fieldId;
+					});
+					joins.push({
+						tableId: f.tableId,
+						joinedTableId: 0,
+						tableName: f.tableName,
+						joinedTableName: f.foreignTable,
+						joinType: ko.observable(existingOverride ? existingOverride.joinType : (f.foreignJoin || 'INNER')),
+						fieldName: f.dbField ? f.dbField.replace(/[\[\]"]/g, '').split('.').pop() : '',
+						joinFieldName: f.foreignKey || '',
+						joinOrder: ko.observable(existingOverride && existingOverride.joinOrder != null ? existingOverride.joinOrder : joins.length),
+						isForeignKey: true,
+						fieldId: f.fieldId
+					});
+				}
+			});
+
+			// Sort by joinOrder
+			joins.sort(function (a, b) { return a.joinOrder() - b.joinOrder(); });
+
+			self.detectedJoins(joins);
+
+			var hasCustomJoins = self.customJoins() && self.customJoins().length > 0;
+			var firstField = self.SelectedFields()[0];
+			var defaultBaseTableId = (hasCustomJoins && self.baseTableIdOverride()) ? self.baseTableIdOverride() : (firstField ? firstField.tableId : null);
+
+			self._refreshJoinBaseTables();
+			if (defaultBaseTableId != null) {
+				self.baseTableIdOverride(parseInt(defaultBaseTableId));
+			}
+
+			$('#weightedmodal-configure-joins').modal('show');
+		});
+	};
+
+	self.reportJoinSorted = function (args) {
+		_.forEach(self.detectedJoins(), function (e, i) {
+			e.joinOrder(i);
+		});
+	};
+
+	self.saveCustomJoins = function () {
+		var joins = _.map(self.detectedJoins(), function (j, i) {
+			var obj = {
+				tableId: j.tableId,
+				joinedTableId: j.joinedTableId,
+				joinType: j.joinType(),
+				tableName: j.tableName,
+				joinedTableName: j.joinedTableName,
+				fieldName: j.fieldName,
+				joinFieldName: j.joinFieldName,
+				joinOrder: i,
+				isForeignKey: j.isForeignKey || false
+			};
+			if (j.isForeignKey && j.fieldId) {
+				obj.fieldId = j.fieldId;
+			}
+			return obj;
+		});
+		self.customJoins(joins);
+		self.baseTableIdOverride(self.baseTableIdOverride());
+		$('#weightedmodal-configure-joins').modal('hide');
+		toastr.success('Join overrides applied to this report.');
+	};
+
+	self.clearCustomJoins = function () {
+		self.customJoins([]);
+		self.detectedJoins([]);
+		self.baseTableIdOverride(null);
+		$('#weightedmodal-configure-joins').modal('hide');
+		toastr.info('Join overrides cleared. Using global join settings.');
+	};
 
 	$(document).on('shown.bs.modal', '.modal', function (e) {
 		if (options.reportWizard && options.reportWizard.is(e.target)) {
@@ -3758,6 +3990,9 @@ var reportViewModel = function (options) {
 		self.EditFiltersOnReport(false);
 		self.ShowUniqueRecords(false);
 		self.ShowExpandOption(false);
+		self.bypassEnabled(false);
+		self.bypassMode("all");
+		self.bypassSpecificIds([]);
 		self.DontExecuteOnRun(false);
 		self.ShowFilterDetails(false);
 		self.AggregateReport(false);
@@ -5005,6 +5240,8 @@ var reportViewModel = function (options) {
 				includeColumnTotal: self.IncludeColumnTotal(),
 				totalRowFormat: self.totalRowFormat(),
 				subTotalPerGroup: self.subTotalPerGroup(),
+				customJoins: ko.toJS(self.customJoins()),
+				customJoinsBaseTableId: self.baseTableIdOverride(),
 				ShowFilterDetails: self.ShowFilterDetails(),
 			}),
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
@@ -5257,6 +5494,7 @@ var reportViewModel = function (options) {
 								SaveReport: _saveReport && idx === 0,
 								ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, idx - 1)),
 								adminMode: self.adminMode(),
+								BypassDataFiltersToUpdate: self.bypassEnabled() ? (self.bypassMode() === "all" ? "/all/" : self.bypassSpecificIds().join(",")) : "",
 								userIdForFilter: self.userIdForFilter,
 								SubTotalMode: false,
 								useAltPivot: self.appSettings.useAltPivot
@@ -8774,6 +9012,10 @@ var reportViewModel = function (options) {
 		var reportSettings = JSON.parse(report.ReportSettings || "{}");
 		self.selectedStyle(reportSettings.SelectedStyle || 'default');
 		self.ShowExpandOption(reportSettings.ShowExpandOption === true ? true : false);
+		var bdf = report.BypassDataFilters || "";
+		self.bypassEnabled(bdf !== "");
+		self.bypassMode(bdf === "/all/" || !bdf ? "all" : "specific");
+		self.bypassSpecificIds(bdf && bdf !== "/all/" ? bdf.split(",").filter(Boolean) : []);
 		self.DontExecuteOnRun(reportSettings.DontExecuteOnRun === true ? true : false);
 		self.ShowFilterDetails(reportSettings.ShowFilterDetails === true ? true : false);
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
@@ -8813,6 +9055,8 @@ var reportViewModel = function (options) {
 		self.reportHtml(decodeURIComponent(reportSettings.reportHtml));
 		self.cardView(reportSettings.cardView === true ? true : false);
 		self.dontGroupCustom(reportSettings.dontGroupCustom === true ? true : false);
+		self.customJoins(reportSettings.customJoins || []);
+		self.baseTableIdOverride(reportSettings.customJoinsBaseTableId || null);
 		self.subReports(reportSettings.subReports || []);
 		if (self.subReports().length <= 0) {
 			self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
@@ -10362,10 +10606,10 @@ var dashboardViewModel = function (options) {
 		dontWordExport: false,
 		usePromptBuilder: true,
 		showPageSize: false,
-		showImportExport: false,
 		canCopyReport: true,
 		useFunctions: false,
-		showScheduling: false,
+		showImportExport: ko.observable(false),
+		showScheduling: ko.observable(false),
 		showDesignerHints: true,
 		aiProvider: '',
 		aiEnabled: false
@@ -10397,13 +10641,13 @@ var dashboardViewModel = function (options) {
 			self.appSettings.dontWordExport = x.dontWordExport;
 			self.appSettings.usePromptBuilder = x.usePromptBuilder;
 			self.appSettings.showPageSize = x.showPageSize;
-			self.appSettings.showImportExport = x.showImportExport;
 			self.appSettings.canCopyReport = x.canCopyReport;
 			self.appSettings.useFunctions = x.useFunctions;
-			self.appSettings.showScheduling = x.showScheduling;
 			self.appSettings.showDesignerHints = x.showDesignerHints !== false;
 			self.appSettings.aiProvider = x.aiProvider || '';
 			self.appSettings.aiEnabled = x.aiEnabled === true || (x.aiProvider && x.aiProvider !== '');
+			self.appSettings.showImportExport(x.showImportExport);
+			self.appSettings.showScheduling(x.showScheduling);
 		});
 	}
 
