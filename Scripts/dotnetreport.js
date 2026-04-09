@@ -3013,18 +3013,93 @@ var reportViewModel = function (options) {
 
 	self.selectedMoreChart = ko.observable(null);
 
+	// Build chart cards programmatically — avoids all KO foreach/rebind issues
+	self._renderMoreChartsGrid = function () {
+		var grid = document.getElementById('moreChartsGridPanel');
+		if (!grid) return;
+		var html = '';
+		var cats = self.moreChartCategories();
+		cats.forEach(function (cat) {
+			html += '<h6 class="text-muted text-uppercase small fw-bold mt-3 mb-2 px-3">' + _.escape(cat) + '</h6>';
+			html += '<div class="row g-2 px-3">';
+			var charts = self.getChartsForCategory(cat);
+			charts.forEach(function (chart) {
+				var classes = 'chart-card card h-100 text-center p-2';
+				if (self.ReportType() === chart.id) classes += ' active-chart';
+				if (!chart.available) classes += ' chart-card-disabled';
+				html += '<div class="col-6 col-md-4">';
+				html += '<div class="' + classes + '" style="cursor:pointer;" data-chart-id="' + _.escape(chart.id) + '">';
+				html += '<div class="chart-card-icon mb-1"><i class="fa fa-2x ' + _.escape(chart.icon) + '"></i></div>';
+				html += '<div class="fw-semibold small">' + _.escape(chart.name) + '</div>';
+				html += '<div class="text-muted" style="font-size: 10px;">' + _.escape(chart.desc) + '</div>';
+				if (!chart.available) {
+					html += '<span class="badge bg-secondary mt-1" style="font-size: 9px;">Coming Soon</span>';
+				}
+				html += '</div></div>';
+			});
+			html += '</div>';
+		});
+		html += '<div class="pb-3"></div>';
+		grid.innerHTML = html;
+
+		// Wire up click handlers
+		grid.querySelectorAll('.chart-card').forEach(function (card) {
+			card.addEventListener('click', function () {
+				var id = card.getAttribute('data-chart-id');
+				var chart = _.find(self.moreChartTypes, function (t) { return t.id === id; });
+				if (chart) self.selectMoreChart(chart);
+			});
+		});
+	};
+
+	self._renderMoreChartsDetail = function () {
+		var panel = document.getElementById('moreChartsDetailPanel');
+		if (!panel) return;
+		var chart = self.selectedMoreChart();
+		var html = '';
+		if (chart) {
+			html += '<div class="p-3">';
+			html += '<div class="text-center mb-2">';
+			html += '<h5 class="fw-bold mb-1">' + _.escape(chart.name) + '</h5>';
+			html += '<span class="badge bg-light text-dark">' + _.escape(chart.category) + '</span>';
+			html += '</div>';
+			html += '<div class="mb-3 more-chart-preview-svg p-2">' + (chart.svg || '') + '</div>';
+			html += '<p class="mb-3" style="font-size: 13px; line-height: 1.5;">' + _.escape(chart.detail || '') + '</p>';
+			html += '<div class="mb-3"><div class="fw-semibold small text-uppercase text-muted mb-1"><i class="fa fa-lightbulb-o"></i> Best For</div>';
+			html += '<p class="small mb-0" style="line-height: 1.5;">' + _.escape(chart.bestFor || '') + '</p></div>';
+			html += '<div class="mb-3"><div class="fw-semibold small text-uppercase text-muted mb-1"><i class="fa fa-database"></i> Data Requirements</div>';
+			html += '<p class="small mb-0" style="line-height: 1.5;">' + _.escape(chart.needs || '') + '</p></div>';
+			if (!chart.available) {
+				html += '<div class="alert alert-secondary small py-2 mb-3"><i class="fa fa-clock-o"></i> This visualization is coming soon and not yet available.</div>';
+			} else {
+				html += '<button type="button" class="btn btn-primary w-100" id="moreChartsConfirmBtn"><i class="fa fa-check"></i> Use This Visualization</button>';
+			}
+			html += '</div>';
+		} else {
+			html += '<div class="p-3 text-center text-muted d-flex flex-column align-items-center justify-content-center h-100">';
+			html += '<i class="fa fa-hand-pointer-o fa-3x mb-3" style="opacity: 0.3;"></i>';
+			html += '<p class="mb-0">Select a chart type to see details and preview</p></div>';
+		}
+		panel.innerHTML = html;
+
+		var confirmBtn = document.getElementById('moreChartsConfirmBtn');
+		if (confirmBtn) confirmBtn.addEventListener('click', function () { self.confirmMoreChart(); });
+
+		// Highlight selected card in the grid
+		var grid = document.getElementById('moreChartsGridPanel');
+		if (grid) {
+			grid.querySelectorAll('.chart-card').forEach(function (c) {
+				c.classList.toggle('chart-card-selected', !!chart && c.getAttribute('data-chart-id') === chart.id);
+			});
+		}
+	};
+
 	self.showMoreCharts = function () {
 		self.selectedMoreChart(null);
 		var modal = document.getElementById('moreChartsModal');
 		if (modal) {
-			// Re-bind the entire modal content to the current report VM
-			// (needed for dashboard where the page-level VM doesn't have chart type data)
-			var content = modal.querySelector('.modal-content');
-			if (content && modal._koBound !== self) {
-				ko.cleanNode(content);
-				ko.applyBindings(self, content);
-				modal._koBound = self;
-			}
+			self._renderMoreChartsGrid();
+			self._renderMoreChartsDetail();
 			new bootstrap.Modal(modal).show();
 		}
 	};
@@ -3054,6 +3129,7 @@ var reportViewModel = function (options) {
 	self.selectMoreChart = function (chart) {
 		if (!chart.available) return;
 		self.selectedMoreChart(chart);
+		self._renderMoreChartsDetail();
 	};
 
 	self.confirmMoreChart = function () {

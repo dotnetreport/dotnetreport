@@ -1764,70 +1764,12 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-0" data-bind="if: $data.moreChartCategories">
+            <div class="modal-body p-0" data-bind="stopBindings: true">
                 <div class="d-flex more-charts-layout">
-                    <!-- Left: Chart Type Grid -->
-                    <div class="more-charts-grid-panel">
-                        <!-- ko foreach: moreChartCategories() -->
-                        <h6 class="text-muted text-uppercase small fw-bold mt-3 mb-2 px-3" data-bind="text: $data"></h6>
-                        <div class="row g-2 px-3">
-                            <!-- ko foreach: $root.getChartsForCategory($data) -->
-                            <div class="col-6 col-md-4">
-                                <div class="chart-card card h-100 text-center p-2" style="cursor:pointer;"
-                                     data-bind="click: function(){ $root.selectMoreChart($data); },
-                                                css: { 'active-chart': $root.ReportType() === id,
-                                                       'chart-card-selected': $root.selectedMoreChart() && $root.selectedMoreChart().id === id,
-                                                       'chart-card-disabled': !available }">
-                                    <div class="chart-card-icon mb-1">
-                                        <i class="fa fa-2x" data-bind="css: icon"></i>
-                                    </div>
-                                    <div class="fw-semibold small" data-bind="text: name"></div>
-                                    <div class="text-muted" style="font-size: 10px;" data-bind="text: desc"></div>
-                                    <!-- ko if: !available -->
-                                    <span class="badge bg-secondary mt-1" style="font-size: 9px;">Coming Soon</span>
-                                    <!-- /ko -->
-                                </div>
-                            </div>
-                            <!-- /ko -->
-                        </div>
-                        <!-- /ko -->
-                        <div class="pb-3"></div>
-                    </div>
-                    <!-- Right: Detail Preview Panel -->
-                    <div class="more-charts-detail-panel">
-                        <!-- ko if: selectedMoreChart() -->
-                        <div class="p-3">
-                            <div class="text-center mb-2">
-                                <h5 class="fw-bold mb-1" data-bind="text: selectedMoreChart().name"></h5>
-                                <span class="badge bg-light text-dark" data-bind="text: selectedMoreChart().category"></span>
-                            </div>
-                            <div class="mb-3 more-chart-preview-svg p-2" data-bind="html: selectedMoreChart().svg"></div>
-                            <p class="mb-3" data-bind="text: selectedMoreChart().detail" style="font-size: 13px; line-height: 1.5;"></p>
-                            <div class="mb-3">
-                                <div class="fw-semibold small text-uppercase text-muted mb-1"><i class="fa fa-lightbulb-o"></i> Best For</div>
-                                <p class="small mb-0" data-bind="text: selectedMoreChart().bestFor" style="line-height: 1.5;"></p>
-                            </div>
-                            <div class="mb-3">
-                                <div class="fw-semibold small text-uppercase text-muted mb-1"><i class="fa fa-database"></i> Data Requirements</div>
-                                <p class="small mb-0" data-bind="text: selectedMoreChart().needs" style="line-height: 1.5;"></p>
-                            </div>
-                            <!-- ko ifnot: selectedMoreChart().available -->
-                            <div class="alert alert-secondary small py-2 mb-3"><i class="fa fa-clock-o"></i> This visualization is coming soon and not yet available.</div>
-                            <!-- /ko -->
-                            <!-- ko if: selectedMoreChart().available -->
-                            <button class="btn btn-primary w-100" data-bind="click: confirmMoreChart">
-                                <i class="fa fa-check"></i> Use This Visualization
-                            </button>
-                            <!-- /ko -->
-                        </div>
-                        <!-- /ko -->
-                        <!-- ko ifnot: selectedMoreChart() -->
-                        <div class="p-3 text-center text-muted d-flex flex-column align-items-center justify-content-center h-100">
-                            <i class="fa fa-hand-pointer-o fa-3x mb-3" style="opacity: 0.3;"></i>
-                            <p class="mb-0">Select a chart type to see details and preview</p>
-                        </div>
-                        <!-- /ko -->
-                    </div>
+                    <!-- Left: Chart Type Grid (rendered programmatically by showMoreCharts) -->
+                    <div class="more-charts-grid-panel" id="moreChartsGridPanel"></div>
+                    <!-- Right: Detail Preview Panel (rendered programmatically by selectMoreChart) -->
+                    <div class="more-charts-detail-panel" id="moreChartsDetailPanel"></div>
                 </div>
             </div>
             <div class="modal-footer py-2">
