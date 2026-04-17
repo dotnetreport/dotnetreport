@@ -1410,6 +1410,7 @@ var reportViewModel = function (options) {
 	self.ShowDataWithGraph = ko.observable(true);
 	self.ShowOnDashboard = ko.observable(false);
 	self.isSubReportOnly = ko.observable(false);
+	self.showAdminOnly = ko.observable(false);
 	self.toggleIsSubReportOnly = function () {
 		var reportId = self.ReportID();
 		if (!reportId) return;
@@ -3168,7 +3169,8 @@ var reportViewModel = function (options) {
 		return _.chain(self.SavedReports())
 			.filter(function (x) {
 				return x.folderId == self.SelectedFolder().Id
-					&& (self.adminMode() || !x.isSubReportOnly || !x.isSubReportOnly());
+					&& (self.adminMode() || !x.showAdminOnly)  
+					&& (self.adminMode() || !x.isSubReportOnly || !x.isSubReportOnly()); 
 			})
 			.sortBy(function (x) {
 				return x.reportName.toLowerCase();
@@ -3278,7 +3280,12 @@ var reportViewModel = function (options) {
 
 				if (reports.length > 0) {
 					self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
-						if (!self.adminMode() && x.isSubReportOnly && x.isSubReportOnly()) return false;
+						if (!self.adminMode() && x.showAdminOnly) {
+							return false;
+						}
+						if (!self.adminMode() && x.isSubReportOnly && x.isSubReportOnly()) {
+							return false;
+						} 
 						var match = _.find(reports, function (y) {
 							return x.reportId == y.reportId;
 						});
@@ -3356,6 +3363,7 @@ var reportViewModel = function (options) {
 		self.clearKpiSettings(true);
 		self.subReports([]);
 		self.isSubReportOnly(false);
+		self.showAdminOnly(false);
 		self.editingSubReportParentId(null);
 		self.editingSubReportParentName('');
 		self.clearManageAccess();	
@@ -4574,6 +4582,7 @@ var reportViewModel = function (options) {
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : (self.ReportType() == 'List' || self.ReportType() == 'Treemap' || self.dontGroupCustom() ? false : self.AggregateReport()),
 			ShowDataWithGraph: self.ShowDataWithGraph(),
+			showAdminOnly: self.showAdminOnly(),
 			ShowOnDashboard: self.ShowOnDashboard(),
 			HideReportHeader: self.HideReportHeader(),
 			HideReportFooter: self.HideReportFooter(),
@@ -5005,6 +5014,7 @@ var reportViewModel = function (options) {
 								showUniqueRecords: self.ShowUniqueRecords(),
 								aggregateReport: (self.ReportType() == 'List' || self.ReportType() == 'Treemap' || self.dontGroupCustom()) ? false : self.AggregateReport(),
 								showDataWithGraph: self.ShowDataWithGraph(),
+								showAdminOnly: self.showAdminOnly(),
 								reportSql: self.allSqlQueries(),
 								connectKey: _result.connectKey,
 								reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
@@ -5487,7 +5497,6 @@ var reportViewModel = function (options) {
 							}
 						};
 						subreportsRan.push(placeholder);
-
 						// run sub report
 						ajaxcall({
 							url: options.runLinkReportUrl,
@@ -8029,6 +8038,7 @@ var reportViewModel = function (options) {
 		self.maxRecords(report.OnlyTop != null);
 		self.AggregateReport(report.IsAggregateReport);
 		self.ShowDataWithGraph(report.ShowDataWithGraph);
+		self.showAdminOnly(report.showAdminOnly);
 		self.ShowOnDashboard(report.ShowOnDashboard);
 		self.SortByField(report.SortBy);
 		self.SortDesc(report.SortDesc);

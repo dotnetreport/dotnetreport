@@ -2774,6 +2774,12 @@
                     Only use as sub report
                 </label>
             </div>
+            <div class="checkbox" data-bind="visible: adminMode()">
+                <label>
+                    <input type="checkbox" data-bind="checked: showAdminOnly">
+                    Hide from reports unless Admin Mode is enabled
+                </label>
+            </div>
             <div class="form-group row" data-bind="visible: SaveReport">
                 <label class="control-label h6">
                     <i class="fa fa-folder-open"></i> Choose Folder
@@ -2968,6 +2974,12 @@
                                         Only use as sub report
                                     </label>
                                 </div>
+                                <div class="checkbox" data-bind="visible: adminMode()">
+                                    <label>
+                                        <input type="checkbox" data-bind="checked: showAdminOnly">
+                                        Hide from reports unless Admin Mode is enabled
+                                    </label>
+                                </div>
                                 <div class="form-group row" data-bind="visible: SaveReport">
                                     <label class="control-label h6">
                                         <i class="fa fa-folder-open"></i> Choose Folder
@@ -3100,6 +3112,10 @@
                                     </div>
                                     <div class="checkbox" data-bind="visible: adminMode() && ReportID()">
                                         <label><input type="checkbox" data-bind="checked: isSubReportOnly, click: function() { setTimeout(function() { toggleIsSubReportOnly(); }, 0); return true; }"> Only use as sub report</label>
+                                    </div>
+                                    <div class="checkbox" data-bind="visible: adminMode()">
+                                       <label><input type="checkbox" data-bind="checked: showAdminOnly"> </label>
+                                        Hide from reports unless Admin Mode is enabled
                                     </div>
                                     <div class="form-group row mb-2" data-bind="visible: SaveReport">
                                         <label class="control-label"><i class="fa fa-folder-open"></i> Folder</label>
