@@ -2735,10 +2735,12 @@ var reportViewModel = function (options) {
 
 	self.ManageFolder = {
 		FolderName: ko.observable(),
+		ShowAdminOnly: ko.observable(false),  // NEW: Add this
 		IsNew: ko.observable(false),
 		newFolder: function () {
 			self.ManageFolder.IsNew(true);
 			self.ManageFolder.FolderName("");
+			self.ManageFolder.ShowAdminOnly(false);  // NEW: Reset to false for new folder
 			self.clearManageFolderAccess();
 
 			$("#folderModal").modal("show");
@@ -2754,6 +2756,7 @@ var reportViewModel = function (options) {
 			}
 			self.ManageFolder.IsNew(false);
 			self.ManageFolder.FolderName(self.SelectedFolder().FolderName);
+			self.ManageFolder.ShowAdminOnly(self.SelectedFolder().ShowAdminOnly || false);  // NEW: Load existing value
 			var fldr = self.SelectedFolder();
 			self.manageFolderAccess.clientId(fldr.ClientId);
 			self.manageFolderAccess.setupList(self.manageFolderAccess.users, fldr.UserId || '');
@@ -2779,6 +2782,7 @@ var reportViewModel = function (options) {
 			var folderToSave = {
 				Id: id,
 				FolderName: self.ManageFolder.FolderName(),
+				ShowAdminOnly: self.ManageFolder.ShowAdminOnly(),  // NEW: Add this
 				UserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.users),
 				ViewOnlyUserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.viewOnlyUsers),
 				DeleteOnlyUserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.deleteOnlyUsers),
@@ -2804,7 +2808,7 @@ var reportViewModel = function (options) {
 					folderToSave.Id = result;
 					folderToSave.canEdit = true;
 					folderToSave.canDelete = true;
-					folderToSave.isSelected = ko.observable(false);	
+					folderToSave.isSelected = ko.observable(false);
 					self.Folders.push(folderToSave);
 					self.sortFolders();
 					toastr.success(folderToSave.FolderName + " added");
@@ -2814,7 +2818,7 @@ var reportViewModel = function (options) {
 					self.Folders.remove(self.SelectedFolder());
 					folderToSave.canEdit = true;
 					folderToSave.canDelete = true;
-					folderToSave.isSelected = ko.observable(false);	
+					folderToSave.isSelected = ko.observable(false);
 					self.Folders.push(folderToSave);
 					self.allFolders = self.Folders();
 					self.SelectedFolder(null);
@@ -3238,6 +3242,9 @@ var reportViewModel = function (options) {
 			var term = x.toLowerCase();
 
 			self.foldersInSearch(_.filter(self.Folders(), function (folder) {
+				if (folder.ShowAdminOnly && !self.adminMode()) {
+					return false;
+				}
 				return folder.FolderName.toLowerCase().indexOf(term) >= 0
 					|| (folder.UserId && folder.UserId.toLowerCase().indexOf(term) >= 0)
 					|| (folder.ViewOnlyUserId && folder.ViewOnlyUserId.toLowerCase().indexOf(term) >= 0)
@@ -3286,6 +3293,12 @@ var reportViewModel = function (options) {
 						if (!self.adminMode() && x.isSubReportOnly && x.isSubReportOnly()) {
 							return false;
 						} 
+						var parentFolder = _.find(self.Folders(), function (f) {
+							return f.Id == x.folderId;
+						});
+						if (!parentFolder &&  !self.adminMode()) {
+							return false; 
+						}
 						var match = _.find(reports, function (y) {
 							return x.reportId == y.reportId;
 						});
@@ -7733,6 +7746,9 @@ var reportViewModel = function (options) {
 		}).done(function (folders) {
 			if (folders.d) { folders = folders.d; }
 			if (folders.result) { folders = folders.result; }
+			folders = _.filter(folders, function (f) {
+				return self.adminMode() || !f.ShowAdminOnly;
+			});
 			_.each(folders, function (f) {
 				f.isSelected = ko.observable(false);
 				f.isSelected.subscribe(function (val) {

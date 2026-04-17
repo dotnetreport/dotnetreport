@@ -974,6 +974,14 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <input type="text" class="form-control" id="folderName" required placeholder="Folder Name" data-bind="value: FolderName">
                     </div>
                 </div>
+                <div data-bind="visible: $root.adminMode" class="form-group">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="showAdminOnly" data-bind="checked: ShowAdminOnly">
+                        <label class="form-check-label" for="showAdminOnly">
+                            Show Admin Only (Only visible when Admin Mode is ON)
+                        </label>
+                    </div>
+                </div>
                 <br />
                 <div data-bind="visible: $root.adminMode" class="card card-body">
                     <div data-bind="template: {name: 'manage-access-template', data: $root.manageFolderAccess}"></div>
