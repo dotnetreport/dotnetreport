@@ -2829,6 +2829,7 @@ var reportViewModel = function (options) {
 	var _svgBar = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="70" width="28" height="40" rx="2" fill="#0d6efd"/><rect x="58" y="40" width="28" height="70" rx="2" fill="#0d6efd"/><rect x="96" y="20" width="28" height="90" rx="2" fill="#0d6efd"/><rect x="134" y="55" width="28" height="55" rx="2" fill="#0d6efd"/><line x1="15" y1="112" x2="175" y2="112" stroke="#adb5bd" stroke-width="1"/><line x1="15" y1="10" x2="15" y2="112" stroke="#adb5bd" stroke-width="1"/><text x="30" y="8" font-size="8" fill="#6c757d">Sales by Region</text></svg>';
 	var _svgBarH = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="30" y="12" width="120" height="18" rx="2" fill="#0d6efd"/><rect x="30" y="38" width="90" height="18" rx="2" fill="#0d6efd"/><rect x="30" y="64" width="150" height="18" rx="2" fill="#0d6efd"/><rect x="30" y="90" width="60" height="18" rx="2" fill="#0d6efd"/><line x1="28" y1="8" x2="28" y2="112" stroke="#adb5bd" stroke-width="1"/><line x1="28" y1="112" x2="185" y2="112" stroke="#adb5bd" stroke-width="1"/></svg>';
 	var _svgBarS = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="30" width="28" height="50" rx="0" fill="#0d6efd"/><rect x="20" y="80" width="28" height="30" rx="0" fill="#6ea8fe"/><rect x="58" y="15" width="28" height="55" rx="0" fill="#0d6efd"/><rect x="58" y="70" width="28" height="40" rx="0" fill="#6ea8fe"/><rect x="96" y="40" width="28" height="40" rx="0" fill="#0d6efd"/><rect x="96" y="80" width="28" height="30" rx="0" fill="#6ea8fe"/><rect x="134" y="25" width="28" height="45" rx="0" fill="#0d6efd"/><rect x="134" y="70" width="28" height="40" rx="0" fill="#6ea8fe"/><line x1="15" y1="112" x2="175" y2="112" stroke="#adb5bd" stroke-width="1"/></svg>';
+	var _svgPolar = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><circle cx="100" cy="60" r="48" fill="none" stroke="#dee2e6" stroke-width="0.5"/><circle cx="100" cy="60" r="36" fill="none" stroke="#dee2e6" stroke-width="0.5"/><circle cx="100" cy="60" r="24" fill="none" stroke="#dee2e6" stroke-width="0.5"/><circle cx="100" cy="60" r="12" fill="none" stroke="#dee2e6" stroke-width="0.5"/><path d="M100,60 L100,12 A48,48 0 0,1 148,60 Z" fill="#0d6efd" opacity="0.6"/><path d="M100,60 L100,18 A42,42 0 0,1 142,60 Z" fill="#6ea8fe" opacity="0.6"/><path d="M100,60 L148,60 A48,48 0 0,1 100,108 Z" fill="#0d6efd" opacity="0.6"/><path d="M100,60 L138,60 A38,38 0 0,1 100,98 Z" fill="#6ea8fe" opacity="0.6"/><path d="M100,60 L100,108 A48,48 0 0,1 52,60 Z" fill="#0d6efd" opacity="0.6"/><path d="M100,60 L100,90 A30,30 0 0,1 70,60 Z" fill="#6ea8fe" opacity="0.6"/><path d="M100,60 L52,60 A48,48 0 0,1 100,12 Z" fill="#0d6efd" opacity="0.6"/><path d="M100,60 L64,60 A36,36 0 0,1 100,24 Z" fill="#6ea8fe" opacity="0.6"/></svg>';
 	var _svgLine = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><polyline points="20,80 55,50 90,60 125,25 160,35 180,15" fill="none" stroke="#0d6efd" stroke-width="2.5"/><circle cx="20" cy="80" r="3" fill="#0d6efd"/><circle cx="55" cy="50" r="3" fill="#0d6efd"/><circle cx="90" cy="60" r="3" fill="#0d6efd"/><circle cx="125" cy="25" r="3" fill="#0d6efd"/><circle cx="160" cy="35" r="3" fill="#0d6efd"/><circle cx="180" cy="15" r="3" fill="#0d6efd"/><line x1="15" y1="105" x2="185" y2="105" stroke="#adb5bd" stroke-width="1"/><line x1="15" y1="5" x2="15" y2="105" stroke="#adb5bd" stroke-width="1"/></svg>';
 	var _svgArea = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><polygon points="20,95 55,60 90,70 125,35 160,45 180,25 180,105 20,105" fill="#0d6efd" opacity="0.2"/><polyline points="20,95 55,60 90,70 125,35 160,45 180,25" fill="none" stroke="#0d6efd" stroke-width="2"/><line x1="15" y1="105" x2="185" y2="105" stroke="#adb5bd" stroke-width="1"/><line x1="15" y1="5" x2="15" y2="105" stroke="#adb5bd" stroke-width="1"/></svg>';
 	var _svgPie = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><path d="M100,60 L100,15 A45,45 0 0,1 138,38 Z" fill="#0d6efd"/><path d="M100,60 L138,38 A45,45 0 0,1 140,80 Z" fill="#6ea8fe"/><path d="M100,60 L140,80 A45,45 0 0,1 80,100 Z" fill="#0a58ca"/><path d="M100,60 L80,100 A45,45 0 0,1 60,40 Z" fill="#9ec5fe"/><path d="M100,60 L60,40 A45,45 0 0,1 100,15 Z" fill="#3d8bfd"/></svg>';
@@ -2927,10 +2928,10 @@ var reportViewModel = function (options) {
 			bestFor: 'Total revenue, active users count, average order value',
 			needs: '1 numeric field with an aggregate function (Sum, Count, Avg, etc.)',
 			svg: _svgKpi },
-		{ category: 'Tables & KPI', id: 'Pivot', name: 'Pivot / Transpose', icon: 'fa-random', desc: 'Cross-tab matrix layout', available: true,
-			detail: 'Creates a matrix/crosstab with row headers, column headers, and values at intersections. Like an Excel pivot table.',
+		{ category: 'Tables & KPI', id: 'Pivot', name: 'Transpose', icon: 'fa-random', desc: 'Transposed table layout', available: true,
+			detail: 'Creates a transposed table with the first field used to Transpose the rows as columns.',
 			bestFor: 'Sales by product AND by month, region vs category matrix',
-			needs: '1 field set to "Group" (rows) + 1 field set to "Pivot" (columns) + 1 numeric field with aggregate',
+			needs: '1 field set to "Group" (rows) + 1 field set to "Transpose" (columns)',
 			svg: _svgPivot },
 		{ category: 'Geographic', id: 'Map', name: 'Map', icon: 'fa-globe', desc: 'Plot data on a geographic map', available: true,
 			detail: 'Plots data points on an interactive map using latitude/longitude or region names. Supports choropleth coloring.',
@@ -2947,6 +2948,16 @@ var reportViewModel = function (options) {
 			bestFor: 'Budget breakdown, disk usage, organizational hierarchy with values',
 			needs: '1 categorical field + 1 numeric field with aggregate',
 			svg: _svgTreemap },
+		{ category: 'Advanced', id: 'Radar', name: 'Radar / Spider', icon: 'fa-snowflake-o', desc: 'Compare multiple dimensions', available: true,
+			detail: 'Plots multiple variables on axes radiating from a center point. Great for comparing profiles across many dimensions.',
+			bestFor: 'Product feature comparison, employee skill assessment, multi-criteria scoring',
+			needs: '1 categorical field + 3 or more numeric fields with aggregates (Sum, Count, Avg, etc.)',
+			svg: _svgRadar },
+		{ category: 'Advanced', id: 'Polar', name: 'Polar Stacked Bar', icon: 'fa-bullseye', desc: 'Stacked bars on a circular polar axis', available: true,
+			detail: 'Stacked bar chart wrapped around a circular polar coordinate system. Creates a striking radial layout that emphasizes cyclical patterns or compares categories in a compact circular form.',
+			bestFor: 'Weekday/monthly comparisons, cyclical data, compact multi-series comparison',
+			needs: '1 categorical field + 2 or more numeric fields with aggregates',
+			svg: _svgPolar },
 		{ category: 'Advanced', id: 'Scatter', name: 'Scatter Plot', icon: 'fa-braille', desc: 'Show correlation between two numeric fields', available: false,
 			detail: 'Plots individual data points on X/Y axes to reveal correlations, clusters, and outliers between two numeric variables.',
 			bestFor: 'Price vs quantity, age vs income, any two-variable correlation',
@@ -2962,11 +2973,6 @@ var reportViewModel = function (options) {
 			bestFor: 'Sales pipeline, conversion funnel, recruitment process stages',
 			needs: '1 categorical field (stages) + 1 numeric field (values), sorted by stage order',
 			svg: _svgFunnel },
-		{ category: 'Advanced', id: 'Radar', name: 'Radar / Spider', icon: 'fa-snowflake-o', desc: 'Compare multiple dimensions', available: false,
-			detail: 'Plots multiple variables on axes radiating from a center point. Great for comparing profiles across many dimensions.',
-			bestFor: 'Product feature comparison, employee skill assessment, multi-criteria scoring',
-			needs: '3+ numeric fields representing different dimensions',
-			svg: _svgRadar },
 		{ category: 'Advanced', id: 'Waterfall', name: 'Waterfall', icon: 'fa-sort-amount-desc', desc: 'Show cumulative additions/subtractions', available: false,
 			detail: 'Shows how an initial value is affected by a series of positive and negative changes, ending at a final value.',
 			bestFor: 'Profit waterfall, budget variance, cash flow analysis',
@@ -9282,6 +9288,107 @@ var reportViewModel = function (options) {
 			option.yAxis = null;
 			option.grid = null;
 		}
+
+		if (self.ReportType() == 'Radar') {
+			var colors = (chartOptions.seriesColors && chartOptions.seriesColors.length)
+				? chartOptions.seriesColors
+				: (self.colorScheme().length ? self.colorScheme() : ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9da7', '#9c755f', '#bab0ab']);
+
+			// Identify which columns are indicators (numeric, non-grouped)
+			var indicatorCols = [];
+			_.forEach(reportData.Columns, function (col, i) {
+				if (i > 0 && col.IsNumeric && !col.groupInGraph()) {
+					indicatorCols.push({ index: i, name: col.fieldLabel() || col.ColumnName });
+				}
+			});
+
+			if (indicatorCols.length < 2) {
+				if (!self.activeDesign()) {
+					toastr.error('Radar chart requires at least 2 numeric fields.');
+				}
+				return;
+			}
+
+			// Compute max per indicator across all rows for the indicator axis scale
+			var maxPerIndicator = indicatorCols.map(function () { return 0; });
+			_.forEach(reportData.Rows, function (row) {
+				indicatorCols.forEach(function (ic, idx) {
+					var v = parseFloat(row.Items[ic.index].Value) || 0;
+					if (v > maxPerIndicator[idx]) maxPerIndicator[idx] = v;
+				});
+			});
+
+			var indicator = indicatorCols.map(function (ic, idx) {
+				return { name: ic.name, max: maxPerIndicator[idx] || 1 };
+			});
+
+			// Build series data — one entry per row (each row = one radar polygon)
+			var radarSeriesData = [];
+			_.forEach(reportData.Rows, function (row) {
+				var label = row.Items[0].FormattedValue || row.Items[0].Value || '';
+				var values = indicatorCols.map(function (ic) {
+					return parseFloat(row.Items[ic.index].Value) || 0;
+				});
+				radarSeriesData.push({ value: values, name: label });
+			});
+
+			option.radar = {
+				indicator: indicator,
+				shape: 'polygon'
+			};
+			option.series = [{
+				name: data.columns[0] ? data.columns[0].name : '',
+				type: 'radar',
+				data: radarSeriesData,
+				areaStyle: { opacity: 0.15 }
+			}];
+			option.tooltip = { trigger: 'item' };
+			option.color = colors;
+
+			// Radar chart doesn't use cartesian axes
+			option.xAxis = null;
+			option.yAxis = null;
+			option.grid = null;
+		}
+
+		if (self.ReportType() == 'Polar') {
+			// Polar stacked bar — bars on a circular polar coordinate system
+			var colors = (chartOptions.seriesColors && chartOptions.seriesColors.length)
+				? chartOptions.seriesColors
+				: (self.colorScheme().length ? self.colorScheme() : ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9da7', '#9c755f', '#bab0ab']);
+
+			var categoryData = data.rows.map(function (r) { return r[0]; });
+
+			// Build one series per value column, each stacked on 'polar'
+			var polarSeries = [];
+			_.forEach(valColumns, function (c) {
+				polarSeries.push({
+					type: 'bar',
+					name: c.column,
+					data: data.rows.map(function (r) { return r[c.index]; }),
+					coordinateSystem: 'polar',
+					stack: 'polar',
+					emphasis: { focus: 'series' }
+				});
+			});
+
+			option.angleAxis = {};
+			option.radiusAxis = {
+				type: 'category',
+				data: categoryData,
+				z: 10
+			};
+			option.polar = {};
+			option.series = polarSeries;
+			option.tooltip = { trigger: 'item' };
+			option.color = colors;
+
+			// Polar chart doesn't use cartesian axes
+			option.xAxis = null;
+			option.yAxis = null;
+			option.grid = null;
+		}
+
 		chart.off('finished');
 		chart.on('finished', function () {
 			var img = chart.getDataURL({
@@ -9293,7 +9400,7 @@ var reportViewModel = function (options) {
 			window.chartImageUrl = img;
 		});
 
-		if (self.ReportType() != 'Treemap') {
+		if (self.ReportType() != 'Treemap' && self.ReportType() != 'Radar' && self.ReportType() != 'Polar') {
 			chart.off('click');
 			chart.on('click', function (params) {
 				if (params && params.dataIndex != null) {
