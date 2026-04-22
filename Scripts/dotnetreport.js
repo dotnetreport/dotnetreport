@@ -1,4 +1,4 @@
-/// dotnet Report Builder view model v6.2.4
+﻿/// dotnet Report Builder view model v6.2.4
 /// License must be purchased for commercial use
 /// 2025 (c) www.dotnetreport.com
 
@@ -1267,11 +1267,16 @@ var reportViewModel = function (options) {
 	self.ReportName = ko.observable();
 	self.ReportType = ko.observable("List");
 	self.mapRegion = ko.observable('');
-	self.mapRegions = ['World', 'US States', 'US Metro', 'North America'];
+	self.mapRegions = ['World', 'US States', 'North America', 'Other'];
+	self.otherMapRegion = ko.observable('');
 	self.ReportDescription = ko.observable();
 	self.FolderID = ko.observable();
 	self.ReportID = ko.observable();
-	self.seriesTypes = ['Bars', 'Line', 'Area'];
+	self.seriesTypes = [
+		{ value: 'bars', label: 'Bars' },
+		{ value: 'line', label: 'Line' },
+		{ value: 'area', label: 'Area' }
+	];
 	self.htmlEditorInit = false;
 
 	self.Tables = ko.observableArray([]);
@@ -1298,6 +1303,25 @@ var reportViewModel = function (options) {
 	self.IncludeColumnTotal = ko.observable(false);
 	self.ShowUniqueRecords = ko.observable(false);
 	self.ShowExpandOption = ko.observable(false);
+	self.availableDataFilterIds = ko.observableArray([]);
+	self.bypassEnabled = ko.observable(false);
+	self.bypassMode = ko.observable("all"); // "all" | "specific"
+	self.bypassSpecificIds = ko.observableArray([]);
+	self.bypassSpecificIdsText = ko.computed({
+		read: function () { return self.bypassSpecificIds().join(","); },
+		write: function (val) { self.bypassSpecificIds(val.split(",").map(function (s) { return s.trim(); }).filter(Boolean)); }
+	});
+	self.bypassEnabled.subscribe(function (val) {
+		if (val && self.adminMode() && self.availableDataFilterIds.peek().length === 0) {
+			ajaxcall({
+				url: (options.runReportApiUrl || '').replace('RunReportApi', 'GetDataFilterKeys'),
+				type: 'GET'
+			}).done(function (result) {
+				if (result && result.d) result = result.d;
+				self.availableDataFilterIds(result || []);
+			});
+		}
+	});
 	self.DontExecuteOnRun = ko.observable(false);
 	self.AggregateReport = ko.observable(false);
 	self.ShowFilterDetails = ko.observable(false);
@@ -1327,10 +1351,223 @@ var reportViewModel = function (options) {
 	self.isModalOpen = ko.observable(false);
 	self.cardView = ko.observable(false);
 	self.dontGroupCustom = ko.observable(false);
+	self.customJoins = ko.observableArray([]);
+	self.selectedReport = self;
+	self.detectedJoins = ko.observableArray([]);
+	self.baseTableIdOverride = ko.observable(null);
+	self.joinBaseTables = ko.observableArray([]);
 	self.isDirty = ko.observable(false);
 	self.activeDesign = ko.observable(options.reportMode !== 'subreport' && localStorage.getItem('reportLivePreview') === 'true');
 	self.panels = new DesignerViewModel();
 	self.selectMode = ko.observable(false);
+
+	self.swapJoinDirection = function (join) {
+		var swapped = {
+			tableId: join.joinedTableId,
+			tableName: join.joinedTableName,
+			fieldName: join.joinFieldName,
+			joinedTableId: join.tableId,
+			joinedTableName: join.tableName,
+			joinFieldName: join.fieldName,
+			joinType: join.joinType,
+			joinOrder: join.joinOrder,
+			isForeignKey: join.isForeignKey,
+			fieldId: join.fieldId
+		};
+
+		var all = self.detectedJoins();
+		var idx = all.indexOf(join);
+		if (idx >= 0) {
+			self.detectedJoins.splice(idx, 1, swapped);
+		}
+
+		// Refresh base tables list
+		self._refreshJoinBaseTables();
+	};
+
+	self._refreshJoinBaseTables = function () {
+		var tableMap = {};
+		_.forEach(self.detectedJoins(), function (j) {
+			if (j.tableId) tableMap[j.tableId] = j.tableName;
+			if (j.joinedTableId) tableMap[j.joinedTableId] = j.joinedTableName;
+		});
+		// Also include tables from selected fields (covers base tables)
+		_.forEach(self.SelectedFields(), function (f) {
+			if (f.tableId && !tableMap[f.tableId]) tableMap[f.tableId] = f.tableName;
+			// For FK fields, resolve the foreign table ID by looking up table name
+			if (f.hasForeignKey && f.foreignTable) {
+				var fkTableName = f.foreignTable.toLowerCase().indexOf(' as') > -1 ? f.foreignTable.split(' ')[0] : f.foreignTable;
+				var fkTableObj = _.find(self.Tables(), function (t) { return t.tableName === fkTableName; });
+				if (fkTableObj && !tableMap[fkTableObj.tableId]) {
+					tableMap[fkTableObj.tableId] = fkTableObj.tableName;
+				}
+			}
+		});
+		var tables = [];
+		_.forEach(tableMap, function (name, id) {
+			tables.push({ id: parseInt(id), name: name });
+		});
+		tables.sort(function (a, b) { return a.name.localeCompare(b.name); });
+		self.joinBaseTables(tables);
+	};
+
+	self.detectJoinsForReport = function () {
+		// Collect unique tableIds from selected fields
+		var tableIds = [];
+		_.forEach(self.SelectedFields(), function (f) {
+			if (f.tableId && tableIds.indexOf(f.tableId) === -1) {
+				tableIds.push(f.tableId);
+			}
+		});
+
+		if (tableIds.length < 2) {
+			self.detectedJoins([]);
+			toastr.info('This report uses only one table. No joins to configure.');
+			return;
+		}
+
+		ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/GetRelationsForTables",
+				model: JSON.stringify({
+					tableIds: JSON.stringify(tableIds)
+				})
+			}
+		}).done(function (result) {
+			if (result.d) { result = result.d; }
+			if (result.result) { result = result.result; }
+
+			var existingOverrides = ko.toJS(self.customJoins());
+			var seenPairs = {};
+			var joins = [];
+
+			// Add relation-based joins from API
+			_.forEach(result, function (r) {
+				var pairKey = Math.min(r.TableId, r.JoinedTableId) + '_' + Math.max(r.TableId, r.JoinedTableId);
+				if (seenPairs[pairKey]) return;
+				seenPairs[pairKey] = true;
+
+				var existingOverride = _.find(existingOverrides, function (o) {
+					return !o.isForeignKey &&
+						((o.tableId === r.TableId && o.joinedTableId === r.JoinedTableId) ||
+						 (o.tableId === r.JoinedTableId && o.joinedTableId === r.TableId));
+				});
+
+				// If override swapped direction, use its tableId/joinedTableId
+				var tableId = r.TableId, joinedTableId = r.JoinedTableId;
+				var tableName = r.TableName, joinedTableName = r.JoinedTableName;
+				var fieldName = r.FieldName, joinFieldName = r.JoinFieldName;
+
+				if (existingOverride) {
+					tableId = existingOverride.tableId;
+					joinedTableId = existingOverride.joinedTableId;
+					tableName = existingOverride.tableName || r.TableName;
+					joinedTableName = existingOverride.joinedTableName || r.JoinedTableName;
+					fieldName = existingOverride.fieldName || r.FieldName;
+					joinFieldName = existingOverride.joinFieldName || r.JoinFieldName;
+				}
+
+				joins.push({
+					tableId: tableId,
+					joinedTableId: joinedTableId,
+					tableName: tableName,
+					joinedTableName: joinedTableName,
+					joinType: ko.observable(existingOverride ? existingOverride.joinType : r.JoinType),
+					fieldName: fieldName,
+					joinFieldName: joinFieldName,
+					joinOrder: ko.observable(existingOverride && existingOverride.joinOrder != null ? existingOverride.joinOrder : r.JoinOrder),
+					isForeignKey: false
+				});
+			});
+
+			_.forEach(self.SelectedFields(), function (f) {
+				if (f.hasForeignKey && !f.foreignFilterOnly && f.foreignTable) {
+					var fkTableName = f.foreignTable.toLowerCase().indexOf(' as') > -1 ? f.foreignTable.split(' ')[0] : f.foreignTable;
+					var alreadyCovered = _.find(joins, function (j) {
+						return !j.isForeignKey &&
+							((j.tableName === f.tableName && j.joinedTableName === fkTableName) ||
+							 (j.tableName === fkTableName && j.joinedTableName === f.tableName));
+					});
+					if (alreadyCovered) return;
+
+					var fkKey = 'fk_' + f.tableId + '_' + f.fieldId;
+					if (seenPairs[fkKey]) return;
+					seenPairs[fkKey] = true;
+
+					var existingOverride = _.find(existingOverrides, function (o) {
+						return o.isForeignKey && o.fieldId === f.fieldId;
+					});
+					joins.push({
+						tableId: f.tableId,
+						joinedTableId: 0,
+						tableName: f.tableName,
+						joinedTableName: f.foreignTable,
+						joinType: ko.observable(existingOverride ? existingOverride.joinType : (f.foreignJoin || 'INNER')),
+						fieldName: f.dbField ? f.dbField.replace(/[\[\]"]/g, '').split('.').pop() : '',
+						joinFieldName: f.foreignKey || '',
+						joinOrder: ko.observable(existingOverride && existingOverride.joinOrder != null ? existingOverride.joinOrder : joins.length),
+						isForeignKey: true,
+						fieldId: f.fieldId
+					});
+				}
+			});
+
+			// Sort by joinOrder
+			joins.sort(function (a, b) { return a.joinOrder() - b.joinOrder(); });
+
+			self.detectedJoins(joins);
+
+			var hasCustomJoins = self.customJoins() && self.customJoins().length > 0;
+			var firstField = self.SelectedFields()[0];
+			var defaultBaseTableId = (hasCustomJoins && self.baseTableIdOverride()) ? self.baseTableIdOverride() : (firstField ? firstField.tableId : null);
+
+			self._refreshJoinBaseTables();
+			if (defaultBaseTableId != null) {
+				self.baseTableIdOverride(parseInt(defaultBaseTableId));
+			}
+
+			$('#weightedmodal-configure-joins').modal('show');
+		});
+	};
+
+	self.reportJoinSorted = function (args) {
+		_.forEach(self.detectedJoins(), function (e, i) {
+			e.joinOrder(i);
+		});
+	};
+
+	self.saveCustomJoins = function () {
+		var joins = _.map(self.detectedJoins(), function (j, i) {
+			var obj = {
+				tableId: j.tableId,
+				joinedTableId: j.joinedTableId,
+				joinType: j.joinType(),
+				tableName: j.tableName,
+				joinedTableName: j.joinedTableName,
+				fieldName: j.fieldName,
+				joinFieldName: j.joinFieldName,
+				joinOrder: i,
+				isForeignKey: j.isForeignKey || false
+			};
+			if (j.isForeignKey && j.fieldId) {
+				obj.fieldId = j.fieldId;
+			}
+			return obj;
+		});
+		self.customJoins(joins);
+		self.baseTableIdOverride(self.baseTableIdOverride());
+		$('#weightedmodal-configure-joins').modal('hide');
+		toastr.success('Join overrides applied to this report.');
+	};
+
+	self.clearCustomJoins = function () {
+		self.customJoins([]);
+		self.detectedJoins([]);
+		self.baseTableIdOverride(null);
+		$('#weightedmodal-configure-joins').modal('hide');
+		toastr.info('Join overrides cleared. Using global join settings.');
+	};
 
 	$(document).on('shown.bs.modal', '.modal', function (e) {
 		if (options.reportWizard && options.reportWizard.is(e.target)) {
@@ -1948,8 +2185,972 @@ var reportViewModel = function (options) {
 		useFunctions: ko.observable(false),
 		canCopyReport: ko.observable(true),
 		showScheduling: ko.observable(false),
+		showDesignerHints: ko.observable(true),
+		aiProvider: ko.observable(''),
+		aiEnabled: ko.observable(false)
 	};
 	self.appSettings = options && options.appSettings ? options.appSettings : self.appSettings;
+
+	// ── Hints Toggle ──
+	self.showHints = ko.observable(false);
+	self.showHints.subscribe(function (on) {
+		setTimeout(function () {
+			var tooltipEls = document.querySelectorAll('.hint-tip[data-bs-toggle="tooltip"]');
+			tooltipEls.forEach(function (el) {
+				if (!bootstrap.Tooltip.getInstance(el)) {
+					new bootstrap.Tooltip(el, { trigger: 'hover focus', html: true });
+				}
+			});
+			if (on) self.initAggregateHelpTips();
+		}, 100);
+	});
+
+	self.initAggregateHelpTips = function () {
+		document.querySelectorAll('.aggregate-help-tip').forEach(function (el) {
+			var existing = bootstrap.Tooltip.getInstance(el);
+			if (existing) existing.dispose();
+			var html = el.getAttribute('data-agg-tooltip');
+			if (html) {
+				new bootstrap.Tooltip(el, { title: html, html: true, sanitize: false, placement: 'left', trigger: 'hover focus', container: 'body' });
+			}
+		});
+	};
+
+	// ── Aggregate Help Tooltips ──
+	var _aggDescriptions = {
+		'Group': { icon: 'fa-object-group', desc: 'Group rows by this field — used as label/category' },
+		'Count': { icon: 'fa-hashtag', desc: 'Count rows per group' },
+		'Sum': { icon: 'fa-plus', desc: 'Total of all values per group' },
+		'Average': { icon: 'fa-balance-scale', desc: 'Average value per group' },
+		'Min': { icon: 'fa-arrow-down', desc: 'Smallest value per group' },
+		'Max': { icon: 'fa-arrow-up', desc: 'Largest value per group' },
+		'Pivot': { icon: 'fa-random', desc: 'Turn values into column headers (cross-tab)' },
+		'Only in Detail': { icon: 'fa-eye-slash', desc: 'Only show when drilling down into detail' },
+		'Group in Detail': { icon: 'fa-indent', desc: 'Group rows in the drilldown detail view' },
+		'Csv': { icon: 'fa-list', desc: 'Comma-separated list of values per group' }
+	};
+
+	self.getAggregateTooltip = function (field) {
+		var opts = field.fieldAggregate || [];
+		if (!opts.length) return '';
+		var lines = [];
+		_.forEach(opts, function (opt) {
+			var info = _aggDescriptions[opt];
+			if (info) {
+				lines.push('<div><i class="fa ' + info.icon + '" style="width:16px;text-align:center;"></i> <b>' + opt + '</b> — ' + info.desc + '</div>');
+			}
+		});
+		return '<div style="max-width:260px;text-align:left;font-size:11px;line-height:1.6;">' + lines.join('') + '</div>';
+	};
+
+	// ── AI Assistant (Action-Driven Architecture)
+	self.aiAssistantEnabled = ko.observable(false);
+	self.aiAssistantMessages = ko.observableArray([]);
+	self.aiAssistantLoading = ko.observable(false);
+	self.aiAssistantInput = ko.observable('');
+	self.aiConversationHistory = [];
+	self.aiReportApplied = ko.observable(false);
+
+	self.hasAiConfigured = ko.computed(function () {
+		if (self.appSettings.aiEnabled) {
+			var enabled = ko.isObservable(self.appSettings.aiEnabled) ? self.appSettings.aiEnabled() : self.appSettings.aiEnabled;
+			if (enabled) return true;
+		}
+		if (!self.appSettings.aiProvider) return false;
+		var provider = ko.isObservable(self.appSettings.aiProvider) ? self.appSettings.aiProvider() : self.appSettings.aiProvider;
+		return provider && provider !== '' && provider !== 'none';
+	});
+
+	// ── Build lightweight current report state for AI context ──
+	self.buildCurrentReportContext = function () {
+		var fields = self.SelectedFields();
+		if (!fields || fields.length === 0) return null;
+
+		var fieldList = [];
+		_.forEach(fields, function (f) {
+			var entry = {
+				table: f.tableName || '',
+				field: f.fieldName || '',
+				aggregate: f.selectedAggregate ? ko.unwrap(f.selectedAggregate) : 'None',
+				groupInGraph: f.groupInGraph ? ko.unwrap(f.groupInGraph) : false
+			};
+			// Include formatting info so AI knows what's already set
+			var fmt = f.fieldFormat ? ko.unwrap(f.fieldFormat) : '';
+			if (fmt && fmt !== 'Auto') entry.fieldFormat = fmt;
+			var fc = f.fontColor ? ko.unwrap(f.fontColor) : '';
+			if (fc) entry.fontColor = fc;
+			var bc = f.backColor ? ko.unwrap(f.backColor) : '';
+			if (bc) entry.backColor = bc;
+			// Flag custom SQL fields
+			if (f.isFormulaField === true && f.formulaType === 'sql') {
+				entry.isCustomSqlField = true;
+			}
+			fieldList.push(entry);
+		});
+
+		// Collect current filters
+		var filterList = [];
+		var filterGroups = self.FilterGroups();
+		if (filterGroups && filterGroups.length > 0) {
+			var fg = filterGroups[0];
+			if (fg && fg.Filters) {
+				_.forEach(ko.unwrap(fg.Filters), function (filter) {
+					var field = ko.unwrap(filter.Field);
+					if (field) {
+						filterList.push({
+							table: field.tableName || '',
+							field: field.fieldName || '',
+							operator: ko.unwrap(filter.Operator) || '=',
+							value: ko.unwrap(filter.Value) || '',
+							value2: ko.unwrap(filter.Value2) || ''
+						});
+					}
+				});
+			}
+		}
+
+		return {
+			reportName: self.ReportName() || '',
+			reportType: self.ReportType() || 'List',
+			fields: fieldList,
+			filters: filterList
+		};
+	};
+
+	// ── Send AI message ──
+	self.sendAiAssistantMessage = function () {
+		var msg = self.aiAssistantInput().trim();
+		if (!msg) return;
+
+		self.aiAssistantMessages.push({ role: 'user', content: msg });
+		self.aiAssistantInput('');
+		self.aiAssistantLoading(true);
+
+		var currentContext = self.buildCurrentReportContext();
+		self.aiConversationHistory.push({ role: 'user', content: msg });
+
+		ajaxcall({
+			url: options.apiUrl.replace('CallReportApi', 'CallPostReportApi'),
+			type: 'POST',
+			data: JSON.stringify({
+				method: "/ReportApi/RunAiReportAssistant",
+				model: JSON.stringify({
+					userMessage: msg,
+					conversationHistory: JSON.stringify(self.aiConversationHistory),
+					currentReportJson: currentContext ? JSON.stringify(currentContext) : null
+				})
+			}),
+			noBlocking: true
+		}).done(function (result) {
+			if (result.d) result = result.d;
+			if (result.result) result = result.result;
+
+			if (result && result.success === false) {
+				self.aiAssistantMessages.push({ role: 'assistant', content: result.message || 'Error processing request.' });
+				self.aiConversationHistory.push({ role: 'assistant', content: result.message || 'Error' });
+				self.aiAssistantLoading(false);
+				return;
+			}
+
+			var aiMessage = result.message || 'Done.';
+			self.aiAssistantMessages.push({ role: 'assistant', content: aiMessage });
+			self.aiConversationHistory.push({ role: 'assistant', content: aiMessage });
+
+			// If AI returned actions, apply them to the designer via UI functions
+			if (result.actions) {
+				var actions = result.actions;
+				// Handle case where actions comes as a string (parse it)
+				if (typeof actions === 'string') {
+					try { actions = JSON.parse(actions); } catch (e) { console.error('AI: could not parse actions string:', e); }
+				}
+				console.log('AI actions received:', actions);
+				self.applyAiActions(actions);
+			}
+
+			self.aiAssistantLoading(false);
+		}).fail(function (xhr) {
+			var errMsg = 'AI request failed';
+			try {
+				var resp = typeof xhr.responseJSON === 'object' ? xhr.responseJSON : JSON.parse(xhr.responseText);
+				if (resp && resp.message) errMsg = resp.message;
+			} catch (e) { }
+			self.aiAssistantMessages.push({ role: 'assistant', content: 'Error: ' + errMsg });
+			self.aiConversationHistory.push({ role: 'assistant', content: 'Error: ' + errMsg });
+			self.aiAssistantLoading(false);
+		});
+	};
+
+	// ── Apply AI actions by driving existing UI functions ──
+	// Fields go through loadTableFields → setupField — the exact same path as manual use.
+	self.applyAiActions = function (actions) {
+		try {
+			console.log('AI: applying actions:', JSON.stringify(actions));
+
+			// Set report name/description
+			if (actions.reportName) self.ReportName(actions.reportName);
+			if (actions.reportDescription) self.ReportDescription(actions.reportDescription);
+
+			// Determine if we should clear existing fields
+			var shouldClear = actions.clearExisting !== false; // default true
+			var hasNewFields = actions.fields && actions.fields.length > 0;
+
+			if (shouldClear && hasNewFields) {
+				self.SelectedFields([]);
+				// Clear filters too when building fresh
+				if (self.FilterGroups() && self.FilterGroups().length > 0) {
+					self.FilterGroups()[0].Filters([]);
+				}
+			}
+
+			// ── Load fields from tables using existing UI functions ──
+			if (hasNewFields) {
+				// Group requested fields by table
+				var fieldsByTable = {};
+				_.forEach(actions.fields, function (f) {
+					var tbl = (f.table || '').toLowerCase();
+					if (!fieldsByTable[tbl]) fieldsByTable[tbl] = [];
+					fieldsByTable[tbl].push(f);
+				});
+
+				var tableNames = Object.keys(fieldsByTable);
+				var tableIndex = 0;
+
+				// Log available tables for debugging
+				console.log('AI: available tables:', _.map(self.Tables(), function (t) { return { name: t.tableName, display: t.displayName }; }));
+				console.log('AI: requested tables:', tableNames);
+
+				// Process tables sequentially (each loadTableFields is async)
+				var processNextTable = function () {
+					if (tableIndex >= tableNames.length) {
+						console.log('AI: all tables processed, SelectedFields count:', self.SelectedFields().length);
+						// All tables processed — now apply report type, filters, settings, and run
+						self._applyAiPostFields(actions);
+						return;
+					}
+
+					var tblKey = tableNames[tableIndex];
+					var requestedFields = fieldsByTable[tblKey];
+					tableIndex++;
+
+					// Find the table in available Tables — flexible matching
+					var table = _.find(self.Tables(), function (t) {
+						var tn = (t.tableName || '').toLowerCase();
+						var td = (t.displayName || '').toLowerCase();
+						var key = tblKey.toLowerCase();
+						return tn === key || td === key
+							|| tn.replace(/[\s_]/g, '') === key.replace(/[\s_]/g, '')
+							|| td.replace(/[\s_]/g, '') === key.replace(/[\s_]/g, '');
+					});
+
+					if (!table) {
+						console.warn('AI: table not found:', tblKey, '— available:', _.map(self.Tables(), 'tableName').join(', '));
+						processNextTable();
+						return;
+					}
+
+					console.log('AI: loading fields for table:', table.tableName, '(id:', table.tableId, ')');
+
+					// Load fields for this table (same as user clicking a table in the UI)
+					var loadPromise = self.loadTableFields(table);
+					if (loadPromise && loadPromise.done) {
+						loadPromise.done(function () {
+							console.log('AI: fields loaded for', table.tableName, '— available fields:', _.map(self.ChooseFields(), function (cf) { return cf.fieldName; }));
+
+							// Fields are now in self.ChooseFields() — find and select the ones AI wants
+							_.forEach(requestedFields, function (rf) {
+								var rfName = (rf.field || '').toLowerCase().replace(/[\s_]/g, '');
+								var chosenField = _.find(self.ChooseFields(), function (cf) {
+									var cfName = (cf.fieldName || '').toLowerCase().replace(/[\s_]/g, '');
+									var cfDbName = (cf.fieldDbName || '').toLowerCase().replace(/[\s_]/g, '');
+									return cfName === rfName || cfDbName === rfName;
+								});
+
+								if (chosenField) {
+									console.log('AI: matched field:', rf.field, '→', chosenField.fieldName, '(id:', chosenField.fieldId, ')');
+
+									// Check if already selected
+									var alreadySelected = _.find(self.SelectedFields(), function (sf) {
+										return sf.fieldId === chosenField.fieldId && sf.tableName === chosenField.tableName;
+									});
+									if (!alreadySelected) {
+										self.SelectedFields.push(chosenField);
+									} else {
+										chosenField = alreadySelected; // Use existing reference for aggregate/label setting
+									}
+
+									// Set aggregate if specified — always apply (even if field already existed, AI may be changing it)
+									if (rf.aggregate && chosenField.selectedAggregate) {
+										// Validate the aggregate is in the field's allowed options
+										var allowedAggs = (chosenField.fieldAggregate || []).concat(chosenField.fieldAggregateWithDrilldown || []);
+										var aggToSet = rf.aggregate;
+										if (aggToSet !== 'None' && allowedAggs.length > 0 && allowedAggs.indexOf(aggToSet) < 0) {
+											// Try case-insensitive match
+											var matched = _.find(allowedAggs, function (a) { return a.toLowerCase() === aggToSet.toLowerCase(); });
+											if (matched) aggToSet = matched;
+											else console.warn('AI: aggregate "' + aggToSet + '" not in allowed options:', allowedAggs.join(', '));
+										}
+										chosenField.selectedAggregate(aggToSet);
+										console.log('AI: set aggregate on', chosenField.fieldName, '→', aggToSet);
+									}
+
+									// Set groupInGraph
+									if (rf.groupInGraph && chosenField.groupInGraph) {
+										chosenField.groupInGraph(true);
+									}
+
+									// Set custom label
+									if (rf.label && chosenField.fieldLabel) {
+										chosenField.fieldLabel(rf.label);
+									}
+
+									// Set field formatting (only if AI provided these)
+									if (rf.fieldFormat && chosenField.fieldFormat) chosenField.fieldFormat(rf.fieldFormat);
+									if (rf.currencyFormat && chosenField.currencyFormat) chosenField.currencyFormat(rf.currencyFormat);
+									if (rf.decimalPlaces != null && chosenField.decimalPlaces) chosenField.decimalPlaces(rf.decimalPlaces);
+									if (rf.fontColor && chosenField.fontColor) chosenField.fontColor(rf.fontColor);
+									if (rf.backColor && chosenField.backColor) chosenField.backColor(rf.backColor);
+									if (rf.headerFontColor && chosenField.headerFontColor) chosenField.headerFontColor(rf.headerFontColor);
+									if (rf.headerBackColor && chosenField.headerBackColor) chosenField.headerBackColor(rf.headerBackColor);
+									if (rf.fontBold === true && chosenField.fontBold) chosenField.fontBold(true);
+									if (rf.headerFontBold === true && chosenField.headerFontBold) chosenField.headerFontBold(true);
+									if (rf.fieldAlign && chosenField.fieldAlign) chosenField.fieldAlign(rf.fieldAlign);
+								} else {
+									console.warn('AI: field not found:', rf.field, '(normalized:', rfName, ') — available:', _.map(self.ChooseFields(), function (cf) { return cf.fieldName; }).join(', '));
+								}
+							});
+
+							processNextTable();
+						}).fail(function () {
+							console.warn('AI: failed to load fields for table:', tblKey);
+							processNextTable();
+						});
+					} else {
+						console.warn('AI: loadTableFields returned no promise for:', tblKey);
+						processNextTable();
+					}
+				};
+
+				processNextTable();
+			} else {
+				// No new fields — just apply type/filters/settings changes
+				self._applyAiPostFields(actions);
+			}
+
+		} catch (e) {
+			console.error('Error applying AI actions:', e);
+			self.aiAssistantMessages.push({
+				role: 'assistant',
+				content: 'Had trouble applying the changes to the designer. Error: ' + e.message
+			});
+		}
+	};
+
+	// ── Apply report type, filters, settings after fields are loaded ──
+	self._applyAiPostFields = function (actions) {
+		try {
+			// Set report type
+			if (actions.reportType) {
+				self.ReportType(actions.reportType);
+			}
+
+			// Apply HTML template for Html report type
+			if (actions.htmlTemplate && actions.reportType === 'Html') {
+				// Delay to let KO render the Summernote editor after ReportType changes to 'Html'
+				var htmlContent = actions.htmlTemplate;
+				setTimeout(function () {
+					self.reportHtml(htmlContent);
+					// Also push directly into Summernote editor in case the binding update doesn't catch it
+					if (self.reportHtml.editor) {
+						self.reportHtml.editor.summernote('code', htmlContent);
+					}
+					console.log('AI: set HTML template, length:', htmlContent.length);
+				}, 500);
+			}
+
+			// Apply filters
+			if (actions.filters && actions.filters.length > 0 && self.FilterGroups().length > 0) {
+				var fg = self.FilterGroups()[0];
+				_.forEach(actions.filters, function (f) {
+					// Find the matching field in SelectedFields
+					var fName = (f.field || '').toLowerCase().replace(/\s/g, '');
+					var tName = (f.table || '').toLowerCase().replace(/\s/g, '');
+					var matchedField = _.find(self.SelectedFields(), function (sf) {
+						var sfName = (sf.fieldName || '').toLowerCase().replace(/\s/g, '');
+						var sfTable = (sf.tableName || '').toLowerCase().replace(/\s/g, '');
+						return sfName === fName && (!tName || sfTable === tName);
+					});
+
+					if (matchedField) {
+						fg.AddFilter({
+							FieldId: matchedField.fieldId,
+							Operator: f.operator || '=',
+							Value1: f.value || '',
+							Value2: f.value2 || '',
+							AndOr: 'AND'
+						});
+					} else {
+						console.warn('AI: filter field not found in selected fields:', f.field);
+					}
+				});
+			}
+
+			// Apply chart settings
+			if (actions.settings) {
+				var s = actions.settings;
+				if (s.barChartHorizontal && self.barChartHorizontal) self.barChartHorizontal(true);
+				if (s.barChartStacked && self.barChartStacked) self.barChartStacked(true);
+				if (s.pieChartDonut && self.pieChartDonut) self.pieChartDonut(true);
+				if (s.lineChartArea && self.lineChartArea) self.lineChartArea(true);
+				if (s.showDataWithGraph && self.ShowDataWithGraph) self.ShowDataWithGraph(true);
+				if (s.onlyTop && self.OnlyTop) self.OnlyTop(s.onlyTop);
+
+				// Apply chart colors/appearance
+				if (self.chartOptions) {
+					var opts = self.chartOptions();
+					var updated = false;
+					if (s.seriesColors && s.seriesColors.length > 0) {
+						opts = Object.assign({}, opts, { seriesColors: s.seriesColors });
+						updated = true;
+					}
+					if (s.backgroundColor) {
+						opts = Object.assign({}, opts, { backgroundColor: s.backgroundColor });
+						updated = true;
+					}
+					if (s.fontColor) {
+						opts = Object.assign({}, opts, { fontColor: s.fontColor });
+						updated = true;
+					}
+					if (s.fontSize) {
+						opts = Object.assign({}, opts, { fontSize: s.fontSize });
+						updated = true;
+					}
+					if (updated) {
+						self.chartOptions(opts);
+					}
+				}
+			}
+
+			// Apply custom SQL fields
+			if (actions.customFields && actions.customFields.length > 0) {
+				_.forEach(actions.customFields, function (cf) {
+					try {
+						console.log('AI: creating custom SQL field:', cf.label, 'function:', cf.sqlFunction);
+
+						// Set up the formula state
+						self.formulaFieldLabel(cf.label || 'Custom');
+						self.formulaDataFormat(cf.dataFormat || 'String');
+						self.formulaType('sql');
+
+						// Configure the customSqlField model
+						var sqlField = self.customSqlField;
+						sqlField.clear();
+						sqlField.selectedSqlFunction(cf.sqlFunction || 'Other');
+
+						// Set field reference if provided
+						if (cf.fieldRef) {
+							var parts = cf.fieldRef.split('>');
+							var fieldDisplayName = (parts.length > 1 ? parts[1] : parts[0]).trim();
+							sqlField.selectedField(fieldDisplayName);
+							// Find the table ID for the field
+							if (parts.length > 1) {
+								var tblName = parts[0].trim().toLowerCase().replace(/[\s_]/g, '');
+								var matchedTable = _.find(self.Tables(), function (t) {
+									return (t.tableName || '').toLowerCase().replace(/[\s_]/g, '') === tblName
+										|| (t.displayName || '').toLowerCase().replace(/[\s_]/g, '') === tblName;
+								});
+								if (matchedTable) sqlField.selectedFieldTableId(matchedTable.tableId);
+							}
+						}
+
+						// Set input value for functions that need it (LEFT, RIGHT, SUBSTRING)
+						if (cf.inputValue) sqlField.inputValue(cf.inputValue);
+
+						// Set conditions for conditional functions
+						if (cf.conditions && cf.conditions.length > 0) {
+							var conditions = cf.conditions.map(function (c) {
+								return {
+									field: c.field || '',
+									operator: c.operator || '=',
+									value: c.value || '',
+									result: c.result || '',
+									conditionDisplay: (c.field || '') + ' ' + (c.operator || '=') + ' ' + (c.value || '') + ' THEN ' + (c.result || '')
+								};
+							});
+							sqlField.conditions(conditions);
+						}
+
+						// Set else case
+						if (cf.elseCase) {
+							var elseEl = document.getElementById('condition-else');
+							if (elseEl) elseEl.textContent = cf.elseCase;
+						}
+
+						// For "Other" (raw SQL), set the custom SQL directly
+						if (cf.sqlFunction === 'Other' && cf.customSQL) {
+							sqlField.customSQL(cf.customSQL);
+							sqlField.fieldSql(cf.customSQL);
+							var customSqlEl = document.getElementById('custom-sql');
+							if (customSqlEl) customSqlEl.textContent = cf.customSQL;
+						}
+
+						// Generate the SQL and create the field
+						var generatedSql = sqlField.generateSQL();
+						console.log('AI: generated SQL for custom field:', generatedSql);
+
+						// Create the field using existing formula field infrastructure
+						var field = self.getEmptyFormulaField();
+						field.fieldName = cf.label || 'Custom';
+						field.fieldFormat = cf.dataFormat || 'String';
+						field.formulaType = 'sql';
+						field.customSqlField = sqlField.toJSON();
+						field.fieldSettings = {
+							formulaType: 'sql',
+							customSqlField: sqlField.toJSON()
+						};
+
+						var setupField = self.setupField(field);
+
+						// Set aggregate if specified
+						if (cf.aggregate && cf.aggregate !== 'None' && setupField.selectedAggregate) {
+							setupField.selectedAggregate(cf.aggregate);
+						}
+
+						self.SelectedFields.push(setupField);
+						console.log('AI: custom SQL field added:', cf.label);
+
+					} catch (cfError) {
+						console.error('AI: error creating custom field:', cf.label, cfError);
+					}
+				});
+
+				// Clean up formula state
+				self.clearFormulaField();
+			}
+
+			// Detect aggregate report
+			var hasAggregate = _.some(self.SelectedFields(), function (f) {
+				var agg = f.selectedAggregate ? ko.unwrap(f.selectedAggregate) : '';
+				return agg && agg !== 'None' && agg !== '' && agg !== 'Only in Detail' && agg !== 'Group in Detail';
+			});
+			if (hasAggregate && self.IsAggregateReport) {
+				self.IsAggregateReport(true);
+				if (self.IncludeSubTotal) self.IncludeSubTotal(true);
+			}
+
+			self.aiReportApplied(true);
+
+			// Auto-run the report so user sees results immediately
+			// For Html reports, delay to let the template get applied first
+			if (self.SelectedFields().length > 0) {
+				var isHtmlReport = (actions.reportType === 'Html' && actions.htmlTemplate);
+				if (isHtmlReport) {
+					setTimeout(function () { self.RunReport(false, true); }, 800);
+				} else {
+					self.RunReport(false, true);
+				}
+			}
+
+			toastr.success('AI has updated your report');
+
+		} catch (e) {
+			console.error('Error in _applyAiPostFields:', e);
+		}
+	};
+
+	// ── Quick action: Ask AI to recommend a chart based on current fields ──
+	self.getAiRecommendation = function () {
+		if (!self.hasAiConfigured()) return;
+		self.aiAssistantInput('Based on my current data fields, recommend the best visualization type and configure it for me.');
+		self.sendAiAssistantMessage();
+	};
+
+	// ── Clear AI conversation ──
+	self.clearAiAssistant = function () {
+		self.aiAssistantMessages([]);
+		self.aiConversationHistory = [];
+		self.aiReportApplied(false);
+	};
+
+	// Auto-scroll AI chat to bottom on new messages
+	self.aiAssistantMessages.subscribe(function () {
+		setTimeout(function () {
+			var el = document.querySelector('.ai-assist-messages');
+			if (el) el.scrollTop = el.scrollHeight;
+		}, 50);
+	});
+
+	// ── Smart Suggestions (rule-based, no AI) ──
+	self.smartSuggestion = ko.observable('');
+	self.suggestedType = ko.observable('');
+
+	self.computeSmartSuggestion = ko.computed(function () {
+		var fields = self.SelectedFields();
+		if (!fields || fields.length < 2) { self.smartSuggestion(''); self.suggestedType(''); return; }
+
+		var hasDate = false, numericCount = 0, categoricalCount = 0;
+		_.forEach(fields, function (f) {
+			var type = (f.fieldType || '').toLowerCase();
+			var fmt = f.fieldFormat ? (ko.isObservable(f.fieldFormat) ? f.fieldFormat() : f.fieldFormat) : '';
+			if (type === 'date' || type === 'datetime' || fmt === 'Date' || fmt === 'Date and Time') hasDate = true;
+			else if (type === 'int' || type === 'decimal' || type === 'money' || type === 'float' || type === 'double' || type === 'bigint' ||
+				fmt === 'Currency' || fmt === 'Percentage' || fmt === 'Decimal' || fmt === 'Number') numericCount++;
+			else categoricalCount++;
+		});
+
+		var agg = _.some(fields, function (f) {
+			var a = f.aggregateFunction ? (ko.isObservable(f.aggregateFunction) ? f.aggregateFunction() : f.aggregateFunction) : '';
+			return a && a !== 'None' && a !== '';
+		});
+
+		if (hasDate && numericCount >= 1 && agg) {
+			self.smartSuggestion('Tip: You have date + numeric data \u2014 a Line chart is great for showing trends over time');
+			self.suggestedType('Line');
+		} else if (categoricalCount >= 1 && numericCount >= 1 && agg) {
+			if (categoricalCount === 1 && fields.length <= 6) {
+				self.smartSuggestion('Tip: Categorical + numeric data \u2014 try a Bar chart to compare values, or Pie for proportions');
+				self.suggestedType('Bar');
+			} else {
+				self.smartSuggestion('Tip: Multiple categories with values \u2014 a Summary table or Bar chart works well');
+				self.suggestedType('Summary');
+			}
+		} else if (numericCount === 1 && fields.length === 1 && agg) {
+			self.smartSuggestion('Tip: Single metric \u2014 try the KPI widget for a prominent display');
+			self.suggestedType('Single');
+		} else {
+			self.smartSuggestion('');
+			self.suggestedType('');
+		}
+	});
+
+	self.applySuggestion = function () {
+		if (self.suggestedType()) self.setReportType(self.suggestedType());
+	};
+
+	// ── More Visualizations ──
+	var _svgBar = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="70" width="28" height="40" rx="2" fill="#0d6efd"/><rect x="58" y="40" width="28" height="70" rx="2" fill="#0d6efd"/><rect x="96" y="20" width="28" height="90" rx="2" fill="#0d6efd"/><rect x="134" y="55" width="28" height="55" rx="2" fill="#0d6efd"/><line x1="15" y1="112" x2="175" y2="112" stroke="#adb5bd" stroke-width="1"/><line x1="15" y1="10" x2="15" y2="112" stroke="#adb5bd" stroke-width="1"/><text x="30" y="8" font-size="8" fill="#6c757d">Sales by Region</text></svg>';
+	var _svgBarH = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="30" y="12" width="120" height="18" rx="2" fill="#0d6efd"/><rect x="30" y="38" width="90" height="18" rx="2" fill="#0d6efd"/><rect x="30" y="64" width="150" height="18" rx="2" fill="#0d6efd"/><rect x="30" y="90" width="60" height="18" rx="2" fill="#0d6efd"/><line x1="28" y1="8" x2="28" y2="112" stroke="#adb5bd" stroke-width="1"/><line x1="28" y1="112" x2="185" y2="112" stroke="#adb5bd" stroke-width="1"/></svg>';
+	var _svgBarS = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="30" width="28" height="50" rx="0" fill="#0d6efd"/><rect x="20" y="80" width="28" height="30" rx="0" fill="#6ea8fe"/><rect x="58" y="15" width="28" height="55" rx="0" fill="#0d6efd"/><rect x="58" y="70" width="28" height="40" rx="0" fill="#6ea8fe"/><rect x="96" y="40" width="28" height="40" rx="0" fill="#0d6efd"/><rect x="96" y="80" width="28" height="30" rx="0" fill="#6ea8fe"/><rect x="134" y="25" width="28" height="45" rx="0" fill="#0d6efd"/><rect x="134" y="70" width="28" height="40" rx="0" fill="#6ea8fe"/><line x1="15" y1="112" x2="175" y2="112" stroke="#adb5bd" stroke-width="1"/></svg>';
+	var _svgPolar = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><circle cx="100" cy="60" r="48" fill="none" stroke="#dee2e6" stroke-width="0.5"/><circle cx="100" cy="60" r="36" fill="none" stroke="#dee2e6" stroke-width="0.5"/><circle cx="100" cy="60" r="24" fill="none" stroke="#dee2e6" stroke-width="0.5"/><circle cx="100" cy="60" r="12" fill="none" stroke="#dee2e6" stroke-width="0.5"/><path d="M100,60 L100,12 A48,48 0 0,1 148,60 Z" fill="#0d6efd" opacity="0.6"/><path d="M100,60 L100,18 A42,42 0 0,1 142,60 Z" fill="#6ea8fe" opacity="0.6"/><path d="M100,60 L148,60 A48,48 0 0,1 100,108 Z" fill="#0d6efd" opacity="0.6"/><path d="M100,60 L138,60 A38,38 0 0,1 100,98 Z" fill="#6ea8fe" opacity="0.6"/><path d="M100,60 L100,108 A48,48 0 0,1 52,60 Z" fill="#0d6efd" opacity="0.6"/><path d="M100,60 L100,90 A30,30 0 0,1 70,60 Z" fill="#6ea8fe" opacity="0.6"/><path d="M100,60 L52,60 A48,48 0 0,1 100,12 Z" fill="#0d6efd" opacity="0.6"/><path d="M100,60 L64,60 A36,36 0 0,1 100,24 Z" fill="#6ea8fe" opacity="0.6"/></svg>';
+	var _svgLine = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><polyline points="20,80 55,50 90,60 125,25 160,35 180,15" fill="none" stroke="#0d6efd" stroke-width="2.5"/><circle cx="20" cy="80" r="3" fill="#0d6efd"/><circle cx="55" cy="50" r="3" fill="#0d6efd"/><circle cx="90" cy="60" r="3" fill="#0d6efd"/><circle cx="125" cy="25" r="3" fill="#0d6efd"/><circle cx="160" cy="35" r="3" fill="#0d6efd"/><circle cx="180" cy="15" r="3" fill="#0d6efd"/><line x1="15" y1="105" x2="185" y2="105" stroke="#adb5bd" stroke-width="1"/><line x1="15" y1="5" x2="15" y2="105" stroke="#adb5bd" stroke-width="1"/></svg>';
+	var _svgArea = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><polygon points="20,95 55,60 90,70 125,35 160,45 180,25 180,105 20,105" fill="#0d6efd" opacity="0.2"/><polyline points="20,95 55,60 90,70 125,35 160,45 180,25" fill="none" stroke="#0d6efd" stroke-width="2"/><line x1="15" y1="105" x2="185" y2="105" stroke="#adb5bd" stroke-width="1"/><line x1="15" y1="5" x2="15" y2="105" stroke="#adb5bd" stroke-width="1"/></svg>';
+	var _svgPie = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><path d="M100,60 L100,15 A45,45 0 0,1 138,38 Z" fill="#0d6efd"/><path d="M100,60 L138,38 A45,45 0 0,1 140,80 Z" fill="#6ea8fe"/><path d="M100,60 L140,80 A45,45 0 0,1 80,100 Z" fill="#0a58ca"/><path d="M100,60 L80,100 A45,45 0 0,1 60,40 Z" fill="#9ec5fe"/><path d="M100,60 L60,40 A45,45 0 0,1 100,15 Z" fill="#3d8bfd"/></svg>';
+	var _svgDonut = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><path d="M100,60 L100,15 A45,45 0 0,1 138,38 Z" fill="#0d6efd"/><path d="M100,60 L138,38 A45,45 0 0,1 140,80 Z" fill="#6ea8fe"/><path d="M100,60 L140,80 A45,45 0 0,1 80,100 Z" fill="#0a58ca"/><path d="M100,60 L80,100 A45,45 0 0,1 60,40 Z" fill="#9ec5fe"/><path d="M100,60 L60,40 A45,45 0 0,1 100,15 Z" fill="#3d8bfd"/><circle cx="100" cy="60" r="22" fill="white"/></svg>';
+	var _svgCombo = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="25" y="55" width="22" height="50" rx="2" fill="#0d6efd"/><rect x="62" y="35" width="22" height="70" rx="2" fill="#0d6efd"/><rect x="99" y="45" width="22" height="60" rx="2" fill="#0d6efd"/><rect x="136" y="25" width="22" height="80" rx="2" fill="#0d6efd"/><polyline points="36,45 73,28 110,35 147,18" fill="none" stroke="#dc3545" stroke-width="2.5"/><circle cx="36" cy="45" r="3" fill="#dc3545"/><circle cx="73" cy="28" r="3" fill="#dc3545"/><circle cx="110" cy="35" r="3" fill="#dc3545"/><circle cx="147" cy="18" r="3" fill="#dc3545"/><line x1="15" y1="107" x2="175" y2="107" stroke="#adb5bd" stroke-width="1"/></svg>';
+	var _svgList = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="10" width="170" height="18" rx="2" fill="#0d6efd" opacity="0.15"/><text x="20" y="23" font-size="9" font-weight="bold" fill="#0d6efd">Name</text><text x="80" y="23" font-size="9" font-weight="bold" fill="#0d6efd">Amount</text><text x="140" y="23" font-size="9" font-weight="bold" fill="#0d6efd">Date</text><line x1="15" y1="30" x2="185" y2="30" stroke="#dee2e6" stroke-width="0.5"/><text x="20" y="44" font-size="8" fill="#495057">Acme Corp</text><text x="80" y="44" font-size="8" fill="#495057">$12,400</text><text x="140" y="44" font-size="8" fill="#495057">Jan 15</text><line x1="15" y1="50" x2="185" y2="50" stroke="#dee2e6" stroke-width="0.5"/><text x="20" y="64" font-size="8" fill="#495057">Beta Inc</text><text x="80" y="64" font-size="8" fill="#495057">$8,200</text><text x="140" y="64" font-size="8" fill="#495057">Feb 03</text><line x1="15" y1="70" x2="185" y2="70" stroke="#dee2e6" stroke-width="0.5"/><text x="20" y="84" font-size="8" fill="#495057">Gamma LLC</text><text x="80" y="84" font-size="8" fill="#495057">$15,600</text><text x="140" y="84" font-size="8" fill="#495057">Mar 22</text><line x1="15" y1="90" x2="185" y2="90" stroke="#dee2e6" stroke-width="0.5"/><text x="20" y="104" font-size="8" fill="#495057">Delta Co</text><text x="80" y="104" font-size="8" fill="#495057">$6,300</text><text x="140" y="104" font-size="8" fill="#495057">Apr 10</text></svg>';
+	var _svgSummary = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="10" width="170" height="18" rx="2" fill="#0d6efd" opacity="0.15"/><text x="20" y="23" font-size="9" font-weight="bold" fill="#0d6efd">Category</text><text x="100" y="23" font-size="9" font-weight="bold" fill="#0d6efd">Sum</text><text x="150" y="23" font-size="9" font-weight="bold" fill="#0d6efd">Count</text><line x1="15" y1="30" x2="185" y2="30" stroke="#dee2e6" stroke-width="0.5"/><text x="20" y="44" font-size="8" font-weight="bold" fill="#495057">Electronics</text><line x1="15" y1="50" x2="185" y2="50" stroke="#dee2e6" stroke-width="0.5"/><text x="30" y="63" font-size="8" fill="#6c757d">Laptops</text><text x="100" y="63" font-size="8" fill="#495057">$24,500</text><text x="155" y="63" font-size="8" fill="#495057">18</text><line x1="15" y1="69" x2="185" y2="69" stroke="#dee2e6" stroke-width="0.5"/><text x="30" y="82" font-size="8" fill="#6c757d">Phones</text><text x="100" y="82" font-size="8" fill="#495057">$18,200</text><text x="155" y="82" font-size="8" fill="#495057">32</text><line x1="15" y1="88" x2="185" y2="88" stroke="#dee2e6" stroke-width="0.5"/><rect x="15" y="93" width="170" height="18" rx="2" fill="#e9ecef"/><text x="20" y="106" font-size="8" font-weight="bold" fill="#495057">Total</text><text x="100" y="106" font-size="8" font-weight="bold" fill="#495057">$42,700</text><text x="155" y="106" font-size="8" font-weight="bold" fill="#495057">50</text></svg>';
+	var _svgKpi = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="15" width="160" height="90" rx="8" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1"/><text x="100" y="50" font-size="10" fill="#6c757d" text-anchor="middle">Total Revenue</text><text x="100" y="82" font-size="28" font-weight="bold" fill="#0d6efd" text-anchor="middle">$124.5K</text><text x="100" y="98" font-size="9" fill="#198754" text-anchor="middle">+12.3% vs last month</text></svg>';
+	var _svgPivot = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="8" width="40" height="16" rx="2" fill="#e9ecef"/><rect x="55" y="8" width="40" height="16" rx="2" fill="#0d6efd" opacity="0.15"/><rect x="100" y="8" width="40" height="16" rx="2" fill="#0d6efd" opacity="0.15"/><rect x="145" y="8" width="40" height="16" rx="2" fill="#0d6efd" opacity="0.15"/><text x="62" y="20" font-size="7" fill="#0d6efd">Q1</text><text x="107" y="20" font-size="7" fill="#0d6efd">Q2</text><text x="152" y="20" font-size="7" fill="#0d6efd">Q3</text><rect x="10" y="28" width="40" height="16" rx="0" fill="#0d6efd" opacity="0.08"/><text x="14" y="39" font-size="7" fill="#495057">Widgets</text><text x="68" y="39" font-size="7" fill="#495057">450</text><text x="113" y="39" font-size="7" fill="#495057">520</text><text x="158" y="39" font-size="7" fill="#495057">480</text><rect x="10" y="48" width="40" height="16" rx="0" fill="#0d6efd" opacity="0.08"/><text x="14" y="59" font-size="7" fill="#495057">Gadgets</text><text x="68" y="59" font-size="7" fill="#495057">310</text><text x="113" y="59" font-size="7" fill="#495057">290</text><text x="158" y="59" font-size="7" fill="#495057">380</text><rect x="10" y="68" width="40" height="16" rx="0" fill="#0d6efd" opacity="0.08"/><text x="14" y="79" font-size="7" fill="#495057">Tools</text><text x="68" y="79" font-size="7" fill="#495057">180</text><text x="113" y="79" font-size="7" fill="#495057">210</text><text x="158" y="79" font-size="7" fill="#495057">195</text><line x1="10" y1="26" x2="185" y2="26" stroke="#dee2e6" stroke-width="0.5"/><line x1="52" y1="8" x2="52" y2="86" stroke="#dee2e6" stroke-width="0.5"/></svg>';
+	var _svgMap = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect width="200" height="120" fill="#dbeafe" rx="4"/>' +
+		'<path d="M18,42 L22,38 L28,36 L30,32 L26,28 L28,24 L34,22 L38,26 L42,24 L44,28 L48,26 L52,22 L56,24 L58,28 L54,34 L50,38 L46,36 L44,40 L48,44 L52,46 L50,50 L46,52 L42,48 L38,50 L34,48 L30,52 L24,50 L20,46 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<path d="M90,18 L96,16 L102,14 L110,16 L118,14 L124,18 L126,24 L122,30 L118,34 L124,38 L128,44 L124,48 L118,46 L112,42 L106,44 L100,48 L94,50 L88,46 L84,42 L80,46 L76,42 L78,36 L82,30 L86,26 L88,22 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<path d="M130,20 L138,18 L146,20 L154,18 L162,22 L168,28 L172,34 L176,30 L180,34 L178,40 L174,46 L168,50 L162,48 L156,52 L150,56 L144,54 L138,50 L132,46 L128,40 L126,34 L128,28 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<path d="M86,58 L92,56 L98,58 L104,62 L108,68 L112,74 L108,80 L102,84 L96,82 L90,78 L86,72 L84,66 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<path d="M150,62 L158,58 L166,60 L172,66 L176,72 L180,80 L176,86 L170,90 L162,92 L154,88 L148,82 L146,74 L148,68 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<circle cx="36" cy="38" r="4" fill="#dc3545" opacity="0.85"/><circle cx="42" cy="42" r="3" fill="#dc3545" opacity="0.85"/>' +
+		'<circle cx="106" cy="32" r="5" fill="#dc3545" opacity="0.85"/><circle cx="118" cy="40" r="3.5" fill="#dc3545" opacity="0.85"/>' +
+		'<circle cx="152" cy="36" r="4" fill="#dc3545" opacity="0.85"/><circle cx="168" cy="44" r="3" fill="#dc3545" opacity="0.85"/>' +
+		'<circle cx="98" cy="68" r="3" fill="#dc3545" opacity="0.85"/><circle cx="164" cy="76" r="3.5" fill="#dc3545" opacity="0.85"/></svg>';
+	var _svgHeatMap = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect width="200" height="120" fill="#dbeafe" rx="4"/>' +
+		'<path d="M18,42 L22,38 L28,36 L30,32 L26,28 L28,24 L34,22 L38,26 L42,24 L44,28 L48,26 L52,22 L56,24 L58,28 L54,34 L50,38 L46,36 L44,40 L48,44 L52,46 L50,50 L46,52 L42,48 L38,50 L34,48 L30,52 L24,50 L20,46 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<path d="M90,18 L96,16 L102,14 L110,16 L118,14 L124,18 L126,24 L122,30 L118,34 L124,38 L128,44 L124,48 L118,46 L112,42 L106,44 L100,48 L94,50 L88,46 L84,42 L80,46 L76,42 L78,36 L82,30 L86,26 L88,22 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<path d="M130,20 L138,18 L146,20 L154,18 L162,22 L168,28 L172,34 L176,30 L180,34 L178,40 L174,46 L168,50 L162,48 L156,52 L150,56 L144,54 L138,50 L132,46 L128,40 L126,34 L128,28 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<path d="M86,58 L92,56 L98,58 L104,62 L108,68 L112,74 L108,80 L102,84 L96,82 L90,78 L86,72 L84,66 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<path d="M150,62 L158,58 L166,60 L172,66 L176,72 L180,80 L176,86 L170,90 L162,92 L154,88 L148,82 L146,74 L148,68 Z" fill="#9ec5fe" stroke="#6ea8fe" stroke-width="0.5"/>' +
+		'<circle cx="38" cy="38" r="18" fill="#dc3545" opacity="0.25"/><circle cx="38" cy="38" r="10" fill="#dc3545" opacity="0.35"/>' +
+		'<circle cx="108" cy="32" r="22" fill="#dc3545" opacity="0.2"/><circle cx="108" cy="32" r="12" fill="#dc3545" opacity="0.35"/>' +
+		'<circle cx="155" cy="38" r="16" fill="#fd7e14" opacity="0.25"/><circle cx="155" cy="38" r="8" fill="#fd7e14" opacity="0.4"/>' +
+		'<circle cx="165" cy="75" r="14" fill="#ffc107" opacity="0.3"/><circle cx="165" cy="75" r="7" fill="#ffc107" opacity="0.4"/></svg>';
+	var _svgTreemap = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="110" height="65" rx="2" fill="#0d6efd"/><rect x="125" y="10" width="65" height="35" rx="2" fill="#6ea8fe"/><rect x="125" y="50" width="65" height="25" rx="2" fill="#3d8bfd"/><rect x="10" y="80" width="70" height="30" rx="2" fill="#9ec5fe"/><rect x="85" y="80" width="50" height="30" rx="2" fill="#0a58ca"/><rect x="140" y="80" width="50" height="30" rx="2" fill="#6ea8fe" opacity="0.7"/><text x="50" y="48" font-size="9" fill="white" text-anchor="middle">Product A</text><text x="157" y="32" font-size="7" fill="white" text-anchor="middle">Product B</text></svg>';
+	var _svgScatter = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="105" x2="185" y2="105" stroke="#adb5bd" stroke-width="1"/><line x1="20" y1="10" x2="20" y2="105" stroke="#adb5bd" stroke-width="1"/><circle cx="40" cy="80" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="60" cy="65" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="55" cy="75" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="85" cy="50" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="100" cy="40" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="95" cy="55" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="120" cy="35" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="140" cy="25" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="130" cy="45" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="160" cy="20" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="75" cy="60" r="4" fill="#0d6efd" opacity="0.7"/><line x1="35" y1="85" x2="165" y2="18" stroke="#dc3545" stroke-width="1" stroke-dasharray="4"/></svg>';
+	var _svgGauge = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><path d="M40,90 A60,60 0 0,1 160,90" fill="none" stroke="#e9ecef" stroke-width="14" stroke-linecap="round"/><path d="M40,90 A60,60 0 0,1 136,42" fill="none" stroke="#198754" stroke-width="14" stroke-linecap="round"/><text x="100" y="85" font-size="22" font-weight="bold" fill="#495057" text-anchor="middle">73%</text><text x="100" y="100" font-size="8" fill="#6c757d" text-anchor="middle">Performance</text></svg>';
+	var _svgFunnel = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><polygon points="20,15 180,15 170,35 30,35" fill="#0d6efd"/><polygon points="35,40 165,40 150,60 50,60" fill="#3d8bfd"/><polygon points="55,65 145,65 135,85 65,85" fill="#6ea8fe"/><polygon points="70,90 130,90 120,110 80,110" fill="#9ec5fe"/><text x="100" y="28" font-size="8" fill="white" text-anchor="middle">Leads: 1000</text><text x="100" y="53" font-size="8" fill="white" text-anchor="middle">Qualified: 450</text><text x="100" y="78" font-size="8" fill="white" text-anchor="middle">Proposals: 180</text><text x="100" y="103" font-size="7" fill="#0d6efd" text-anchor="middle">Won: 45</text></svg>';
+	var _svgRadar = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><polygon points="100,20 155,45 145,90 55,90 45,45" fill="none" stroke="#dee2e6" stroke-width="0.5"/><polygon points="100,35 140,52 133,82 67,82 60,52" fill="none" stroke="#dee2e6" stroke-width="0.5"/><polygon points="100,50 125,60 120,75 80,75 75,60" fill="none" stroke="#dee2e6" stroke-width="0.5"/><polygon points="100,28 148,50 125,88 60,78 52,42" fill="#0d6efd" opacity="0.2" stroke="#0d6efd" stroke-width="1.5"/><circle cx="100" cy="28" r="2.5" fill="#0d6efd"/><circle cx="148" cy="50" r="2.5" fill="#0d6efd"/><circle cx="125" cy="88" r="2.5" fill="#0d6efd"/><circle cx="60" cy="78" r="2.5" fill="#0d6efd"/><circle cx="52" cy="42" r="2.5" fill="#0d6efd"/></svg>';
+	var _svgWaterfall = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="25" width="24" height="80" rx="2" fill="#0d6efd"/><rect x="48" y="25" width="24" height="30" rx="2" fill="#198754"/><line x1="48" y1="55" x2="72" y2="55" stroke="#adb5bd" stroke-width="0.5" stroke-dasharray="2"/><rect x="81" y="35" width="24" height="20" rx="2" fill="#198754"/><rect x="114" y="55" width="24" height="25" rx="2" fill="#dc3545"/><rect x="147" y="20" width="24" height="85" rx="2" fill="#0d6efd"/><line x1="10" y1="107" x2="180" y2="107" stroke="#adb5bd" stroke-width="1"/></svg>';
+	var _svgSunburst = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><circle cx="100" cy="60" r="45" fill="none" stroke="#dee2e6" stroke-width="0.5"/><path d="M100,60 L100,15 A45,45 0 0,1 145,60 Z" fill="#0d6efd" opacity="0.3"/><path d="M100,60 L145,60 A45,45 0 0,1 100,105 Z" fill="#6ea8fe" opacity="0.3"/><path d="M100,60 L100,105 A45,45 0 0,1 55,60 Z" fill="#0a58ca" opacity="0.3"/><path d="M100,60 L55,60 A45,45 0 0,1 100,15 Z" fill="#3d8bfd" opacity="0.3"/><circle cx="100" cy="60" r="25" fill="white"/><path d="M100,60 L100,35 A25,25 0 0,1 125,60 Z" fill="#0d6efd" opacity="0.5"/><path d="M100,60 L125,60 A25,25 0 0,1 100,85 Z" fill="#6ea8fe" opacity="0.5"/><path d="M100,60 L100,85 A25,25 0 0,1 75,60 Z" fill="#0a58ca" opacity="0.5"/><path d="M100,60 L75,60 A25,25 0 0,1 100,35 Z" fill="#3d8bfd" opacity="0.5"/><circle cx="100" cy="60" r="10" fill="white"/></svg>';
+	var _svgHtml = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="10" width="170" height="100" rx="4" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1"/><text x="25" y="30" font-size="9" fill="#0d6efd" font-family="monospace">&lt;div class=&quot;card&quot;&gt;</text><text x="35" y="45" font-size="9" fill="#495057" font-family="monospace">&lt;h2&gt;{{Title}}&lt;/h2&gt;</text><text x="35" y="60" font-size="9" fill="#495057" font-family="monospace">&lt;p&gt;{{Value}}&lt;/p&gt;</text><text x="25" y="75" font-size="9" fill="#0d6efd" font-family="monospace">&lt;/div&gt;</text><rect x="25" y="82" width="60" height="20" rx="3" fill="#0d6efd" opacity="0.1" stroke="#0d6efd" stroke-width="0.5"/><text x="35" y="96" font-size="8" fill="#0d6efd">Preview</text></svg>';
+
+	self.moreChartTypes = [
+		{ category: 'Basic', id: 'Bar', name: 'Bar Chart', icon: 'fa-bar-chart', desc: 'Compare values across categories', available: true,
+			detail: 'Vertical bars compare values across different categories. Great for showing rankings, comparisons, and distributions.',
+			bestFor: 'Sales by region, product comparison, monthly totals',
+			needs: '1 categorical field + 1 numeric field with aggregate (Sum, Count, etc.)',
+			svg: _svgBar },
+		{ category: 'Basic', id: 'Bar-horizontal', name: 'Horizontal Bar', icon: 'fa-bars', desc: 'Horizontal bars, great for long labels', available: true,
+			detail: 'Same as bar chart but horizontal. Perfect when category names are long (e.g., product names, full addresses).',
+			bestFor: 'Top 10 lists, long category names, survey responses',
+			needs: '1 categorical field + 1 numeric field with aggregate',
+			svg: _svgBarH,
+			modifier: function () { self.setReportType('Bar'); self.barChartHorizontal(true); } },
+		{ category: 'Basic', id: 'Bar-stacked', name: 'Stacked Bar', icon: 'fa-tasks', desc: 'Show composition within categories', available: true,
+			detail: 'Bars are divided into colored segments showing how each category is composed. Use "Group in Graph" on a second field to create segments.',
+			bestFor: 'Revenue by product per quarter, expenses breakdown, composition analysis',
+			needs: '1 categorical field + 1 numeric field + 1 field set to "Group in Graph"',
+			svg: _svgBarS,
+			modifier: function () { self.setReportType('Bar'); self.barChartStacked(true); } },
+		{ category: 'Basic', id: 'Line', name: 'Line Chart', icon: 'fa-line-chart', desc: 'Show trends and changes over time', available: true,
+			detail: 'Connect data points with lines to show trends, patterns, and changes over a continuous axis (usually time).',
+			bestFor: 'Monthly revenue trends, daily user counts, year-over-year comparison',
+			needs: '1 date/time field (grouped) + 1 numeric field with aggregate',
+			svg: _svgLine },
+		{ category: 'Basic', id: 'Line-area', name: 'Area Chart', icon: 'fa-area-chart', desc: 'Line with filled area, shows volume', available: true,
+			detail: 'Like a line chart but the area beneath is filled, emphasizing the magnitude of values over time.',
+			bestFor: 'Revenue volume, cumulative totals, stacked area comparisons',
+			needs: '1 date/time field (grouped) + 1 numeric field with aggregate',
+			svg: _svgArea,
+			modifier: function () { self.setReportType('Line'); self.lineChartArea(true); } },
+		{ category: 'Basic', id: 'Pie', name: 'Pie Chart', icon: 'fa-pie-chart', desc: 'Show proportions of a whole', available: true,
+			detail: 'Circular chart divided into slices showing percentage of a whole. Best with fewer than 8 categories.',
+			bestFor: 'Market share, budget allocation, status distribution',
+			needs: '1 categorical field + 1 numeric field with aggregate. Keep categories under 8 for readability.',
+			svg: _svgPie },
+		{ category: 'Basic', id: 'Pie-donut', name: 'Donut Chart', icon: 'fa-circle-o', desc: 'Pie with center cutout, modern look', available: true,
+			detail: 'A pie chart with a hollow center. Looks more modern and the center can conceptually hold a total or label.',
+			bestFor: 'Same as pie chart, but with a cleaner modern aesthetic',
+			needs: '1 categorical field + 1 numeric field with aggregate',
+			svg: _svgDonut,
+			modifier: function () { self.setReportType('Pie'); self.pieChartDonut(true); } },
+		{ category: 'Basic', id: 'Combo', name: 'Combo Chart', icon: 'fa-signal', desc: 'Mix bar and line in one chart', available: true,
+			detail: 'Combine bars and lines in one chart. Use "Series Type" in field settings to set each series as bar or line.',
+			bestFor: 'Revenue (bars) vs profit margin % (line), quantity vs average price',
+			needs: '1 categorical field + 2+ numeric fields. Set Series Type per field in Field Settings.',
+			svg: _svgCombo },
+		{ category: 'Tables & KPI', id: 'List', name: 'Data List', icon: 'fa-list-alt', desc: 'Detailed tabular rows', available: true,
+			detail: 'A flat table showing every row of data. Supports sorting, paging, drilldown, conditional formatting, and export.',
+			bestFor: 'Order details, customer lists, transaction logs, any detailed record view',
+			needs: 'Any fields. No aggregate functions needed.',
+			svg: _svgList },
+		{ category: 'Tables & KPI', id: 'Summary', name: 'Summary', icon: 'fa-table', desc: 'Grouped table with aggregates', available: true,
+			detail: 'Groups data by one or more fields and shows aggregate values (Sum, Count, Avg). Supports totals row and sub-grouping.',
+			bestFor: 'Sales by category, monthly summaries, employee performance rollups',
+			needs: 'At least 1 field set to "Group" + 1 field with aggregate (Sum, Count, etc.)',
+			svg: _svgSummary },
+		{ category: 'Tables & KPI', id: 'Single', name: 'KPI Widget', icon: 'fa-window-maximize', desc: 'Single metric, big number display', available: true,
+			detail: 'Displays a single big number prominently \u2014 perfect for dashboards. Customize font size, color, and background.',
+			bestFor: 'Total revenue, active users count, average order value',
+			needs: '1 numeric field with an aggregate function (Sum, Count, Avg, etc.)',
+			svg: _svgKpi },
+		{ category: 'Tables & KPI', id: 'Pivot', name: 'Transpose', icon: 'fa-random', desc: 'Transposed table layout', available: true,
+			detail: 'Creates a transposed table with the first field used to Transpose the rows as columns.',
+			bestFor: 'Sales by product AND by month, region vs category matrix',
+			needs: '1 field set to "Group" (rows) + 1 field set to "Transpose" (columns)',
+			svg: _svgPivot },
+		{ category: 'Geographic', id: 'Map', name: 'Map', icon: 'fa-globe', desc: 'Plot data on a geographic map', available: true,
+			detail: 'Plots data points on an interactive map using latitude/longitude or region names. Supports choropleth coloring.',
+			bestFor: 'Store locations, sales by state/country, geographic distribution',
+			needs: 'Fields with geographic data (lat/long, country names, or state codes)',
+			svg: _svgMap },
+		{ category: 'Geographic', id: 'HeatMap', name: 'Heat Map', icon: 'fa-map', desc: 'Geographic intensity visualization', available: true,
+			detail: 'Shows data density/intensity on a map with color gradients. Hot spots glow brighter.',
+			bestFor: 'Customer density, incident hotspots, delivery concentration areas',
+			needs: 'Latitude + Longitude numeric fields + optional intensity value field',
+			svg: _svgHeatMap },
+		{ category: 'Advanced', id: 'Treemap', name: 'Treemap', icon: 'fa-window-restore', desc: 'Hierarchical nested rectangles', available: true,
+			detail: 'Displays hierarchical data as nested rectangles. Size represents value, color represents category.',
+			bestFor: 'Budget breakdown, disk usage, organizational hierarchy with values',
+			needs: '1 categorical field + 1 numeric field with aggregate',
+			svg: _svgTreemap },
+		{ category: 'Advanced', id: 'Radar', name: 'Radar / Spider', icon: 'fa-snowflake-o', desc: 'Compare multiple dimensions', available: true,
+			detail: 'Plots multiple variables on axes radiating from a center point. Great for comparing profiles across many dimensions.',
+			bestFor: 'Product feature comparison, employee skill assessment, multi-criteria scoring',
+			needs: '1 categorical field + 3 or more numeric fields with aggregates (Sum, Count, Avg, etc.)',
+			svg: _svgRadar },
+		{ category: 'Advanced', id: 'Polar', name: 'Polar Stacked Bar', icon: 'fa-bullseye', desc: 'Stacked bars on a circular polar axis', available: true,
+			detail: 'Stacked bar chart wrapped around a circular polar coordinate system. Creates a striking radial layout that emphasizes cyclical patterns or compares categories in a compact circular form.',
+			bestFor: 'Weekday/monthly comparisons, cyclical data, compact multi-series comparison',
+			needs: '1 categorical field + 2 or more numeric fields with aggregates',
+			svg: _svgPolar },
+		{ category: 'Advanced', id: 'Scatter', name: 'Scatter Plot', icon: 'fa-braille', desc: 'Show correlation between two numeric fields', available: false,
+			detail: 'Plots individual data points on X/Y axes to reveal correlations, clusters, and outliers between two numeric variables.',
+			bestFor: 'Price vs quantity, age vs income, any two-variable correlation',
+			needs: '2 numeric fields (one for each axis)',
+			svg: _svgScatter },
+		{ category: 'Advanced', id: 'Gauge', name: 'Gauge', icon: 'fa-tachometer', desc: 'Single value against a target range', available: false,
+			detail: 'A speedometer-style gauge showing a single value against min/max ranges. Great for KPI dashboards with targets.',
+			bestFor: 'Achievement vs target, system health %, completion rate',
+			needs: '1 numeric field with aggregate + configured min/max range',
+			svg: _svgGauge },
+		{ category: 'Advanced', id: 'Funnel', name: 'Funnel', icon: 'fa-filter', desc: 'Sequential stages with drop-off', available: false,
+			detail: 'Shows values decreasing through stages of a process. Each stage is narrower than the previous, showing conversion/drop-off.',
+			bestFor: 'Sales pipeline, conversion funnel, recruitment process stages',
+			needs: '1 categorical field (stages) + 1 numeric field (values), sorted by stage order',
+			svg: _svgFunnel },
+		{ category: 'Advanced', id: 'Waterfall', name: 'Waterfall', icon: 'fa-sort-amount-desc', desc: 'Show cumulative additions/subtractions', available: false,
+			detail: 'Shows how an initial value is affected by a series of positive and negative changes, ending at a final value.',
+			bestFor: 'Profit waterfall, budget variance, cash flow analysis',
+			needs: '1 categorical field (steps) + 1 numeric field (positive/negative values)',
+			svg: _svgWaterfall },
+		{ category: 'Advanced', id: 'Sunburst', name: 'Sunburst', icon: 'fa-sun-o', desc: 'Multi-level hierarchical ring chart', available: false,
+			detail: 'A multi-ring donut chart showing hierarchical data. Inner rings are parent categories, outer rings are children.',
+			bestFor: 'Organization hierarchy, product category drill-down, file system visualization',
+			needs: '2+ categorical fields (hierarchy levels) + 1 numeric field',
+			svg: _svgSunburst },
+		{ category: 'Custom', id: 'Html', name: 'Custom HTML', icon: 'fa-code', desc: 'Full custom HTML template', available: true,
+			detail: 'Write your own HTML template with full control. Use data binding tokens to inject field values. Supports CSS, images, and custom layouts.',
+			bestFor: 'Custom invoices, branded reports, letter-style layouts, complex cards',
+			needs: 'HTML/CSS knowledge. Use {{FieldName}} tokens to inject data.',
+			svg: _svgHtml }
+	];
+
+	self.moreChartCategories = ko.computed(function () {
+		var cats = [];
+		var seen = {};
+		_.forEach(self.moreChartTypes, function (t) {
+			if (!seen[t.category]) { cats.push(t.category); seen[t.category] = true; }
+		});
+		return cats;
+	});
+
+	self.getChartsForCategory = function (category) {
+		return _.filter(self.moreChartTypes, { category: category });
+	};
+
+	self.getChartPreviewSvg = function (chartId) {
+		var chart = _.find(self.moreChartTypes, function (t) { return t.id === chartId; });
+		return chart && chart.svg ? chart.svg : '';
+	};
+
+	self.getChartTooltip = function (chartId) {
+		var chart = _.find(self.moreChartTypes, function (t) { return t.id === chartId; });
+		if (!chart) return '';
+		return '<div style="width:220px;padding:4px;">' +
+			(chart.svg ? '<div style="background:#fff;border-radius:4px;padding:4px;margin-bottom:6px;">' + chart.svg + '</div>' : '') +
+			'<div style="font-size:12px;font-weight:600;">' + chart.name + '</div>' +
+			'<div style="font-size:11px;opacity:0.85;">' + chart.desc + '</div></div>';
+	};
+
+	self.selectedMoreChart = ko.observable(null);
+
+	// Build chart cards programmatically — avoids all KO foreach/rebind issues
+	self._renderMoreChartsGrid = function () {
+		var grid = document.getElementById('moreChartsGridPanel');
+		if (!grid) return;
+		var html = '';
+		var cats = self.moreChartCategories();
+		cats.forEach(function (cat) {
+			html += '<h6 class="text-muted text-uppercase small fw-bold mt-3 mb-2 px-3">' + _.escape(cat) + '</h6>';
+			html += '<div class="row g-2 px-3">';
+			var charts = self.getChartsForCategory(cat);
+			charts.forEach(function (chart) {
+				var classes = 'chart-card card h-100 text-center p-2';
+				if (self.ReportType() === chart.id) classes += ' active-chart';
+				if (!chart.available) classes += ' chart-card-disabled';
+				html += '<div class="col-6 col-md-4">';
+				html += '<div class="' + classes + '" style="cursor:pointer;" data-chart-id="' + _.escape(chart.id) + '">';
+				html += '<div class="chart-card-icon mb-1"><i class="fa fa-2x ' + _.escape(chart.icon) + '"></i></div>';
+				html += '<div class="fw-semibold small">' + _.escape(chart.name) + '</div>';
+				html += '<div class="text-muted" style="font-size: 10px;">' + _.escape(chart.desc) + '</div>';
+				if (!chart.available) {
+					html += '<span class="badge bg-secondary mt-1" style="font-size: 9px;">Coming Soon</span>';
+				}
+				html += '</div></div>';
+			});
+			html += '</div>';
+		});
+		html += '<div class="pb-3"></div>';
+		grid.innerHTML = html;
+
+		// Wire up click handlers
+		grid.querySelectorAll('.chart-card').forEach(function (card) {
+			card.addEventListener('click', function () {
+				var id = card.getAttribute('data-chart-id');
+				var chart = _.find(self.moreChartTypes, function (t) { return t.id === id; });
+				if (chart) self.selectMoreChart(chart);
+			});
+		});
+	};
+
+	self._renderMoreChartsDetail = function () {
+		var panel = document.getElementById('moreChartsDetailPanel');
+		if (!panel) return;
+		var chart = self.selectedMoreChart();
+		var html = '';
+		if (chart) {
+			html += '<div class="p-3">';
+			html += '<div class="text-center mb-2">';
+			html += '<h5 class="fw-bold mb-1">' + _.escape(chart.name) + '</h5>';
+			html += '<span class="badge bg-light text-dark">' + _.escape(chart.category) + '</span>';
+			html += '</div>';
+			html += '<div class="mb-3 more-chart-preview-svg p-2">' + (chart.svg || '') + '</div>';
+			html += '<p class="mb-3" style="font-size: 13px; line-height: 1.5;">' + _.escape(chart.detail || '') + '</p>';
+			html += '<div class="mb-3"><div class="fw-semibold small text-uppercase text-muted mb-1"><i class="fa fa-lightbulb-o"></i> Best For</div>';
+			html += '<p class="small mb-0" style="line-height: 1.5;">' + _.escape(chart.bestFor || '') + '</p></div>';
+			html += '<div class="mb-3"><div class="fw-semibold small text-uppercase text-muted mb-1"><i class="fa fa-database"></i> Data Requirements</div>';
+			html += '<p class="small mb-0" style="line-height: 1.5;">' + _.escape(chart.needs || '') + '</p></div>';
+			if (!chart.available) {
+				html += '<div class="alert alert-secondary small py-2 mb-3"><i class="fa fa-clock-o"></i> This visualization is coming soon and not yet available.</div>';
+			} else {
+				html += '<button type="button" class="btn btn-primary w-100" id="moreChartsConfirmBtn"><i class="fa fa-check"></i> Use This Visualization</button>';
+			}
+			html += '</div>';
+		} else {
+			html += '<div class="p-3 text-center text-muted d-flex flex-column align-items-center justify-content-center h-100">';
+			html += '<i class="fa fa-hand-pointer-o fa-3x mb-3" style="opacity: 0.3;"></i>';
+			html += '<p class="mb-0">Select a chart type to see details and preview</p></div>';
+		}
+		panel.innerHTML = html;
+
+		var confirmBtn = document.getElementById('moreChartsConfirmBtn');
+		if (confirmBtn) confirmBtn.addEventListener('click', function () { self.confirmMoreChart(); });
+
+		// Highlight selected card in the grid
+		var grid = document.getElementById('moreChartsGridPanel');
+		if (grid) {
+			grid.querySelectorAll('.chart-card').forEach(function (c) {
+				c.classList.toggle('chart-card-selected', !!chart && c.getAttribute('data-chart-id') === chart.id);
+			});
+		}
+	};
+
+	self.showMoreCharts = function () {
+		self.selectedMoreChart(null);
+		var modal = document.getElementById('moreChartsModal');
+		if (modal) {
+			self._renderMoreChartsGrid();
+			self._renderMoreChartsDetail();
+			new bootstrap.Modal(modal).show();
+		}
+	};
+
+	self.initChartTooltips = function (contextEl) {
+		setTimeout(function () {
+			var root = contextEl || document;
+			root.querySelectorAll('.chart-type-btn[data-chart-id]').forEach(function (btn) {
+				if (bootstrap.Tooltip.getInstance(btn)) return;
+				var chartId = btn.getAttribute('data-chart-id');
+				var html = self.getChartTooltip(chartId);
+				if (html) {
+					new bootstrap.Tooltip(btn, {
+						title: html,
+						html: true,
+						sanitize: false,
+						placement: 'bottom',
+						trigger: 'hover',
+						delay: { show: 300, hide: 100 },
+						container: 'body'
+					});
+				}
+			});
+		}, 500);
+	};
+
+	self.selectMoreChart = function (chart) {
+		if (!chart.available) return;
+		self.selectedMoreChart(chart);
+		self._renderMoreChartsDetail();
+	};
+
+	self.confirmMoreChart = function () {
+		var chart = self.selectedMoreChart();
+		if (!chart) return;
+		if (chart.modifier) {
+			chart.modifier();
+		} else {
+			self.setReportType(chart.id);
+		}
+		self.selectedMoreChart(null);
+		var modal = bootstrap.Modal.getInstance(document.getElementById('moreChartsModal'));
+		if (modal) modal.hide();
+	};
 	self.runQuery = function (useAi) {
 		self.SelectedFields([]);
 		self.resetQuery(false);
@@ -2149,6 +3350,30 @@ var reportViewModel = function (options) {
 	self.pager.pageSize.subscribe(function () {
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries, true);
 	});
+
+	self.startOverReport = function () {
+		bootbox.confirm("Are you sure you want to start over? This will clear all fields, filters, and settings.", function (result) {
+			if (result) {
+				self.clearReport();
+				self.ReportResult().ReportData(null);
+				self.ReportResult().HasError(false);
+				self.ReportResult().ReportSql(null);
+				self.ReportResult().SubTotals([]);
+				self.SaveReport(false);
+				self.clearAiChat(true);
+				self.clearAiAssistant();
+				self.activeDesignRunning = false;
+				if (self.usingAi()) {
+					self.activeDesign(true);
+					self.ReportMode("design");
+				} else {
+					self.activeDesign(false);
+					self.ReportMode("generate");
+				}
+				self.manageAccess.applyDefaultSettings();
+			}
+		});
+	};
 
 	self.createNewReport = function () {
 		self.clearReport();
@@ -3336,6 +4561,9 @@ var reportViewModel = function (options) {
 		self.EditFiltersOnReport(false);
 		self.ShowUniqueRecords(false);
 		self.ShowExpandOption(false);
+		self.bypassEnabled(false);
+		self.bypassMode("all");
+		self.bypassSpecificIds([]);
 		self.DontExecuteOnRun(false);
 		self.ShowFilterDetails(false);
 		self.AggregateReport(false);
@@ -3380,6 +4608,8 @@ var reportViewModel = function (options) {
 		self.editingSubReportParentId(null);
 		self.editingSubReportParentName('');
 		self.clearManageAccess();	
+
+		self.clearAiAssistant();
 	};
 	self.currentUserManageAccess = function () {
 		self.manageAccess.clientId('');
@@ -3550,6 +4780,7 @@ var reportViewModel = function (options) {
 				});
 			});
 			self.reportChanged();
+			if (self.showHints()) self.initAggregateHelpTips();
 		}, 500);
 
 		var newField = fields.length > 0 ? fields[fields.length - 1] : null;
@@ -4590,6 +5821,8 @@ var reportViewModel = function (options) {
 				includeColumnTotal: self.IncludeColumnTotal(),
 				totalRowFormat: self.totalRowFormat(),
 				subTotalPerGroup: self.subTotalPerGroup(),
+				customJoins: ko.toJS(self.customJoins()),
+				customJoinsBaseTableId: self.baseTableIdOverride(),
 				ShowFilterDetails: self.ShowFilterDetails(),
 			}),
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
@@ -4607,7 +5840,7 @@ var reportViewModel = function (options) {
 					Descending: x.sortDesc()
 				};
 			}),
-			ReportType: self.ReportType() == 'Map' && self.mapRegion() ? self.ReportType() + '|' + self.mapRegion() : self.ReportType(),
+			ReportType: self.ReportType() == 'Map' && self.mapRegion() ? self.ReportType() + '|' + (self.mapRegion() == 'Other' && self.otherMapRegion() ? 'Other:' + self.otherMapRegion() : self.mapRegion()) : self.ReportType(),
 			UseStoredProc: self.useStoredProc(),
 			StoredProcId: self.useStoredProc() ? self.SelectedProc().Id : null,
 			GroupFunctionList: _.map(self.SelectedFields(), function (x) {
@@ -4846,6 +6079,7 @@ var reportViewModel = function (options) {
 								SaveReport: _saveReport && idx === 0,
 								ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, idx - 1)),
 								adminMode: self.adminMode(),
+								BypassDataFiltersToUpdate: self.bypassEnabled() ? (self.bypassMode() === "all" ? "/all/" : self.bypassSpecificIds().join(",")) : "",
 								userIdForFilter: self.userIdForFilter,
 								SubTotalMode: false,
 								useAltPivot: self.appSettings.useAltPivot
@@ -6446,18 +7680,6 @@ var reportViewModel = function (options) {
 			toastr.info('Note: ' + result.Warnings);
 		}
 
-		if (self.isChart()) {
-			google.charts.load('current', { packages: ['corechart', 'geochart','treemap'] });
-			if (self.activeDesign()) {
-				google.charts.setOnLoadCallback(function () {
-					setTimeout(self.DrawChart, 500);
-				});
-			} else {
-				google.charts.setOnLoadCallback(self.DrawChart);
-			}
-		}
-
-		
 		if (self.IncludeSubTotal() && self.hasPivotColumn()==false) {
 			ajaxcall({
 				url: options.runReportApiUrl,
@@ -7018,7 +8240,7 @@ var reportViewModel = function (options) {
 		backgroundColor: '#fff',
 		fontSize: 12,
 		fontFamily: "",
-		fontColor: "#00000", 
+		fontColor: "#000000",
 		showXAxisLabel: true,
 		showYAxisLabel: true,
 		showSmallValuesOnLabel: false,
@@ -7158,7 +8380,22 @@ var reportViewModel = function (options) {
 	};
 
 	self.updateChart = function () {
-		self.DrawChart(); 
+		self.DrawChart();
+	};
+	self.updateYAxisFormat = function () {
+		var fmt = self.chartOptions().yAxisFormat;
+		if (!fmt) return; // "Auto" — don't override field settings
+		var reportData = self.ReportResult() ? self.ReportResult().ReportData() : null;
+		if (!reportData || !reportData.Columns) return;
+		for (var ci = 1; ci < reportData.Columns.length; ci++) {
+			var col = reportData.Columns[ci];
+			if (col.IsNumeric && !col.groupInGraph()) {
+				if (col.fieldFormat && ko.isObservable(col.fieldFormat)) {
+					col.fieldFormat(fmt);
+				}
+				break;
+			}
+		}
 	};
 	self.updateLegend = function (selectedValue) {
 		self.chartOptions().legendPosition = selectedValue;
@@ -7166,10 +8403,10 @@ var reportViewModel = function (options) {
 	};
 	self.skipDraw = options.skipDraw === true ? true : false;
 	self.DrawChart = function () {
-		if (!self.isChart() || self.skipDraw === true) return;
+		if (!self.isChart() || (self.skipDraw === true && !self.activeDesign())) return;
 		// Create the data table.
 		var reportData = self.ReportResult().ReportData();
-		if (!reportData || !google.visualization || !google.visualization.DataTable || !google.visualization.LineChart || !google.visualization.BarChart || !google.visualization.ColumnChart || !google.visualization.PieChart) return;
+		if (!reportData) return;
 		var chartDivId = 'chart_div_' + self.ReportID();
 		var chartDiv = null;
 		if (self.activeDesign()) {
@@ -7183,6 +8420,131 @@ var reportViewModel = function (options) {
 			chartDiv = document.getElementById(chartDivId);
 		}
 		if (!chartDiv || !reportData) return;
+		if (chartDiv._echart) {
+			chartDiv._echart.dispose();
+			chartDiv._echart = null;
+		}
+
+		// Ensure the container has dimensions before init (needed for live preview in modals)
+		if (self.activeDesign()) {
+			chartDiv.style.width = '100%';
+			chartDiv.style.minHeight = '300px';
+			if (!chartDiv.style.height || chartDiv.style.height === '0px') {
+				chartDiv.style.height = '350px';
+			}
+		}
+
+		var chart = echarts.init(chartDiv);
+		chartDiv._echart = chart;
+
+		// ── Shared resize helpers (used by Map, Treemap, and all other chart types) ──
+		var chartWidth; var chartHeight;
+		var edgeThreshold = 20;
+		var isNearEdge = false;
+		function handlePointerDown(event) {
+			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
+			if (!isNearEdge) return;
+			event.preventDefault();
+			document.addEventListener('pointermove', handlePointerMove);
+			document.addEventListener('pointerup', handlePointerUp);
+		}
+		function handlePointerMove(event) {
+			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
+			event.preventDefault();
+			chartWidth = event.clientX - chartDiv.getBoundingClientRect().left;
+			chartHeight = event.clientY - chartDiv.getBoundingClientRect().top;
+			chartWidth = Math.max(100, chartWidth);
+			chartHeight = Math.max(100, chartHeight);
+			var el = document.getElementById('chart_div_' + self.ReportID());
+			el.style.width = chartWidth + 'px';
+			el.style.height = chartHeight + 'px';
+			if (el._echart) el._echart.resize();
+		}
+		function handlePointerUp(event) {
+			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
+			event.preventDefault();
+			document.removeEventListener('pointermove', handlePointerMove);
+			document.removeEventListener('pointerup', handlePointerUp);
+			saveDimensions();
+		}
+		function saveDimensions() {
+			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID()) || '{}';
+			var dimensions = JSON.parse(storedDimensions);
+			if (options.arrangeDashboard && !self.isExpanded()) {
+				dimensions.width = chartWidth;
+				dimensions.height = chartHeight;
+			} else {
+				dimensions.fullWidth = chartWidth;
+				dimensions.fullHeight = chartHeight;
+			}
+			localStorage.setItem('chart_dimensions_' + self.ReportID(), JSON.stringify(dimensions));
+		}
+		function retrieveDimensions() {
+			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID());
+			var chartElement = chartDiv;
+			var containerWidth = chartElement.parentElement.clientWidth;
+			var parentElementHeight = chartElement.parentElement.parentElement.parentElement.offsetHeight;
+			if (storedDimensions) {
+				var dimensions = JSON.parse(storedDimensions);
+				var savedWidth = parseInt(dimensions.width || dimensions.fullWidth || 0);
+				var appliedWidth = savedWidth > 0 ? Math.min(savedWidth, containerWidth) + 'px' : '100%';
+				var appliedHeight;
+				if (options.arrangeDashboard && !self.isExpanded()) {
+					appliedHeight = dimensions.height || '450px';
+				} else {
+					appliedWidth = dimensions.fullWidth ? (parseInt(dimensions.fullWidth) > 0 ? Math.min(parseInt(dimensions.fullWidth), containerWidth) + 'px' : '100%') : appliedWidth;
+					appliedHeight = dimensions.fullHeight || '450px';
+				}
+				chartElement.style.width = appliedWidth;
+				chartElement.style.height = typeof appliedHeight === 'number' ? appliedHeight + 'px' : appliedHeight;
+			} else {
+				chartElement.style.width = '100%';
+				chartElement.style.maxWidth = '100%';
+				var defaultHeight = '450px';
+				if (options.reportMode == 'dashboard' && !self.ShowDataWithGraph() && parentElementHeight > 10) {
+					defaultHeight = (parentElementHeight - 10) + 'px';
+				}
+				chartElement.style.height = defaultHeight;
+			}
+			chartElement.style.maxWidth = '100%';
+		}
+		function setupResizeHandlers() {
+			if (self.activeDesign()) return;
+			var parentDiv = chartDiv;
+			var chartContainer = (parentDiv && parentDiv.children[0]) ? parentDiv.children[0].children[0] : null;
+			if (chartContainer) {
+				chartContainer.addEventListener('pointerdown', handlePointerDown);
+				if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
+				chartContainer.addEventListener('pointermove', function (e) {
+					var rect = chartContainer.getBoundingClientRect();
+					var nearRight = (rect.right - e.clientX) <= edgeThreshold;
+					var nearBottom = (rect.bottom - e.clientY) <= edgeThreshold;
+					isNearEdge = nearRight || nearBottom;
+					if (nearRight && nearBottom) {
+						chartContainer.style.cursor = 'nwse-resize';
+					} else if (nearRight) {
+						chartContainer.style.cursor = 'ew-resize';
+					} else if (nearBottom) {
+						chartContainer.style.cursor = 'ns-resize';
+					} else {
+						chartContainer.style.cursor = 'default';
+					}
+					if (isNearEdge) {
+						chartContainer.style.border = '1px dashed #aaa';
+						chartContainer.style.boxSizing = 'content-box';
+					} else {
+						chartContainer.style.border = 'none';
+						chartContainer.style.boxSizing = 'border-box';
+					}
+				});
+				chartContainer.addEventListener('pointerleave', function () {
+					chartContainer.style.cursor = 'default';
+					chartContainer.style.border = 'none';
+					chartContainer.style.boxSizing = 'border-box';
+					isNearEdge = false;
+				});
+			}
+		}
 
 		if (self.ReportType() === "HeatMap") {
 			if (chartDiv.offsetHeight === 0) {
@@ -7263,11 +8625,14 @@ var reportViewModel = function (options) {
 			return;
 		}
 
-		var data = new google.visualization.DataTable();
+		var data = {
+			columns: [],
+			rows: []
+		};
 
 		var subGroups = [];
 		var valColumns = [];
-		var series = {}
+		var series = {};
 		var isLatLongMap = (self.ReportType() == "Map"
 			&& reportData.Columns.length > 1
 			&& reportData.Columns[0].IsNumeric
@@ -7276,28 +8641,43 @@ var reportViewModel = function (options) {
 		_.forEach(reportData.Columns, function (e, i) {
 			var field = self.SelectedFields()[i];
 			if (i == 0) {
-				data.addColumn(isLatLongMap ? 'number' : 'string', e.fieldLabel() || e.ColumnName);
+				data.columns.push({
+					type: isLatLongMap ? 'number' : 'category',
+					name: e.fieldLabel() || e.ColumnName
+				});
 			} else if (e.IsNumeric && !e.groupInGraph()) {
 				valColumns.push({ index: i, column: e.fieldLabel() || e.ColumnName });
-				if (e.seriesType() != self.comboChartType()) series[i-1] = { type: e.seriesType() };
+				if (e.seriesType() != self.comboChartType()) series[i - 1] = { type: e.seriesType() };
 			} else if (!e.groupInGraph() && self.ReportType() == 'Treemap') {
-				data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel() || e.ColumnName);
+				data.columns.push({
+					type: e.IsNumeric ? 'number' : 'category',
+					name: e.fieldLabel() || e.ColumnName
+				});
 			}
 		});
 
 		if (isLatLongMap && valColumns.length === 0 && reportData.Columns.length > 2) {
 			var labelCol = reportData.Columns[2];
 			if (labelCol) {
-				data.addColumn('string', labelCol.fieldLabel() || labelCol.ColumnName);
+				data.columns.push({
+					type: 'category',
+					name: labelCol.fieldLabel() || labelCol.ColumnName
+				});
 			}
 		}
 
 		if (subGroups.length == 0) {
 			_.forEach(reportData.Columns, function (e, i) {
 				if (i > 0 && e.IsNumeric && !e.groupInGraph()) {
-					data.addColumn(e.IsNumeric ? 'number' : 'string', e.fieldLabel() || e.ColumnName);
+					data.columns.push({
+						type: 'number',
+						name: e.fieldLabel() || e.ColumnName
+					});
 					if (self.chartOptions().showSmallValuesOnLabel) {
-						data.addColumn({ type: 'string', role: 'annotation' });
+						data.columns.push({
+							type: 'annotation',
+							name: e.fieldLabel() || e.ColumnName
+						});
 					}
 				}
 			});
@@ -7314,15 +8694,13 @@ var reportViewModel = function (options) {
 				var isNumeric = r.Column.IsNumeric;
 				var value = (function () {
 					if (isNumeric && typeof r.FormattedValue === 'string' && r.FormattedValue.trim().endsWith('%')) {
-						var num = parseFloat(r.FormattedValue.replace('%', '').trim());
-						//return isNaN(num) ? 0 : Math.round((num / 100) * 100) / 100; // Round to 2 decimal places
-						return num;
+						return parseFloat(r.FormattedValue.replace('%', '').trim());
 					}
 					return isNumeric ? parseFloat(r.Value) : r.FormattedValue || (isNumeric ? 0 : '');
 				})();
 
 				if (isLatLongMap && (n === 0 || n === 1)) {
-						itemArray.push(value);
+					itemArray.push(value);
 				} else if (n == 0) {
 					if (subGroups.length > 0) {
 						var match = _.find(rowArray, x => x[0] == r.Value);
@@ -7341,7 +8719,10 @@ var reportViewModel = function (options) {
 						if (!_.includes(dataColumns, r.Value)) {
 							dataColumns.push(r.Value || '');
 							_.forEach(valColumns, function (j, idx) {
-								data.addColumn('number', r.Value + (idx === 0 ? '' : '-' + idx));
+								data.columns.push({
+									type: 'number',
+									name: r.Value + (idx === 0 ? '' : '-' + idx)
+								});
 							});
 						}
 					} else if (isNumeric) {
@@ -7359,36 +8740,145 @@ var reportViewModel = function (options) {
 		});
 
 		_.forEach(rowArray, function (x) {
-			if (x.length != data.getNumberOfColumns()) {
-				for (var i = 0; i <= data.getNumberOfColumns() - x.length; i++) {
+			if (x.length != data.columns.length) {
+				for (var i = 0; i <= data.columns.length - x.length; i++) {
 					x.push(0);
 				}
 			}
 		});
 
-		data.addRows(rowArray);
+		data.rows = rowArray;
 
 		// Set chart options
 		var chartOptions = self.chartOptions();
-		if (!reportData?.Columns[1]?.groupInGraph() && reportData?.Columns[1]?.fieldFormat() === 'Currency') {
-			var prefixFormat = reportData?.Columns[1]?.currencyFormat ? reportData?.Columns[1]?.currencyFormat() : null;
-			if (prefixFormat != null && prefixFormat != "") {
-				var formatter = new google.visualization.NumberFormat({
-					prefix: prefixFormat
-				});
-				formatter.format(data, 1);
-				chartOptions.vAxis = { format: `${prefixFormat}#` }
+
+		var option = {
+			title: chartOptions.title ? {
+				text: chartOptions.title,
+				textStyle: {
+					fontSize: chartOptions.fontSize,
+					fontFamily: chartOptions.fontFamily || undefined,
+					color: chartOptions.fontColor
+				}
+			} : null,
+
+			backgroundColor: chartOptions.backgroundColor,
+
+			animation: chartOptions.animation && chartOptions.animation.startup === false ? false : true,
+			animationDuration: chartOptions.animation?.duration || 0,
+			animationEasing: chartOptions.animation?.easing || 'linear',
+
+			tooltip: {
+				trigger: 'axis',
+				confine: true
+			},
+
+			legend: (function () {
+				var pos = chartOptions.legendPosition;
+				var isNone = pos === 'none' || chartOptions.showLegend !== true;
+				var legendOpt = {
+					show: !isNone,
+					textStyle: {
+						fontSize: chartOptions.fontSize,
+						fontFamily: chartOptions.fontFamily || undefined,
+						color: chartOptions.fontColor
+					}
+				};
+				if (pos === 'right') {
+					legendOpt.orient = 'vertical';
+					legendOpt.right = 10;
+					legendOpt.top = 'middle';
+				} else if (pos === 'left') {
+					legendOpt.orient = 'vertical';
+					legendOpt.left = 10;
+					legendOpt.top = 'middle';
+				} else if (pos === 'bottom') {
+					legendOpt.orient = 'horizontal';
+					legendOpt.bottom = 0;
+					legendOpt.left = 'center';
+				} else {
+					// default: top-center
+					legendOpt.orient = 'horizontal';
+					legendOpt.top = 0;
+					legendOpt.left = 'center';
+				}
+				return legendOpt;
+			})(),
+
+			grid: {
+				containLabel: true
+			},
+
+			xAxis: {
+				type: 'category',
+				axisLabel: {
+					show: chartOptions.showXAxisLabel === true,
+					fontSize: chartOptions.fontSize,
+					fontFamily: chartOptions.fontFamily || undefined,
+					color: chartOptions.fontColor
+				},
+				splitLine: {
+					show: chartOptions.showGridlines === true
+				}
+			},
+
+			yAxis: {
+				type: 'value',
+				axisLabel: {
+					show: chartOptions.showYAxisLabel === true,
+					fontSize: chartOptions.fontSize,
+					fontFamily: chartOptions.fontFamily || undefined,
+					color: chartOptions.fontColor
+				},
+				splitLine: {
+					show: chartOptions.showGridlines === true
+				},
+				min: chartOptions.yMin !== null && chartOptions.yMin !== "" ? Number(chartOptions.yMin) : null,
+				max: chartOptions.yMax !== null && chartOptions.yMax !== "" ? Number(chartOptions.yMax) : null
+			},
+
+			series: []
+		};
+
+		if (chartOptions.seriesColors && chartOptions.seriesColors.length > 0) {
+			option.color = chartOptions.seriesColors;
+		}
+
+		var yAxisFormatter = null;
+
+		// Auto-detect y-axis format from the first value column's fieldFormat
+		var valueCol = null;
+		for (var ci = 1; ci < reportData.Columns.length; ci++) {
+			if (reportData.Columns[ci].IsNumeric && !reportData.Columns[ci].groupInGraph()) {
+				valueCol = reportData.Columns[ci];
+				break;
 			}
 		}
-		if (!reportData?.Columns[1]?.groupInGraph() && (reportData?.Rows?.[0]?.Items?.[1]?.FormattedValue || '').trim().endsWith('%'))
-		{
-			var percentFormatter = new google.visualization.NumberFormat({
-				suffix: '%',
-				fractionDigits: 2 // optional: 2 decimal points
-			});
-			percentFormatter.format(data, 1);
-			chartOptions.vAxis = { format: "#'%'" };
+		if (valueCol) {
+			var vFormat = valueCol.fieldFormat ? valueCol.fieldFormat() : null;
+			var vDecimals = valueCol.decimalPlaces ? valueCol.decimalPlaces() : null;
+			var vCurrency = valueCol.currencyFormat ? valueCol.currencyFormat() : null;
+
+			if (vFormat === 'Currency' && vCurrency) {
+				yAxisFormatter = function (value) {
+					var dp = (vDecimals != null && vDecimals !== '') ? Number(vDecimals) : 2;
+					return vCurrency + Number(value).toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
+				};
+			} else if (vFormat === 'Percentage') {
+				yAxisFormatter = function (value) {
+					if (vDecimals != null && vDecimals !== '') {
+						value = Number(value).toFixed(Number(vDecimals));
+					}
+					return value + '%';
+				};
+			} else if (vFormat === 'Decimal' && vDecimals != null && vDecimals !== '') {
+				var dp = Number(vDecimals);
+				yAxisFormatter = function (value) {
+					return Number(value).toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
+				};
+			}
 		}
+
 		if (self.colorScheme() != null && self.colorScheme().length > 0) {
 			chartOptions.colors = self.colorScheme().slice(1);
 			chartOptions.backgroundColor = self.colorScheme()[0], // Set the background color here
@@ -7400,213 +8890,571 @@ var reportViewModel = function (options) {
 			chartOptions.height = options.chartSize.height;
 		}
 
-		var chart = null;
+		if (option.series.length === 0 && data.rows && data.rows.length > 0) {
+			_.forEach(valColumns, function (c) {
+				option.series.push({
+					name: c.column,
+					type: 'bar',
+					data: data.rows.map(function (r) {
+						return r[c.index];
+					})
+				});
+			});
+		}
+
 		if (self.ReportType() == "Pie") {
-			chart = new google.visualization.PieChart(chartDiv);
-			chartOptions.pieHole = self.pieChartDonut() === true ? 0.6 : 0.0;
+			option.series = [{
+				type: 'pie',
+				radius: self.pieChartDonut() === true ? ['50%', '70%'] : '70%',
+				data: data.rows.map(function (r) {
+					return { name: r[0], value: r[1] };
+				})
+			}];
+			option.xAxis = null;
+			option.yAxis = null;
+			option.grid = null;
+			option.tooltip = { trigger: 'item' };
 		}
 
 		if (self.ReportType() == "Bar") {
-			chart = self.barChartHorizontal() === true
-				? new google.visualization.BarChart(chartDiv)
-				: new google.visualization.ColumnChart(chartDiv);
-			chartOptions.isStacked = self.barChartStacked() === true;
+			var isHorizontal = self.barChartHorizontal() === true;
+			_.forEach(option.series, function (s) {
+				s.type = 'bar';
+				if (self.barChartStacked() === true) {
+					s.stack = 'total';
+				}
+			});
+			var categoryData = data.rows.map(function (r) { return r[0]; });
+			if (isHorizontal) {
+				// Horizontal bar: swap axes — yAxis is category, xAxis is value
+				option.yAxis.type = 'category';
+				option.yAxis.data = categoryData;
+				option.xAxis.type = 'value';
+				option.xAxis.data = null;
+				// Swap min/max to xAxis for horizontal
+				option.xAxis.min = option.yAxis.min; option.yAxis.min = null;
+				option.xAxis.max = option.yAxis.max; option.yAxis.max = null;
+			} else {
+				option.xAxis.data = categoryData;
+			}
 		}
 
 		if (self.ReportType() == "Line") {
-			chart = self.lineChartArea() === true
-				? new google.visualization.AreaChart(chartDiv)
-				: new google.visualization.LineChart(chartDiv);
+			_.forEach(option.series, function (s) {
+				s.type = 'line';
+				if (self.lineChartArea() === true) {
+					s.areaStyle = {};
+				}
+			});
+			option.xAxis.data = data.rows.map(function (r) {
+				return r[0];
+			});
+
 		}
 
 		if (self.ReportType() == 'Combo') {
-			chart = new google.visualization.ComboChart(chartDiv);
-			chartOptions.seriesType = self.comboChartType();			
-			chartOptions.series = series;
-		}
-		if (self.ReportType() != 'Combo') {
-			delete chartOptions.seriesType;
-			delete chartOptions.series;
+			// Normalize a series type value (string or legacy object) to an ECharts type + areaStyle flag
+			function normalizeSeriesType(raw) {
+				// Guard: if raw is an object (e.g. { value: 'bars', label: 'Bars' }), extract the value
+				var t = (typeof raw === 'object' && raw !== null ? (raw.value || '') : (raw || '')).toLowerCase();
+				if (t === 'bars' || t === 'bar') return { type: 'bar', area: false };
+				if (t === 'area')                return { type: 'line', area: true };
+				return                           { type: 'line', area: false }; // 'line' or unknown
+			}
+			var defaultNorm = normalizeSeriesType(self.comboChartType());
+			_.forEach(option.series, function (s, idx) {
+				var norm = series[idx] ? normalizeSeriesType(series[idx].type) : defaultNorm;
+				s.type = norm.type;
+				if (norm.area) {
+					s.areaStyle = {};
+				}
+			});
+			option.xAxis.data = data.rows.map(function (r) {
+				return r[0];
+			});
 		}
 
 		if (self.ReportType() == "Map") {
-			chart = new google.visualization.GeoChart(chartDiv);
-			// Refer to for full list of regions https://developers.google.com/chart/interactive/docs/gallery/geochart#Continent_Hierarchy
-			if (self.mapRegion() == 'US States') {
-				chartOptions.displayMode = 'regions';
-				chartOptions.region = 'US';
-				chartOptions.resolution = 'provinces';
-			}
-			if (self.mapRegion() == 'US Metro') {
-				chartOptions.displayMode = 'regions';
-				chartOptions.region = 'US';
-				chartOptions.resolution = 'metros';
-			}
-			if (self.mapRegion() == 'North America') {
-				chartOptions.displayMode = 'regions';
-				chartOptions.region = '021';
-			}
-			if (self.mapRegion() == 'Florida') {
-				chartOptions.displayMode = 'regions';
-				chartOptions.region = 'US-FL';
-				chartOptions.resolution = 'provinces';
+			var mapRegion = self.mapRegion() || 'World';
+			var otherRegion = self.otherMapRegion() || '';
+
+			// Pure GeoJSON sources — no external library needed
+			var GEOJSON_URLS = {
+				'world': 'https://cdn.jsdelivr.net/gh/apache/echarts-website@asf-site/examples/data/asset/geo/world.json',
+				'USA': 'https://cdn.jsdelivr.net/gh/apache/echarts-website@asf-site/examples/data/asset/geo/USA.json'
+			};
+
+			// Resolve map config by region selection
+			var mapName, geoCenter, geoZoom, geoJsonUrl;
+			if (mapRegion == 'US States') {
+				mapName = 'USA';
+				geoCenter = [-98, 38];
+				geoZoom = 1.2;
+				geoJsonUrl = GEOJSON_URLS['USA'];
+			} else if (mapRegion == 'North America') {
+				mapName = 'world';
+				geoCenter = [-100, 55];
+				geoZoom = 2.5;
+				geoJsonUrl = GEOJSON_URLS['world'];
+			} else if (mapRegion == 'Other' && otherRegion) {
+				mapName = 'other_' + otherRegion.toLowerCase().replace(/\s+/g, '_');
+				geoCenter = null;
+				geoZoom = 1;
+				geoJsonUrl = null; // fetched via Nominatim
+			} else {
+				// World (default)
+				mapName = 'world';
+				geoCenter = null;
+				geoZoom = 1.2;
+				geoJsonUrl = GEOJSON_URLS['world'];
 			}
 
-			if (isLatLongMap) {
-				chartOptions.displayMode = 'markers';
-				chartOptions.showTooltip = true;
-				chartOptions.showInfoWindow = true;
+			var colors = self.colorScheme().length ? self.colorScheme() : ['#e0f3f8', '#abd9e9', '#74add1', '#4575b4', '#313695'];
+
+			function renderEChartsMap(registeredMapName) {
+				var mapOption;
+
+				if (isLatLongMap) {
+					// Scatter/marker mode using lat/long columns
+					var scatterData = [];
+					_.forEach(reportData.Rows, function (row) {
+						if (!row.Items || row.Items.length < 2) return;
+						var lat = parseFloat(row.Items[0].Value);
+						var lon = parseFloat(row.Items[1].Value);
+						if (isNaN(lat) || isNaN(lon)) return;
+						var label = row.Items.length > 2 ? (row.Items[2].FormattedValue || row.Items[2].Value || '') : '';
+						var val = row.Items.length > 3 ? parseFloat(row.Items[3].Value) : 1;
+						scatterData.push({ name: label, value: [lon, lat, isNaN(val) ? 1 : val] });
+					});
+
+					mapOption = {
+						backgroundColor: chartOptions.backgroundColor || '#fff',
+						title: chartOptions.title ? { text: chartOptions.title, textStyle: { fontSize: chartOptions.fontSize, color: chartOptions.fontColor } } : null,
+						tooltip: { trigger: 'item', formatter: function (p) { return p.name + (p.value[2] !== undefined ? ': ' + p.value[2] : ''); } },
+						geo: {
+							map: registeredMapName,
+							roam: true,
+							center: geoCenter || undefined,
+							zoom: geoZoom || 1,
+							itemStyle: { areaColor: '#e7e8ea', borderColor: '#aaa' },
+							emphasis: { itemStyle: { areaColor: '#a5dff9' } }
+						},
+						series: [{
+							type: 'scatter',
+							coordinateSystem: 'geo',
+							data: scatterData,
+							symbolSize: function (val) { return Math.max(6, Math.min(30, Math.sqrt(Math.abs(val[2])) * 3)); },
+							itemStyle: { color: colors[3] || '#4575b4', opacity: 0.8 },
+							emphasis: { itemStyle: { color: colors[4] || '#313695' } }
+						}]
+					};
+				} else {
+					// Choropleth mode — first column is region name, second is value
+					var regionData = [];
+					var minVal = Infinity, maxVal = -Infinity;
+					_.forEach(reportData.Rows, function (row) {
+						if (!row.Items || row.Items.length < 2) return;
+						var regionName = row.Items[0].FormattedValue || row.Items[0].Value || '';
+						var val = parseFloat(row.Items[1].Value);
+						if (isNaN(val)) val = 0;
+						if (val < minVal) minVal = val;
+						if (val > maxVal) maxVal = val;
+						regionData.push({ name: regionName, value: val });
+					});
+					if (!isFinite(minVal)) minVal = 0;
+					if (!isFinite(maxVal)) maxVal = 1;
+
+					var seriesLabel = reportData.Columns.length > 1
+						? (reportData.Columns[1].fieldLabel ? reportData.Columns[1].fieldLabel() : reportData.Columns[1].ColumnName)
+						: '';
+
+					mapOption = {
+						backgroundColor: chartOptions.backgroundColor || '#fff',
+						title: chartOptions.title ? { text: chartOptions.title, textStyle: { fontSize: chartOptions.fontSize, color: chartOptions.fontColor } } : null,
+						tooltip: {
+							trigger: 'item',
+							formatter: function (p) {
+								return p.name + ': ' + (p.value !== undefined && !isNaN(p.value) ? p.value : 'N/A');
+							}
+						},
+						visualMap: {
+							min: minVal,
+							max: maxVal,
+							text: [String(maxVal), String(minVal)],
+							realtime: false,
+							calculable: true,
+							inRange: { color: colors.length >= 2 ? colors : ['#e0f3f8', '#313695'] }
+						},
+						series: [{
+							name: seriesLabel,
+							type: 'map',
+							map: registeredMapName,
+							roam: true,
+							center: geoCenter || undefined,
+							zoom: geoZoom || 1,
+							data: regionData,
+							emphasis: { label: { show: true } }
+						}]
+					};
+				}
+
+				// Apply saved dimensions
+				if (self.ReportMode() != 'print') retrieveDimensions();
+
+				if (self.activeDesign()) {
+					chartDiv.style.width = '100%';
+					chartDiv.style.maxWidth = '100%';
+					chartDiv.style.height = '350px';
+					chartDiv.style.minHeight = '300px';
+					chartDiv.style.overflow = 'hidden';
+				}
+
+				chart.setOption(mapOption);
+				chart.resize();
+
+				if (self.activeDesign()) {
+					setTimeout(function () { chart.resize(); }, 300);
+				}
+
+				chart.off('finished');
+				chart.on('finished', function () {
+					var img = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: chartOptions.backgroundColor || '#fff' });
+					self.ChartData(img);
+					window.chartImageUrl = img;
+				});
+
+				// Map click → drilldown
+				chart.off('click');
+				chart.on('click', function (params) {
+					if (params && params.dataIndex != null && reportData.Rows && reportData.Rows[params.dataIndex]) {
+						self.ChartDrillDownData(null);
+						reportData.Rows[params.dataIndex].expand();
+						$("#drilldownModal").modal('show');
+					}
+				});
+
+				// Enable edge-drag resize for map charts
+				setupResizeHandlers();
 			}
+
+			// Fetch pure GeoJSON, register with ECharts, then render.
+			// Caches via echarts.getMap() so subsequent renders skip the fetch.
+			function fetchAndRenderMap(mName, url, nominatimQuery) {
+				// Already registered — render immediately without re-fetching
+				if (echarts.getMap(mName)) {
+					renderEChartsMap(mName);
+					return;
+				}
+
+				if (nominatimQuery) {
+					// 'Other' region — query Nominatim for boundary polygon GeoJSON
+					$.ajax({
+						url: 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(nominatimQuery) + '&format=json&limit=1&polygon_geojson=1',
+						type: 'GET',
+						success: function (result) {
+							if (result && result.length > 0 && result[0].geojson) {
+								var geojson = result[0].geojson;
+								var featureCollection = geojson.type === 'FeatureCollection' ? geojson : {
+									type: 'FeatureCollection',
+									features: [{ type: 'Feature', geometry: geojson, properties: { name: nominatimQuery } }]
+								};
+								echarts.registerMap(mName, { geoJSON: featureCollection });
+								renderEChartsMap(mName);
+							} else {
+								toastr.error('Could not find map data for: ' + nominatimQuery);
+							}
+						},
+						error: function () { toastr.error('Failed to load map data for: ' + nominatimQuery); }
+					});
+					return;
+				}
+
+				// Fetch pure GeoJSON and register directly — no conversion needed
+				$.ajax({
+					url: url,
+					type: 'GET',
+					dataType: 'json',
+					success: function (geoJson) {
+						echarts.registerMap(mName, { geoJSON: geoJson });
+						renderEChartsMap(mName);
+					},
+					error: function () { toastr.error('Failed to load map data.'); }
+				});
+			}
+
+			fetchAndRenderMap(mapName, geoJsonUrl, mapRegion == 'Other' ? otherRegion : null);
+			return;
 		}
 
 		if (self.ReportType() == 'Treemap') {
-
-			var rootCount = 0;
+			// Build ECharts treemap data from rows
+			// Expected columns: Item (name), Parent (parent name), Value (size)
 			var isInvalid = false;
-			var dt = [['Item', 'Parent', 'Value']];
+			var colors = self.colorScheme().length ? self.colorScheme() : ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9da7', '#9c755f', '#bab0ab'];
 
-			// Check for root nodes and validate
-			_.forEach(reportData.Rows, function (e, index) {
-				if (!e.Items[1].Value) {
-					rootCount++;
-					return;
+			// Build a lookup of parent→children
+			var nodeMap = {}; // name → { name, value, children[] }
+			var childNames = {};
+			var parentNames = {};
+
+			_.forEach(reportData.Rows, function (e) {
+				var itemName = (e.Items[0].FormattedValue || e.Items[0].Value || '').toString();
+				var parentName = e.Items[1].Value ? (e.Items[1].FormattedValue || e.Items[1].Value || '').toString() : null;
+				var val = e.Items.length > 2 ? parseFloat(e.Items[2].Value) : 1;
+				if (isNaN(val)) val = 0;
+
+				if (!nodeMap[itemName]) {
+					nodeMap[itemName] = { name: itemName, value: val, children: [] };
+				} else {
+					nodeMap[itemName].value = val;
+				}
+
+				if (parentName) {
+					childNames[itemName] = parentName;
+					if (!nodeMap[parentName]) {
+						nodeMap[parentName] = { name: parentName, value: 0, children: [] };
+					}
+					parentNames[parentName] = true;
 				}
 			});
 
-			if (rootCount > 1) {
-				toastr.error('More than one root node detected.');
-				isInvalid = true;
-			} else if (rootCount === 0) {
-				// Add a custom root node if none exists
-				dt.push(['Root', null, 0]);
-				var distinctFirstColumnValues = _.uniq(_.map(reportData.Rows, function (e) {
-					return e.Items[1].Value;
-				}));
+			// Link children to parents
+			_.forEach(childNames, function (parentName, childName) {
+				if (nodeMap[parentName] && nodeMap[childName]) {
+					nodeMap[parentName].children.push(nodeMap[childName]);
+				}
+			});
 
-				distinctFirstColumnValues.forEach(function (value) {
-					dt.push([value, 'Root', 1]);
+			// Find root nodes (nodes that are not children of anyone)
+			var roots = [];
+			_.forEach(nodeMap, function (node, name) {
+				if (!childNames[name]) {
+					roots.push(node);
+				}
+			});
+
+			// If multiple roots, wrap in a single root
+			var treemapData;
+			if (roots.length === 1) {
+				treemapData = roots[0].children.length > 0 ? roots[0].children : roots;
+			} else if (roots.length > 1) {
+				treemapData = roots;
+			} else {
+				toastr.error('No valid treemap data found.');
+				return;
+			}
+
+			// For leaf nodes (no children), remove empty children array so treemap sizes by value
+			function cleanLeaves(nodes) {
+				_.forEach(nodes, function (n) {
+					if (n.children && n.children.length === 0) {
+						delete n.children;
+					} else if (n.children) {
+						cleanLeaves(n.children);
+					}
 				});
 			}
-			_.forEach(reportData.Rows, function (e) {
-				if (e.Items[1].Value !== null) {
-					if (typeof e.Items[0].Value !== 'string' || typeof e.Items[1].Value !== 'string') {
-						toastr.error('Invalid data format: Columns 1 and 2 must be strings.');
-						isInvalid = true;
-					} 
-				}
-				dt.push([e.Items[0].Value, e.Items[1].Value, isNaN(parseInt(e.Items[2].Value)) ? 0 : parseInt(e.Items[2].Value)]);
-			});
+			cleanLeaves(treemapData);
 
-			if (isInvalid) return;
-			data = google.visualization.arrayToDataTable(dt);
-
-			chart = new google.visualization.TreeMap(chartDiv);
-			chartOptions = {
-				minColor: self.colorScheme()[0] || styleBlue[0],
-				midColor: self.colorScheme()[2] || styleBlue[2],
-				maxColor: self.colorScheme()[4] || styleBlue[4],
-				headerHeight: 15,
-				fontColor: 'black',
-				showScale: true,
-				maxDepth: 2,
-				maxPostDepth: 2,
-				useWeightedAverageForAggregation: true,
-				colorByRowLabel: true
+			option = {
+				tooltip: {
+					formatter: function (info) {
+						var val = info.value;
+						return info.name + ': ' + (val != null ? val : '');
+					}
+				},
+				series: [{
+					type: 'treemap',
+					data: treemapData,
+					leafDepth: 2,
+					roam: false,
+					breadcrumb: { show: true },
+					label: {
+						show: true,
+						formatter: '{b}',
+						fontSize: 12
+					},
+					upperLabel: {
+						show: true,
+						height: 20,
+						color: '#fff',
+						fontSize: 11
+					},
+					itemStyle: {
+						borderColor: '#fff',
+						borderWidth: 2,
+						gapWidth: 1
+					},
+					levels: [
+						{
+							itemStyle: {
+								borderColor: '#555',
+								borderWidth: 3,
+								gapWidth: 3
+							},
+							upperLabel: { show: true }
+						},
+						{
+							colorSaturation: [0.35, 0.5],
+							itemStyle: {
+								borderColorSaturation: 0.6,
+								gapWidth: 1
+							}
+						}
+					],
+					color: colors
+				}]
 			};
+
+			// Remove default axis config — treemap doesn't use axes
+			option.xAxis = null;
+			option.yAxis = null;
+			option.grid = null;
 		}
-		if (self.ReportType() != 'Treemap') {
-			google.visualization.events.addListener(chart, 'ready', function () {
-				self.ChartData(chart.getImageURI());
-				window.chartImageUrl = chart.getImageURI();
+
+		if (self.ReportType() == 'Radar') {
+			var colors = (chartOptions.seriesColors && chartOptions.seriesColors.length)
+				? chartOptions.seriesColors
+				: (self.colorScheme().length ? self.colorScheme() : ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9da7', '#9c755f', '#bab0ab']);
+
+			// Identify which columns are indicators (numeric, non-grouped)
+			var indicatorCols = [];
+			_.forEach(reportData.Columns, function (col, i) {
+				if (i > 0 && col.IsNumeric && !col.groupInGraph()) {
+					indicatorCols.push({ index: i, name: col.fieldLabel() || col.ColumnName });
+				}
 			});
 
-			// Add click event listener
-			google.visualization.events.addListener(chart, 'select', function () {
-				var selectedItem = chart.getSelection()[0];
-				if (selectedItem && selectedItem.row !=null) {
+			if (indicatorCols.length < 2) {
+				if (!self.activeDesign()) {
+					toastr.error('Radar chart requires at least 2 numeric fields.');
+				}
+				return;
+			}
+
+			// Compute max per indicator across all rows for the indicator axis scale
+			var maxPerIndicator = indicatorCols.map(function () { return 0; });
+			_.forEach(reportData.Rows, function (row) {
+				indicatorCols.forEach(function (ic, idx) {
+					var v = parseFloat(row.Items[ic.index].Value) || 0;
+					if (v > maxPerIndicator[idx]) maxPerIndicator[idx] = v;
+				});
+			});
+
+			var indicator = indicatorCols.map(function (ic, idx) {
+				return { name: ic.name, max: maxPerIndicator[idx] || 1 };
+			});
+
+			// Build series data — one entry per row (each row = one radar polygon)
+			var radarSeriesData = [];
+			_.forEach(reportData.Rows, function (row) {
+				var label = row.Items[0].FormattedValue || row.Items[0].Value || '';
+				var values = indicatorCols.map(function (ic) {
+					return parseFloat(row.Items[ic.index].Value) || 0;
+				});
+				radarSeriesData.push({ value: values, name: label });
+			});
+
+			option.radar = {
+				indicator: indicator,
+				shape: 'polygon'
+			};
+			option.series = [{
+				name: data.columns[0] ? data.columns[0].name : '',
+				type: 'radar',
+				data: radarSeriesData,
+				areaStyle: { opacity: 0.15 }
+			}];
+			option.tooltip = { trigger: 'item' };
+			option.color = colors;
+
+			// Radar chart doesn't use cartesian axes
+			option.xAxis = null;
+			option.yAxis = null;
+			option.grid = null;
+		}
+
+		if (self.ReportType() == 'Polar') {
+			// Polar stacked bar — bars on a circular polar coordinate system
+			var colors = (chartOptions.seriesColors && chartOptions.seriesColors.length)
+				? chartOptions.seriesColors
+				: (self.colorScheme().length ? self.colorScheme() : ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9da7', '#9c755f', '#bab0ab']);
+
+			var categoryData = data.rows.map(function (r) { return r[0]; });
+
+			// Build one series per value column, each stacked on 'polar'
+			var polarSeries = [];
+			_.forEach(valColumns, function (c) {
+				polarSeries.push({
+					type: 'bar',
+					name: c.column,
+					data: data.rows.map(function (r) { return r[c.index]; }),
+					coordinateSystem: 'polar',
+					stack: 'polar',
+					emphasis: { focus: 'series' }
+				});
+			});
+
+			option.angleAxis = {};
+			option.radiusAxis = {
+				type: 'category',
+				data: categoryData,
+				z: 10
+			};
+			option.polar = {};
+			option.series = polarSeries;
+			option.tooltip = { trigger: 'item' };
+			option.color = colors;
+
+			// Polar chart doesn't use cartesian axes
+			option.xAxis = null;
+			option.yAxis = null;
+			option.grid = null;
+		}
+
+		chart.off('finished');
+		chart.on('finished', function () {
+			var img = chart.getDataURL({
+				type: 'png',
+				pixelRatio: 2,
+				backgroundColor: chartOptions.backgroundColor || '#fff'
+			});
+			self.ChartData(img);
+			window.chartImageUrl = img;
+		});
+
+		if (self.ReportType() != 'Treemap' && self.ReportType() != 'Radar' && self.ReportType() != 'Polar') {
+			chart.off('click');
+			chart.on('click', function (params) {
+				if (params && params.dataIndex != null) {
 					self.ChartDrillDownData(null);
-					self.ReportResult().ReportData().Rows[selectedItem.row].expand();
+					self.ReportResult().ReportData().Rows[params.dataIndex].expand();
 					$("#drilldownModal").modal('show');
 				}
 			});
 		}
 
-		var chartWidth; var chartHeight;
-		var edgeThreshold = 20; // pixels from edge to show resize cursor
-		var isNearEdge = false;
-		function handlePointerDown(event) {
-			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
-			if (!isNearEdge) return; // Only allow resize drag from edges
-			event.preventDefault(); // Prevent default browser behavior
-			document.addEventListener('pointermove', handlePointerMove);
-			document.addEventListener('pointerup', handlePointerUp);
-		}
-		function handlePointerMove(event) {
-			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
-			event.preventDefault();
-			chartWidth = event.clientX - chartDiv.getBoundingClientRect().left;
-			chartHeight = event.clientY - chartDiv.getBoundingClientRect().top;
-			chartWidth = Math.max(100, chartWidth); // Ensure a minimum width
-			chartHeight = Math.max(100, chartHeight); // Ensure a minimum height
-			chartOptions.width = chartWidth;
-			chartOptions.height = chartHeight;
-			chart.draw(data, chartOptions);
-		}
-		function handlePointerUp(event) {
-			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
-			event.preventDefault(); // Prevent default browser behavior
-			document.removeEventListener('pointermove', handlePointerMove);
-			document.removeEventListener('pointerup', handlePointerUp);
-			saveDimensions();
-		}
-
-		function saveDimensions() {
-			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID()) || '{}';
-			var dimensions = JSON.parse(storedDimensions);
-			if (options.arrangeDashboard && !self.isExpanded()) {
-				dimensions.width = chartWidth;
-				dimensions.height = chartHeight;
+		if (yAxisFormatter) {
+			var isHorizontalBar = self.barChartHorizontal() === true && self.ReportType() === 'Bar';
+			if (isHorizontalBar) {
+				// For horizontal bars, value axis is xAxis
+				option.xAxis = option.xAxis || {};
+				option.xAxis.axisLabel = option.xAxis.axisLabel || {};
+				option.xAxis.axisLabel.formatter = yAxisFormatter;
 			} else {
-				dimensions.fullWidth = chartWidth;
-				dimensions.fullHeight = chartHeight;
+				option.yAxis = option.yAxis || {};
+				option.yAxis.axisLabel = option.yAxis.axisLabel || {};
+				option.yAxis.axisLabel.formatter = yAxisFormatter;
 			}
 
-			localStorage.setItem('chart_dimensions_' + self.ReportID(), JSON.stringify(dimensions));
-		}
-		function retrieveDimensions() {
-			var storedDimensions = localStorage.getItem('chart_dimensions_' + self.ReportID());
-			var chartElement = chartDiv;
-			var containerWidth = chartElement.parentElement.clientWidth;
-			var parentElementHeight = chartElement.parentElement.parentElement.parentElement.offsetHeight;
-
-			if (storedDimensions) {
-				var dimensions = JSON.parse(storedDimensions);
-				var savedWidth = parseInt(dimensions.width || dimensions.fullWidth || 0);
-				var appliedWidth = savedWidth > 0 ? Math.min(savedWidth, containerWidth) + 'px' : '100%';
-
-				if (options.arrangeDashboard && !self.isExpanded()) {
-					chartOptions.width = appliedWidth;
-					chartOptions.height = dimensions.height || '450px';
-				} else {
-					chartOptions.width = dimensions.fullWidth;
-					chartOptions.height = dimensions.fullHeight || '450px';
-				}
-			} else {
-				chartOptions.width = '100%';
-				chartOptions.height = '450px';
-				if (options.reportMode == 'dashboard') {
-					chartOptions.height = !self.ShowDataWithGraph()
-						? parentElementHeight - 10 + 'px'
-						: '450px';
-					chartElement.style.height = chartOptions.height;
-				}
+			// Also format tooltip values to match
+			var existingTooltip = option.tooltip || {};
+			if (existingTooltip.trigger === 'axis') {
+				option.tooltip.valueFormatter = yAxisFormatter;
 			}
-
-			chartElement.style.width = chartOptions.width;
-			chartElement.style.maxWidth = '100%';
 		}
-		
-		// Call retrieveDimensions to load saved dimensions when the chart is initialized
+
+		// Apply saved dimensions
 		if (self.ReportMode() != 'print') retrieveDimensions();
 
 		// In live preview mode, override dimensions to fit the preview container
@@ -7615,7 +9463,9 @@ var reportViewModel = function (options) {
 			chartOptions.height = '350px';
 			chartDiv.style.width = '100%';
 			chartDiv.style.maxWidth = '100%';
+			chartDiv.style.height = '350px';
 			chartDiv.style.minHeight = '300px';
+			chartDiv.style.overflow = 'hidden';
 		}
 		chartOptions.hAxis = { titleTextStyle: { color: self.chartOptions().fontColor }, textStyle: { color: self.chartOptions().fontColor } }; chartOptions.vAxis = { titleTextStyle: { color: self.chartOptions().fontColor }, textStyle: { color: self.chartOptions().fontColor } };
 		if (!chartOptions.showGridlines) { chartOptions.hAxis.gridlines = { color: 'none' }; chartOptions.vAxis.gridlines = { color: 'none' }; }
@@ -7641,87 +9491,22 @@ var reportViewModel = function (options) {
 				}
 			}
 		}
-		const yAxisFormat = self.chartOptions()?.yAxisFormat;
-		const isHorizontal = self.barChartHorizontal(); // Ensure it's callable
-		if (yAxisFormat) {
-			let formatValue;
-			if (yAxisFormat.includes('%')) {
-				switch (yAxisFormat) {
-					case '%':
-					case '#%':
-						formatValue = "#'%'";
-						break;
-					case '%#':
-						formatValue = "'%'#";
-						break;
-					default:
-						formatValue = yAxisFormat;
-				}
-			} else {
-				formatValue = yAxisFormat;
-			}
-			if (isHorizontal) {
-				chartOptions.hAxis.format = formatValue;
-			} else {
-				chartOptions.vAxis.format = formatValue;
-			}
+		// In live preview, float tooltip above the container so it doesn't get clipped
+		if (self.activeDesign() && option.tooltip) {
+			option.tooltip.appendToBody = true;
+			delete option.tooltip.confine;
 		}
-		if (self.chartOptions().yMin !== null && self.chartOptions().yMin !== "") {
-			chartOptions.vAxis.viewWindow = chartOptions.vAxis.viewWindow || {};
-			chartOptions.vAxis.viewWindow.min = Number(self.chartOptions().yMin);
-		}
-		if (self.chartOptions().yMax !== null && self.chartOptions().yMax !== "") {
-			chartOptions.vAxis.viewWindow = chartOptions.vAxis.viewWindow || {};
-			chartOptions.vAxis.viewWindow.max = Number(self.chartOptions().yMax);
-		}
-		if (chartOptions.seriesColors && chartOptions.seriesColors.length > 0)
-		{
-			chartOptions.colors = chartOptions.seriesColors;
-		}
-		else {
-			delete chartOptions.colors;
-		}
-		chartOptions.legend = { position: self.chartOptions().legendPosition, textStyle: { color: self.chartOptions().fontColor } }
-		chart.draw(data, chartOptions);
 
-		// Add event listener for pointer down on the chart container
-		var parentDiv = chartDiv;
-		var chartContainer = (parentDiv && parentDiv.children[0]) ? parentDiv.children[0].children[0] : null; 
-		if (chartContainer) {
-			chartContainer.addEventListener('pointerdown', handlePointerDown);
+		chart.setOption(option);
+		chart.resize();
 
-			if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
-
-			chartContainer.addEventListener('pointermove', function (e) {
-				var rect = chartContainer.getBoundingClientRect();
-				var nearRight = (rect.right - e.clientX) <= edgeThreshold;
-				var nearBottom = (rect.bottom - e.clientY) <= edgeThreshold;
-				isNearEdge = nearRight || nearBottom;
-				if (nearRight && nearBottom) {
-					chartContainer.style.cursor = 'nwse-resize';
-				} else if (nearRight) {
-					chartContainer.style.cursor = 'ew-resize';
-				} else if (nearBottom) {
-					chartContainer.style.cursor = 'ns-resize';
-				} else {
-					chartContainer.style.cursor = 'default';
-				}
-				// Show border hint only when near edge
-				if (isNearEdge) {
-					chartContainer.style.border = '1px dashed #aaa';
-					chartContainer.style.boxSizing = 'content-box';
-				} else {
-					chartContainer.style.border = 'none';
-					chartContainer.style.boxSizing = 'border-box';
-				}
-			});
-			chartContainer.addEventListener('pointerleave', function () {
-				chartContainer.style.cursor = 'default';
-				chartContainer.style.border = 'none';
-				chartContainer.style.boxSizing = 'border-box';
-				isNearEdge = false;
-			});
+		// In live preview, the modal container may still be resizing — do a delayed resize
+		if (self.activeDesign()) {
+			setTimeout(function () { chart.resize(); }, 300);
 		}
+
+		// Enable edge-drag resize for non-map charts
+		setupResizeHandlers();
 	};
 
 	ko.computed(function () {
@@ -8020,11 +9805,18 @@ var reportViewModel = function (options) {
 
 		self.ReportID(report.ReportID);
 		self.mapRegion('');
+		self.otherMapRegion('');
 		if (report.ReportType.indexOf('Map') == 0) {
 			self.ReportType('Map');
 			var reportTokens = report.ReportType.split('|');
 			if (reportTokens.length > 1) {
-				self.mapRegion(reportTokens[1]);
+				var regionToken = reportTokens[1];
+				if (regionToken.indexOf('Other:') === 0) {
+					self.mapRegion('Other');
+					self.otherMapRegion(regionToken.substring(6));
+				} else {
+					self.mapRegion(regionToken);
+				}
 			}
 		} else {
 			self.ReportType(report.ReportType);
@@ -8076,6 +9868,10 @@ var reportViewModel = function (options) {
 		var reportSettings = JSON.parse(report.ReportSettings || "{}");
 		self.selectedStyle(reportSettings.SelectedStyle || 'default');
 		self.ShowExpandOption(reportSettings.ShowExpandOption === true ? true : false);
+		var bdf = report.BypassDataFilters || "";
+		self.bypassEnabled(bdf !== "");
+		self.bypassMode(bdf === "/all/" || !bdf ? "all" : "specific");
+		self.bypassSpecificIds(bdf && bdf !== "/all/" ? bdf.split(",").filter(Boolean) : []);
 		self.DontExecuteOnRun(reportSettings.DontExecuteOnRun === true ? true : false);
 		self.ShowFilterDetails(reportSettings.ShowFilterDetails === true ? true : false);
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
@@ -8123,6 +9919,8 @@ var reportViewModel = function (options) {
 			return sr;
 		});
 		self.subReports(loadedSubReports);
+		self.customJoins(reportSettings.customJoins || []);
+		self.baseTableIdOverride(reportSettings.customJoinsBaseTableId || null);
 		if (self.subReports().length <= 0) {
 			self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
 			self.changePageSize(self.DefaultPageSize() != '30');
@@ -8909,6 +10707,7 @@ var reportViewModel = function (options) {
 
 		self.loadTables();
 		self.loadProcs();
+		self.initChartTooltips();
 		self.loadAppSettings().done(function () {
 			if (self.ReportMode() != "dashboard") {
 				self.loadFolders().done(function () {
@@ -8958,6 +10757,9 @@ var reportViewModel = function (options) {
 			self.appSettings.canCopyReport(x.canCopyReport);
 			self.appSettings.useFunctions(x.useFunctions);
 			self.appSettings.showScheduling(x.showScheduling);
+			self.appSettings.showDesignerHints(x.showDesignerHints !== false);
+			self.appSettings.aiProvider(x.aiProvider || '');
+			self.appSettings.aiEnabled(x.aiEnabled === true || (x.aiProvider && x.aiProvider !== ''));
 		});
 	}
 
@@ -9780,10 +11582,13 @@ var dashboardViewModel = function (options) {
 		dontWordExport: false,
 		usePromptBuilder: true,
 		showPageSize: false,
-		showImportExport: false,
 		canCopyReport: true,
 		useFunctions: false,
-		showScheduling: false
+		showImportExport: ko.observable(false),
+		showScheduling: ko.observable(false),
+		showDesignerHints: true,
+		aiProvider: '',
+		aiEnabled: false
 	};
 
 	self.loadAppSettings = function () {
@@ -9812,10 +11617,13 @@ var dashboardViewModel = function (options) {
 			self.appSettings.dontWordExport = x.dontWordExport;
 			self.appSettings.usePromptBuilder = x.usePromptBuilder;
 			self.appSettings.showPageSize = x.showPageSize;
-			self.appSettings.showImportExport = x.showImportExport;
 			self.appSettings.canCopyReport = x.canCopyReport;
 			self.appSettings.useFunctions = x.useFunctions;
-			self.appSettings.showScheduling = x.showScheduling;
+			self.appSettings.showDesignerHints = x.showDesignerHints !== false;
+			self.appSettings.aiProvider = x.aiProvider || '';
+			self.appSettings.aiEnabled = x.aiEnabled === true || (x.aiProvider && x.aiProvider !== '');
+			self.appSettings.showImportExport(x.showImportExport);
+			self.appSettings.showScheduling(x.showScheduling);
 		});
 	}
 
@@ -10509,6 +12317,13 @@ var dashboardViewModel = function (options) {
 		}
 	});
 
+	$('#modal-reportbuilder').on('shown.bs.modal', function () {
+		var report = self.selectedReport();
+		if (report && report.initChartTooltips) {
+			report.initChartTooltips(document.getElementById('modal-reportbuilder'));
+		}
+	});
+
 	self.loadDashboardReports = function (reports, skipGridRefresh) {
 		self.reports([]);
 		var allreports = [];
@@ -10527,10 +12342,10 @@ var dashboardViewModel = function (options) {
 		});
 
 		self.reports(allreports);
-		$.when(promises).done(function () {
+		$.when.apply($, promises).done(function () {
 			setTimeout(function () {
 				self.FlyFilters([]);
-				_.forEach(self.reports(), function (report) {					
+				_.forEach(self.reports(), function (report) {
 					_.forEach(report.FilterGroups(), function (fg) {
 						_.forEach(fg.Filters(), function (f) {
 							if (f.IsFilterOnFly
@@ -10571,9 +12386,11 @@ var dashboardViewModel = function (options) {
 
 				refreshGrid(reports, skipGridRefresh);
 
-			}, 1000);
+				setTimeout(function () {
+					self.drawChart();
+				}, 100);
 
-			self.drawChart();
+			}, 1000);
 		});
 	}
 
