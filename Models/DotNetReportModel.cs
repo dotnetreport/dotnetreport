@@ -2998,7 +2998,7 @@ namespace ReportBuilder.Web.Models
             return noTags;
         }
 
-        private static string SubstituteExportPlaceholders(string text, string userName, string userRoles, int pageNumber, int totalPages)
+        private static string SubstituteExportPlaceholders(string text, string userName, string userRoles, int pageNumber, int totalPages, string reportName = null)
         {
             if (string.IsNullOrEmpty(text)) return "";
             DateTime now = DateTime.Now;
@@ -3011,7 +3011,8 @@ namespace ReportBuilder.Web.Models
                        .Replace("{current.date}", now.ToString("d"))
                        .Replace("{current.time}", now.ToString("t"))
                        .Replace("{page.number}", pageNumber > 0 ? pageNumber.ToString() : "")
-                       .Replace("{page.total}", totalPages > 0 ? totalPages.ToString() : "");
+                       .Replace("{page.total}", totalPages > 0 ? totalPages.ToString() : "")
+                       .Replace("{report.name}", reportName ?? "");
             return text;
         }
 
@@ -3372,7 +3373,7 @@ namespace ReportBuilder.Web.Models
                 return ms.ToArray();
             }
         }
-        private static string SubstituteHtmlPlaceholders(string html, string currentUserName, string currentUserRoles, int pageNumber, int totalPages, bool useWordFields = false)
+        private static string SubstituteHtmlPlaceholders(string html, string currentUserName, string currentUserRoles, int pageNumber, int totalPages, bool useWordFields = false, string reportName = null)
         {
             if (string.IsNullOrEmpty(html)) return "";
             var now = DateTime.Now;
@@ -3401,7 +3402,8 @@ namespace ReportBuilder.Web.Models
                        .Replace("{current.date}", now.ToString("d"))
                        .Replace("{current.time}", now.ToString("t"))
                        .Replace("{page.number}", pageField)
-                       .Replace("{page.total}", totalField);
+                       .Replace("{page.total}", totalField)
+                       .Replace("{report.name}", System.Net.WebUtility.HtmlEncode(reportName ?? ""));
         }
 
         private static string WrapHtmlForWord(string innerHtml)
@@ -3454,7 +3456,7 @@ namespace ReportBuilder.Web.Models
 
                     if (hasHeaderHtml)
                     {
-                        var processedHeader = SubstituteHtmlPlaceholders(headerHtml, currentUserName, currentUserRoles, 1, 1, useWordFields: true);
+                        var processedHeader = SubstituteHtmlPlaceholders(headerHtml, currentUserName, currentUserRoles, 1, 1, useWordFields: true, reportName: reportName);
                         var headerPart = mainPart.AddNewPart<HeaderPart>();
                         headerRelId = mainPart.GetIdOfPart(headerPart);
 
@@ -3484,7 +3486,7 @@ namespace ReportBuilder.Web.Models
                     }
 
                     string processedFooterHtml = hasFooterHtml
-                        ? SubstituteHtmlPlaceholders(footerHtml, currentUserName, currentUserRoles, 1, 1, useWordFields: true)
+                        ? SubstituteHtmlPlaceholders(footerHtml, currentUserName, currentUserRoles, 1, 1, useWordFields: true, reportName: reportName)
                         : null;
                     if (hasFooterHtml)
                     {

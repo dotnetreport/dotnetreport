@@ -1628,8 +1628,6 @@ var reportViewModel = function (options) {
 	}
 
 	// Substitute header/footer system placeholders for on-screen display.
-	// {page.number} uses the pager's current page; {page.total} uses pager total pages.
-	// PDF/Word exports do their own substitution server-side / via Puppeteer tokens.
 	self.substituteReportPlaceholders = function (html) {
 		if (html == null) return '';
 		var userName = self.currentUserName || self.currentUserId || '';
@@ -1637,12 +1635,14 @@ var reportViewModel = function (options) {
 		var nowStr = new Date().toLocaleString();
 		var curPage = (self.pager && self.pager.currentPage) ? self.pager.currentPage() : 1;
 		var totPages = (self.pager && self.pager.pages) ? (self.pager.pages() || 1) : 1;
+		var reportName = (self.ReportName && self.ReportName()) ? self.ReportName() : '';
 		return String(html)
 			.replace(/\{page\.number\}/g, curPage)
 			.replace(/\{page\.total\}/g, totPages)
 			.replace(/\{current\.user\.roles\}/g, userRoles)
 			.replace(/\{current\.user\}/g, userName)
-			.replace(/\{current\.datetime\}/g, nowStr);
+			.replace(/\{current\.datetime\}/g, nowStr)
+			.replace(/\{report\.name\}/g, reportName);
 	};
 
 	self.layout = ko.observable('list');
