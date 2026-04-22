@@ -204,11 +204,11 @@
 
         <div data-bind="if: Rows.length > 0">
             <div data-bind="with: $parent.rows[0].Items[0]">
-                <span data-bind="html: $parent.formatKpiValue(Value, formattedVal())"></span>
+                <span class="preserve-space" data-bind="html: $parent.formatKpiValue(Value, formattedVal())"></span>
 
                 <!-- ko if: $parent.Rows.length > 1 ? ($parents[$parents.length-2].showPriorInKpi != undefined ? $parents[$parents.length-2].showPriorInKpi() : $parents[$parents.length-1].showPriorInKpi()) : false -->
                 <div data-bind="style: {'font-size': '20px'}" class="text-muted">
-                    <span data-bind="text: $parent.comparisonLabel"></span>: <span data-bind="html: $parent.formatKpiValue($parent.Rows[1].Items[0].Value, $parent.Rows[1].Items[0].formattedVal)"></span>
+                    <span data-bind="text: $parent.comparisonLabel"></span>: <span class="preserve-space" data-bind="html: $parent.formatKpiValue($parent.Rows[1].Items[0].Value, $parent.Rows[1].Items[0].formattedVal)"></span>
                     <span data-bind="style: {'color': $parent.calculateRate() > 0 ? $parent.PositiveColor : $parent.NegativeColor, 'font-size': '20px'}">
                         <i data-bind="css: $parent.calculateRate() > 0 ? 'fa fa-arrow-up' : 'fa fa-arrow-down'"></i>
                         <span data-bind="html: Math.abs($parent.calculateRate()) + '%'"></span>
@@ -343,14 +343,14 @@
         <div data-bind="style: {'width': fieldWidth }, css: { 'text-wrap': fieldWidth }">
             <!-- ko if: LinkTo-->
             <!-- ko if: $data._runLinkedReportInPlace -->
-            <a href="#" data-bind="click: $data._runLinkedReportInPlace"><span data-bind="html: formattedVal"></span></a>
+            <a href="#" data-bind="click: $data._runLinkedReportInPlace"><span class="preserve-space" data-bind="html: formattedVal"></span></a>
             <!-- /ko -->
             <!-- ko ifnot: $data._runLinkedReportInPlace -->
-            <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
+            <a data-bind="attr: {href: LinkTo}" target="_blank"><span class="preserve-space" data-bind="html: formattedVal"></span></a>
             <!-- /ko -->
             <!-- /ko-->
             <!-- ko ifnot: LinkTo-->
-            <span data-bind="html: formattedVal"></span>
+            <span class="preserve-space" data-bind="html: formattedVal"></span>
             <!-- /ko-->
         </div>
     </td>
@@ -364,7 +364,7 @@
                     <th></th>
                     <!-- ko foreach: Rows -->
                     <th>
-                        <span data-bind="text: Items[0].FormattedValue"></span>
+                        <span class="preserve-space" data-bind="text: Items[0].FormattedValue"></span>
                     </th>
                     <!-- /ko -->
                 </tr>
@@ -377,7 +377,7 @@
                     </td>
                     <!-- ko foreach: $parent.Rows -->
                     <td data-bind="style: {'background-color': $parent.backColor, 'color': $parent.fontColor, 'font-weight': $parent.fontBold() ? 'bold' : 'normal', 'text-align': $parent.fieldAlign ? $parent.fieldAlign : ($parent.IsNumeric ? 'right' : 'left') }">
-                        <span data-bind="text: Items[$parentContext.$index()].FormattedValue"></span>
+                        <span class="preserve-space" data-bind="text: Items[$parentContext.$index()].FormattedValue"></span>
                     </td>
                     <!-- /ko -->
                     <!-- /ko -->
@@ -492,7 +492,7 @@
                     <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
                     <td data-bind="style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : 'right'}">
                         <div data-bind="style: {'width': fieldWidth }, attr: {'title': (Column.fieldLabel() || Column.ColumnName) + ' - ' +_aggregate }, visible:  _showInTotalRow != false">
-                        <span data-bind="html: formattedVal"></span>
+                        <span class="preserve-space" data-bind="html: formattedVal"></span>
                         </div>
                     </td>
                     <!-- /ko -->
@@ -510,7 +510,7 @@
                     <!-- ko foreach: $parentContext.$parent.perGroupSubTotals()[$parentContext.$data.groupIndex] -->
                     <td data-bind="style: {'text-align': Column.IsNumeric ? 'right' : 'left', 'font-weight': 'bold'}">
                         <div data-bind="style: {'width': Column.fieldWidth}">
-                            <span data-bind="text: formattedVal"></span>
+                            <span class="preserve-space" data-bind="text: formattedVal"></span>
                         </div>
                     </td>
                     <!-- /ko -->
@@ -534,7 +534,7 @@
                     <tr>
                         <td data-bind="text: (Column.fieldLabel() || Column.ColumnName) + ' (' + _aggregate + ')'"></td>
                         <td class="text-end">
-                            <span data-bind="html: formattedVal"></span>
+                            <span class="preserve-space" data-bind="html: formattedVal"></span>
                         </td>
                     </tr>
                     <!-- /ko -->
@@ -559,7 +559,7 @@
                     <tr>
                         <td data-bind="text: Column.fieldLabel() || Column.ColumnName"></td>
                         <td class="text-end">
-                            <span data-bind="text: formattedVal"></span>
+                            <span class="preserve-space" data-bind="text: formattedVal"></span>
                         </td>
                     </tr>
                     <!-- /ko -->
@@ -690,7 +690,7 @@
                 <!-- ko if: _showInTotalRow != false -->
                 <td data-bind="style: {'text-align': Column.IsNumeric ? 'right' : 'left', 'font-weight': 'bold'}">
                     <div data-bind="style: {'width': Column.fieldWidth}">                        
-                        <span data-bind="html: formattedVal"></span>                        
+                        <span class="preserve-space" data-bind="html: formattedVal"></span>                        
                     </div>
                 </td>
                 <!-- /ko -->
@@ -717,7 +717,7 @@
                 <tr>
                     <td data-bind="text: (Column.fieldLabel() || Column.ColumnName) + ' (' + _aggregate + ')'"></td>
                     <td class="text-end">
-                        <span data-bind="html: formattedVal"></span>
+                        <span class="preserve-space" data-bind="html: formattedVal"></span>
                     </td>
                 </tr>
                 <!-- /ko -->
@@ -3594,14 +3594,14 @@
                                     <div data-bind="style: {'width': fieldWidth }">
                                         <!-- ko if: LinkTo-->
                                         <!-- ko if: $data._runLinkedReportInPlace -->
-                                        <a href="#" data-bind="click: $data._runLinkedReportInPlace"><span data-bind="html: formattedVal"></span></a>
+                                        <a href="#" data-bind="click: $data._runLinkedReportInPlace"><span class="preserve-space" data-bind="html: formattedVal"></span></a>
                                         <!-- /ko -->
                                         <!-- ko ifnot: $data._runLinkedReportInPlace -->
-                                        <a data-bind="attr: {href: LinkTo}" target="_blank"><span data-bind="html: formattedVal"></span></a>
+                                        <a data-bind="attr: {href: LinkTo}" target="_blank"><span class="preserve-space" data-bind="html: formattedVal"></span></a>
                                         <!-- /ko -->
                                         <!-- /ko-->
                                         <!-- ko ifnot: LinkTo-->
-                                        <span data-bind="html: formattedVal"></span>
+                                        <span class="preserve-space" data-bind="html: formattedVal"></span>
                                         <!-- /ko-->
                                     </div>
                                 </td>

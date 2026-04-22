@@ -624,7 +624,9 @@ select.is-invalid ~ span .select2-selection {
     z-index: 9999;
     width: 200px;
 }
-
+.preserve-space {
+    white-space: pre-wrap;
+}
 .ui-datepicker-header {
     background-color: #f6f6f6;
     border-bottom: 1px solid #ccc;

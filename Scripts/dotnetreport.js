@@ -5760,7 +5760,7 @@ var reportViewModel = function (options) {
 					return r.FormattedValue;
 				});
 				function formatValue(val, r) {
-					let style = '';
+					let style = 'white-space:pre-wrap;';
 					const bgColor = r._backColor || (ko.isObservable(r.backColor) ? r.backColor() : null);
 					if (bgColor) {
 						style += `background-color:${bgColor};`;
@@ -6405,6 +6405,7 @@ var reportViewModel = function (options) {
 								text-align:${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')};
 								width:${ko.unwrap(item.fieldWidth())};
 								text-wrap:${ko.unwrap(item.fieldWidth()) ? 'wrap' : 'nowrap'};
+								white-space:pre-wrap;
 								${leftBorder}
 							"
 						`;
