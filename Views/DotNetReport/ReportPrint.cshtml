@@ -508,6 +508,7 @@
                     var userName = vm.currentUserName || vm.currentUserId || '';
                     var userRoles = vm.currentUserRole || '';
                     var nowStr = new Date().toLocaleString();
+                    var reportName = (vm.ReportName && vm.ReportName()) ? vm.ReportName() : '';
 
                     function substitutePlaceholders(html) {
                         if (!html) return html;
@@ -517,7 +518,8 @@
                             .replace(/\{current\.user\.roles\}/g, userRoles)
                             .replace(/\{CURRENTUSERROLES\}/g, userRoles)
                             .replace(/\{current\.datetime\}/g, nowStr)
-                            .replace(/\{CURRENTDATETIME\}/g, nowStr);
+                            .replace(/\{CURRENTDATETIME\}/g, nowStr)
+                            .replace(/\{report\.name\}/g, reportName);
                     }
                     function substituteInDocPagePlaceholders(html) {
                         if (!html) return html;
