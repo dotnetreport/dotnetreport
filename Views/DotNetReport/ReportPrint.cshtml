@@ -21,52 +21,52 @@
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style type="text/css">
         .report-view {
-            margin: 0 0px 0 0px;
-            left: 0px !important;
-            width: 100%;
-            max-width: inherit;
-            overflow-y: hidden;
+        margin: 0 0px 0 0px;
+        left: 0px !important;
+        width: 100%;
+        max-width: inherit;
+        overflow-y: hidden;
         }
 
         .report-inner {
-            margin: 0 0px 0 0px;
-            left: 0px !important;
-            overflow-y: hidden;
+        margin: 0 0px 0 0px;
+        left: 0px !important;
+        overflow-y: hidden;
         }
 
         .table {
-            width: 100%;
-            margin-bottom: 1rem;
-            color: #212529;
-            border-collapse: collapse;
+        width: 100%;
+        margin-bottom: 1rem;
+        color: #212529;
+        border-collapse: collapse;
         }
 
-            .table th,
-            .table td {
-                padding: 0.75rem;
-                vertical-align: top;
-                border: 1px solid #dee2e6;
-            }
+        .table th,
+        .table td {
+        padding: 0.75rem;
+        vertical-align: top;
+        border: 1px solid #dee2e6;
+        }
 
         .table-borderless th,
         .table-borderless td,
         .table-borderless thead th,
         .table-borderless tbody + tbody {
-            border: 0;
+        border: 0;
         }
 
         .table-striped tbody tr:nth-of-type(odd) {
-            background-color: rgba(0, 0, 0, 0.05);
+        background-color: rgba(0, 0, 0, 0.05);
         }
 
         body * {
-            left: 0 !important;
-            visibility: visible !important;
+        left: 0 !important;
+        visibility: visible !important;
         }
 
         .filter-detail-logic {
-            font-weight: 600;
-            font-size: 0.8em;
+        font-weight: 600;
+        font-size: 0.8em;
         }
     </style>
 </head>
@@ -123,18 +123,18 @@
 
     <script type="text/html" id="report-render">
         <div data-bind="with: ReportData">
-              <div data-bind="foreach: Rows">
-          <div data-bind="html: renderedHtml, css: { 'card-view': $parents[$parents.length-1].cardView }"></div>
+            <div data-bind="foreach: Rows">
+                <div data-bind="html: renderedHtml, css: { 'card-view': $parents[$parents.length-1].cardView }"></div>
 
-          <div data-bind="foreach: subReportsRan">
-              <!-- ko if: !_isInline -->
-              <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
-              <!-- /ko -->
-              <!-- ko if: _isInline -->
-              <div style="display:none" data-bind="moveToInlineContainer: $data"></div>
-              <!-- /ko -->
-          </div>
-        </div>
+                <div data-bind="foreach: subReportsRan">
+                    <!-- ko if: !_isInline -->
+                    <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
+                    <!-- /ko -->
+                    <!-- ko if: _isInline -->
+                    <div style="display:none" data-bind="moveToInlineContainer: $data"></div>
+                    <!-- /ko -->
+                </div>
+            </div>
         </div>
         <div class="clearfix"></div>
     </script>
@@ -301,7 +301,7 @@
         <div class="table-responsive">
             <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">
                 <thead style="position: sticky; top: -1px; z-index: 2;" data-bind="if: !$parents[2].noHeaderRow(), attr: {id: 'report-table-head' + $parents[2].ReportID()}">
-                    <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">                        
+                    <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">
                         <!-- ko template: 'report-column-header', data: $data -->
                         <!-- /ko-->
                     </tr>
@@ -315,7 +315,7 @@
 
                     <!-- ko if: !$parents[2].useRenderTable() -->
                     <!-- ko foreach: $parent.rows  -->
-                    <tr>                        
+                    <tr>
                         <!-- ko template: 'report-column', data: $data -->
                         <!-- /ko-->
                     </tr>
@@ -352,15 +352,15 @@
                         </td>
                     </tr>
                     <!-- /ko -->
-                     <!-- ko if: subReportsRan().length > 0 -->
-                <tr>
-                    <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
-                        <div data-bind="foreach: subReportsRan">
-                            <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
-                        </div>
-                    </td>
-                </tr>
-                <!-- /ko -->
+                    <!-- ko if: subReportsRan().length > 0 -->
+                    <tr>
+                        <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
+                            <div data-bind="foreach: subReportsRan">
+                                <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
+                            </div>
+                        </td>
+                    </tr>
+                    <!-- /ko -->
                     <!-- /ko -->
                     <!-- /ko-->
                 </tbody>
@@ -368,7 +368,7 @@
                 <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
                     <tr class="sub-total">
                         <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() -->
-                            <td></td>
+                        <td></td>
                         <!-- /ko -->
                         <!-- ko foreach: Items -->
                         <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
@@ -408,48 +408,48 @@
 
     <style type="text/css">
         a[href]:after {
-            content: none !important;
+        content: none !important;
         }
     </style>
     <script type="text/javascript">
     
-    $(document).ready(function () {
+        $(document).ready(function () {
         var data = {
-            currentUserId: '@Model.UserId',
-            currentUserRoles: ('@Model.CurrentUserRoles' ||'').split(','),
-            dataFilters: '@Model.DataFilters',
-            clientId: '@Model.ClientId'
+        currentUserId: '@Model.UserId',
+        currentUserRoles: ('@Model.CurrentUserRoles' ||'').split(','),
+        dataFilters: '@Model.DataFilters',
+        clientId: '@Model.ClientId'
         };
 
         function decodeHTMLEntities(text) {
-            var parser = new DOMParser();
-            var dom = parser.parseFromString('<!doctype html><body>' + text, 'text/html');
-            var decodedText = dom.body.textContent;
+        var parser = new DOMParser();
+        var dom = parser.parseFromString('<!doctype html><body>' + text, 'text/html');
+        var decodedText = dom.body.textContent;
 
-            // Remove new lines and carriage returns
-            return decodedText.replace(/[\n\r]/g, '');
+        // Remove new lines and carriage returns
+        return decodedText.replace(/[\n\r]/g, '');
         }
         
         var vm = new reportViewModel({
-            runReportUrl: "@Url.Action("Report")",
-            execReportUrl: "@Url.Action("RunReportUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId",
-            runLinkReportUrl: "@Url.Action("RunReportLinkUnAuth", "DotNetReportApi")",
-            reportWizard: $("#filter-panel"),
-            reportHeader: "report-header",
-            lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
-            apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")',
-            runReportApiUrl: '@Url.Action("RunReportApiUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId',
-            reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)') || '{}',
-            reportMode: "print",
-            reportSql: "@Model.ReportSql",
-            reportConnect: "@Model.ConnectKey",
-            ReportSeries : "@Model.ReportSeries",
-            reportHeader: 'report-header',
-            userSettings: data,
-            dataFilters: JSON.parse(decodeHTMLEntities(data.dataFilters) || '{}'),
-            reportData: JSON.parse(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ReportData ?? "{}"))),
-            getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
-            chartSize: { width: 800, height: 450 }
+        runReportUrl: "@Url.Action("Report")",
+        execReportUrl: "@Url.Action("RunReportUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId",
+        runLinkReportUrl: "@Url.Action("RunReportLinkUnAuth", "DotNetReportApi")",
+        reportWizard: $("#filter-panel"),
+        reportHeader: "report-header",
+        lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
+        apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")',
+        runReportApiUrl: '@Url.Action("RunReportApiUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId',
+        reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)') || '{}',
+        reportMode: "print",
+        reportSql: "@Model.ReportSql",
+        reportConnect: "@Model.ConnectKey",
+        ReportSeries : "@Model.ReportSeries",
+        reportHeader: 'report-header',
+        userSettings: data,
+        dataFilters: JSON.parse(decodeHTMLEntities(data.dataFilters) || '{}'),
+        reportData: JSON.parse(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ReportData ?? "{}"))),
+        getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
+        chartSize: { width: 800, height: 450 }
         });
 
         vm.pager.pageSize(10000);
@@ -457,133 +457,135 @@
         ko.applyBindings(vm);
 
         function checkReportsLoaded() {
-            var allReportsLoaded = true;
+        var allReportsLoaded = true;
 
-            if (vm.ReportResult && vm.ReportResult() && vm.ReportResult().ReportData) {
-                var reportData = vm.ReportResult().ReportData;
+        if (vm.ReportResult && vm.ReportResult() && vm.ReportResult().ReportData) {
+        var reportData = vm.ReportResult().ReportData;
 
-                if (reportData && reportData() && reportData().Rows) {
-                    var rows = ko.unwrap(reportData().Rows);
+        if (reportData && reportData() && reportData().Rows) {
+        var rows = ko.unwrap(reportData().Rows);
 
-                    _.forEach(rows, function(row) {
-                        if (row.subReportsRan) {
-                            var subReports = ko.unwrap(row.subReportsRan);
-                            _.forEach(subReports, function(subReport) {
-                                if (subReport.ReportResult && subReport.ReportResult()) {
-                                    if (!subReport.ReportResult().ReportData || !subReport.ReportResult().ReportData()) {
-                                        allReportsLoaded = false;
-                                    }
-                                } else {
-                                    allReportsLoaded = false;
-                                }
-                            });
-                        }
-                    });
-                }
-            }
+        _.forEach(rows, function(row) {
+        if (row.subReportsRan) {
+        var subReports = ko.unwrap(row.subReportsRan);
+        _.forEach(subReports, function(subReport) {
+        if (subReport.ReportResult && subReport.ReportResult()) {
+        if (!subReport.ReportResult().ReportData || !subReport.ReportResult().ReportData()) {
+        allReportsLoaded = false;
+        }
+        } else {
+        allReportsLoaded = false;
+        }
+        });
+        }
+        });
+        }
+        }
 
-            return allReportsLoaded;
+        return allReportsLoaded;
         }
 
         var checkInterval;
         function showReportWhenReady() {
-            if (checkReportsLoaded()) {
-                $('.report-inner').show();
-                if (checkInterval) {
-                    clearInterval(checkInterval);
-                }
-            }
+        if (checkReportsLoaded()) {
+        $('.report-inner').show();
+        if (checkInterval) {
+        clearInterval(checkInterval);
+        }
+        }
         }
 
-        vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
-            if (vm.useReportHeader()) {
-                vm.headerDesigner.init(true);
-            }
-            if (vm.useReportFooter()) {
-                vm.footerDesigner.init(true);
-            }
+        vm.LoadReport(@Model.ReportId , true, "@Model.ReportSeries").done(function () {
+        if (vm.useReportHeader()) {
+        vm.headerDesigner.init(true);
+        }
+        if (vm.useReportFooter()) {
+        vm.footerDesigner.init(true);
+        }
 
-            setTimeout(function () {
-                try {
-                    var userName = vm.currentUserName || vm.currentUserId || '';
-                    var userRoles = vm.currentUserRole || '';
-                    var nowStr = new Date().toLocaleString();
-                    var reportName = (vm.ReportName && vm.ReportName()) ? vm.ReportName() : '';
+        setTimeout(function () {
+        try {
+        var userName = vm.currentUserName || vm.currentUserId || '';
+        var userRoles = vm.currentUserRole || '';
+        var nowStr = new Date().toLocaleString();
+        var reportName = (vm.ReportName && vm.ReportName()) ? vm.ReportName() : '';
 
-                    function substitutePlaceholders(html) {
-                        if (!html) return html;
-                        return html
-                            .replace(/\{current\.user\}/g, userName)
-                            .replace(/\{CURRENTUSER\}/g, userName)
-                            .replace(/\{current\.user\.roles\}/g, userRoles)
-                            .replace(/\{CURRENTUSERROLES\}/g, userRoles)
-                            .replace(/\{current\.datetime\}/g, nowStr)
-                            .replace(/\{CURRENTDATETIME\}/g, nowStr)
-                            .replace(/\{report\.name\}/g, reportName);
-                    }
-                    function substituteInDocPagePlaceholders(html) {
-                        if (!html) return html;
-                        return html
-                            .replace(/\{page\.number\}/g, '1')
-                            .replace(/\{page\.total\}/g, '1');
-                    }
+        function substitutePlaceholders(html) {
+        console.log('Substituting placeholders in:', html);
+        debugger;
+        if (!html) return html;
+        return html
+        .replace(/\{current\.user\}/g, userName)
+        .replace(/\{CURRENTUSER\}/g, userName)
+        .replace(/\{current\.user\.roles\}/g, userRoles)
+        .replace(/\{CURRENTUSERROLES\}/g, userRoles)
+        .replace(/\{current\.datetime\}/g, nowStr)
+        .replace(/\{CURRENTDATETIME\}/g, nowStr)
+        .replace(/\{report\.name\}/g, reportName);
+        }
+        function substituteInDocPagePlaceholders(html) {
+        if (!html) return html;
+        return html
+        .replace(/\{page\.number\}/g, '1')
+        .replace(/\{page\.total\}/g, '1');
+        }
 
-                    var $h = $('#report-header');
-                    var $f = $('#report-footer');
+        var $h = $('#report-header');
+        var $f = $('#report-footer');
 
-                    var rawHeaderHtml = $h.length ? substitutePlaceholders($h.html()) : '';
-                    var rawFooterHtml = $f.length ? substitutePlaceholders($f.html()) : '';
+        var rawHeaderHtml = $h.length ? substitutePlaceholders($h.html()) : '';
+        var rawFooterHtml = $f.length ? substitutePlaceholders($f.html()) : '';
 
-                    if ($h.length) { $h.html(substituteInDocPagePlaceholders(substitutePlaceholders($h.html()))); }
-                    if ($f.length) { $f.html(substituteInDocPagePlaceholders(substitutePlaceholders($f.html()))); }
+        if ($h.length) { $h.html(substituteInDocPagePlaceholders(substitutePlaceholders($h.html()))); }
+        if ($f.length) { $f.html(substituteInDocPagePlaceholders(substitutePlaceholders($f.html()))); }
 
-                    window.reportHeaderHtml = rawHeaderHtml;
-                    window.reportFooterHtml = rawFooterHtml;
-                    window.reportHeaderIncludeOnEveryPage = vm.headerDesigner && vm.headerDesigner.IncludeOnEveryPage ? vm.headerDesigner.IncludeOnEveryPage() : false;
-                    window.reportFooterIncludeOnEveryPage = vm.footerDesigner && vm.footerDesigner.IncludeOnEveryPage ? vm.footerDesigner.IncludeOnEveryPage() : false;
+        window.reportHeaderHtml = rawHeaderHtml;
+        window.reportFooterHtml = rawFooterHtml;
+        window.reportHeaderIncludeOnEveryPage = vm.headerDesigner && vm.headerDesigner.IncludeOnEveryPage ? vm.headerDesigner.IncludeOnEveryPage() : false;
+        window.reportFooterIncludeOnEveryPage = vm.footerDesigner && vm.footerDesigner.IncludeOnEveryPage ? vm.footerDesigner.IncludeOnEveryPage() : false;
 
-                    function measureHtmlHeightInches(html) {
-                        if (!html) return 0;
-                        var d = document.createElement('div');
-                        d.style.position = 'absolute';
-                        d.style.visibility = 'hidden';
-                        d.style.left = '-99999px';
-                        d.style.top = '0';
-                        d.style.width = '7.5in';
-                        d.innerHTML = html;
-                        document.body.appendChild(d);
-                        var px = d.offsetHeight;
-                        d.parentNode.removeChild(d);
-                        return px / 96.0;
-                    }
-                    window.reportHeaderHeightIn = $h.length ? measureHtmlHeightInches($h.html()) : 0;
-                    window.reportFooterHeightIn = $f.length ? measureHtmlHeightInches($f.html()) : 0;
-                } catch (e) { console.log('placeholder substitution failed', e); }
-            }, 600);
+        function measureHtmlHeightInches(html) {
+        if (!html) return 0;
+        var d = document.createElement('div');
+        d.style.position = 'absolute';
+        d.style.visibility = 'hidden';
+        d.style.left = '-99999px';
+        d.style.top = '0';
+        d.style.width = '7.5in';
+        d.innerHTML = html;
+        document.body.appendChild(d);
+        var px = d.offsetHeight;
+        d.parentNode.removeChild(d);
+        return px / 96.0;
+        }
+        window.reportHeaderHeightIn = $h.length ? measureHtmlHeightInches($h.html()) : 0;
+        window.reportFooterHeightIn = $f.length ? measureHtmlHeightInches($f.html()) : 0;
+        } catch (e) { console.log('placeholder substitution failed', e); }
+        }, 600);
 
-            if (vm.useStoredProc()) {
-                setTimeout(function(){
-                    vm.printReport();
-                }, 1000);
-            } else {
-                vm.printReport();
-            }
+        if (vm.useStoredProc()) {
+        setTimeout(function(){
+        vm.printReport();
+        }, 1000);
+        } else {
+        vm.printReport();
+        }
 
-            checkInterval = setInterval(showReportWhenReady, 500);
+        checkInterval = setInterval(showReportWhenReady, 500);
 
-            setTimeout(function () {
-                $('.report-inner').show();
-                if (checkInterval) {
-                    clearInterval(checkInterval);
-                }
-            }, 1000);
+        setTimeout(function () {
+        $('.report-inner').show();
+        if (checkInterval) {
+        clearInterval(checkInterval);
+        }
+        }, 1000);
         });
 
         $(window).resize(function(){
-            vm.DrawChart();
+        vm.DrawChart();
         });
 
-    });
+        });
 
     </script>
 
@@ -637,7 +639,7 @@
             <span data-bind="text: $parent.Value"></span>
             <!-- /ko -->
             <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
-            From &nbsp; 
+            From &nbsp;
             <span data-bind="text: $parent.Value"></span>
             to &nbsp;
             <span data-bind="text: $parent.Value2"></span>
@@ -662,7 +664,7 @@
             <!-- /ko -->
             <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
             <span data-bind="text: $parent.Value== '0' ? 'No' : 'Yes'">
-           </span>
+            </span>
             <!-- /ko -->
             <!-- ko if: ['Int','Money','Float','Double','Date','DateTime','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
             <span type="text" data-bind="text: $parent.Value, disable: $parent.Operator() == 'is default'" ></span>
