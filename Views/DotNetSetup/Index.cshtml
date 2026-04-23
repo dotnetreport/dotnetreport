@@ -504,14 +504,12 @@
                 <div class="container-fluid">
                     <div class="row fw-bold bg-light border-bottom py-2" data-bind="with: JoinFilters">
                         <!-- Repeat for each column header -->
+                        <div class="col-md-1" style="max-width: 40px;"></div>
                         <div class="col-md-2">
                             Primary Table
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" data-bind="value: primaryTable, valueUpdate: 'afterkeydown'" placeholder="Search..." />
                                 <span class="input-group-text"><i class="fa fa-filter"></i></span>
-                                <button class="btn btn-sm" data-bind="click: $root.sortByPrimaryTable">
-                                    <i class="fa" data-bind="css: $root.sortDirection.primaryTable() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                </button>
                             </div>
                         </div>
                         <div class="col-md-2">
@@ -519,19 +517,13 @@
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" data-bind="value: primaryField, valueUpdate: 'afterkeydown'" placeholder="Search..." />
                                 <span class="input-group-text"><i class="fa fa-filter"></i></span>
-                                <button class="btn btn-sm" data-bind="click: $root.sortByField">
-                                    <i class="fa" data-bind="css: $root.sortDirection.primaryField() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                </button>
                             </div>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-1">
                             Join Type
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" data-bind="value: joinType, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                 <span class="input-group-text"><i class="fa fa-filter"></i></span>
-                                <span class="btn btn-sm" data-bind="click: $root.sortByJoinType">
-                                    <i class="fa" data-bind="css: $root.sortDirection.joinType() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                </span>
                             </div>
                         </div>
                         <div class="col-md-2">
@@ -539,31 +531,28 @@
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" data-bind="value: joinTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                 <span class="input-group-text"><i class="fa fa-filter"></i></span>
-                                <span class="btn btn-sm" data-bind="click: $root.sortByJoinTable">
-                                    <i class="fa" data-bind="css: $root.sortDirection.joinTable() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                </span>
                             </div>
                         </div>
                         <div class="col-md-2">
-                            Field<div class="input-group input-group-sm">
+                            Field
+                            <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" data-bind="value: joinField, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                 <span class="input-group-text"><i class="fa fa-filter"></i></span>
-                                <span class="btn btn-sm" data-bind="click: $root.sortByJoinField">
-                                    <i class="fa" data-bind="css: $root.sortDirection.joinField() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                </span>
                             </div>
                         </div>
+                        <div class="col-md-2"></div>
                     </div>
 
                     <!-- New Join Row -->
                     <div class="row bg-info bg-opacity-25 p-2" data-bind="visible: showNewJoinRow">
+                        <div class="col-md-1" style="max-width: 40px;"></div>
                         <div class="col-md-2">
                             <select class="form-select" data-bind="options: Tables.availableTables, optionsText: 'DisplayName', value: NewJoin().JoinTable, optionsCaption: 'Pick a table...'"></select>
                         </div>
                         <div class="col-md-2" data-bind="with: NewJoin().JoinTable">
                             <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsCaption: 'Pick a field...', optionsValue: 'ColumnName', value: $root.NewJoin().FieldName"></select>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-1">
                             <select class="form-select" data-bind="options: $root.JoinTypes, value: NewJoin().JoinType"></select>
                         </div>
                         <div class="col-md-2">
@@ -577,16 +566,19 @@
                         </div>
                     </div>
 
-                    <!-- Existing Join Rows -->
-                    <div data-bind="foreach: pagedJoins">
+                    <!-- Existing Join Rows with drag reorder -->
+                    <div data-bind="sortable: { data: reorderableJoins, options: { handle: '.join-drag-handle', cursor: 'move' }, afterMove: $root.joinSorted }">
                         <div class="row align-items-center border-bottom py-2">
+                            <div class="col-md-1 text-center" style="max-width: 40px;">
+                                <span class="btn btn-sm btn-outline-secondary join-drag-handle" title="Drag to reorder"><i class="fa fa-bars"></i></span>
+                            </div>
                             <div class="col-md-2">
                                 <select class="form-select" data-bind="options: $root.Tables.availableTables, optionsText: 'DisplayName', value: JoinTable"></select>
                             </div>
                             <div class="col-md-2" data-bind="with: JoinTable">
                                 <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.FieldName"></select>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-1">
                                 <select class="form-select" data-bind="options: $root.JoinTypes, value: JoinType"></select>
                             </div>
                             <div class="col-md-2">
@@ -595,7 +587,6 @@
                             <div class="col-md-2" data-bind="with: OtherTable">
                                 <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.JoinFieldName"></select>
                             </div>
-
                             <div class="col-md-2 text-end">
                                 <span class="badge bg-warning text-dark me-2"
                                       data-bind="visible: isNew"
@@ -603,13 +594,11 @@
                                       title="New record added or imported, not saved yet">
                                     <i class="fa fa-warning"></i> New
                                 </span>
-
                                 <button class="btn btn-secondary btn-sm" data-bind="click: DeleteJoin">Delete</button>
                             </div>
                         </div>
                     </div>
                 </div>
-
                 <div class="row mt-3">
                     <div class="d-flex flex-row align-items-center col-md-12" data-bind="with: joinsPager">
                         <div data-bind="template: 'pager-template', data: $data"></div>
@@ -1045,109 +1034,128 @@
                 <div class="col-md-8">
                     <div data-bind="with: settings">
                         <div class="row">
-                            <div class="col-md-6">
-                                <h6 class="mt-2 mb-2">Admin Options</h6>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" id="useClientIdInAdmin" data-bind="checked: useClientIdInAdmin">
-                                    <label class="form-check-label" for="useClientIdInAdmin">Use Client ID in Admin mode</label>
-                                    <small class="text-muted d-block">Enable this to respect client IDs even when in admin mode.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" id="useSqlBuilderInAdminMode" data-bind="checked: useSqlBuilderInAdminMode">
-                                    <label class="form-check-label" for="useSqlBuilderInAdminMode">Use SQL Builder in Admin Mode</label>
-                                    <small class="text-muted d-block">Allows SQL query builder access <b>only</b> in admin mode.</small>
-                                </div>
-                                <h6 class="mt-3 mb-2">Customization</h6>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" id="useSqlCustomField" data-bind="checked: useSqlCustomField">
-                                    <label class="form-check-label" for="useSqlCustomField">Use SQL in Custom Field</label>
-                                    <small class="text-muted d-block">Allows the use of SQL expressions in custom fields.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: usePromptBuilder">
-                                    <label class="form-check-label">Use AI aided, prompt based Report Builder</label>
-                                    <small class="text-muted d-block">Let non Admin users create reports using the AI aided Prompt based builder</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: useAltPivot">
-                                    <label class="form-check-label">Pivot with Drilldown</label>
-                                    <small class="text-muted d-block">Use alternate Pivot method that doesn't use SQL's PIVOT.<br>Allows drilldown, but may be slower.</small>
-                                </div>
-                                <div class="form-check" data-bind="visible: isEnterprise">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: useFunctions">
-                                    <label class="form-check-label">Use Functions</label>
-                                    <small class="text-muted d-block">Enable calculated functions for List reports only.<br>Available for Enterprise license users.</small>
-                                </div>
-                                <h6 class="mt-3 mb-2">Report Options</h6>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" id="allowUsersToCreateReports" data-bind="checked: allowUsersToCreateReports">
-                                    <label class="form-check-label" for="allowUsersToCreateReports">Allow All Users to Create Reports</label>
-                                    <small class="text-muted d-block">Permits users to generate and customize reports.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: showImportExport">
-                                    <label class="form-check-label">Allow All Users to export/import reports</label>
-                                    <small class="text-muted d-block">Allow non admin users to export and import Reports in the system.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: canCopyReport">
-                                    <label class="form-check-label">Always allow users to copy reports</label>
-                                    <small class="text-muted d-block">Allow users with View Only access to copy Reports in the system.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: showScheduling">
-                                    <label class="form-check-label">Hide Report/Dashboard Scheduling</label>
-                                    <small class="text-muted d-block">Removes scheduling in reports and dashboard.</small>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <h6 class="mt-2 mb-2">Folder Options</h6>
-                                <div class="form-check" data-bind="visible: false">
-                                    <input type="checkbox" class="form-check-input" id="noFolders" data-bind="checked: noFolders">
-                                    <label class="form-check-label" for="noFolders">No Folders</label>
-                                    <small class="text-muted d-block">Disables the use of folders in the application.</small>
-                                </div>
-                                <div class="form-check" data-bind="visible: false">
-                                    <input type="checkbox" class="form-check-input" id="noDefaultFolder" data-bind="checked: noDefaultFolder">
-                                    <label class="form-check-label" for="noDefaultFolder">No Default Folder</label>
-                                    <small class="text-muted d-block">Removes the Default folder.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: showEmptyFolders">
-                                    <label class="form-check-label">Show Empty Folders</label>
-                                    <small class="text-muted d-block">Will show empty folders for non admin users.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" id="allowUsersToManageFolders" data-bind="checked: allowUsersToManageFolders">
-                                    <label class="form-check-label" for="allowUsersToManageFolders">Allow All Users to Manage Folders</label>
-                                    <small class="text-muted d-block">Grants permission to organise and manage folders without admin mode.</small>
-                                </div>
-                                <h6 class="mt-3 mb-2">Export Options</h6>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: useAltPdf">
-                                    <label class="form-check-label">PDF Export without Chromium</label>
-                                    <small class="text-muted d-block">Use alternate PDF export method that doesn't rely on Chromium.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: dontXmlExport">
-                                    <label class="form-check-label">Hide XML Export option</label>
-                                    <small class="text-muted d-block">Remove XML Export option.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: dontWordExport">
-                                    <label class="form-check-label">Hide Word Export option</label>
-                                    <small class="text-muted d-block">Remove Word Export option.</small>
-                                </div>
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: showPageSize">
-                                    <label class="form-check-label">Show Page Size on PDF &amp; Word export</label>
-                                    <small class="text-muted d-block">Display document dimensions in exported PDF &amp; Word.</small>
-                                </div>
-                            </div>
+                    <div class="col-md-6">
+                        <h6 class="mt-2 mb-2">Admin Options</h6>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="useClientIdInAdmin" data-bind="checked: useClientIdInAdmin">
+                            <label class="form-check-label" for="useClientIdInAdmin">Use Client ID in Admin mode</label>
+                            <small class="text-muted d-block">Enable this to respect client IDs even when in admin mode.</small>
                         </div>
-                        <div class="mt-3">
-                            <button type="button" id="saveAppSettings" class="btn btn-primary" data-bind="click: saveAppSettings">Save Account Settings</button>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="useSqlBuilderInAdminMode" data-bind="checked: useSqlBuilderInAdminMode">
+                            <label class="form-check-label" for="useSqlBuilderInAdminMode">Use SQL Builder in Admin Mode</label>
+                            <small class="text-muted d-block">Allows SQL query builder access <b>only</b> in admin mode.</small>
                         </div>
+                        <h6 class="mt-3 mb-2">Customization</h6>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="useSqlCustomField" data-bind="checked: useSqlCustomField">
+                            <label class="form-check-label" for="useSqlCustomField">Use SQL in Custom Field</label>
+                            <small class="text-muted d-block">Allows the use of SQL expressions in custom fields.</small>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" data-bind="checked: showDesignerHints">
+                            <label class="form-check-label">Show Designer Tips &amp; Guidance</label>
+                            <small class="text-muted d-block">Display contextual tips and explanations throughout the report designer to help users understand available options.</small>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" data-bind="checked: useAltPivot">
+                            <label class="form-check-label">Pivot with Drilldown</label>
+                            <small class="text-muted d-block">Use alternate Pivot method that doesn’t use SQL’s PIVOT.<br>Allows drilldown, but may be slower.</small>
+                        </div>
+                        <div class="form-check" data-bind="visible: isEnterprise">
+                            <input type="checkbox" class="form-check-input" data-bind="checked: useFunctions">
+                            <label class="form-check-label">Use Functions</label>
+                            <small class="text-muted d-block">
+                                Enable calculated functions for List reports only.<br>
+                                Available for Enterprise license users.
+                            </small>
+                        </div>
+                        <h6 class="mt-3 mb-2">Report Options</h6>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="allowUsersToCreateReports" data-bind="checked: allowUsersToCreateReports">
+                            <label class="form-check-label" for="allowUsersToCreateReports">Allow All Users to Create Reports</label>
+                            <small class="text-muted d-block">Permits users to generate and customize reports.</small>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" data-bind="checked: showImportExport">
+                            <label class="form-check-label">Allow All Users to export/import reports</label>
+                            <small class="text-muted d-block">
+                                Allow non admin users to export and import Reports in the system.
+                            </small>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" data-bind="checked: canCopyReport">
+                            <label class="form-check-label">Always allow users to copy reports</label>
+                            <small class="text-muted d-block">
+                                Allow users with View Only access to copy Reports in the system.
+                            </small>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" data-bind="checked: showScheduling">
+                            <label class="form-check-label">Hide Report/Dashboard Scheduling</label>
+                            <small class="text-muted d-block">
+                                Removes scheduling in reports and dashboard, select only if you don't want to use scheduling feature.
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mt-2 mb-2">Folder Options</h6>
+                        <div class="form-check" data-bind="visible: false">
+                            <input type="checkbox" class="form-check-input" id="noFolders" data-bind="checked: noFolders">
+                            <label class="form-check-label" for="noFolders">No Folders</label>
+                            <small class="text-muted d-block">Disables the use of folders in the application.</small>
+                        </div>
+                        <div class="form-check" data-bind="visible: false">
+                            <input type="checkbox" class="form-check-input" id="noDefaultFolder" data-bind="checked: noDefaultFolder">
+                            <label class="form-check-label" for="noDefaultFolder">No Default Folder</label>
+                            <small class="text-muted d-block">Removes the Default folder.</small>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" data-bind="checked: showEmptyFolders">
+                            <label class="form-check-label">Show Empty Folders</label>
+                            <small class="text-muted d-block">Will show empty folders for non admin users.</small>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="allowUsersToManageFolders" data-bind="checked: allowUsersToManageFolders">
+                            <label class="form-check-label" for="allowUsersToManageFolders">Allow All Users to Manage Folders</label>
+                            <small class="text-muted d-block">Grants permission to organize and manage folders without admin mode.</small>
+                        </div>
+                        <h6 class="mt-3 mb-2">Export Options</h6>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" data-bind="checked: useAltPdf">
+                            <label class="form-check-label">PDF Export without Chromium</label>
+                            <small class="text-muted d-block">Use alternate PDF export method that doesn’t rely on Chromium.</small>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" data-bind="checked: dontXmlExport">
+                            <label class="form-check-label">Hide XML Export option</label>
+                            <small class="text-muted d-block">Remove XML Export option.</small>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" data-bind="checked: dontWordExport">
+                            <label class="form-check-label">Hide Word Export option</label>
+                            <small class="text-muted d-block">Remove Word Export option.</small>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" data-bind="checked: showPageSize">
+                            <label class="form-check-label">Show Page Size on PDF & Word export</label>
+                            <small class="text-muted d-block">Display document dimensions in exported PDF & Word.</small>
+                        </div>
+
+                        <h6 class="mt-3 mb-2">AI Assistant <span class="badge bg-warning text-dark" style="font-size: 10px;">BETA</span></h6>
+                        <div class="mb-2">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="aiEnabledSwitch"
+                                       data-bind="checked: aiEnabled">
+                                <label class="form-check-label" for="aiEnabledSwitch">Enable AI Report Assistant</label>
+                            </div>
+                            <small class="text-muted d-block">When enabled, an AI-powered assistant will be available in the report designer to help build reports using natural language.</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button type="button" id="saveAppSettings" class="btn btn-primary" data-bind="click: saveAppSettings">Save Account Settings</button>
+                </div>
                     </div>
                 </div>
             </div>
