@@ -451,6 +451,9 @@
                 </div>
 
                 <h2 class="pull-left" data-bind="text: ReportName"></h2>
+                <a href="#" class="btn btn-link btn-sm pull-left" data-bind="visible: canGoBackToParent(), click: backToParentReport" title="Back to Parent Report">
+                    <i class="fa fa-arrow-circle-left"></i> Back to Parent
+                </a>
                 <div class="pull-right">
                     <span data-bind="visible: isDirty" class="text-warning small" title="You have unsaved changes">
                         <i class="fa fa-exclamation-triangle"></i>

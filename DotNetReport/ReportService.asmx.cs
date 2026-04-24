@@ -105,11 +105,14 @@ namespace ReportBuilder.WebForms.DotNetReport
         public class PostReportApiCallMode
         {
             public string method { get; set; }
-            public string headerJson { get; set; }
+            public string headerJson { get; set; } = "";
             public bool useReportHeader { get; set; }
             public string headerClientId { get; set; } = "";
+            public string footerJson { get; set; } = "";
+            public bool useReportFooter { get; set; }
+            public string footerClientId { get; set; } = "";
+            public bool includeOnEveryPage { get; set; }
             public string userId { get; set; } = "";
-
         }
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
@@ -124,17 +127,30 @@ namespace ReportBuilder.WebForms.DotNetReport
         }
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public object PostReportApi(string method, string headerJson, bool useReportHeader,string headerClientId)
+        public object PostReportHeaderApi(string method, string headerJson, bool useReportHeader,string headerClientId,bool includeOnEveryPage)
         {
             return CallReportApi(method, JsonConvert.SerializeObject(new PostReportApiCallMode
             {
                 method = method,
                 headerJson = headerJson,
                 useReportHeader = useReportHeader,
-                headerClientId= headerClientId
+                headerClientId= headerClientId,
+                includeOnEveryPage = includeOnEveryPage
             }));
         }
-
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public object PostReportFooterApi(string method, string footerJson, bool useReportFooter, string footerClientId, bool includeOnEveryPage)
+        {
+            return CallReportApi(method, JsonConvert.SerializeObject(new PostReportApiCallMode
+            {
+                method = method,
+                footerJson = footerJson,
+                useReportFooter = useReportFooter,
+                footerClientId = footerClientId,
+                includeOnEveryPage = includeOnEveryPage
+            }));
+        }
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public object RunReportApi(DotNetReportApiCall data)
@@ -248,6 +264,27 @@ namespace ReportBuilder.WebForms.DotNetReport
             public bool useAltPivot { get; set; }
             public bool adminmode { get; set; }
             public bool includeColumnTotal { get; set; }
+        }
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public object GetDataFilterKeys()
+        {
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode)
+                return (new string[0]);
+
+            var keys = new List<string>();
+            if (settings.DataFilters != null)
+            {
+                try
+                {
+                    var dict = JsonConvert.DeserializeObject<Dictionary<string, object>>(
+                        JsonConvert.SerializeObject(settings.DataFilters));
+                    if (dict != null) keys = new List<string>(dict.Keys);
+                }
+                catch { }
+            }
+            return keys;
         }
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
@@ -1030,7 +1067,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
                 var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
 
-                var pdf = await DotNetReportHelper.GetPdfFileAlt(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, report.expandSqls, columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction, report.pageSize, report.pageOrientation);
+                var pdf = await DotNetReportHelper.GetPdfFileAlt(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, report.expandSqls, columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction, report.pageSize, report.pageOrientation, reportDescription: HttpUtility.UrlDecode(report.reportDescription));
                 pdfBytesList.Add(pdf);
             }
             var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);
@@ -1157,7 +1194,14 @@ namespace ReportBuilder.WebForms.DotNetReport
             string pageOrientation = "",
             string userId = "",
             bool adminMode = false,
-            string filterDetailsText = null)
+            string filterDetailsText = null,
+            string headerHtml = null,
+            string footerHtml = null,
+            bool headerEveryPage = false,
+            bool footerEveryPage = false,
+            string currentUserName = null,
+            string currentUserRoles = null,
+            string customHtml = null)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -1169,8 +1213,14 @@ namespace ReportBuilder.WebForms.DotNetReport
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
-            var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, HttpUtility.UrlDecode(filterDetailsText));
-
+            var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, HttpUtility.UrlDecode(filterDetailsText),
+                           headerHtml: headerHtml != null ? HttpUtility.UrlDecode(headerHtml) : null,
+                           footerHtml: footerHtml != null ? HttpUtility.UrlDecode(footerHtml) : null,
+                           headerEveryPage: headerEveryPage,
+                           footerEveryPage: footerEveryPage,
+                           currentUserName: currentUserName,
+                           currentUserRoles: currentUserRoles,
+                           customHtml: !string.IsNullOrEmpty(customHtml) ? HttpUtility.UrlDecode(customHtml) : null);
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".docx");
             Context.Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             Context.Response.BinaryWrite(word);
@@ -1259,7 +1309,8 @@ namespace ReportBuilder.WebForms.DotNetReport
            string userId = "",
            bool adminMode = false,
            bool subTotalPerGroup = false,
-           string filterDetailsText = null)
+           string filterDetailsText = null,
+           string reportDescription = null)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -1273,7 +1324,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             reportName = HttpUtility.UrlDecode(reportName);
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
-            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, subTotalPerGroup, HttpUtility.UrlDecode(filterDetailsText));
+            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, subTotalPerGroup, HttpUtility.UrlDecode(filterDetailsText),HttpUtility.UrlDecode(reportDescription));
 
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".pdf");
             Context.Response.ContentType = "application/pdf";

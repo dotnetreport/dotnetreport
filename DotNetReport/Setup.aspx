@@ -114,7 +114,7 @@
 
 </asp:Content>
 <asp:Content ID="Content4" ContentPlaceHolderID="body" runat="server">
- 
+
 <div>
     <h2>Manage Database</h2>
     <p>
@@ -247,9 +247,9 @@
                                     <small class="text-muted d-block">Allows the use of SQL expressions in custom fields.</small>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: usePromptBuilder">
-                                    <label class="form-check-label">Use AI aided, prompt based Report Builder</label>
-                                    <small class="text-muted d-block">Let non Admin users create reports using the AI aided Prompt based builder</small>
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showDesignerHints">
+                                    <label class="form-check-label">Show Designer Tips &amp; Guidance</label>
+                                    <small class="text-muted d-block">Display contextual tips and explanations throughout the report designer to help users understand available options.</small>
                                 </div>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" data-bind="checked: useAltPivot">
@@ -334,7 +334,17 @@
                                     <input type="checkbox" class="form-check-input" data-bind="checked: showPageSize">
                                     <label class="form-check-label">Show Page Size on PDF & Word export</label>
                                     <small class="text-muted d-block">Display document dimensions in exported PDF & Word.</small>
-                                </div>                               
+                                </div>
+
+                                <h6 class="mt-3 mb-2">AI Assistant <span class="badge bg-warning text-dark" style="font-size: 10px;">BETA</span></h6>
+                                <div class="mb-2">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="aiEnabledSwitch"
+                                               data-bind="checked: aiEnabled">
+                                        <label class="form-check-label" for="aiEnabledSwitch">Enable AI Report Assistant</label>
+                                    </div>
+                                    <small class="text-muted d-block">When enabled, an AI-powered assistant will be available in the report designer to help build reports using natural language.</small>
+                                </div>
                             </div>
                         </div>
                         <div class="mt-3">
@@ -569,14 +579,12 @@
                 <div class="container-fluid">
                     <div class="row fw-bold bg-light border-bottom py-2" data-bind="with: JoinFilters">
                         <!-- Repeat for each column header -->
+                        <div class="col-md-1" style="max-width: 40px;"></div>
                         <div class="col-md-2">
                             Primary Table
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" data-bind="value: primaryTable, valueUpdate: 'afterkeydown'" placeholder="Search..." />
                                 <span class="input-group-text"><i class="fa fa-filter"></i></span>
-                                <button class="btn btn-sm" data-bind="click: $root.sortByPrimaryTable">
-                                    <i class="fa" data-bind="css: $root.sortDirection.primaryTable() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                </button>
                             </div>
                         </div>
                         <div class="col-md-2">
@@ -584,19 +592,13 @@
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" data-bind="value: primaryField, valueUpdate: 'afterkeydown'" placeholder="Search..." />
                                 <span class="input-group-text"><i class="fa fa-filter"></i></span>
-                                <button class="btn btn-sm" data-bind="click: $root.sortByField">
-                                    <i class="fa" data-bind="css: $root.sortDirection.primaryField() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                </button>
                             </div>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-1">
                             Join Type
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" data-bind="value: joinType, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                 <span class="input-group-text"><i class="fa fa-filter"></i></span>
-                                <span class="btn btn-sm" data-bind="click: $root.sortByJoinType">
-                                    <i class="fa" data-bind="css: $root.sortDirection.joinType() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                </span>
                             </div>
                         </div>
                         <div class="col-md-2">
@@ -604,31 +606,28 @@
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" data-bind="value: joinTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                 <span class="input-group-text"><i class="fa fa-filter"></i></span>
-                                <span class="btn btn-sm" data-bind="click: $root.sortByJoinTable">
-                                    <i class="fa" data-bind="css: $root.sortDirection.joinTable() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                </span>
                             </div>
                         </div>
                         <div class="col-md-2">
-                            Field<div class="input-group input-group-sm">
+                            Field
+                            <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" data-bind="value: joinField, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                 <span class="input-group-text"><i class="fa fa-filter"></i></span>
-                                <span class="btn btn-sm" data-bind="click: $root.sortByJoinField">
-                                    <i class="fa" data-bind="css: $root.sortDirection.joinField() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                </span>
                             </div>
                         </div>
+                        <div class="col-md-2"></div>
                     </div>
 
                     <!-- New Join Row -->
                     <div class="row bg-info bg-opacity-25 p-2" data-bind="visible: showNewJoinRow">
+                        <div class="col-md-1" style="max-width: 40px;"></div>
                         <div class="col-md-2">
                             <select class="form-select" data-bind="options: Tables.availableTables, optionsText: 'DisplayName', value: NewJoin().JoinTable, optionsCaption: 'Pick a table...'"></select>
                         </div>
                         <div class="col-md-2" data-bind="with: NewJoin().JoinTable">
                             <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsCaption: 'Pick a field...', optionsValue: 'ColumnName', value: $root.NewJoin().FieldName"></select>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-1">
                             <select class="form-select" data-bind="options: $root.JoinTypes, value: NewJoin().JoinType"></select>
                         </div>
                         <div class="col-md-2">
@@ -642,16 +641,19 @@
                         </div>
                     </div>
 
-                    <!-- Existing Join Rows -->
-                    <div data-bind="foreach: pagedJoins">
+                    <!-- Existing Join Rows with drag reorder -->
+                    <div data-bind="sortable: { data: reorderableJoins, options: { handle: '.join-drag-handle', cursor: 'move' }, afterMove: $root.joinSorted }">
                         <div class="row align-items-center border-bottom py-2">
+                            <div class="col-md-1 text-center" style="max-width: 40px;">
+                                <span class="btn btn-sm btn-outline-secondary join-drag-handle" title="Drag to reorder"><i class="fa fa-bars"></i></span>
+                            </div>
                             <div class="col-md-2">
                                 <select class="form-select" data-bind="options: $root.Tables.availableTables, optionsText: 'DisplayName', value: JoinTable"></select>
                             </div>
                             <div class="col-md-2" data-bind="with: JoinTable">
                                 <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.FieldName"></select>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-1">
                                 <select class="form-select" data-bind="options: $root.JoinTypes, value: JoinType"></select>
                             </div>
                             <div class="col-md-2">
@@ -660,7 +662,6 @@
                             <div class="col-md-2" data-bind="with: OtherTable">
                                 <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.JoinFieldName"></select>
                             </div>
-
                             <div class="col-md-2 text-end">
                                 <span class="badge bg-warning text-dark me-2"
                                       data-bind="visible: isNew"
@@ -668,7 +669,6 @@
                                       title="New record added or imported, not saved yet">
                                     <i class="fa fa-warning"></i> New
                                 </span>
-
                                 <button class="btn btn-secondary btn-sm" data-bind="click: DeleteJoin">Delete</button>
                             </div>
                         </div>
@@ -2124,7 +2124,6 @@
         </div>
     </div>
 </div>
-
 
 
 </asp:Content>

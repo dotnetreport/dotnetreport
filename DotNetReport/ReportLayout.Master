@@ -3940,6 +3940,7 @@
     <script src="../Scripts/leaflet.heat/leaflet-heat.js"></script>
     <script src="../Scripts/dotnetreport-helper.js"></script>
     <script src="../Scripts/dotnetreport.js?v=6.0.0"></script>
+    <script src="../Scripts/echarts.min.js"></script>
     <asp:ContentPlaceHolder ID="scripts" runat="server">
     </asp:ContentPlaceHolder>
 </body>
