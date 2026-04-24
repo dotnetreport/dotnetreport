@@ -1325,7 +1325,7 @@ var reportViewModel = function (options) {
 		if (val && self.adminMode() && self.availableDataFilterIds.peek().length === 0) {
 			ajaxcall({
 				url: (options.runReportApiUrl || '').replace('RunReportApi', 'GetDataFilterKeys'),
-				type: 'GET'
+				type: 'POST'
 			}).done(function (result) {
 				if (result && result.d) result = result.d;
                 if (result && result.Result) result = result.Result;
