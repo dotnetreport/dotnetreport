@@ -188,6 +188,43 @@ namespace ReportBuilder.Web.Jobs
                                 var isDashboard = report.DashboardId > 0;
                                 var itemId = isDashboard ? report.DashboardId : report.ReportId;
 
+                                string hfHeaderHtml = null;
+                                string hfFooterHtml = null;
+                                bool hfHeaderEveryPage = false;
+                                bool hfFooterEveryPage = false;
+                                try
+                                {
+                                    var hdrResp = await client.GetAsync($"{apiUrl}/ReportApi/GetReportHeader?account={accountApiKey}&dataConnect={databaseApiKey}&clientId={clientId}&userId={schedule.UserId}");
+                                    if (hdrResp.IsSuccessStatusCode)
+                                    {
+                                        var hdrJson = await hdrResp.Content.ReadAsStringAsync();
+                                        var hdr = JsonConvert.DeserializeObject<dynamic>(hdrJson);
+                                        if (hdr != null && (bool?)hdr.useReportHeader == true)
+                                        {
+                                            string rawHeader = (string)hdr.headerJson ?? "";
+                                            hfHeaderHtml = System.Web.HttpUtility.UrlDecode(rawHeader);
+                                            hfHeaderEveryPage = (bool?)hdr.includeOnEveryPage == true;
+                                        }
+                                    }
+                                }
+                                catch { /* ignore, header not critical */ }
+                                try
+                                {
+                                    var ftrResp = await client.GetAsync($"{apiUrl}/ReportApi/GetReportFooter?account={accountApiKey}&dataConnect={databaseApiKey}&clientId={clientId}&userId={schedule.UserId}");
+                                    if (ftrResp.IsSuccessStatusCode)
+                                    {
+                                        var ftrJson = await ftrResp.Content.ReadAsStringAsync();
+                                        var ftr = JsonConvert.DeserializeObject<dynamic>(ftrJson);
+                                        if (ftr != null && (bool?)ftr.useReportFooter == true)
+                                        {
+                                            string rawFooter = (string)ftr.footerJson ?? "";
+                                            hfFooterHtml = System.Web.HttpUtility.UrlDecode(rawFooter);
+                                            hfFooterEveryPage = (bool?)ftr.includeOnEveryPage == true;
+                                        }
+                                    }
+                                }
+                                catch { /* ignore, footer not critical */ }
+
                                 response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledItem?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&id={itemId}&localRunTime={schedule.NextRun:yyyy-MM-ddTHH:mm:ss}&isDashboard={isDashboard}&clientId={clientId}&dataFilters={schedule.DataFilters}");
                                 response.EnsureSuccessStatusCode();                            
 
@@ -253,7 +290,18 @@ namespace ReportBuilder.Web.Jobs
                                                 {
                                                     imageData = ""; // this tries to get chart for export, it's not critical so we can ingore errors and continue
                                                 }
-                                                fileData = await DotNetReportHelper.GetWordFile(r.ReportSql, r.ConnectKey, r.ReportName, columns: r.Columns, includeSubtotal: r.IncludeSubTotals, pivot: r.ReportType == "Pivot", chartData: imageData, expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation);
+                                                string customHtmlR = null;
+                                                if (string.Equals(r.ReportType, "Html", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    try
+                                                    {
+                                                        customHtmlR = await DotNetReportHelper.GetReportRenderedHtml(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, dataFilters: JsonConvert.SerializeObject(schedule.DataFilters), expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
+                                                    }
+                                                    catch { customHtmlR = null; }
+                                                }
+                                                fileData = await DotNetReportHelper.GetWordFile(r.ReportSql, r.ConnectKey, r.ReportName, columns: r.Columns, includeSubtotal: r.IncludeSubTotals, pivot: r.ReportType == "Pivot", chartData: imageData, expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation,
+                                                    headerHtml: hfHeaderHtml, footerHtml: hfFooterHtml, headerEveryPage: hfHeaderEveryPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
+                                                    customHtml: customHtmlR);
                                                 files.Add(fileData);
                                             }
 
@@ -270,8 +318,19 @@ namespace ReportBuilder.Web.Jobs
                                             catch
                                             {
                                                 imageData = ""; // this tries to get chart for export, it's not critical so we can ingore errors and continue
-                                            }                                        
-                                            fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData, expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation);
+                                            }
+                                            string customHtml = null;
+                                            if (string.Equals(reportToRun.ReportType, "Html", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                try
+                                                {
+                                                    customHtml = await DotNetReportHelper.GetReportRenderedHtml(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, dataFilters: JsonConvert.SerializeObject(schedule.DataFilters), expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
+                                                }
+                                                catch { customHtml = null; }
+                                            }
+                                            fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData, expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation,
+                                                headerHtml: hfHeaderHtml, footerHtml: hfFooterHtml, headerEveryPage: hfHeaderEveryPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
+                                                customHtml: customHtml);
                                         }
                                         break;
 
