@@ -3970,6 +3970,20 @@ namespace ReportBuilder.Web.Models
             return text.Length * averageCharWidthInTwips;
         }
 
+        private static async Task SafeDisposeBrowserAsync(IBrowser browser, IPage page)
+        {
+            if (page != null)
+            {
+                try { await page.DisposeAsync(); }
+                catch (Exception ex) { Console.Error.WriteLine($"[Puppeteer] page dispose failed: {ex.Message}"); }
+            }
+            if (browser != null)
+            {
+                try { await browser.DisposeAsync(); }
+                catch (Exception ex) { Console.Error.WriteLine($"[Puppeteer] browser dispose failed: {ex.Message}"); }
+            }
+        }
+
         private async static Task<(IBrowser browser, IPage page)> LaunchAndLoadReportPrintPageAsync(
             string printUrl, int reportId, string reportSql, string connectKey,
             string userId, string clientId, string currentUserRole, string dataFilters,
@@ -4092,8 +4106,7 @@ namespace ReportBuilder.Web.Models
             }
             catch
             {
-                if (page != null) await page.DisposeAsync();
-                await browser.DisposeAsync();
+                await SafeDisposeBrowserAsync(browser, page);
                 throw;
             }
         }
@@ -4104,15 +4117,18 @@ namespace ReportBuilder.Web.Models
         int pageNumber = 1,
         int currentPageSize = 1)
         {
-            var (browser, page) = await LaunchAndLoadReportPrintPageAsync(
-                printUrl, reportId, reportSql, connectKey,
-                userId, clientId, currentUserRole, dataFilters,
-                expandAll, expandSqls, pivotColumn, pivotFunction,
-                subTotalMode, includeColumnTotal, isSubreport,
-                pageNumber, currentPageSize, debug);
-
+            IBrowser browser = null;
+            IPage page = null;
+            string pdfFile = null;
             try
             {
+                (browser, page) = await LaunchAndLoadReportPrintPageAsync(
+                    printUrl, reportId, reportSql, connectKey,
+                    userId, clientId, currentUserRole, dataFilters,
+                    expandAll, expandSqls, pivotColumn, pivotFunction,
+                    subTotalMode, includeColumnTotal, isSubreport,
+                    pageNumber, currentPageSize, debug);
+
                 if (imageOnly)
                 {
                     try
@@ -4137,7 +4153,7 @@ namespace ReportBuilder.Web.Models
 
                 int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
                 int width = Convert.ToInt32(await page.EvaluateExpressionAsync<decimal>("$('table').width()"));
-                var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
+                pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
 
                 // Read header/footer "include on every page" settings from the loaded print page
                 bool headerEveryPage = false;
@@ -4282,14 +4298,17 @@ namespace ReportBuilder.Web.Models
                 await page.PdfAsync(pdfFile, pdfOptions);
                 return File.ReadAllBytes(pdfFile);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                throw ex;
+                throw;
             }
             finally
             {
-                if (page != null) await page.DisposeAsync();
-                if (browser != null) await browser.DisposeAsync();
+                await SafeDisposeBrowserAsync(browser, page);
+                if (pdfFile != null)
+                {
+                    try { if (File.Exists(pdfFile)) File.Delete(pdfFile); } catch { /* best-effort */ }
+                }
             }
         }
 
@@ -4331,8 +4350,7 @@ namespace ReportBuilder.Web.Models
             }
             finally
             {
-                if (page != null) await page.DisposeAsync();
-                if (browser != null) await browser.DisposeAsync();
+                await SafeDisposeBrowserAsync(browser, page);
             }
         }
 
