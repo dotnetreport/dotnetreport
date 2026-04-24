@@ -1079,5 +1079,120 @@ Its Recommended you use it as is, and only change styling as needed to match you
         </div>
     </div>
 </div>
-
+<script type="text/html" id="kpi-settings">
+    <div class="chart-container pull-right">
+        <button class="btn btn-light btn-sm d-flex align-items-center mt-2 chart-settings-btn"
+               type="button"  data-bind="click: toggleKpiSettings()" title="KPI Settings">
+            <i class="fa fa-cog"></i>
+        </button>
+        <div class="kpi-settings-panel border p-2 shadow-sm bg-light"
+             data-bind="visible: showKpiSettings">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <button type="button" class="btn btn-sm btn-close" data-bind="click: toggleKpiSettings()"></button>
+                <h6 class="mb-0">KPI Settings</h6>
+            </div>
+            <ul class="nav nav-tabs nav-sm mb-2 small">
+                <li class="nav-item">
+                    <a class="nav-link active"
+                       data-bs-toggle="tab"
+                       data-bind="attr: { href: '#kpiTab-' + ReportID() }">
+                        KPI
+                    </a>
+                </li>
+            </ul>
+            <div class="tab-content small">
+                <!-- KPI Tab -->
+                <div class="tab-pane fade show active"
+                     data-bind="attr: { id: 'kpiTab-' + ReportID() }">
+                    <div class="mb-2">
+                        <label class="form-label small">Font Size</label>
+                        <input type="number"
+                               class="form-control form-control-sm"
+                               min="10" max="100"
+                               data-bind="value: kpiSettings().fontSize, event: { input: updateKpi }">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Alignment</label>
+                        <select class="form-select form-select-sm"
+                                data-bind="value: kpiSettings().alignment, event: { change: updateKpi }">
+                            <option value="left">Left</option>
+                            <option value="center">Center</option>
+                            <option value="right">Right</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Font Color</label>&nbsp;&nbsp;&nbsp;&nbsp;
+                        <label class="form-label small">Back Color</label><br />
+                        <input type="color" class="color-picker"
+                               data-bind="value: kpiSettings().fontColor,event: { change: updateKpi }"/>
+                               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <input type="color" class="color-picker"
+                               data-bind="value: kpiSettings().backColor,event: { change: updateKpi }"/>
+                    </div>
+                    <div data-bind="visible:showPriorInKpi()" class="mb-2">
+                        <label class="form-label small">Rate Color (+ / -)</label><br />
+                        <input type="color" class="color-picker"
+                               data-bind="value: kpiSettings().positiveColor, event: { change: updateKpi }"/> +
+                        <input type="color" class="color-picker"
+                               data-bind="value: kpiSettings().negativeColor, event: { change: updateKpi }"/> -
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Number Format</label>
+                        <select class="form-select form-select-sm"
+                                data-bind="value: kpiSettings().numberFormat, event: { change: updateKpi }">
+                            <option value="number">Number</option>
+                            <option value="currency">Currency</option>
+                            <option value="custom">Custom Format</option>
+                        </select>
+                        <input type="text"
+                               class="form-control form-control-sm mt-2"
+                               placeholder="e.g. #,###.00"
+                               data-bind="value: kpiSettings().customFormat,
+                                          visible: kpiSettings().numberFormat() === 'custom',
+                                          valueUpdate:'input',
+                                          event:{ input:updateKpi }">
+                    </div>
+                    <div data-bind ="visible: kpiSettings().numberFormat() === 'currency'" class="mb-2">
+                        <label class="form-label small">Currency Symbol</label>
+                        <select class="form-select form-select-sm"
+                                data-bind="value: kpiSettings().currencySymbol,event:{ change:updateKpi }">
+                            <option value="$">USD ($)</option>
+                            <option value="€">Euro (€)</option>
+                            <option value="£">Pound (£)</option>
+                            <option value="₹">Indian Rupee (₹)</option>
+                            <option value="Rs">Rupee (Rs)</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Short Format</label>
+                        <select class="form-select form-select-sm"
+                                data-bind="value: kpiSettings().shortFormat,event:{ change:updateKpi }">
+                            <option value="none">None</option>
+                            <option value="thousand">Thousands (K)</option>
+                            <option value="million">Millions (M)</option>
+                            <option value="billion">Billions (B)</option>
+                        </select>
+                    </div>
+                    <div class="d-flex justify-content-end mb-2">
+                        <button class="btn btn-sm"
+                                data-bind="click: copyKpiFormat"
+                                title="Copy Format">
+                            <i class="fa fa-copy"></i>
+                        </button>
+                        <button class="btn btn-sm"
+                                data-bind="click: pasteKpiFormat"
+                                title="Paste Format">
+                            <i class="fa fa-paste"></i>
+                        </button>
+                         <button class="btn btn-sm"
+                                data-bind="click: clearKpiSettings"
+                                title="Clear">
+                                <i class="fa fa-close"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>
 </asp:Content>

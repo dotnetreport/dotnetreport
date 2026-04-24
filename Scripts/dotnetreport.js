@@ -160,7 +160,8 @@ function linkFieldViewModel(args, options, adminMode, savedReports, allFolders, 
 				SaveReport: true,
 				ReportJson: JSON.stringify(minimalReport),
 				adminMode: adminMode(),
-				SubTotalMode: false
+				SubTotalMode: false,
+				userId: self.currentUserId || ''
 			})
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
@@ -1671,7 +1672,8 @@ var reportViewModel = function (options) {
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/UpdateSubReportOnly",
-				model: JSON.stringify({ reportId: reportId, isSubReportOnly: newVal })
+				model: JSON.stringify({ reportId: reportId, isSubReportOnly: newVal }),
+				userId: self.currentUserId || ''
 			}
 		}).done(function () {
 			var report = _.find(self.SavedReports(), { reportId: reportId });
@@ -2342,7 +2344,7 @@ var reportViewModel = function (options) {
 		self.aiConversationHistory.push({ role: 'user', content: msg });
 
 		ajaxcall({
-			url: options.apiUrl.replace('CallReportApi', 'CallPostReportApi'),
+			url: options.apiUrl,
 			type: 'POST',
 			data: JSON.stringify({
 				method: "/ReportApi/RunAiReportAssistant",
@@ -2350,7 +2352,8 @@ var reportViewModel = function (options) {
 					userMessage: msg,
 					conversationHistory: JSON.stringify(self.aiConversationHistory),
 					currentReportJson: currentContext ? JSON.stringify(currentContext) : null
-				})
+				}),
+				userId: self.currentUserId || ''
 			}),
 			noBlocking: true
 		}).done(function (result) {
@@ -3575,7 +3578,8 @@ var reportViewModel = function (options) {
 				model: JSON.stringify({
 					reportId: item.reportId,
 					isSubReportOnly: newVal
-				})
+				}),
+				userId: self.currentUserId || ''
 			}
 		}).done(function () {
 			var report = _.find(self.SavedReports(), { reportId: item.reportId });
@@ -3597,7 +3601,8 @@ var reportViewModel = function (options) {
 				ReportJson: JSON.stringify(self.BuildReportData()),
 				adminMode: self.adminMode(),
 				userIdForFilter: self.userIdForFilter,
-				SubTotalMode: false
+				SubTotalMode: false,
+				userId: self.currentUserId || ''
 			}),
 			noBlocking: true
 		});
@@ -3640,7 +3645,8 @@ var reportViewModel = function (options) {
 				ReportJson: saveData,
 				adminMode: self.adminMode(),
 				userIdForFilter: self.userIdForFilter,
-				SubTotalMode: false
+				SubTotalMode: false,
+				userId: self.currentUserId || ''
 			}),
 			noBlocking: true
 		});
@@ -4328,7 +4334,8 @@ var reportViewModel = function (options) {
 								method: "/ReportApi/DeleteReportSchedule",
 								model: JSON.stringify({
 									reportId: self.scheduleReportModal.reportId()								
-								})
+								}),
+								userId: self.currentUserId || ''
 							}
 						}).done(function (result) {
 							toastr.success('Schedule removed successfully');
@@ -7347,12 +7354,15 @@ var reportViewModel = function (options) {
 					columnDetails: self.getColumnDetails(),
 					includeSubTotal: false,
 					includeColumnTotals: false,
+					subTotalPerGroup: false,
+					totalRowFormat: self.totalRowFormat(),
 					pivot: false,
 					pivotColumn: '',
 					pivotFunction: '',
 					onlyAndGroupInColumnDetail: null,
 					isSubReport: true,
-					userId: self.currentUserId || ''
+					userId: self.currentUserId || '',
+					filterDetailsText: ''
 				}, 'xlsx');
 			}
 
@@ -11111,6 +11121,8 @@ var reportViewModel = function (options) {
 		var data = self.getExportJson(pageSize, pageOrientation);
 		if (self.ReportType() == 'Html') {
 			data.customHtml = encodeURIComponent(self.getRenderedHtmlOutput() || '');
+		} else {
+			data.customHtml = '';
 		}
 		self.downloadExport("DownloadWord", data, 'docx');
 	}
