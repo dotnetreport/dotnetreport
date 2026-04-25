@@ -90,6 +90,9 @@ var deps = {
 		"dist/summernote-bs5.min.css": "",
 		"dist/font/*": "font/"
 	},
+	"echarts": {
+		"dist/echarts.min.js": ""
+	},
 	"leaflet": {
 		"dist/**/*": "",
 		"dist/leaflet.js": "",

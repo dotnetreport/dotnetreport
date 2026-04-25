@@ -38,7 +38,7 @@ var manageViewModel = function (options) {
 	}
 
 	self.isDirty = ko.observable(false);
-
+	self.selectedReport = ko.observable(null);
 	self.loadFromDatabase = function() {
 		bootbox.confirm("Confirm loading all Tables and Views from the database? Note: This action will discard unsaved changes and it may take some time.", function (r) {
 			if (r) {
@@ -122,6 +122,7 @@ var manageViewModel = function (options) {
 	self.Joins.subscribe(function () {
 		self.isDirty(true);
 	});
+	self.reorderableJoins = ko.observableArray([]);
 
 	self.trackJoinChanges = function (join) {
 		join.JoinTable.subscribe(() => self.isDirty(true));
@@ -202,12 +203,16 @@ var manageViewModel = function (options) {
 		return joins.slice(startIndex, endIndex < joins.length ? endIndex : joins.length);
 	});
 
+	self.pagedJoins.subscribe(function (paged) {
+		self.reorderableJoins(paged.slice());
+	});
+
 	self.filteredJoins.subscribe(function (x) {
 		self.joinsPager.totalRecords(x.length);
 		self.joinsPager.currentPage(1);
 	});
 
-	self.JoinTypes = ["INNER", "LEFT", "LEFT OUTER", "RIGHT", "RIGHT OUTER"];
+	self.JoinTypes = ["INNER", "LEFT", "RIGHT", "CROSS"];
 
 	self.filterJoinsSorted = function () {
 		ko.toJS(self.filteredJoins());
@@ -265,6 +270,28 @@ var manageViewModel = function (options) {
 			return direction ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
 		});
 		self.sortDirection.joinField(!direction);
+	};
+
+	self.joinSorted = function (args) {
+		// Rebuild full Joins list with page items in their new drag order
+		var allJoins = self.Joins();
+		var pageItemSet = new Set(self.reorderableJoins());
+		var reordered = self.reorderableJoins();
+		var result = [];
+		var pageIdx = 0;
+		for (var i = 0; i < allJoins.length; i++) {
+			if (pageItemSet.has(allJoins[i])) {
+				result.push(reordered[pageIdx++]);
+			} else {
+				result.push(allJoins[i]);
+			}
+		}
+		// Assign sequential JoinOrder to all items
+		_.forEach(result, function (e, i) {
+			e.JoinOrder(i);
+		});
+		self.Joins(result);
+		self.isDirty(true);
 	};
 
 	self.visualizeJoins = function () {
@@ -1095,7 +1122,8 @@ var manageViewModel = function (options) {
 				})
 			})
 		}).done(function (result) {
-			self.Joins($.map(result, function (item) {				
+			result.sort(function (a, b) { return (a.JoinOrder || 0) - (b.JoinOrder || 0); });
+			self.Joins($.map(result, function (item) {
 				var join = self.setupJoin(item);
 				self.trackJoinChanges(join);
 				return join;
@@ -1187,14 +1215,15 @@ var manageViewModel = function (options) {
 			function (x) {
 				return {
 					DataConnectionId: x.DataConnectionId,
-					Id: x.Id ? x.Id : x.RelationId, 
+					Id: x.Id ? x.Id : x.RelationId,
 					TableId: x.TableId,
-					TableName: x.JoinTable ? x.JoinTable.DisplayName : null,       
+					TableName: x.JoinTable ? x.JoinTable.DisplayName : null,
 					JoinedTableId: x.JoinedTableId,
-					JoinedTableName: x.OtherTable ? x.OtherTable.DisplayName : null, 
+					JoinedTableName: x.OtherTable ? x.OtherTable.DisplayName : null,
 					JoinType: x.JoinType,
 					FieldName: x.FieldName,
-					JoinFieldName: x.JoinFieldName
+					JoinFieldName: x.JoinFieldName,
+					JoinOrder: x.JoinOrder || 0
 				};
 			}
 		);
@@ -3589,6 +3618,20 @@ var settingPageViewModel = function (options) {
 	self.canCopyReport = ko.observable(true);
 	self.useFunctions = ko.observable(false);
 	self.showScheduling = ko.observable(true);
+	self.showDesignerHints = ko.observable(true);
+	self.aiProvider = ko.observable('');
+	self.aiApiKey = ko.observable('');
+	self.aiApiKeyChanged = false;
+	self.aiModel = ko.observable('');
+	self.aiEnabled = ko.observable(false);
+	// Sync aiEnabled with aiProvider for backward compatibility
+	self.aiEnabled.subscribe(function (enabled) {
+		if (enabled && !self.aiProvider()) {
+			self.aiProvider('dotnetreport'); // Use our managed AI service
+		} else if (!enabled) {
+			self.aiProvider('');
+		}
+	});
 
 	self.appThemes = ko.observableArray([
 		{ name: 'Default', value: 'default' },
@@ -3723,7 +3766,12 @@ var settingPageViewModel = function (options) {
 							showImportExport: self.showImportExport(),
 							canCopyReport: self.canCopyReport(),
 							useFunctions: self.isEnterprise() ? self.useFunctions() : false,
-							showScheduling: self.showScheduling()
+							showScheduling: self.showScheduling(),
+								showDesignerHints: self.showDesignerHints(),
+								aiProvider: self.aiProvider(),
+								aiApiKey: self.aiApiKeyChanged ? self.aiApiKey() : undefined,
+								aiModel: self.aiModel(),
+								aiEnabled: self.aiEnabled()
 						})
 					})
 				})
@@ -3782,7 +3830,12 @@ var settingPageViewModel = function (options) {
 					self.useFunctions(false);
 				}			
 				self.showScheduling(settings.showScheduling);
-;
+				self.showDesignerHints(settings.showDesignerHints !== false);
+				self.aiProvider(settings.aiProvider || '');
+				self.aiApiKey(settings.aiApiKey || '');
+				self.aiApiKeyChanged = false;
+				self.aiModel(settings.aiModel || '');
+				self.aiEnabled(settings.aiEnabled === true || (settings.aiProvider && settings.aiProvider !== ''));
 				//// Optionally, you can manually trigger change event for select elements
 				$('#themeSelect').trigger('change');
 				$('#timezoneSelect').trigger('change');

@@ -145,7 +145,7 @@
 
 <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
-<nav class="navbar navbar-expand-lg navbar-light bg-light" style="display:none; position:relative; z-index:1030;" data-bind="visible: currentDashboard">
+<nav class="navbar navbar-expand-lg navbar-light bg-light" style="display:none; position:relative; z-index:999;" data-bind="visible: currentDashboard">
     <div class="container-fluid p-0">
         <ul class="nav nav-tabs me-auto" id="dashboard-tabs" data-bind="sortable: { data: dashboards, options: { cursor: 'move', placeholder: 'drop-highlight', axis: 'x' }, strategyMove: true, afterMove: function(arg) { saveDashboardOrder(); } }">
             <li class="nav-item nav-link d-flex align-items-center gap-1" style="cursor:pointer;" data-bind="attr: {'data-dashboard-id': id}, css: { 'active': $parent.currentDashboard().id === id }, click: function() { $parent.selectDashboard(id); }">                
@@ -454,6 +454,9 @@
                 </div>
 
                 <h2 class="pull-left" data-bind="text: ReportName"></h2>
+                <a href="#" class="btn btn-link btn-sm pull-left" data-bind="visible: canGoBackToParent(), click: backToParentReport" title="Back to Parent Report">
+                    <i class="fa fa-arrow-circle-left"></i> Back to Parent
+                </a>
                 <div class="pull-right">
                     <span data-bind="visible: isDirty" class="text-warning small" title="You have unsaved changes">
                         <i class="fa fa-exclamation-triangle"></i>
