@@ -188,6 +188,7 @@ namespace ReportBuilder.Web.Models
         public string JoinType { get; set; }
         public string FieldName { get; set; }
         public string JoinFieldName { get; set; }
+        public int JoinOrder { get; set; }
     }
 
 
@@ -332,9 +333,10 @@ namespace ReportBuilder.Web.Models
         public string ReportJson { get; set; }
         public bool adminMode { get; set; }
         public bool SubTotalMode { get; set; }
-        public string userId { get; set; } = "";
-        public string query { get; set; } = "";
-        public string fieldIds { get; set; } = "";       
+        public string userId { get; set; }
+        public string  query { get; set; } = "";
+        public string   fieldIds { get; set; } = "";
+        public string   BypassDataFiltersToUpdate { get; set; } = "";
     }
 
     public class DotNetDasboardReportModel : DotNetReportModel
@@ -462,6 +464,7 @@ namespace ReportBuilder.Web.Models
         public string reportSql { get; set; }
         public string connectKey { get; set; }
         public string reportName { get; set; }
+        public string reportDescription { get; set; }
         public bool expandAll { get; set; }
         public string printUrl { get; set; }
         public string clientId { get; set; }
@@ -959,7 +962,14 @@ namespace ReportBuilder.Web.Models
                         {
                             var increment = rowstart==3 ? 1 : 0;
                             var hyperlinkAddress = formatColumn.LinkFieldItem.SendAsQueryParameter ? $"{formatColumn.LinkFieldItem.LinkToUrl}?{formatColumn.LinkFieldItem.QueryParameterName}={cellValue}" : formatColumn.LinkFieldItem.LinkToUrl;
-                            ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = new Uri(hyperlinkAddress);
+                            if (Uri.TryCreate(hyperlinkAddress, UriKind.Absolute, out var absLinkUri))
+                            {
+                                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = absLinkUri;
+                            }
+                            else if (Uri.TryCreate(hyperlinkAddress, UriKind.Relative, out var relLinkUri))
+                            {
+                                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = relLinkUri;
+                            }
                             ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
                             ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
                         }
@@ -979,7 +989,14 @@ namespace ReportBuilder.Web.Models
                             {
                                 hyperlinkAddress += $"&filterId={formatColumn.LinkFieldItem.SelectedFilterId}&filterValue={cellValue.Replace("'", "").Replace("\"", "")}";
                             }
-                            ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = new Uri(hyperlinkAddress);
+                            if (Uri.TryCreate(hyperlinkAddress, UriKind.Absolute, out var absRptUri))
+                            {
+                                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = absRptUri;
+                            }
+                            else if (Uri.TryCreate(hyperlinkAddress, UriKind.Relative, out var relRptUri))
+                            {
+                                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = relRptUri;
+                            }
                             ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
                             ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
                         }
@@ -2959,10 +2976,36 @@ namespace ReportBuilder.Web.Models
             return dt;
         }
 
-        public async static Task<byte[]> GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "", bool subTotalPerGroup = false, string filterDetailsText = null)
+        private static string StripHtmlTags(string html)
         {
+            if (string.IsNullOrEmpty(html)) return "";
+            var noTags = System.Text.RegularExpressions.Regex.Replace(html, "<[^>]+>", " ");
+            noTags = System.Net.WebUtility.HtmlDecode(noTags);
+            noTags = System.Text.RegularExpressions.Regex.Replace(noTags, "\\s+", " ").Trim();
+            return noTags;
+        }
 
+        private static string SubstituteExportPlaceholders(string text, string userName, string userRoles, int pageNumber, int totalPages, string reportName = null)
+        {
+            if (string.IsNullOrEmpty(text)) return "";
+            DateTime now = DateTime.Now;
+            text = text.Replace("{current.user}", userName ?? "")
+                       .Replace("{CURRENTUSER}", userName ?? "")
+                       .Replace("{current.user.roles}", userRoles ?? "")
+                       .Replace("{CURRENTUSERROLES}", userRoles ?? "")
+                       .Replace("{current.datetime}", now.ToString("g"))
+                       .Replace("{CURRENTDATETIME}", now.ToString("g"))
+                       .Replace("{current.date}", now.ToString("d"))
+                       .Replace("{current.time}", now.ToString("t"))
+                       .Replace("{page.number}", pageNumber > 0 ? pageNumber.ToString() : "")
+                       .Replace("{page.total}", totalPages > 0 ? totalPages.ToString() : "")
+                       .Replace("{report.name}", reportName ?? "");
+            return text;
+        }
+
+        public async static Task<byte[]> GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "", bool subTotalPerGroup = false, string filterDetailsText = null, string reportDescription = null)
+        {
             var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
             var allRowsList = new List<DataRow>();
             var currentGroupRowsList = new List<DataRow>();
@@ -2991,6 +3034,8 @@ namespace ReportBuilder.Web.Models
                 width = Math.Max(minColumnWidth, Math.Min(width, maxColumnWidth));
                 columnWidths.Add(width);
             }
+            gfxMeasure.Dispose();
+            gfxMeasure = null;
             document.Pages.Remove(tempPage); // remove temp measuring page
             double totalWidth = columnWidths.Sum() + leftMargin + rightMargin;
             PdfPage page = null;
@@ -3068,6 +3113,20 @@ namespace ReportBuilder.Web.Models
 
                         currentYPosition += 30;
 
+                        if (!string.IsNullOrEmpty(reportDescription))
+                        {
+                            var descFont = new XFont("Arial", 10, XFontStyleEx.Italic);
+                            var descBrush = new XSolidBrush(XColor.FromArgb(102, 112, 133));
+                            var descRect = new XRect(leftMargin, currentYPosition, page.Width - leftMargin - rightMargin, 40);
+                            tfx.Alignment = XParagraphAlignment.Center;
+                            tfx.DrawString(reportDescription, descFont, descBrush, descRect, XStringFormats.TopLeft);
+                            tfx.Alignment = XParagraphAlignment.Left;
+                            // Estimate height: ~13px per line
+                            var descWidth = page.Width - leftMargin - rightMargin;
+                            var approxLines = Math.Max(1, (int)Math.Ceiling(gfx.MeasureString(reportDescription, descFont).Width / descWidth));
+                            currentYPosition += 13 * approxLines + 5;
+                        }
+
                         if (!string.IsNullOrEmpty(filterDetailsText))
                         {
                             var filterFont = new XFont("Arial", 9, XFontStyleEx.Italic);
@@ -3117,8 +3176,12 @@ namespace ReportBuilder.Web.Models
 
                     for (int k = 0; k < dt.Columns.Count; k++)
                     {
-                        var columnFormatting = columns.Count > k ? columns[k] : new ReportHeaderColumn();
-                        var columnName = !string.IsNullOrEmpty(columnFormatting.fieldLabel) ? columnFormatting.fieldLabel : columnFormatting.fieldName;
+                        var columnFormatting = columns != null && columns.Count > k ? columns[k] : new ReportHeaderColumn();
+                        var columnName = !string.IsNullOrEmpty(columnFormatting.fieldLabel)
+                            ? columnFormatting.fieldLabel
+                            : (!string.IsNullOrEmpty(columnFormatting.fieldName)
+                                ? columnFormatting.fieldName
+                                : dt.Columns[k].ColumnName);
                         rect = new XRect(currentXPosition, currentYPosition, columnWidths[k], 20);
                         gfx.DrawRectangle(XPens.LightGray, rect);
                         rect.Inflate(-cellPadding, -cellPadding);
@@ -3287,17 +3350,81 @@ namespace ReportBuilder.Web.Models
                 if (includeSubtotal && allRowsList.Any())
                     DrawSubTotalRow(allRowsList);
 
-                gfx.Save();
+                if (gfx != null)
+                {
+                    gfx.Dispose();
+                    gfx = null;
+                }
+
                 document.Save(ms);
                 return ms.ToArray();
             }
         }
+        private static string SubstituteHtmlPlaceholders(string html, string currentUserName, string currentUserRoles, int pageNumber, int totalPages, bool useWordFields = false, string reportName = null)
+        {
+            if (string.IsNullOrEmpty(html)) return "";
+            var now = DateTime.Now;
+            string pageField;
+            string totalField;
+            if (useWordFields)
+            {
+                pageField = "<!--[if supportFields]><span style='mso-element:field-begin'></span> PAGE <span style='mso-element:field-separator'></span><![endif]-->" +
+                            (pageNumber > 0 ? pageNumber.ToString() : "1") +
+                            "<!--[if supportFields]><span style='mso-element:field-end'></span><![endif]-->";
+                totalField = "<!--[if supportFields]><span style='mso-element:field-begin'></span> NUMPAGES <span style='mso-element:field-separator'></span><![endif]-->" +
+                             (totalPages > 0 ? totalPages.ToString() : "1") +
+                             "<!--[if supportFields]><span style='mso-element:field-end'></span><![endif]-->";
+            }
+            else
+            {
+                pageField = pageNumber > 0 ? pageNumber.ToString() : "";
+                totalField = totalPages > 0 ? totalPages.ToString() : "";
+            }
+            return html.Replace("{current.user}", System.Net.WebUtility.HtmlEncode(currentUserName ?? ""))
+                       .Replace("{CURRENTUSER}", System.Net.WebUtility.HtmlEncode(currentUserName ?? ""))
+                       .Replace("{current.user.roles}", System.Net.WebUtility.HtmlEncode(currentUserRoles ?? ""))
+                       .Replace("{CURRENTUSERROLES}", System.Net.WebUtility.HtmlEncode(currentUserRoles ?? ""))
+                       .Replace("{current.datetime}", now.ToString("g"))
+                       .Replace("{CURRENTDATETIME}", now.ToString("g"))
+                       .Replace("{current.date}", now.ToString("d"))
+                       .Replace("{current.time}", now.ToString("t"))
+                       .Replace("{page.number}", pageField)
+                       .Replace("{page.total}", totalField)
+                       .Replace("{report.name}", System.Net.WebUtility.HtmlEncode(reportName ?? ""));
+        }
+
+        private static string WrapHtmlForWord(string innerHtml)
+        {
+            return "<html xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:w=\"urn:schemas-microsoft-com:office:word\">" +
+                   "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />" +
+                   "<style>" +
+                   "body, p, div, span, td, th, li { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; font-size: 11pt; }" +
+                   "</style></head><body>" + (innerHtml ?? "") + "</body></html>";
+        }
+
+        private static AltChunk CreateHtmlAltChunk(MainDocumentPart mainPart, string innerHtml, string altChunkId)
+        {
+            var chunk = mainPart.AddAlternativeFormatImportPart(
+                AlternativeFormatImportPartType.Html, altChunkId);
+            var fullHtml = WrapHtmlForWord(innerHtml);
+            using (var ms = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(fullHtml)))
+            {
+                chunk.FeedData(ms);
+            }
+            return new AltChunk() { Id = altChunkId };
+        }
 
         public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "", string filterDetailsText = null)
+            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "", string filterDetailsText = null,
+            string headerHtml = null, string footerHtml = null, bool headerEveryPage = false, bool footerEveryPage = false, string currentUserName = null, string currentUserRoles = null,
+            string customHtml = null)
         {
-            var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);           
+            bool hasCustomHtml = !string.IsNullOrWhiteSpace(customHtml);
+            // Only fetch tabular data when we are not rendering a custom HTML report.
+            var dt = hasCustomHtml ? new DataTable() : await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
             var subTotals = new decimal[dt.Columns.Count];
+            bool hasHeaderHtml = !string.IsNullOrWhiteSpace(headerHtml);
+            bool hasFooterHtml = !string.IsNullOrWhiteSpace(footerHtml);
 
             using (MemoryStream memStream = new MemoryStream())
             {
@@ -3306,6 +3433,77 @@ namespace ReportBuilder.Web.Models
                     MainDocumentPart mainPart = wordDocument.AddMainDocumentPart();
                     mainPart.Document = new Document();
                     Body body = mainPart.Document.AppendChild(new Body());
+                    string headerRelId = null;
+                    string footerRelId = null;
+
+                    string blankHeaderRelId = null;
+                    string blankFooterRelId = null;
+                    bool headerFirstPageOnly = hasHeaderHtml && !headerEveryPage;
+                    bool footerFirstPageOnly = hasFooterHtml && !footerEveryPage;
+
+                    if (hasHeaderHtml)
+                    {
+                        var processedHeader = SubstituteHtmlPlaceholders(headerHtml, currentUserName, currentUserRoles, 1, 1, useWordFields: true, reportName: reportName);
+                        var headerPart = mainPart.AddNewPart<HeaderPart>();
+                        headerRelId = mainPart.GetIdOfPart(headerPart);
+
+                        var altHdrPart = headerPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
+                        var altHdrRelId = headerPart.GetIdOfPart(altHdrPart);
+                        var fullHdrHtml = WrapHtmlForWord(processedHeader);
+                        using (var ms = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(fullHdrHtml)))
+                        {
+                            altHdrPart.FeedData(ms);
+                        }
+
+                        var hdr = new Header();
+                        hdr.AddNamespaceDeclaration("w", "http://schemas.openxmlformats.org/wordprocessingml/2006/main");
+                        hdr.AppendChild(new AltChunk() { Id = altHdrRelId });
+                        headerPart.Header = hdr;
+
+                        if (headerFirstPageOnly)
+                        {
+                            // Empty header for subsequent pages
+                            var blankHeaderPart = mainPart.AddNewPart<HeaderPart>();
+                            blankHeaderRelId = mainPart.GetIdOfPart(blankHeaderPart);
+                            var blankHdr = new Header();
+                            blankHdr.AddNamespaceDeclaration("w", "http://schemas.openxmlformats.org/wordprocessingml/2006/main");
+                            blankHdr.AppendChild(new Paragraph());
+                            blankHeaderPart.Header = blankHdr;
+                        }
+                    }
+
+                    string processedFooterHtml = hasFooterHtml
+                        ? SubstituteHtmlPlaceholders(footerHtml, currentUserName, currentUserRoles, 1, 1, useWordFields: true, reportName: reportName)
+                        : null;
+                    if (hasFooterHtml)
+                    {
+                        var footerPart = mainPart.AddNewPart<FooterPart>();
+                        footerRelId = mainPart.GetIdOfPart(footerPart);
+
+                        var altFtrPart = footerPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
+                        var altFtrRelId = footerPart.GetIdOfPart(altFtrPart);
+                        var fullFtrHtml = WrapHtmlForWord(processedFooterHtml);
+                        using (var ms = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(fullFtrHtml)))
+                        {
+                            altFtrPart.FeedData(ms);
+                        }
+
+                        var ftr = new Footer();
+                        ftr.AddNamespaceDeclaration("w", "http://schemas.openxmlformats.org/wordprocessingml/2006/main");
+                        ftr.AppendChild(new AltChunk() { Id = altFtrRelId });
+                        footerPart.Footer = ftr;
+
+                        if (footerFirstPageOnly)
+                        {
+                            // Empty footer for subsequent pages
+                            var blankFooterPart = mainPart.AddNewPart<FooterPart>();
+                            blankFooterRelId = mainPart.GetIdOfPart(blankFooterPart);
+                            var blankFtr = new Footer();
+                            blankFtr.AddNamespaceDeclaration("w", "http://schemas.openxmlformats.org/wordprocessingml/2006/main");
+                            blankFtr.AppendChild(new Paragraph());
+                            blankFooterPart.Footer = blankFtr;
+                        }
+                    }
                     // Add report header
                     Paragraph header = new Paragraph(new Run(new RunProperties()
                     {
@@ -3343,19 +3541,32 @@ namespace ReportBuilder.Web.Models
                             AddImageToBody(wordDocument, mainPart.GetIdOfPart(imagePart), widthInEmus, heightInEmus);
                         }
                     }
+                    if (hasCustomHtml)
+                    {
+                        var altBodyPart = mainPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
+                        var altBodyRelId = mainPart.GetIdOfPart(altBodyPart);
+                        var fullBodyHtml = WrapHtmlForWord(customHtml);
+                        using (var ms = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(fullBodyHtml)))
+                        {
+                            altBodyPart.FeedData(ms);
+                        }
+                        body.AppendChild(new AltChunk() { Id = altBodyRelId });
+                        body.AppendChild(new Paragraph());
+                    }
                     // Add data in table format
-                    if (dt.Rows.Count > 0)
+                    else if (dt.Rows.Count > 0)
                     {
                         // Create table
                         Table table = new Table();
                         TableProperties props = new TableProperties(new Justification() { Val = JustificationValues.Center },
+                         new TableLayout() { Type = TableLayoutValues.Autofit },
                          new TableBorders(
-                         new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 8 },
-                         new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
-                         new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
-                         new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 },
-                         new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 8 },
-                         new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 10 }
+                         new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
+                         new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
+                         new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
+                         new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
+                         new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
+                         new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" }
                          ));
 
                         // Append table properties
@@ -3369,12 +3580,13 @@ namespace ReportBuilder.Web.Models
                             maxColumnWidths[column.Ordinal] = EstimateTextWidth(column.ColumnName);
                             RunProperties runProperties = new RunProperties(
                                 new Bold(),
-                                new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "#156082" } // Example color
+                                new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "16" }, // 8pt
+                                new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "156082" }
                             );
                             Run run = new Run(runProperties, new Text(column.ColumnName));
                             ParagraphProperties paragraphProperties = new ParagraphProperties(
-                                new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
-                                new Indentation() { Left = "180", Right = "180" } // Adjust values as needed
+                                new SpacingBetweenLines() { Before = "20", After = "20", Line = "220", LineRule = LineSpacingRuleValues.Auto },
+                                new Indentation() { Left = "40", Right = "40" }
                             );
                             Paragraph paragraph = new Paragraph(paragraphProperties, run);
                             TableCell cell = new TableCell(paragraph);
@@ -3430,6 +3642,10 @@ namespace ReportBuilder.Web.Models
                                 wordPageSize.Height = temp;
                             }
                             SectionProperties sectionProperties = new SectionProperties();
+                            if (!string.IsNullOrEmpty(headerRelId))
+                                sectionProperties.Append(new HeaderReference() { Type = HeaderFooterValues.Default, Id = headerRelId });
+                            if (!string.IsNullOrEmpty(footerRelId))
+                                sectionProperties.Append(new FooterReference() { Type = HeaderFooterValues.Default, Id = footerRelId });
                             sectionProperties.Append(wordPageSize);
                             body.Append(sectionProperties);
                         }
@@ -3445,6 +3661,10 @@ namespace ReportBuilder.Web.Models
                             {
                                 // Set landscape orientation
                                 SectionProperties sectionProperties = new SectionProperties();
+                                if (!string.IsNullOrEmpty(headerRelId))
+                                    sectionProperties.Append(new HeaderReference() { Type = HeaderFooterValues.Default, Id = headerRelId });
+                                if (!string.IsNullOrEmpty(footerRelId))
+                                    sectionProperties.Append(new FooterReference() { Type = HeaderFooterValues.Default, Id = footerRelId });
                                 DocumentFormat.OpenXml.Wordprocessing.PageSize wordPageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize() { Width = Convert.ToUInt32(totalWidth + (1440 * 2)), Orient = PageOrientationValues.Landscape };
                                 sectionProperties.Append(wordPageSize);
                                 body.Append(sectionProperties);
@@ -3453,6 +3673,10 @@ namespace ReportBuilder.Web.Models
                             {
                                 // Set page orientation to landscape
                                 SectionProperties sectionProps = new SectionProperties();
+                                if (!string.IsNullOrEmpty(headerRelId))
+                                    sectionProps.Append(new HeaderReference() { Type = HeaderFooterValues.Default, Id = headerRelId });
+                                if (!string.IsNullOrEmpty(footerRelId))
+                                    sectionProps.Append(new FooterReference() { Type = HeaderFooterValues.Default, Id = footerRelId });
                                 DocumentFormat.OpenXml.Wordprocessing.PageSize defaultpageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
                                 {
                                     Orient = PageOrientationValues.Landscape,
@@ -3481,10 +3705,13 @@ namespace ReportBuilder.Web.Models
                                         }
                                     }
                                 }
-                                Run run = new Run(new Text(value));
+                                RunProperties dataRunProps = new RunProperties(
+                                    new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "16" } // 8pt
+                                );
+                                Run run = new Run(dataRunProps, new Text(value));
                                 ParagraphProperties paragraphProperties = new ParagraphProperties(
-                                    new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
-                                    new Indentation() { Left = "180", Right = "180" } // Adjust values as needed
+                                    new SpacingBetweenLines() { Before = "20", After = "20", Line = "220", LineRule = LineSpacingRuleValues.Auto },
+                                    new Indentation() { Left = "40", Right = "40" }
                                 );
                                 Paragraph paragraph = new Paragraph(paragraphProperties, run);
                                 TableCell cell = new TableCell(paragraph);
@@ -3503,10 +3730,14 @@ namespace ReportBuilder.Web.Models
                                 var dc = dt.Columns[j];
                                 var formatColumn = GetColumnFormatting(dc, columns, ref value);
                                 bool isNumericAndNotExcluded = formatColumn?.isNumeric == true && !(formatColumn?.dontSubTotal ?? false);
-                                Run run = new Run(new Text(isNumericAndNotExcluded ? value : " "));
+                                RunProperties stRunProps = new RunProperties(
+                                    new Bold(),
+                                    new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "16" }
+                                );
+                                Run run = new Run(stRunProps, new Text(isNumericAndNotExcluded ? value : " "));
                                 ParagraphProperties paragraphProperties = new ParagraphProperties(
-                                    new SpacingBetweenLines() { Before = "100", After = "100", Line = "240", LineRule = LineSpacingRuleValues.Auto },
-                                    new Indentation() { Left = "180", Right = "180" } // Adjust values as needed
+                                    new SpacingBetweenLines() { Before = "20", After = "20", Line = "220", LineRule = LineSpacingRuleValues.Auto },
+                                    new Indentation() { Left = "40", Right = "40" }
                                 );
                                 Paragraph paragraph = new Paragraph(paragraphProperties, run);
                                 TableCell cell = new TableCell(paragraph);
@@ -3529,13 +3760,116 @@ namespace ReportBuilder.Web.Models
                         Paragraph expandedData = new Paragraph(new Run(new Text("No records found")));
                         body.AppendChild(expandedData);
                     }
-                    // Ensure word wrapping doesn't break words
+                    // Ensure cells do not wrap their text; also tighten cell padding
                     foreach (TableCell cell in body.Descendants<TableCell>())
                     {
                         cell.TableCellProperties = new TableCellProperties();
-                        NoWrap noWrap = new NoWrap();
-                        cell.TableCellProperties.Append(noWrap);
+                        cell.TableCellProperties.Append(new NoWrap());
+                        cell.TableCellProperties.Append(new TableCellMargin(
+                            new TopMargin() { Width = "20", Type = TableWidthUnitValues.Dxa },
+                            new BottomMargin() { Width = "20", Type = TableWidthUnitValues.Dxa },
+                            new LeftMargin() { Width = "40", Type = TableWidthUnitValues.Dxa },
+                            new RightMargin() { Width = "40", Type = TableWidthUnitValues.Dxa }
+                        ));
                     }
+                    {
+                        foreach (var sp in body.Elements<SectionProperties>().ToList())
+                        {
+                            sp.Remove();
+                        }
+
+                        var finalSectionProps = new SectionProperties();
+
+                        if (!string.IsNullOrEmpty(headerRelId))
+                        {
+                            if (headerFirstPageOnly)
+                            {
+                                finalSectionProps.Append(new HeaderReference() { Type = HeaderFooterValues.First, Id = headerRelId });
+                                if (!string.IsNullOrEmpty(blankHeaderRelId))
+                                    finalSectionProps.Append(new HeaderReference() { Type = HeaderFooterValues.Default, Id = blankHeaderRelId });
+                            }
+                            else
+                            {
+                                finalSectionProps.Append(new HeaderReference() { Type = HeaderFooterValues.Default, Id = headerRelId });
+                            }
+                        }
+                        if (!string.IsNullOrEmpty(footerRelId))
+                        {
+                            if (footerFirstPageOnly)
+                            {
+                                finalSectionProps.Append(new FooterReference() { Type = HeaderFooterValues.First, Id = footerRelId });
+                                if (!string.IsNullOrEmpty(blankFooterRelId))
+                                    finalSectionProps.Append(new FooterReference() { Type = HeaderFooterValues.Default, Id = blankFooterRelId });
+                            }
+                            else
+                            {
+                                finalSectionProps.Append(new FooterReference() { Type = HeaderFooterValues.Default, Id = footerRelId });
+                            }
+                        }
+
+                        // Enable "different first page" so Word honors the "first" header/footer refs
+                        if (headerFirstPageOnly || footerFirstPageOnly)
+                        {
+                            finalSectionProps.Append(new TitlePage());
+                        }
+
+                        // Determine page size + orientation
+                        DocumentFormat.OpenXml.Wordprocessing.PageSize finalPageSize = null;
+                        if (!String.IsNullOrEmpty(pageSize))
+                        {
+                            UInt32Value widthTwips;
+                            UInt32Value heightTwips;
+                            switch (pageSize.ToUpper())
+                            {
+                                case "A4":
+                                    widthTwips = (UInt32Value)(210 * 56.7);
+                                    heightTwips = (UInt32Value)(297 * 56.7);
+                                    break;
+                                case "LEGAL":
+                                    widthTwips = (UInt32Value)(8.5 * 1440);
+                                    heightTwips = (UInt32Value)(14 * 1440);
+                                    break;
+                                case "A3":
+                                    widthTwips = (UInt32Value)(297 * 56.7);
+                                    heightTwips = (UInt32Value)(420 * 56.7);
+                                    break;
+                                case "TABLOID":
+                                    widthTwips = (UInt32Value)(11 * 1440);
+                                    heightTwips = (UInt32Value)(17 * 1440);
+                                    break;
+                                case "LETTER":
+                                default:
+                                    widthTwips = (UInt32Value)(8.5 * 1440);
+                                    heightTwips = (UInt32Value)(11 * 1440);
+                                    break;
+                            }
+                            string safeOrientation = string.IsNullOrEmpty(pageOrientation) ? "PORTRAIT" : pageOrientation.ToUpper();
+                            finalPageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
+                            {
+                                Width = widthTwips,
+                                Height = heightTwips,
+                                Orient = (safeOrientation == "LANDSCAPE") ? PageOrientationValues.Landscape : PageOrientationValues.Portrait
+                            };
+                            if (safeOrientation == "LANDSCAPE")
+                            {
+                                var temp = finalPageSize.Width;
+                                finalPageSize.Width = finalPageSize.Height;
+                                finalPageSize.Height = temp;
+                            }
+                        }
+                        else
+                        {
+                            // Default landscape A4-ish
+                            finalPageSize = new DocumentFormat.OpenXml.Wordprocessing.PageSize()
+                            {
+                                Orient = PageOrientationValues.Landscape,
+                                Width = 16838
+                            };
+                        }
+                        finalSectionProps.Append(finalPageSize);
+                        body.AppendChild(finalSectionProps);
+                    }
+
                     wordDocument.Save();
                 }
                 return memStream.ToArray();
@@ -3623,11 +3957,13 @@ namespace ReportBuilder.Web.Models
             int averageCharWidthInTwips = 120;
             return text.Length * averageCharWidthInTwips;
         }
-        public async static Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
-                      string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
-                      string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false,string pageSize="",string pageOrientation="",bool subTotalMode=false,bool includeColumnTotal=false, bool isSubreport = false,
-        int pageNumber = 1,
-        int currentPageSize = 1)
+
+        private async static Task<(IBrowser browser, IPage page)> LaunchAndLoadReportPrintPageAsync(
+            string printUrl, int reportId, string reportSql, string connectKey,
+            string userId, string clientId, string currentUserRole, string dataFilters,
+            bool expandAll, string expandSqls, string pivotColumn, string pivotFunction,
+            bool subTotalMode, bool includeColumnTotal, bool isSubreport,
+            int pageNumber, int currentPageSize, bool debug)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
@@ -3639,15 +3975,16 @@ namespace ReportBuilder.Web.Models
             }
 
             var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = !debug, ExecutablePath = executablePath });
-            var page = await browser.NewPageAsync();
-            await page.SetRequestInterceptionAsync(true);
-
+            IPage page = null;
             try
             {
+                page = await browser.NewPageAsync();
+                await page.SetRequestInterceptionAsync(true);
+
+                // Build the report data model so the print page can render without re-querying.
                 var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
                 IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
                 var data = await GetDataTable(reportSql, connectKey);
-
                 var qry = data.qry;
                 var sqlFields = data.sqlFields;
                 var dt = data.dt;
@@ -3656,7 +3993,7 @@ namespace ReportBuilder.Web.Models
                 {
                     if (!useAltPivot)
                     {
-                        var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false,false, subTotalMode, includeColumnTotal);
+                        var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false, false, subTotalMode, includeColumnTotal);
                         dt = pd.dt;
                         if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
                     }
@@ -3667,19 +4004,18 @@ namespace ReportBuilder.Web.Models
                     }
                     var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
                     sqlFields = sqlFields
-                        .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))  // Filter fields to exclude unwanted keywords
+                        .Where(field => !keywordsToExclude.Any(keyword => field.Contains(keyword)))
                         .ToList();
                     sqlFields.AddRange(dt.Columns.Cast<DataColumn>().Skip(sqlFields.Count).Select(x => $"__ AS {x.ColumnName}").ToList());
                 }
+
                 if (isSubreport)
                 {
                     int skip = (pageNumber - 1) * currentPageSize;
                     var pagedRows = dt.AsEnumerable().Skip(skip).Take(currentPageSize);
-                    if (pagedRows.Any())
-                        dt = pagedRows.CopyToDataTable();
-                    else
-                        dt = dt.Clone(); 
+                    dt = pagedRows.Any() ? pagedRows.CopyToDataTable() : dt.Clone();
                 }
+
                 var model = new DotNetReportResultModel
                 {
                     ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dt, sqlFields, false),
@@ -3695,7 +4031,6 @@ namespace ReportBuilder.Web.Models
                     }
                 };
 
-                var formPosted = false;
                 var formData = new StringBuilder();
                 formData.AppendLine("<html><body>");
                 formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
@@ -3714,6 +4049,7 @@ namespace ReportBuilder.Web.Models
                 formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
                 formData.AppendLine("</body></html>");
 
+                var formPosted = false;
                 page.Request += async (sender, e) =>
                 {
                     if (formPosted)
@@ -3730,27 +4066,41 @@ namespace ReportBuilder.Web.Models
 
                     formPosted = true;
                 };
-                page.Console += (sender, e) =>
-                {
-                    Console.WriteLine("[Console Error] " + e.Message);
-                };
-
-                page.PageError += (sender, error) =>
-                {
-                    Console.WriteLine("[Page Error] " + error.Message);
-                };
-
-                page.RequestFailed += (sender, e) =>
-                {
-                    Console.WriteLine($"[Request Failed] {e.Request.Url} - {e.Request.FailureText}");
-                };
+                page.Console += (sender, e) => Console.WriteLine("[Console Error] " + e.Message);
+                page.PageError += (sender, error) => Console.WriteLine("[Page Error] " + error.Message);
+                page.RequestFailed += (sender, e) => Console.WriteLine($"[Request Failed] {e.Request.Url} - {e.Request.FailureText}");
 
                 await page.GoToAsync(printUrl, new NavigationOptions
                 {
                     WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }
                 });
-
                 await page.WaitForSelectorAsync(".report-inner", new WaitForSelectorOptions { Visible = true });
+
+                return (browser, page);
+            }
+            catch
+            {
+                if (page != null) await page.DisposeAsync();
+                await browser.DisposeAsync();
+                throw;
+            }
+        }
+
+        public async static Task<byte[]> GetPdfFile(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
+                      string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
+                      string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false,string pageSize="",string pageOrientation="",bool subTotalMode=false,bool includeColumnTotal=false, bool isSubreport = false,
+        int pageNumber = 1,
+        int currentPageSize = 1)
+        {
+            var (browser, page) = await LaunchAndLoadReportPrintPageAsync(
+                printUrl, reportId, reportSql, connectKey,
+                userId, clientId, currentUserRole, dataFilters,
+                expandAll, expandSqls, pivotColumn, pivotFunction,
+                subTotalMode, includeColumnTotal, isSubreport,
+                pageNumber, currentPageSize, debug);
+
+            try
+            {
                 if (imageOnly)
                 {
                     try
@@ -3777,11 +4127,73 @@ namespace ReportBuilder.Web.Models
                 int width = Convert.ToInt32(await page.EvaluateExpressionAsync<decimal>("$('table').width()"));
                 var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
 
+                // Read header/footer "include on every page" settings from the loaded print page
+                bool headerEveryPage = false;
+                bool footerEveryPage = false;
+                string everyPageHeaderHtml = "";
+                string everyPageFooterHtml = "";
+                try
+                {
+                    headerEveryPage = await page.EvaluateExpressionAsync<bool>("window.reportHeaderIncludeOnEveryPage === true");
+                    footerEveryPage = await page.EvaluateExpressionAsync<bool>("window.reportFooterIncludeOnEveryPage === true");
+                    if (headerEveryPage)
+                        everyPageHeaderHtml = await page.EvaluateExpressionAsync<string>("window.reportHeaderHtml || ''") ?? "";
+                    if (footerEveryPage)
+                        everyPageFooterHtml = await page.EvaluateExpressionAsync<string>("window.reportFooterHtml || ''") ?? "";
+                }
+                catch { }
+
+                // Replace page-number placeholders for Puppeteer's built-in classes
+                string PreparePuppeteerTemplate(string html)
+                {
+                    if (string.IsNullOrEmpty(html)) return "";
+                    html = html.Replace("{page.number}", "<span class=\"pageNumber\"></span>")
+                               .Replace("{page.total}", "<span class=\"totalPages\"></span>");
+                    // Wrap in a container with min font-size since Puppeteer uses 0 by default
+                    return "<div style=\"font-size:10px; width:100%; padding: 0 0.4in;\">" + html + "</div>";
+                }
+
+                if (headerEveryPage || footerEveryPage)
+                {
+                    // Hide in-document header/footer to avoid double rendering
+                    try
+                    {
+                        if (headerEveryPage) await page.AddStyleTagAsync(new AddTagOptions { Content = "#report-header { display: none !important; }" });
+                        if (footerEveryPage) await page.AddStyleTagAsync(new AddTagOptions { Content = "#report-footer { display: none !important; }" });
+                    }
+                    catch { }
+                }
+
+                string headerTemplate = headerEveryPage ? PreparePuppeteerTemplate(everyPageHeaderHtml) : "<span></span>";
+                string footerTemplate = footerEveryPage ? PreparePuppeteerTemplate(everyPageFooterHtml) : "<span></span>";
+                double headerHeightIn = 0;
+                double footerHeightIn = 0;
+                try
+                {
+                    if (headerEveryPage)
+                        headerHeightIn = await page.EvaluateExpressionAsync<double>("window.reportHeaderHeightIn || 0");
+                    if (footerEveryPage)
+                        footerHeightIn = await page.EvaluateExpressionAsync<double>("window.reportFooterHeightIn || 0");
+                }
+                catch { }
+
+                double topMarginIn = headerEveryPage ? Math.Max(1.0, headerHeightIn + 0.3) : 0.75;
+                double bottomMarginIn = footerEveryPage ? Math.Max(1.0, footerHeightIn + 0.3) : 0.75;
+
                 var pdfOptions = new PdfOptions
                 {
                     PrintBackground = true,
                     PreferCSSPageSize = false,
-                    MarginOptions = new MarginOptions() { Top = "0.75in", Bottom = "0.75in", Left = "0.1in", Right = "0.1in" }
+                    MarginOptions = new MarginOptions()
+                    {
+                        Top = topMarginIn.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "in",
+                        Bottom = bottomMarginIn.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "in",
+                        Left = "0.1in",
+                        Right = "0.1in"
+                    },
+                    DisplayHeaderFooter = headerEveryPage || footerEveryPage,
+                    HeaderTemplate = headerTemplate,
+                    FooterTemplate = footerTemplate
                 };
                 if (!String.IsNullOrEmpty(pageOrientation))
                 {
@@ -3861,6 +4273,49 @@ namespace ReportBuilder.Web.Models
             catch (Exception ex)
             {
                 throw ex;
+            }
+            finally
+            {
+                if (page != null) await page.DisposeAsync();
+                if (browser != null) await browser.DisposeAsync();
+            }
+        }
+
+        public async static Task<string> GetReportRenderedHtml(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
+            string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
+            string pivotColumn = null, string pivotFunction = null)
+        {
+            IBrowser browser = null;
+            IPage page = null;
+            try
+            {
+                (browser, page) = await LaunchAndLoadReportPrintPageAsync(
+                    printUrl, reportId, reportSql, connectKey,
+                    userId, clientId, currentUserRole, dataFilters,
+                    expandAll, expandSqls, pivotColumn, pivotFunction,
+                    subTotalMode: false, includeColumnTotal: false, isSubreport: false,
+                    pageNumber: 1, currentPageSize: 99999, debug: false);
+
+                await Task.Delay(750);
+
+                var html = await page.EvaluateExpressionAsync<string>(@"
+                    (function () {
+                        var $area = $('.report-inner .report-expanded-scroll').first();
+                        if (!$area.length) $area = $('.report-inner').first();
+                        if (!$area.length) return '';
+                        var $clone = $area.clone();
+                        $clone.find('.report-spinner').remove();
+                        $clone.find('a[title=""Edit sub report""]').remove();
+                        $clone.find('script').remove();
+                        return $clone.html() || '';
+                    })();
+                ");
+
+                return html ?? "";
+            }
+            catch (Exception)
+            {
+                return "";
             }
             finally
             {

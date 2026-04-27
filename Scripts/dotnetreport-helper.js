@@ -225,6 +225,12 @@ function downloadJson(content, fileName, contentType) {
     window.URL.revokeObjectURL(url);
 }
    // knockout binding extenders
+ko.bindingHandlers.stopBindings = {
+    init: function () {
+        return { controlsDescendantBindings: true };
+    }
+};
+
 ko.bindingHandlers.bsPopover = {
     init: function (element, valueAccessor) {
         var opts = valueAccessor() || {};
@@ -510,6 +516,43 @@ ko.bindingHandlers.sortableColumns = {
                 bindingContext.$parents[2].sortReportHeaderColumn();
             }
         }).disableSelection(); // Prevent text selection while dragging
+    }
+};
+
+ko.bindingHandlers.moveToInlineContainer = {
+    init: function (element, valueAccessor) {
+        var data = ko.unwrap(valueAccessor());
+        if (data && data._isInline) {
+            var tryMove = function (attempts) {
+                // Scope search to the sibling renderedHtml div within the same row
+                // DOM structure: foreach:Rows > [div html:renderedHtml] [div foreach:subReportsRan > element]
+                var searchScope = null;
+                var subReportsDiv = element.parentElement; // foreach:subReportsRan div
+                if (subReportsDiv) {
+                    searchScope = subReportsDiv.previousElementSibling; // html:renderedHtml div
+                }
+                if (!searchScope) {
+                    searchScope = document; // fallback
+                }
+                var selector = '.subreport-inline-container[data-subreport-report-id="' + data._inlineReportId + '"][data-subreport-field-id="' + data._inlineFieldId + '"]';
+                var container = searchScope.querySelector(selector);
+                if (container) {
+                    // Clear previous binding if placeholder was replaced
+                    if (container._bound) {
+                        ko.cleanNode(container);
+                        container.innerHTML = '';
+                    }
+                    container._bound = true;
+                    container._boundData = data;
+                    var wrapper = document.createElement('div');
+                    container.appendChild(wrapper);
+                    ko.applyBindingsToNode(wrapper, { template: { name: 'subreport-content', data: data } });
+                } else if (attempts > 0) {
+                    setTimeout(function () { tryMove(attempts - 1); }, 200);
+                }
+            };
+            setTimeout(function () { tryMove(8); }, 100);
+        }
     }
 };
 
