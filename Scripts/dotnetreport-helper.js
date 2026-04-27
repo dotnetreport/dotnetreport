@@ -314,7 +314,22 @@ ko.bindingHandlers.select2 = {
     init: function (el, valueAccessor, allBindingsAccessor, viewModel) {
         var allBindings = allBindingsAccessor();
         var s2opts = $.extend(
-            { width: '100%', dropdownParent: $(el).closest('.modal').length ? $(el).closest('.modal') : $(document.body) },
+            {
+                width: '100%',
+                dropdownParent: $(el).closest('.modal').length ? $(el).closest('.modal') : $(document.body),
+                templateResult: function (item) {
+                    if (!item.text) return item.text;
+                    return $('<span style="white-space: pre;">' + item.text + '</span>');
+                },
+                templateSelection: function (item) {
+                    if (!item.text) return item.text;
+                    return $('<span style="white-space: pre;">' + item.text + '</span>');
+                },
+                escapeMarkup: function (markup) {
+                    return markup; // IMPORTANT
+                }
+
+            },
             ko.unwrap(valueAccessor()) || {}
         );
         // Always use closest modal as dropdownParent if element is inside a modal
