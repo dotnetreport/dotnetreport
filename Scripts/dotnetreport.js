@@ -1647,7 +1647,7 @@ var reportViewModel = function (options) {
 	self.ShowDataWithGraph = ko.observable(true);
 	self.ShowOnDashboard = ko.observable(false);
 	self.isSubReportOnly = ko.observable(false);
-	self.showAdminOnly = ko.observable(false);
+	self.ShowAdminOnly = ko.observable(false);
 	self.toggleIsSubReportOnly = function () {
 		var reportId = self.ReportID();
 		if (!reportId) return;
@@ -4398,7 +4398,7 @@ var reportViewModel = function (options) {
 		return _.chain(self.SavedReports())
 			.filter(function (x) {
 				return x.folderId == self.SelectedFolder().Id
-					&& (self.adminMode() || !x.showAdminOnly)  
+					&& (self.adminMode() || !x.ShowAdminOnly)  
 					&& (self.adminMode() || !x.isSubReportOnly || !x.isSubReportOnly()); 
 			})
 			.sortBy(function (x) {
@@ -4604,7 +4604,7 @@ var reportViewModel = function (options) {
 		self.clearKpiSettings(true);
 		self.subReports([]);
 		self.isSubReportOnly(false);
-		self.showAdminOnly(false);
+		self.ShowAdminOnly(false);
 		self.editingSubReportParentId(null);
 		self.editingSubReportParentName('');
 		self.clearManageAccess();	
@@ -5828,7 +5828,7 @@ var reportViewModel = function (options) {
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : (self.ReportType() == 'List' || self.ReportType() == 'Treemap' || self.dontGroupCustom() ? false : self.AggregateReport()),
 			ShowDataWithGraph: self.ShowDataWithGraph(),
-			showAdminOnly: self.showAdminOnly(),
+			ShowAdminOnly: self.ShowAdminOnly(),
 			ShowOnDashboard: self.ShowOnDashboard(),
 			HideReportHeader: self.HideReportHeader(),
 			HideReportFooter: self.HideReportFooter(),
@@ -6261,7 +6261,7 @@ var reportViewModel = function (options) {
 								showUniqueRecords: self.ShowUniqueRecords(),
 								aggregateReport: (self.ReportType() == 'List' || self.ReportType() == 'Treemap' || self.dontGroupCustom()) ? false : self.AggregateReport(),
 								showDataWithGraph: self.ShowDataWithGraph(),
-								showAdminOnly: self.showAdminOnly(),
+								showAdminOnly: self.ShowAdminOnly(),
 								reportSql: self.allSqlQueries(),
 								connectKey: _result.connectKey,
 								reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
@@ -9847,7 +9847,7 @@ var reportViewModel = function (options) {
 		self.maxRecords(report.OnlyTop != null);
 		self.AggregateReport(report.IsAggregateReport);
 		self.ShowDataWithGraph(report.ShowDataWithGraph);
-		self.showAdminOnly(report.showAdminOnly);
+		self.ShowAdminOnly(report.ShowAdminOnly);
 		self.ShowOnDashboard(report.ShowOnDashboard);
 		self.SortByField(report.SortBy);
 		self.SortDesc(report.SortDesc);
@@ -10161,6 +10161,7 @@ var reportViewModel = function (options) {
 				e.runMode = false;
 				e.isSelected = ko.observable(false);
 				e.isSubReportOnly = ko.observable(e.isSubReportOnly || false);
+				e.showAdminOnly = ko.observable(e.showAdminOnly || false);
 				e.openReport = function () {
 					if (!e.runMode && !e.canEdit && !self.appSettings.canCopyReport()) {
 						options.reportWizard.modal('hide');
