@@ -642,10 +642,10 @@
         <!-- ko if: !$data._isPlaceholder -->
         <div class="form-inline" data-bind="visible: !_hidePager">
             <div class="small" data-bind="with: pager">
-                <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
+                <div class="form-group float-start total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
                     <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
                 </div>
-                <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
+                <div class="form-group float-end" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
                     <div data-bind="template: 'pager-template', data: $data"></div>
                 </div>
             </div>
