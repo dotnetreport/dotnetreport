@@ -1746,7 +1746,7 @@
     </div>
     <!-- Smart Suggestion -->
     <div class="smart-suggestion mt-2" data-bind="visible: smartSuggestion() && (showHints() || activeDesign())">
-        <i class="fa fa-lightbulb-o text-warning"></i>
+        <i class="fas fa-lightbulb text-warning"></i>
         <span data-bind="text: smartSuggestion"></span>
         <a href="#" class="ms-2 small" data-bind="click: applySuggestion">
             <i class="fa fa-check"></i> Apply
@@ -1905,12 +1905,12 @@
 
         <div data-bind="visible: ReportType()=='Radar'" class="card card-body">
             <div class="alert alert-info small py-1 mb-0">
-            <span class="fa fa-lightbulb-o"></span>&nbsp;For Radar chart, the first field is the category label. All other numeric fields become axes on the radar. Each row is a separate polygon.
+            <span class="fas fa-lightbulb"></span>&nbsp;For Radar chart, the first field is the category label. All other numeric fields become axes on the radar. Each row is a separate polygon.
             </div>
         </div>
         <div data-bind="visible: ReportType()=='Polar'" class="card card-body">
             <div class="alert alert-info small py-1 mb-0">
-            <span class="fa fa-lightbulb-o"></span>&nbsp;For Polar Stacked Bar, the first field is the category. Each numeric field becomes a stacked segment on the circular axis.
+            <span class="fas fa-lightbulb"></span>&nbsp;For Polar Stacked Bar, the first field is the category. Each numeric field becomes a stacked segment on the circular axis.
             </div>
         </div>
         <div data-bind="visible: ReportType()=='Treemap'" class="card card-body">
@@ -1980,7 +1980,7 @@
 
         <div data-bind="visible: ReportType()=='Pivot'" class="card card-body">
             <div class="alert alert-info small py-1 mb-0">
-            <span class="fa fa-lightbulb-o"></span>&nbsp;For Transpose, the first field below will be used to Transpose the rows as columns, and it must be grouped.
+            <span class="fas fa-lightbulb"></span>&nbsp;For Transpose, the first field below will be used to Transpose the rows as columns, and it must be grouped.
             </div>
         </div>
 
@@ -2003,7 +2003,7 @@
 
         <div data-bind="visible: ReportType()=='Map'" class="card card-body">
             <div class="alert alert-info small py-1 mb-2">
-            <span class="fa fa-lightbulb-o"></span>&nbsp;For Map Graph, the first field below has to be a Region name (e.g. Country) or use Latitude/Longitude columns for marker mode.
+            <span class="fas fa-lightbulb"></span>&nbsp;For Map Graph, the first field below has to be a Region name (e.g. Country) or use Latitude/Longitude columns for marker mode.
             </div>
             <div class="form-group row small">
             <label class="col-sm-3 control-label">Map Display</label>
@@ -2959,7 +2959,7 @@
 
         <div class="d-flex justify-content-between align-items-center border-bottom bg-light p-2 px-3 flex-shrink-0">
             <h6 class="mb-0">
-                <i class="fa fa-comments-o me-1"></i> AI Report Assistant
+                <i class="fa fa-comments me-1"></i> AI Report Assistant
                 <span class="alert alert-info" title="This feature is still in intial release and might not alwways be accurate. You can turn it off from settings" style="font-size: 10pt; padding: 5px; max-width: 350px; white-space: normal; margin-bottom: 0;">
                     <i class="fa fa-info-circle"></i>
                 </span>
@@ -3112,7 +3112,7 @@
                                         <i class="fa fa-magic text-primary"></i> Tell me what report to build, or try:
                                     </div>
                                     <div class="small text-muted mb-2" style="background: #f0f7ff; padding: 6px 8px; border-radius: 4px; border-left: 3px solid #0d6efd;">
-                                        <i class="fa fa-lightbulb-o text-warning"></i> <strong>Tip:</strong> For best results, mention the data table name (e.g., "build a report using the Orders table")
+                                        <i class="fas fa-lightbulb text-warning"></i> <strong>Tip:</strong> For best results, mention the data table name (e.g., "build a report using the Orders table")
                                     </div>
                                     <div class="d-flex flex-wrap gap-1">
                                         <button class="btn btn-sm btn-outline-secondary" data-bind="click: function(){ aiAssistantInput('Build a sales summary report with a bar chart'); sendAiAssistantMessage(); }">
@@ -3128,7 +3128,7 @@
                                             <i class="fa fa-tachometer"></i> KPI widget
                                         </button>
                                         <button class="btn btn-sm btn-outline-secondary" data-bind="click: getAiRecommendation, visible: SelectedFields().length > 0">
-                                            <i class="fa fa-lightbulb-o"></i> Recommend chart
+                                            <i class="fas fa-lightbulb"></i> Recommend chart
                                         </button>
                                     </div>
                                 </div>
@@ -3145,7 +3145,7 @@
                                 </div>
                                 <!-- Follow-up suggestions (shown after AI applies a report) -->
                                 <div class="p-2 border-top" data-bind="visible: aiReportApplied() && !aiAssistantLoading() && aiAssistantMessages().length > 0" style="display:none;">
-                                    <div class="small text-muted mb-1"><i class="fa fa-comments-o"></i> Follow-up:</div>
+                                    <div class="small text-muted mb-1"><i class="fa fa-comments"></i> Follow-up:</div>
                                     <div class="d-flex flex-wrap gap-1">
                                         <button class="btn btn-sm btn-outline-primary" data-bind="click: function(){ aiAssistantInput('Add a filter for this year'); sendAiAssistantMessage(); }">
                                             + Filter this year
