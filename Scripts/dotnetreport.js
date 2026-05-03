@@ -4236,7 +4236,7 @@ var reportViewModel = function (options) {
 
 								const importReport = function (action) {
 									const reportview = new reportViewModel(options);
-									reportview.adminMode(self.adminMode()) 
+									reportview.adminMode(self.adminMode())
 									report.data = report.data || {};
 									report.data.FolderID = folderId;
 									report.data.checkFields = true;
@@ -4247,6 +4247,15 @@ var reportViewModel = function (options) {
 										report.data.ReportID = 0;
 										if (action === 'duplicate') {
 											report.data.ReportName = reportName + " Copy";
+										}
+									}
+
+									var currentUserId = self.currentUserId;
+									if (currentUserId) {
+										var existingIds = (report.data.UserId || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+										if (existingIds.indexOf(currentUserId) === -1) {
+											existingIds.push(currentUserId);
+											report.data.UserId = existingIds.join(',');
 										}
 									}
 

@@ -811,6 +811,11 @@ var manageAccess = function (options) {
             var editUserRoles = userSettings.newReportEditUserRoles ? userSettings.newReportEditUserRoles.split(',') : [];
             var viewUserRoles = userSettings.newReportViewUserRoles ? userSettings.newReportViewUserRoles.split(',') : [];
 
+            var currentUserId = userSettings.currentUserId;
+            if (currentUserId && editUserIds.indexOf(currentUserId) === -1) {
+                editUserIds.push(currentUserId);
+            }
+
             access.addMissingAndSelect(access.users, editUserIds);
             access.addMissingAndSelect(access.deleteOnlyUsers, editUserIds);
             access.addMissingAndSelect(access.userRoles, editUserRoles);
