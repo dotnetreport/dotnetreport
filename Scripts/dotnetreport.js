@@ -10392,7 +10392,7 @@ var reportViewModel = function (options) {
 			return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
 		}
 	}
-	self.safeParseDate = function (val) {
+	self.safeParseDate = function (val, formatHint) {
 		if (!val) return null;
 		var s = val.toString().trim();
 
@@ -10406,12 +10406,22 @@ var reportViewModel = function (options) {
 			var a = parseInt(parts[1]), b = parseInt(parts[2]), c = parseInt(parts[3]);
 			if (c < 100) c += 2000;
 			if (a > 12) {
-				// a must be day: dd/mm/yyyy
 				return new Date(c, b - 1, a);
 			} else if (b > 12) {
-				// b must be day: mm/dd/yyyy
 				return new Date(c, a - 1, b);
 			}
+			var dayFirst = false;
+			if (formatHint) {
+				var dIdx = formatHint.search(/d/i);
+				var mIdx = formatHint.indexOf('M');
+				if (dIdx >= 0 && mIdx >= 0) dayFirst = dIdx < mIdx;
+			} else {
+				try {
+					var lang = (navigator && navigator.language || '').toLowerCase();
+					dayFirst = lang && !lang.startsWith('en-us');
+				} catch (e) { /* ignore */ }
+			}
+			return dayFirst ? new Date(c, b - 1, a) : new Date(c, a - 1, b);
 		}
 
 		var d = new Date(s);
@@ -10419,7 +10429,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.formatDate = function(dateOrValue, format) {
-		var date = (dateOrValue instanceof Date) ? dateOrValue : self.safeParseDate(dateOrValue);
+		var date = (dateOrValue instanceof Date) ? dateOrValue : self.safeParseDate(dateOrValue, format);
 		if (!date) return dateOrValue;
 
 		const pad = (n) => n < 10 ? '0' + n : n;
