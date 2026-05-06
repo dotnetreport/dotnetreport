@@ -7870,7 +7870,6 @@ var reportViewModel = function (options) {
 				col.fieldCondtionalFormats.forEach(fmt => {
 					if (fmt.filter && fmt.filter.Filters) {
 						fmt.filter.Filters.forEach(flt => {
-							// Avoid circular reference
 							if (flt.Field) {
 								flt.Field = {
 									fieldId: flt.Field.fieldId,
@@ -7880,6 +7879,27 @@ var reportViewModel = function (options) {
 						});
 					}
 				});
+			}
+
+			delete col.customSqlField;
+			delete col.fieldSettings;
+			delete col.functionConfig;
+
+			if (col.linkFieldItem) {
+				var lfi = col.linkFieldItem;
+				col.linkFieldItem = {
+					LinksToReport: lfi.LinksToReport,
+					LinkedToReportId: lfi.LinkedToReportId,
+					LinkedReportName: lfi.LinkedReportName,
+					LinkedReportFolderName: lfi.LinkedReportFolderName,
+					SendAsFilterParameter: lfi.SendAsFilterParameter,
+					SelectedFilterId: lfi.SelectedFilterId,
+					SelectedFilterTableName: lfi.SelectedFilterTableName,
+					SelectedFilterFieldName: lfi.SelectedFilterFieldName,
+					LinkToUrl: lfi.LinkToUrl,
+					SendAsQueryParameter: lfi.SendAsQueryParameter,
+					QueryParameterName: lfi.QueryParameterName
+				};
 			}
 		});
 
