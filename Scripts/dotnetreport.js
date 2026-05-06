@@ -11297,12 +11297,11 @@ var sqlFieldModel = function (options) {
 				c.conditionDisplay = encodeURIComponent(c.conditionDisplay);
 				return c;
 			}),
-			elseCase: encodeURIComponent($(selector + '#condition-else').text())
+			elseCase: encodeURIComponent($('[id="condition-else"]').text())
 		};
 	}
 
 	self.fromJs = function (x) {
-		var selector = self.getActiveSelector();
 		self.selectedField(x.selectedField);
 		self.selectedFieldTableId(x.selectedFieldTableId);
 		self.selectedSqlFunction(x.selectedSqlFunction);
@@ -11316,8 +11315,8 @@ var sqlFieldModel = function (options) {
 			c.conditionDisplay = decodeURIComponent(c.conditionDisplay);
 			return c;
 		}));
-		$(selector + '#condition-else').text(decodeURIComponent(x.elseCase || ''));
-		$(selector + '#custom-sql').text(self.fieldSql());
+		$('[id="condition-else"]').text(decodeURIComponent(x.elseCase));
+		$('[id="custom-sql"]').text(self.fieldSql());
 	}
 
 	self.clear = function () {
@@ -11336,10 +11335,9 @@ var sqlFieldModel = function (options) {
 		return ['CASE', 'IIF', 'COALESCE', 'NULLIF', 'DECODE', 'ISNULL', 'IFNULL'].includes(self.selectedSqlFunction());  
 	});
 	self.addOrUpdateCondition = function () {
-		var selector = self.getActiveSelector();
-		var conditionField = $(selector + '#condition-field').text();
-		var conditionValue = $(selector + '#condition-value').text();
-		var conditionResult = $(selector + '#condition-result').text();
+		var conditionField = $('[id="condition-field"]').text();
+		var conditionValue = $('[id="condition-value"]').text();
+		var conditionResult = $('[id="condition-result"]').text();
 		if (conditionField && conditionValue && conditionResult && self.selectedOperator()) {
 			if (self.editingCondition()) {
 				var cond = self.editingCondition();
@@ -11363,9 +11361,9 @@ var sqlFieldModel = function (options) {
 					conditionDisplay:`${conditionField} ${self.selectedOperator()} ${conditionValue} THEN ${conditionResult}`
 				});
 			}
-			$(selector + '#condition-field').text('');
-			$(selector + '#condition-value').text('');
-			$(selector + '#condition-result').text('');
+			$('[id="condition-field"]').text('');
+			$('[id="condition-value"]').text('');
+			$('[id="condition-result"]').text('');
 			self.selectedOperator('');
 		}
 	};
@@ -11374,10 +11372,9 @@ var sqlFieldModel = function (options) {
 		if (self.editingCondition() === item) self.editingCondition(null);
 	};
 	self.editCondition = function (item) {
-		var selector = self.getActiveSelector();
-		$(selector + '#condition-field').text(item.field);
-		$(selector + '#condition-value').text(item.value);
-		$(selector + '#condition-result').text(item.result);
+		$('[id="condition-field"]').text(item.field);
+		$('[id="condition-value"]').text(item.value);
+		$('[id="condition-result"]').text(item.result);
 		self.selectedOperator(item.operator);
 		self.editingCondition(item);
 	};
@@ -11385,7 +11382,7 @@ var sqlFieldModel = function (options) {
 		var field = self.selectedField();
 		var func = self.selectedSqlFunction();
 		var value = self.inputValue();
-		var final = $('#condition-else').text() || 'NULL';
+		var final = $('[id="condition-else"]').text() || 'NULL';
 
 		var sql = '';
 
@@ -11424,7 +11421,7 @@ var sqlFieldModel = function (options) {
 		} else if (['LEFT', 'RIGHT', 'SUBSTRING'].includes(func)) {
 			sql = `${func}({${field}}, ${value})`;
 		} else if (func == 'Other') {
-			sql = $('#custom-sql').text();
+			sql = $('[id="custom-sql"]').text();
 		} else if (func) {
 			sql = `${func}({${field}})`; 
 		}
