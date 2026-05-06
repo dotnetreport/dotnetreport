@@ -5384,31 +5384,38 @@ namespace ReportBuilder.Web.Models
                                 parameterViewModels.Add(parameter);
                             }
                         }
-                        DataTable dt = new DataTable();
-                        cmd = new SqlCommand($"[{procSchema}].[{procName}]", conn);
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        foreach (var data in parameterViewModels)
+                        DataTable dt = null;
+                        try
                         {
-                            cmd.Parameters.Add(new SqlParameter { Value = DBNull.Value, ParameterName = data.ParameterName, Direction = ParameterDirection.Input, IsNullable = true });
-                        }
-                        using (SqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            dt = reader.GetSchemaTable();
-                        }
-
-                        if (dt == null) continue;
-
-                        // Store the table names in the class scoped array list of table names
-                        List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
-                        for (int i = 0; i < dt.Rows.Count; i++)
-                        {
-                            var column = new ColumnViewModel
+                            cmd = new SqlCommand($"[{procSchema}].[{procName}]", conn);
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            foreach (var data in parameterViewModels)
                             {
-                                ColumnName = dt.Rows[i].ItemArray[0].ToString(),
-                                DisplayName = dt.Rows[i].ItemArray[0].ToString(),
-                                FieldType = ConvertToJetDataType(dt.Rows[i]["ProviderType"].ToString()).ToString()
-                            };
-                            columnViewModels.Add(column);
+                                cmd.Parameters.Add(new SqlParameter { Value = DBNull.Value, ParameterName = data.ParameterName, Direction = ParameterDirection.Input, IsNullable = true });
+                            }
+                            using (SqlDataReader reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                            {
+                                dt = reader.GetSchemaTable();
+                            }
+                        }
+                        catch
+                        {
+                            dt = null;
+                        }
+
+                        List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
+                        if (dt != null)
+                        {
+                            for (int i = 0; i < dt.Rows.Count; i++)
+                            {
+                                var column = new ColumnViewModel
+                                {
+                                    ColumnName = dt.Rows[i].ItemArray[0].ToString(),
+                                    DisplayName = dt.Rows[i].ItemArray[0].ToString(),
+                                    FieldType = ConvertToJetDataType(dt.Rows[i]["ProviderType"].ToString()).ToString()
+                                };
+                                columnViewModels.Add(column);
+                            }
                         }
                         tables.Add(new TableViewModel
                         {
