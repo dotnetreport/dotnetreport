@@ -78,7 +78,7 @@ namespace ReportBuilder.Web.Jobs
             ITrigger trigger = TriggerBuilder.Create()
                 .WithIdentity("DotNetReportJobTrigger")
                 .StartNow()
-                .WithSimpleSchedule(s => s.WithIntervalInSeconds(60).RepeatForever())
+                .WithSimpleSchedule(s => s.WithIntervalInSeconds(60 * 5).RepeatForever())
                 .Build();
 
             await scheduler.ScheduleJob(job, trigger);
@@ -86,6 +86,7 @@ namespace ReportBuilder.Web.Jobs
         }
     }
 
+    [DisallowConcurrentExecution]
     public class DotNetReportJob : IJob
     {
         private readonly IConfigurationRoot _configuration;
