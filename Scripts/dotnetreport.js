@@ -7098,6 +7098,7 @@ var reportViewModel = function (options) {
 			renderedHtml = renderedHtml.replace(/\{\{[^}]+>[^}]+\}\}/g, "");
 			// Strip summernote tableresize plugin handles from rendered HTML
 			renderedHtml = renderedHtml.replace(/<div[^>]*class="resize-(?:col|row|corner)"[^>]*><\/div>/g, "");
+			renderedHtml = renderedHtml.replace(/<div[^>]*style="[^"]*cursor:\s*(?:col|row)-resize[^"]*"[^>]*>[\s\S]*?<\/div>/g, "");
 
 			return renderedHtml;
 		}
