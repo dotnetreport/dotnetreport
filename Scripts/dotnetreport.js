@@ -10246,6 +10246,20 @@ var reportViewModel = function (options) {
 						_.forEach(self.manageAccess.deleteOnlyUserRoles, function (x) { x.selected(false); });
 
 						self.manageAccess.applyDefaultSettings();
+
+						if (self.currentUserId) {
+							var existing = _.find(self.manageAccess.users(), function (u) { return u.value() === self.currentUserId; });
+							if (existing) {
+								existing.selected(true);
+							} else {
+								self.manageAccess.users.push({
+									selected: ko.observable(true),
+									value: ko.observable(self.currentUserId),
+									text: self.currentUserId,
+									category: null
+								});
+							}
+						}
 					});
 				};
 
