@@ -11229,7 +11229,11 @@ var sqlFieldModel = function (options) {
 			]
 		}		
 	]
-	
+	self.getActiveSelector = function () {
+		var isLiveMode = $('.live-preview-area').is(':visible') &&
+			!$('.live-preview-area').hasClass('d-none');
+		return isLiveMode ? '.live-preview-area ' : '#customFieldSection ';
+	};
 	self.availableFunctionsGrouped = ko.observableArray(availableFunctions);
 
 	self.templateResult = function (option) {
@@ -11258,6 +11262,7 @@ var sqlFieldModel = function (options) {
 	self.selectedOperator = ko.observable();
 	self.editingCondition = ko.observable(null); 
 	self.toJSON = function () {
+		var selector = self.getActiveSelector();
 		return {
 			selectedField: self.selectedField(),
 			selectedFieldTableId: self.selectedFieldTableId(),
@@ -11272,11 +11277,12 @@ var sqlFieldModel = function (options) {
 				c.conditionDisplay = encodeURIComponent(c.conditionDisplay);
 				return c;
 			}),
-			elseCase: encodeURIComponent($('#condition-else').text())
+			elseCase: encodeURIComponent($(selector + '#condition-else').text())
 		};
 	}
 
 	self.fromJs = function (x) {
+		var selector = self.getActiveSelector();
 		self.selectedField(x.selectedField);
 		self.selectedFieldTableId(x.selectedFieldTableId);
 		self.selectedSqlFunction(x.selectedSqlFunction);
@@ -11290,8 +11296,8 @@ var sqlFieldModel = function (options) {
 			c.conditionDisplay = decodeURIComponent(c.conditionDisplay);
 			return c;
 		}));
-		$('#condition-else').text(decodeURIComponent(x.elseCase));
-		$('#custom-sql').text(self.fieldSql());
+		$(selector + '#condition-else').text(decodeURIComponent(x.elseCase || ''));
+		$(selector + '#custom-sql').text(self.fieldSql());
 	}
 
 	self.clear = function () {
@@ -11310,9 +11316,10 @@ var sqlFieldModel = function (options) {
 		return ['CASE', 'IIF', 'COALESCE', 'NULLIF', 'DECODE', 'ISNULL', 'IFNULL'].includes(self.selectedSqlFunction());  
 	});
 	self.addOrUpdateCondition = function () {
-		var conditionField = $('#condition-field').text();
-		var conditionValue = $('#condition-value').text();
-		var conditionResult = $('#condition-result').text();
+		var selector = self.getActiveSelector();
+		var conditionField = $(selector + '#condition-field').text();
+		var conditionValue = $(selector + '#condition-value').text();
+		var conditionResult = $(selector + '#condition-result').text();
 		if (conditionField && conditionValue && conditionResult && self.selectedOperator()) {
 			if (self.editingCondition()) {
 				var cond = self.editingCondition();
@@ -11322,7 +11329,7 @@ var sqlFieldModel = function (options) {
 				cond.result = conditionResult;
 				cond.conditionDisplay =`${conditionField} ${self.selectedOperator()} ${conditionValue} THEN ${conditionResult}`;
 				var index = self.conditions.indexOf(cond);
-				var spans = document.querySelectorAll('.list-group-item span[data-bind*="conditionDisplay"]');
+				var spans = document.querySelectorAll(selector + '.list-group-item span[data-bind*="conditionDisplay"]');
 				if (spans[index]) {
 					spans[index].innerText = cond.conditionDisplay;
 				}
@@ -11336,9 +11343,9 @@ var sqlFieldModel = function (options) {
 					conditionDisplay:`${conditionField} ${self.selectedOperator()} ${conditionValue} THEN ${conditionResult}`
 				});
 			}
-			$('#condition-field').text('');
-			$('#condition-value').text('');
-			$('#condition-result').text('');
+			$(selector + '#condition-field').text('');
+			$(selector + '#condition-value').text('');
+			$(selector + '#condition-result').text('');
 			self.selectedOperator('');
 		}
 	};
@@ -11347,9 +11354,10 @@ var sqlFieldModel = function (options) {
 		if (self.editingCondition() === item) self.editingCondition(null);
 	};
 	self.editCondition = function (item) {
-		$('#condition-field').text(item.field);
-		$('#condition-value').text(item.value);
-		$('#condition-result').text(item.result);
+		var selector = self.getActiveSelector();
+		$(selector + '#condition-field').text(item.field);
+		$(selector + '#condition-value').text(item.value);
+		$(selector + '#condition-result').text(item.result);
 		self.selectedOperator(item.operator);
 		self.editingCondition(item);
 	};
