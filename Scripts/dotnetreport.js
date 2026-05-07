@@ -6161,6 +6161,7 @@ var reportViewModel = function (options) {
 				return $.when.apply($, promises).done(function () {
 					self.allSqlQueries(orderedSqls.join(','));
 					if (previewOnly === true) {
+						self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _reportSeries, false, true);
 						$("#sqlModal").modal('show');
 						return;
 					}
