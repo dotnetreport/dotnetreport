@@ -11322,7 +11322,10 @@ var sqlFieldModel = function (options) {
 				cond.result = conditionResult;
 				cond.conditionDisplay =`${conditionField} ${self.selectedOperator()} ${conditionValue} THEN ${conditionResult}`;
 				var index = self.conditions.indexOf(cond);
-				document.querySelectorAll('.list-group-item span')[index].innerText = cond.conditionDisplay;
+				var spans = document.querySelectorAll('.list-group-item span[data-bind*="conditionDisplay"]');
+				if (spans[index]) {
+					spans[index].innerText = cond.conditionDisplay;
+				}
 				self.editingCondition(null);
 			} else {
 				self.conditions.push({
