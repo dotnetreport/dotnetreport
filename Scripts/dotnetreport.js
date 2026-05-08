@@ -11307,7 +11307,6 @@ var sqlFieldModel = function (options) {
 	self.selectedOperator = ko.observable();
 	self.editingCondition = ko.observable(null); 
 	self.toJSON = function () {
-		var selector = self.getActiveSelector();
 		return {
 			selectedField: self.selectedField(),
 			selectedFieldTableId: self.selectedFieldTableId(),
@@ -11360,9 +11359,10 @@ var sqlFieldModel = function (options) {
 		return ['CASE', 'IIF', 'COALESCE', 'NULLIF', 'DECODE', 'ISNULL', 'IFNULL'].includes(self.selectedSqlFunction());  
 	});
 	self.addOrUpdateCondition = function () {
-		var conditionField = $('[id="condition-field"]').text();
-		var conditionValue = $('[id="condition-value"]').text();
-		var conditionResult = $('[id="condition-result"]').text();
+		var selector = self.getActiveSelector();
+		var conditionField = $(selector + '#condition-field').text();
+		var conditionValue = $(selector + '#condition-value').text();
+		var conditionResult = $(selector + '#condition-result').text();
 		if (conditionField && conditionValue && conditionResult && self.selectedOperator()) {
 			if (self.editingCondition()) {
 				var cond = self.editingCondition();
@@ -11386,9 +11386,9 @@ var sqlFieldModel = function (options) {
 					conditionDisplay:`${conditionField} ${self.selectedOperator()} ${conditionValue} THEN ${conditionResult}`
 				});
 			}
-			$('[id="condition-field"]').text('');
-			$('[id="condition-value"]').text('');
-			$('[id="condition-result"]').text('');
+			$(selector + '#condition-field').text('');
+			$(selector + '#condition-value').text('');
+			$(selector + '#condition-result').text('');
 			self.selectedOperator('');
 		}
 	};
@@ -11397,9 +11397,10 @@ var sqlFieldModel = function (options) {
 		if (self.editingCondition() === item) self.editingCondition(null);
 	};
 	self.editCondition = function (item) {
-		$('[id="condition-field"]').text(item.field);
-		$('[id="condition-value"]').text(item.value);
-		$('[id="condition-result"]').text(item.result);
+		var selector = self.getActiveSelector();
+		$(selector + '#condition-field').text(item.field);
+		$(selector + '#condition-value').text(item.value);
+		$(selector + '#condition-result').text(item.result);
 		self.selectedOperator(item.operator);
 		self.editingCondition(item);
 	};
