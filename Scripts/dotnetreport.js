@@ -8457,7 +8457,7 @@ var reportViewModel = function (options) {
 		}
 
 		// Ensure the container has dimensions before init (needed for live preview in modals)
-		if (self.activeDesign()) {
+		if (self.activeDesign() && $('#modal-reportbuilder:visible').length > 0){
 			chartDiv.style.width = '100%';
 			chartDiv.style.minHeight = '300px';
 			if (!chartDiv.style.height || chartDiv.style.height === '0px') {
@@ -8537,10 +8537,9 @@ var reportViewModel = function (options) {
 				}
 				chartElement.style.height = defaultHeight;
 			}
-			chartElement.style.maxWidth = '100%';
 		}
 		function setupResizeHandlers() {
-			if (self.activeDesign()) return;
+			if (self.activeDesign() && $('#modal-reportbuilder:visible').length > 0) return;
 			var parentDiv = chartDiv;
 			var chartContainer = (parentDiv && parentDiv.children[0]) ? parentDiv.children[0].children[0] : null;
 			if (chartContainer) {
@@ -9132,7 +9131,7 @@ var reportViewModel = function (options) {
 				// Apply saved dimensions
 				if (self.ReportMode() != 'print') retrieveDimensions();
 
-				if (self.activeDesign()) {
+				if (self.activeDesign() && $('#modal-reportbuilder:visible').length > 0) {
 					chartDiv.style.width = '100%';
 					chartDiv.style.maxWidth = '100%';
 					chartDiv.style.height = '350px';
@@ -9489,7 +9488,7 @@ var reportViewModel = function (options) {
 		if (self.ReportMode() != 'print') retrieveDimensions();
 
 		// In live preview mode, override dimensions to fit the preview container
-		if (self.activeDesign()) {
+		if (self.activeDesign() && $('#modal-reportbuilder:visible').length > 0) {
 			chartOptions.width = '100%';
 			chartOptions.height = '350px';
 			chartDiv.style.width = '100%';
