@@ -4236,7 +4236,7 @@ var reportViewModel = function (options) {
 
 								const importReport = function (action) {
 									const reportview = new reportViewModel(options);
-									reportview.adminMode(self.adminMode())
+									reportview.adminMode(true);
 									report.data = report.data || {};
 									report.data.FolderID = folderId;
 									report.data.checkFields = true;
@@ -6088,6 +6088,7 @@ var reportViewModel = function (options) {
 								SaveReport: _saveReport && idx === 0,
 								ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, idx - 1)),
 								adminMode: self.adminMode(),
+								applyClientInAdmin: importJson ? false : self.appSettings.useClientIdInAdmin,
 								BypassDataFiltersToUpdate: self.bypassEnabled() ? (self.bypassMode() === "all" ? "/all/" : self.bypassSpecificIds().join(",")) : "",
 								userIdForFilter: self.userIdForFilter,
 								SubTotalMode: false,

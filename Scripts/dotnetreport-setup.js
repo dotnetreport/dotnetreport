@@ -1670,11 +1670,14 @@ var manageViewModel = function (options) {
 	self.reportsAndFolders = ko.observableArray([]);
 	self.Folders = ko.observableArray([]);
 
+	self.userSettingsData = {};
+
 	self.setupManageAccess = function () {
 
-		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {			
+		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {
 			if (data.d) data = data.d;
 			self.allRoles(data.userRoles)
+			self.userSettingsData = data;
 			self.manageAccess = manageAccess(data);
 		});
 
@@ -2257,7 +2260,10 @@ var manageViewModel = function (options) {
 									runReportApiUrl: options.runReportApiUrl,
 									reportWizard: options.reportWizard,
 									lookupListUrl: options.lookupListUrl,
-									userSettings: { currentUserId: options.currentUserId }
+									getSchemaFromSql: options.getSchemaFromSql,
+									getTimeZonesUrl: options.getTimeZonesUrl,
+									userSettings: self.userSettingsData || { currentUserId: options.currentUserId },
+									dataFilters: (self.userSettingsData && self.userSettingsData.dataFilters) || {}
 								});
 								reportview.adminMode(true);
 								report.data = report.data || {};
