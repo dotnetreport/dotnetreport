@@ -47,7 +47,7 @@ var manageViewModel = function (options) {
 
 	self.refreshAll = function () {
 		var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
-		ajaxcall({ url: options.loadSchemaUrl + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + self.onlyApi() }).done(function (model) {
+		return ajaxcall({ url: options.loadSchemaUrl + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + self.onlyApi() }).done(function (model) {
 			self.Tables.refresh(model);
 			self.LoadJoins();
 			self.LoadCategories();
@@ -1362,68 +1362,98 @@ var manageViewModel = function (options) {
 
 			const reader = new FileReader();
 			reader.onload = function (event) {
+				let parsed;
 				try {
-					const parsed = JSON.parse(event.target.result);
-					const tables = Array.isArray(parsed) ? parsed : [parsed];
-
-					const importPromises = tables.map(table => {
-						return new Promise(resolve => {
-							const tableName = table.TableName;
-							const tableId = table.Id;
-							table.Selected = ko.observable(true);
-
-							const anySelected = _.some(table.Columns, c => ko.unwrap(c.Selected) === true);
-							if (!anySelected) {
-								table.Columns.forEach(c => c.Selected = ko.observable(true));
-							}
-
-							const tableMatch = _.some(self.Tables.model(), t => t.TableName() === tableName);
-
-							const processAndSave = (existingId) => {
-								table.Id = existingId || 0;
-								const mapped = ko.mapping.fromJS(table);
-								self.Tables.model.push(self.Tables.processTable(mapped));
-								const newTable = self.Tables.model()[self.Tables.model().length - 1];
-
-								newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey)
-									.then(success => {
-										if (!success) {
-											self.Tables.model.remove(newTable);
-										}
-										resolve();
-									})
-									.catch(() => resolve());
-							};
-
-							if (tableMatch) {
-								handleOverwriteConfirmation(tableName, function (action) {
-									if (action === 'overwrite') {
-										const existingTable = _.find(self.Tables.model(), e => e.TableName() === tableName);
-										const existingId = existingTable ? existingTable.Id() : 0;
-										self.Tables.model.remove(existingTable);
-										processAndSave(existingId);
-									} else {
-										toastr.info('Upload canceled for ' + tableName + '.');
-										resolve();
-									}
-								});
-							} else {
-								processAndSave();
-							}
-						});
-					});
-
-					Promise.all(importPromises).then(() => {
-						self.LoadJoins();
-						$('#uploadTablesFileModal').modal('hide');
-						clearFileInput('tablesFileInputJson');
-						toastr.success('All tables processed successfully!');
-					});
-
+					parsed = JSON.parse(event.target.result);
 				} catch (e) {
 					toastr.error('Invalid JSON file: ' + e.message);
 					clearFileInput('tablesFileInputJson');
+					return;
 				}
+
+				const tables = Array.isArray(parsed) ? parsed : [parsed];
+
+				self.refreshAll().done(function () {
+					const succeeded = [];
+					const failed = [];
+					const skipped = [];
+
+					const finishImport = () => {
+						self.refreshAll();
+						$('#uploadTablesFileModal').modal('hide');
+						clearFileInput('tablesFileInputJson');
+						if (failed.length) {
+							toastr.warning('Imported ' + succeeded.length + ', failed ' + failed.length + ': ' + failed.join(', '));
+						} else {
+							toastr.success('Imported ' + succeeded.length + ' tables successfully' + (skipped.length ? ' (skipped ' + skipped.length + ')' : '') + '.');
+						}
+					};
+
+					const processNext = (index) => {
+						if (index >= tables.length) {
+							finishImport();
+							return;
+						}
+
+						const table = tables[index];
+						const tableName = table.TableName;
+
+						if (Array.isArray(table.Columns)) {
+							table.Columns.forEach(c => { c.Id = 0; });
+						}
+
+						table.Selected = true;
+						const anySelected = _.some(table.Columns, c => c.Selected === true);
+						if (!anySelected && Array.isArray(table.Columns)) {
+							table.Columns.forEach(c => { c.Selected = true; });
+						}
+
+						const existingTable = _.find(self.Tables.model(), t => t.TableName() === tableName);
+
+						const processAndSave = (existingId) => {
+							table.Id = existingId || 0;
+							const mapped = ko.mapping.fromJS(table);
+							self.Tables.model.push(self.Tables.processTable(mapped));
+							const newTable = self.Tables.model()[self.Tables.model().length - 1];
+
+							newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, true)
+								.then(success => {
+									if (success) {
+										succeeded.push(tableName);
+									} else {
+										failed.push(tableName);
+										self.Tables.model.remove(newTable);
+									}
+									processNext(index + 1);
+								})
+								.catch(() => {
+									failed.push(tableName);
+									self.Tables.model.remove(newTable);
+									processNext(index + 1);
+								});
+						};
+
+						if (existingTable) {
+							handleOverwriteConfirmation(tableName, function (action) {
+								if (action === 'overwrite') {
+									const existingId = existingTable.Id();
+									self.Tables.model.remove(existingTable);
+									processAndSave(existingId);
+								} else {
+									skipped.push(tableName);
+									processNext(index + 1);
+								}
+							});
+						} else {
+							processAndSave(0);
+						}
+					};
+
+					processNext(0);
+				}).fail(function () {
+					toastr.error('Failed to load current tables. Please try again.');
+					clearFileInput('tablesFileInputJson');
+				});
 			};
 			reader.onerror = function () {
 				toastr.error('Error reading file.');
