@@ -11307,7 +11307,6 @@ var sqlFieldModel = function (options) {
 	self.selectedOperator = ko.observable();
 	self.editingCondition = ko.observable(null); 
 	self.toJSON = function () {
-		var selector = self.getActiveSelector();
 		return {
 			selectedField: self.selectedField(),
 			selectedFieldTableId: self.selectedFieldTableId(),
@@ -11322,7 +11321,7 @@ var sqlFieldModel = function (options) {
 				c.conditionDisplay = encodeURIComponent(c.conditionDisplay);
 				return c;
 			}),
-			elseCase: encodeURIComponent($('[id="condition-else"]').text())
+			elseCase: encodeURIComponent($(self.getActiveSelector() + '[id="condition-else"]').text())
 		};
 	}
 
@@ -11350,6 +11349,8 @@ var sqlFieldModel = function (options) {
 		self.inputValue(null);
 		self.customSQL('');
 		self.conditions([]);
+		$('[id="custom-sql"]').text('');
+		$('[id="condition-else"]').text('');
 	}
 
 	self.requiresValue = ko.computed(function () {
@@ -11407,7 +11408,7 @@ var sqlFieldModel = function (options) {
 		var field = self.selectedField();
 		var func = self.selectedSqlFunction();
 		var value = self.inputValue();
-		var final = $('[id="condition-else"]').text() || 'NULL';
+		var final = $(self.getActiveSelector() + '[id="condition-else"]').text() || 'NULL';
 
 		var sql = '';
 
@@ -11446,7 +11447,7 @@ var sqlFieldModel = function (options) {
 		} else if (['LEFT', 'RIGHT', 'SUBSTRING'].includes(func)) {
 			sql = `${func}({${field}}, ${value})`;
 		} else if (func == 'Other') {
-			sql = $('[id="custom-sql"]').text();
+			sql = $(self.getActiveSelector() + '[id="custom-sql"]').text();
 		} else if (func) {
 			sql = `${func}({${field}})`; 
 		}
