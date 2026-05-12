@@ -886,11 +886,11 @@ function filterGroupViewModel(args) {
 
 			}
 
-			if (newField && !newField.hasForeignKey && newField.fieldType == 'Varchar') {
+			if (newField && newField.fieldId && !newField.hasForeignKey && newField.fieldType == 'Varchar') {
 				setTimeout(function () {
 					var txtqry = new textQuery(args.options);
 					txtqry.setupLookup(newField, filter);
-				}, 1000);				
+				}, 1000);
 			}
 			if (newField && !newField.fieldId && newField.tableName === "Custom" && !newField.dynamicTableId) {
 				if (newField.fieldFormat()) newField.fieldType = '';
