@@ -106,7 +106,12 @@ namespace ReportBuilder.Web.Controllers
             var data = new List<object>();
             foreach (DataRow dr in dt.Rows)
             {
-                data.Add(new { id = dr[0], text = dr[1] });
+                var id = dr[0];
+                var text = dr[1];
+                // Skip null, DBNull, or empty text values
+                if (text == null || text is DBNull || string.IsNullOrWhiteSpace(text.ToString()))
+                    continue;
+                data.Add(new { id = id, text = text });
             }
 
             return Ok(data);
