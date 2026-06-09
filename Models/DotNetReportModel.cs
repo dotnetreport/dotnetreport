@@ -547,6 +547,41 @@ namespace ReportBuilder.Web.Models
             }
         }
 
+        public static string GetExcelDateFormat(ReportHeaderColumn formatColumn)
+        {
+            var ff = formatColumn?.fieldFormating;
+            var explicitDateFormat = ff == "Date" || ff == "Date and Time" || ff == "Time";
+
+            if (explicitDateFormat && formatColumn.dateFormat == "Custom" && !string.IsNullOrEmpty(formatColumn.customDateFormat))
+            {
+                return formatColumn.customDateFormat;
+            }
+
+            var resolvedName = explicitDateFormat && !string.IsNullOrEmpty(formatColumn.dateFormat)
+                ? formatColumn.dateFormat
+                : defaultDateFormat;
+
+            string dateOnly;
+            switch (resolvedName)
+            {
+                case "United Kingdom":
+                case "New Zealand":
+                case "France":
+                case "Spanish":
+                    dateOnly = "dd/mm/yyyy"; break;
+                case "German":
+                    dateOnly = "dd.mm.yyyy"; break;
+                case "Chinese":
+                    dateOnly = "yyyy/mm/dd"; break;
+                default:
+                    dateOnly = "mm/dd/yyyy"; break;
+            }
+
+            if (ff == "Date and Time") return dateOnly + " hh:mm:ss";
+            if (ff == "Time") return "hh:mm:ss";
+            return dateOnly;
+        }
+
 
         static DotNetReportHelper()
         {
@@ -917,7 +952,7 @@ namespace ReportBuilder.Web.Models
                     isNumeric = true;
                 }
                 if (dc.DataType == typeof(DateTime))
-                    ws.Column(i).Style.Numberformat.Format = "mm/dd/yyyy";
+                    ws.Column(i).Style.Numberformat.Format = GetExcelDateFormat(formatColumn);
 
                 if (formatColumn != null && formatColumn.fieldFormating == "Currency")
                 {
@@ -2535,7 +2570,7 @@ namespace ReportBuilder.Web.Models
                     if (dc.DataType == typeof(decimal) || fc?.fieldFormating == "Decimal")
                         ws.Column(colIdx).Style.Numberformat.Format = "###,###,##0." + decFmt;
                     if (dc.DataType == typeof(DateTime))
-                        ws.Column(colIdx).Style.Numberformat.Format = "mm/dd/yyyy";
+                        ws.Column(colIdx).Style.Numberformat.Format = GetExcelDateFormat(fc);
                     if (fc?.fieldFormating == "Currency")
                         ws.Column(colIdx).Style.Numberformat.Format = (fc.currencySymbol ?? "$") + "###,###,##0." + decFmt;
 
