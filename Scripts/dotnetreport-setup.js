@@ -3131,6 +3131,8 @@ var settingPageViewModel = function (options) {
 	self.useFunctions = ko.observable(false);
 	self.showScheduling = ko.observable(true);
 	self.showDesignerHints = ko.observable(true);
+	self.defaultDateFormat = ko.observable('United States');
+	self.dateFormatOptions = ['United States', 'United Kingdom', 'New Zealand', 'France', 'German', 'Spanish', 'Chinese'];
 	self.aiProvider = ko.observable('');
 	self.aiApiKey = ko.observable('');
 	self.aiApiKeyChanged = false;
@@ -3227,6 +3229,7 @@ var settingPageViewModel = function (options) {
 							useFunctions: self.isEnterprise() ? self.useFunctions() : false,
 							showScheduling: self.showScheduling(),
 								showDesignerHints: self.showDesignerHints(),
+								defaultDateFormat: self.defaultDateFormat(),
 								aiProvider: self.aiProvider(),
 								aiApiKey: self.aiApiKeyChanged ? self.aiApiKey() : undefined,
 								aiModel: self.aiModel(),
@@ -3300,6 +3303,7 @@ var settingPageViewModel = function (options) {
 				}			
 				self.showScheduling(settings.showScheduling);
 				self.showDesignerHints(settings.showDesignerHints !== false);
+				self.defaultDateFormat(settings.defaultDateFormat || 'United States');
 				self.aiProvider(settings.aiProvider || '');
 				self.aiApiKey(settings.aiApiKey || '');
 				self.aiApiKeyChanged = false;

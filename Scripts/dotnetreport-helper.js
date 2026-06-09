@@ -234,6 +234,9 @@ ko.bindingHandlers.datepicker = {
     init: function (element, valueAccessor, allBindingsAccessor) {
         //initialize datepicker with some optional options
         var options = allBindingsAccessor().datepickerOptions || {};
+        if (!options.dateFormat && window._defaultDateFormat) {
+            options.dateFormat = window._defaultDateFormat;
+        }
         $(element).datepicker(options);
 
         //handle the field changing
@@ -249,7 +252,7 @@ ko.bindingHandlers.datepicker = {
         ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
             $(element).datepicker("destroy");
         });
-        
+
     },
     //update the control when the view model changes
     update: function (element, valueAccessor) {
@@ -258,7 +261,8 @@ ko.bindingHandlers.datepicker = {
             $(element).datepicker("setDate", null);
             $(element).val('');
         } else if (value) {
-            var formattedDate = $.datepicker.formatDate($(element).datepicker("option", "dateFormat") || 'mm/dd/yy', new Date(value));
+            var fmt = $(element).datepicker("option", "dateFormat") || window._defaultDateFormat || 'mm/dd/yy';
+            var formattedDate = $.datepicker.formatDate(fmt, new Date(value));
             if (formattedDate !== $(element).val()) {
                 $(element).datepicker("setDate", formattedDate);
             }

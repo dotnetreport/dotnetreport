@@ -1823,7 +1823,7 @@ var reportViewModel = function (options) {
 
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time', 'String'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
-	self.dateFormats = ['United States', 'United Kingdom', 'France', 'German', 'Spanish', 'Chinese', 'Custom'];
+	self.dateFormats = ['United States', 'United Kingdom', 'New Zealand', 'France', 'German', 'Spanish', 'Chinese', 'Custom'];
 	self.currencyFormats = [
 		{ value: '$', display: 'USD ($)' },
 		{ value: '€', display: 'EUR (€)' },
@@ -1846,6 +1846,7 @@ var reportViewModel = function (options) {
 	self.dateFormatMappings = {
 		'United States': 'mm/dd/yy',
 		'United Kingdom': 'dd/mm/yy',
+		'New Zealand': 'dd/mm/yy',
 		'France': 'dd/mm/yy',
 		'German': 'dd.mm.yy',
 		'Spanish': 'dd/mm/yy',
@@ -2186,6 +2187,7 @@ var reportViewModel = function (options) {
 		canCopyReport: ko.observable(true),
 		showScheduling: ko.observable(false),
 		showDesignerHints: ko.observable(true),
+		defaultDateFormat: 'United States',
 		aiProvider: ko.observable(''),
 		aiEnabled: ko.observable(false)
 	};
@@ -6896,14 +6898,14 @@ var reportViewModel = function (options) {
 						var compareTo = c.value;
 						var compareTo2 = c.value2;
 						var dataIsNumeric = !isNaN(r.Value);
-						var dataIsDate = parseDate(r.Value, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']);
+						var dataIsDate = parseDate(r.Value, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || self.appSettings.defaultDateFormat || 'United States']);
 
 						switch (operation) {
 							case '=':
 								if (dataIsDate) {
 									conditionTrue =
 										dataIsDate.getTime() ==
-										parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
+										parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || self.appSettings.defaultDateFormat || 'United States']).getTime();
 								} else {
 									conditionTrue = value == compareTo;
 								}
@@ -6942,7 +6944,7 @@ var reportViewModel = function (options) {
 								} else if (dataIsDate) {
 									conditionTrue =
 										dataIsDate.getTime() >
-										parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
+										parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || self.appSettings.defaultDateFormat || 'United States']).getTime();
 								}
 								break;
 
@@ -6952,7 +6954,7 @@ var reportViewModel = function (options) {
 								} else if (dataIsDate) {
 									conditionTrue =
 										dataIsDate.getTime() <
-										parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
+										parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || self.appSettings.defaultDateFormat || 'United States']).getTime();
 								}
 								break;
 
@@ -6962,7 +6964,7 @@ var reportViewModel = function (options) {
 								} else if (dataIsDate) {
 									conditionTrue =
 										dataIsDate.getTime() >=
-									parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
+									parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || self.appSettings.defaultDateFormat || 'United States']).getTime();
 								}
 								break;
 
@@ -6972,7 +6974,7 @@ var reportViewModel = function (options) {
 								} else if (dataIsDate) {
 									conditionTrue =
 										dataIsDate.getTime() <=
-									parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
+									parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || self.appSettings.defaultDateFormat || 'United States']).getTime();
 								}
 								break;
 
@@ -6981,8 +6983,8 @@ var reportViewModel = function (options) {
 									conditionTrue = value >= parseFloat(compareTo) && value <= parseFloat(compareTo2);
 								} else if (dataIsDate) {
 									var dateValue = dataIsDate;
-									var startDate = parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
-									var endDate = parseDate(compareTo2, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']) .getTime();
+									var startDate = parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || self.appSettings.defaultDateFormat || 'United States']).getTime();
+									var endDate = parseDate(compareTo2, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || self.appSettings.defaultDateFormat || 'United States']) .getTime();
 									conditionTrue = dateValue >= startDate && dateValue <= endDate;
 								}
 								break;
@@ -10602,7 +10604,8 @@ var reportViewModel = function (options) {
 			const fromContext = ko.contextFor(fromInput);
 			const toContext = ko.contextFor(toInput);
 			if (fromContext && toContext) {
-				var defaultFormat = "mm/dd/yyyy";
+				var configuredDefault = fromContext.$root.appSettings && fromContext.$root.appSettings.defaultDateFormat;
+				var defaultFormat = (configuredDefault && fromContext.$root.dateFormatMappings[configuredDefault]) || "mm/dd/yyyy";
 				var fromDateFormat = fromContext.$data.dateFormat() ? fromContext.$root.dateFormatMappings[fromContext.$data.dateFormat()] : defaultFormat;
 				var toDateFormat = toContext.$data.dateFormat() ? toContext.$root.dateFormatMappings[toContext.$data.dateFormat()] : defaultFormat;
 				var fromDateValue = fromInput.value;
@@ -10814,8 +10817,12 @@ var reportViewModel = function (options) {
 			self.appSettings.useFunctions(x.useFunctions);
 			self.appSettings.showScheduling(x.showScheduling);
 			self.appSettings.showDesignerHints(x.showDesignerHints !== false);
+			self.appSettings.defaultDateFormat = x.defaultDateFormat || 'United States';
 			self.appSettings.aiProvider(x.aiProvider || '');
 			self.appSettings.aiEnabled(x.aiEnabled === true || (x.aiProvider && x.aiProvider !== ''));
+			if (typeof window !== 'undefined') {
+				window._defaultDateFormat = (self.dateFormatMappings && self.dateFormatMappings[self.appSettings.defaultDateFormat]) || null;
+			}
 		});
 	}
 
@@ -11652,6 +11659,7 @@ var dashboardViewModel = function (options) {
 		showImportExport: ko.observable(false),
 		showScheduling: ko.observable(false),
 		showDesignerHints: true,
+		defaultDateFormat: 'United States',
 		aiProvider: '',
 		aiEnabled: false
 	};
@@ -11685,10 +11693,14 @@ var dashboardViewModel = function (options) {
 			self.appSettings.canCopyReport = x.canCopyReport;
 			self.appSettings.useFunctions = x.useFunctions;
 			self.appSettings.showDesignerHints = x.showDesignerHints !== false;
+			self.appSettings.defaultDateFormat = x.defaultDateFormat || 'United States';
 			self.appSettings.aiProvider = x.aiProvider || '';
 			self.appSettings.aiEnabled = x.aiEnabled === true || (x.aiProvider && x.aiProvider !== '');
 			self.appSettings.showImportExport(x.showImportExport);
 			self.appSettings.showScheduling(x.showScheduling);
+			if (typeof window !== 'undefined') {
+				window._defaultDateFormat = (self.dateFormatMappings && self.dateFormatMappings[self.appSettings.defaultDateFormat]) || null;
+			}
 		});
 	}
 
@@ -11704,6 +11716,7 @@ var dashboardViewModel = function (options) {
 	self.dateFormatMappings = {
 		'United States': 'mm/dd/yy',
 		'United Kingdom': 'dd/mm/yy',
+		'New Zealand': 'dd/mm/yy',
 		'France': 'dd/mm/yy',
 		'German': 'dd.mm.yy',
 		'Spanish': 'dd/mm/yy',

@@ -252,6 +252,12 @@
                                         Available for Enterprise license users.
                                     </small>
                                 </div>
+                                <div class="mb-2 mt-2">
+                                    <label class="form-label mb-1" for="defaultDateFormatSelect">Default Date Format</label>
+                                    <select class="form-select form-select-sm" id="defaultDateFormatSelect" style="max-width: 220px;"
+                                            data-bind="options: dateFormatOptions, value: defaultDateFormat"></select>
+                                    <small class="text-muted d-block">Date format used by all date pickers when a field doesn't override it. e.g. <em>New Zealand</em> uses <code>dd/mm/yyyy</code>.</small>
+                                </div>
                                 <h6 class="mt-3 mb-2">Report Options</h6>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="allowUsersToCreateReports" data-bind="checked: allowUsersToCreateReports">
