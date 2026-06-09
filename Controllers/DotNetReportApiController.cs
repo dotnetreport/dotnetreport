@@ -1208,12 +1208,14 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] bool adminMode = false,
             [FromForm] bool subTotalPerGroup = false,
             [FromForm] string totalRowFormat = "row",
-            [FromForm] string filterDetailsText = null)
+            [FromForm] string filterDetailsText = null,
+            [FromForm] string defaultDateFormat = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(onlyAndGroupInColumnDetail));
 
@@ -1279,13 +1281,15 @@ namespace ReportBuilder.Web.Controllers
            [FromForm] bool adminMode = false,
            [FromForm] bool subTotalPerGroup = false,
            [FromForm] string filterDetailsText = null,
-           [FromForm] string reportDescription = null)
+           [FromForm] string reportDescription = null,
+           [FromForm] string defaultDateFormat = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             reportName = HttpUtility.UrlDecode(reportName);
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
             var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, subTotalPerGroup, HttpUtility.UrlDecode(filterDetailsText), HttpUtility.UrlDecode(reportDescription));
@@ -1317,12 +1321,14 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] bool footerEveryPage = false,
             [FromForm] string currentUserName = null,
             [FromForm] string currentUserRoles = null,
-            [FromForm] string customHtml = null)
+            [FromForm] string customHtml = null,
+            [FromForm] string defaultDateFormat = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, HttpUtility.UrlDecode(filterDetailsText),
                 headerHtml: headerHtml != null ? HttpUtility.UrlDecode(headerHtml) : null,
@@ -1351,10 +1357,12 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string pivotColumn = null,
             [FromForm] string pivotFunction = null,
             [FromForm] string userId = "",
-            [FromForm] bool adminMode = false)
+            [FromForm] bool adminMode = false,
+            [FromForm] string defaultDateFormat = null)
         {
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
             var csv = await DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal, expandSqls, pivot, pivotColumn, pivotFunction);
@@ -1384,8 +1392,9 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadAllPdf([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports")
+        public async Task<IActionResult> DownloadAllPdf([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports", [FromForm] string defaultDateFormat = null)
         {
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var pdfBytesList = new List<byte[]>();
             var settings = GetSettings();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
@@ -1401,8 +1410,9 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadAllPdfAlt([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports")
+        public async Task<IActionResult> DownloadAllPdfAlt([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports", [FromForm] string defaultDateFormat = null)
         {
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var pdfBytesList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
             var settings = GetSettings();
@@ -1423,8 +1433,9 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadAllExcel([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports")
+        public async Task<IActionResult> DownloadAllExcel([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports", [FromForm] string defaultDateFormat = null)
         {
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var excelbyteList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
             var settings = GetSettings();
@@ -1448,8 +1459,9 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadAllWord([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports")
+        public async Task<IActionResult> DownloadAllWord([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports", [FromForm] string defaultDateFormat = null)
         {
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var wordbyteList = new List<byte[]>();
             var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
             var settings = GetSettings();

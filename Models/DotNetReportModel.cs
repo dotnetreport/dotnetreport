@@ -441,6 +441,9 @@ namespace ReportBuilder.Web.Models
         public string fontColor { get; set; }
         public string backColor { get; set; }
         public string fieldWidth { get; set; }
+        public string dateFormat { get; set; }
+        public string customDateFormat { get; set; }
+        public string fieldType { get; set; }
     }
     public class LinkFieldItem
     {
@@ -528,6 +531,21 @@ namespace ReportBuilder.Web.Models
         private readonly static string _configFileName = "appsettings.dotnetreport.json";
         public static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
         public static bool useAltPivot = false;
+        public static string defaultDateFormat = "United States";
+
+        public static System.Globalization.CultureInfo GetDateCulture(string dateFormatName)
+        {
+            switch (dateFormatName)
+            {
+                case "United Kingdom": return System.Globalization.CultureInfo.GetCultureInfo("en-GB");
+                case "New Zealand": return System.Globalization.CultureInfo.GetCultureInfo("en-NZ");
+                case "France": return System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
+                case "German": return System.Globalization.CultureInfo.GetCultureInfo("de-DE");
+                case "Spanish": return System.Globalization.CultureInfo.GetCultureInfo("es-ES");
+                case "Chinese": return System.Globalization.CultureInfo.GetCultureInfo("zh-CN");
+                default: return System.Globalization.CultureInfo.GetCultureInfo("en-US");
+            }
+        }
 
 
         static DotNetReportHelper()
@@ -2872,12 +2890,37 @@ namespace ReportBuilder.Web.Models
                     }
                     isCurrency = true;
                 }
-                if (formatColumn != null && (formatColumn.fieldFormating == "Date" || formatColumn.fieldFormating == "Date and Time" || formatColumn.fieldFormating == "Time") && dc.DataType.Name == "DateTime")
                 {
-                    var date = Convert.ToDateTime(value);
-                    value = formatColumn.fieldFormating.StartsWith("Date") ? date.ToShortDateString() + " " : "";
-                    value += formatColumn.fieldFormating.EndsWith("Time") ? date.ToShortTimeString() : "";
-                    value = value.Trim();
+                    var ff = formatColumn?.fieldFormating;
+                    var ft = formatColumn?.fieldType;
+                    var explicitDateFormat = ff == "Date" || ff == "Date and Time" || ff == "Time";
+                    var autoDateField = string.IsNullOrEmpty(ff) || ff == "Auto";
+                    var isDateColumn = dc.DataType.Name == "DateTime" || ft == "Date" || ft == "DateTime" || ft == "Time";
+
+                    if ((explicitDateFormat || (autoDateField && isDateColumn)) && !string.IsNullOrEmpty(value))
+                    {
+                        var date = Convert.ToDateTime(value);
+                        string effectiveFormat = explicitDateFormat ? ff : (ft == "Time" ? "Time" : "Date");
+
+                        if (explicitDateFormat && formatColumn.dateFormat == "Custom" && !string.IsNullOrEmpty(formatColumn.customDateFormat))
+                        {
+                            value = date.ToString(formatColumn.customDateFormat);
+                        }
+                        else
+                        {
+                            var resolvedName = explicitDateFormat
+                                ? (!string.IsNullOrEmpty(formatColumn.dateFormat) ? formatColumn.dateFormat : defaultDateFormat)
+                                : defaultDateFormat;
+                            var culture = GetDateCulture(resolvedName);
+
+                            switch (effectiveFormat)
+                            {
+                                case "Date": value = date.ToString("d", culture); break;
+                                case "Date and Time": value = date.ToString("g", culture); break;
+                                case "Time": value = date.ToString("t", culture); break;
+                            }
+                        }
+                    }
                 }
             }
             catch (Exception ex)

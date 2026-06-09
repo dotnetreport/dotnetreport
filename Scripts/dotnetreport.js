@@ -11033,7 +11033,8 @@ var reportViewModel = function (options) {
 			headerEveryPage: headerEveryPage,
 			footerEveryPage: footerEveryPage,
 			currentUserName: self.currentUserName || self.currentUserId || '',
-			currentUserRoles: self.currentUserRole || ''
+			currentUserRoles: self.currentUserRole || '',
+			defaultDateFormat: (self.appSettings && self.appSettings.defaultDateFormat) || 'United States'
 		};
 	}
 
@@ -11073,7 +11074,8 @@ var reportViewModel = function (options) {
 			adminMode: self.adminMode(),
 			isSubreport: self.subReports().length > 0,
 			pageNumber: self.pager.currentPage(),
-            currentPageSize: self.pager.pageSize()
+            currentPageSize: self.pager.pageSize(),
+			defaultDateFormat: (self.appSettings && self.appSettings.defaultDateFormat) || 'United States'
 		}, 'pdf');
 	}
 	self.PdfPage = new PdfPageViewModel(self.appSettings, self.downloadPdf, self.downloadPdfAlt);
@@ -11101,7 +11103,8 @@ var reportViewModel = function (options) {
 			pivotFunction: pivotData.pivotFunction,
 			onlyAndGroupInColumnDetail: hasOnlyAndGroupInDetail ? JSON.stringify(onlyAndGroupInDetailColumnDetails) : null,
 			isSubReport: false,
-			filterDetailsText: self.ShowFilterDetails() ? self.buildFilterDetailsPlainText(self.FilterGroups(), false) : ''
+			filterDetailsText: self.ShowFilterDetails() ? self.buildFilterDetailsPlainText(self.FilterGroups(), false) : '',
+			defaultDateFormat: self.appSettings.defaultDateFormat || 'United States'
 		}, 'xlsx');
 	}
 
@@ -12777,7 +12780,8 @@ var dashboardViewModel = function (options) {
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
 		reports[0]?.downloadExport("DownloadAllPdf", {
 			reportdata: JSON.stringify(allreports),
-			dashboardName: dashboardName
+			dashboardName: dashboardName,
+			defaultDateFormat: (self.appSettings && self.appSettings.defaultDateFormat) || 'United States'
 		}, 'pdf', dashboardName);
 	}
 	self.ExportAllPdfAltReportsWithPageOption = function () {
@@ -12822,7 +12826,8 @@ var dashboardViewModel = function (options) {
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
 		reports[0]?.downloadExport("DownloadAllPdfAlt", {
 			reportdata: JSON.stringify(allreports),
-			dashboardName: dashboardName
+			dashboardName: dashboardName,
+			defaultDateFormat: (self.appSettings && self.appSettings.defaultDateFormat) || 'United States'
 		}, 'pdf', dashboardName);
 	}
 	self.ExportAllExcelReports = function () {
@@ -12849,7 +12854,8 @@ var dashboardViewModel = function (options) {
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
 		reports[0]?.downloadExport("DownloadAllExcel", {
 			reportdata: JSON.stringify(allreports),
-			dashboardName: dashboardName
+			dashboardName: dashboardName,
+			defaultDateFormat: (self.appSettings && self.appSettings.defaultDateFormat) || 'United States'
 		}, 'xlsx', dashboardName);
 	}
 	self.ExportAllExcelExpandedReports = function () {
@@ -12880,7 +12886,8 @@ var dashboardViewModel = function (options) {
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
 		reports[0]?.downloadExport("DownloadAllExcel", {
 			reportdata: JSON.stringify(allreports),
-			dashboardName: dashboardName
+			dashboardName: dashboardName,
+			defaultDateFormat: (self.appSettings && self.appSettings.defaultDateFormat) || 'United States'
 		}, 'xlsx', dashboardName);
 	}
 	self.canDrilldown = ko.computed(function () {
@@ -12922,7 +12929,8 @@ var dashboardViewModel = function (options) {
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
 		reports[0]?.downloadExport("DownloadAllWord", {
 			reportdata: JSON.stringify(allreports),
-			dashboardName: dashboardName
+			dashboardName: dashboardName,
+			defaultDateFormat: (self.appSettings && self.appSettings.defaultDateFormat) || 'United States'
 		}, 'docx', dashboardName);
 	}
 
