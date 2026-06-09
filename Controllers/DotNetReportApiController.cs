@@ -106,6 +106,8 @@ namespace ReportBuilder.Web.Controllers
             var data = new List<object>();
             foreach (DataRow dr in dt.Rows)
             {
+                if (dr[0] == DBNull.Value || dr[1] == DBNull.Value) continue;
+                if (string.IsNullOrWhiteSpace(dr[0]?.ToString()) || string.IsNullOrWhiteSpace(dr[1]?.ToString())) continue;
                 data.Add(new { id = dr[0], text = dr[1] });
             }
 
