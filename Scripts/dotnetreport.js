@@ -6853,33 +6853,61 @@ var reportViewModel = function (options) {
 				r.Column.fieldLabel = col.fieldLabel
 
 				r.formattedVal = ko.computed(function () {
-					if (col.fieldFormat && (col.fieldFormat() === null || col.fieldFormat() == 'Auto')) {
-						if (col.fieldType == 'Time') {
-							r.FormattedValue = (new Date(r.Value)).toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' });
+					function localeFor(name) {
+						switch (name) {
+							case 'United Kingdom': return 'en-GB';
+							case 'New Zealand': return 'en-NZ';
+							case 'France': return 'fr-FR';
+							case 'German': return 'de-DE';
+							case 'Spanish': return 'es-ES';
+							case 'Chinese': return 'zh-CN';
+							default: return 'en-US';
 						}
-						else if (col.fieldType == 'Date') {
-							r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric' }); 
-						}
-						else if (col.fieldType == 'Percentage') {
-							let num = parseFloat(r.FormattedValue);
-							if (!isNaN(num)) {
-								r.FormattedValue = (num * 100).toFixed(2) + '%';
+					}
+					var ff = col.fieldFormat ? col.fieldFormat() : null;
+					var ft = col.fieldType;
+					var _parsedDate = self.safeParseDate(r.Value);
+
+					var explicitDateFormat = self.dateFormatTypes.indexOf(ff) >= 0;
+					var autoDateField = (!ff || ff === 'Auto') && (ft === 'Date' || ft === 'DateTime' || ft === 'Time');
+					var globalDefaultName = (self.appSettings && self.appSettings.defaultDateFormat) || 'United States';
+					var resolvedDateFormatName = explicitDateFormat ? (col.dateFormat() || globalDefaultName) : globalDefaultName;
+					var dtFormat = localeFor(resolvedDateFormatName);
+
+					if (explicitDateFormat || autoDateField) {
+						if (_parsedDate) {
+							if (explicitDateFormat && col.dateFormat() === 'Custom' && col.customDateFormat()) {
+								r.FormattedValue = self.formatDate(r.Value, col.customDateFormat());
 							} else {
-								r.FormattedValue = r.FormattedValue + '%';
+								var effectiveFormat = explicitDateFormat
+									? ff
+									: (ft === 'Time' ? 'Time' : 'Date');
+								switch (effectiveFormat) {
+									case 'Date': r.FormattedValue = _parsedDate.toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
+									case 'Date and Time': r.FormattedValue = _parsedDate.toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+									case 'Time': r.FormattedValue = _parsedDate.toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+								}
 							}
+						}
+					} else if ((!ff || ff === 'Auto') && ft === 'Percentage') {
+						let num = parseFloat(r.FormattedValue);
+						if (!isNaN(num)) {
+							r.FormattedValue = (num * 100).toFixed(2) + '%';
+						} else {
+							r.FormattedValue = r.FormattedValue + '%';
 						}
 					}
 
-					if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(r.Value)) {
+					if (self.decimalFormatTypes.indexOf(ff) >= 0 && !isNaN(r.Value)) {
 						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());
-						switch (col.fieldFormat()) {
-							case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
+						if (ff === 'Percentage') {
+							r.FormattedValue = r.FormattedValue + '%';
 						}
 					}
-					if (col.fieldFormat() === 'String') {
+					if (ff === 'String') {
 						r.FormattedValue = r.Value;
 					}
-					if (col.fieldFormat()==='Currency') {
+					if (ff === 'Currency') {
 						switch (col.currencyFormat()) {
 							case '€': r.FormattedValue = '€' + r.FormattedValue; break;
 							case '£': r.FormattedValue = '£' + r.FormattedValue; break;
@@ -6888,27 +6916,21 @@ var reportViewModel = function (options) {
 							default: r.FormattedValue = '$' + r.FormattedValue; break;
 						}
 					}
-					var _parsedDate = self.safeParseDate(r.Value);
-					if (self.dateFormatTypes.indexOf(col.fieldFormat()) >= 0 && _parsedDate) {
-						var dtFormat = "en-US";
-						switch (col.dateFormat()) {
-							case 'United Kingdom': dtFormat = 'en-GB'; break;
-							case 'France': dtFormat = 'fr-FR'; break;
-							case 'German': dtFormat = 'de-DE'; break;
-							case 'Spanish': dtFormat = 'es-ES'; break;
-							case 'Chinese': dtFormat = 'zn-CN'; break;
-						}
 
-						if (col.dateFormat() == 'Custom' && col.customDateFormat()) {
-							r.FormattedValue = self.formatDate(r.Value, col.customDateFormat());
-						}
-						else {
-							switch (col.fieldFormat()) {
-								case 'Date': r.FormattedValue = _parsedDate.toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
-								case 'Date and Time': r.FormattedValue = _parsedDate.toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
-								case 'Time': r.FormattedValue = _parsedDate.toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
-							}
-						}
+					var fieldDateFmt = explicitDateFormat
+						? (col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || globalDefaultName])
+						: self.dateFormatMappings[globalDefaultName];
+					function asDate(v) {
+						if (v == null || v === '') return null;
+						if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+						var d = self.safeParseDate(v);
+						if (d && !isNaN(d.getTime())) return d;
+						try {
+							var dp = parseDate(v, fieldDateFmt);
+							if (dp && !isNaN(dp.getTime())) return dp;
+						} catch (e) {}
+						var d2 = new Date(v);
+						return isNaN(d2.getTime()) ? null : d2;
 					}
 
 					var conditions = col.fieldConditionVal && col.fieldConditionVal.length ? col.fieldConditionVal : [];
@@ -6919,14 +6941,13 @@ var reportViewModel = function (options) {
 						var compareTo = c.value;
 						var compareTo2 = c.value2;
 						var dataIsNumeric = !isNaN(r.Value);
-						var dataIsDate = parseDate(r.Value, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || self.appSettings.defaultDateFormat || 'United States']);
+						var dataIsDate = asDate(r.Value);
 
 						switch (operation) {
 							case '=':
 								if (dataIsDate) {
-									conditionTrue =
-										dataIsDate.getTime() ==
-										parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || self.appSettings.defaultDateFormat || 'United States']).getTime();
+									var cmpD = asDate(compareTo);
+									conditionTrue = cmpD ? dataIsDate.getTime() == cmpD.getTime() : value == compareTo;
 								} else {
 									conditionTrue = value == compareTo;
 								}
@@ -6960,60 +6981,50 @@ var reportViewModel = function (options) {
 								conditionTrue = !!value;
 								break;
 							case '>':
-								if (dataIsNumeric) {
+								if (dataIsDate) {
+									var cmpD = asDate(compareTo);
+									if (cmpD) conditionTrue = dataIsDate.getTime() > cmpD.getTime();
+								} else if (dataIsNumeric) {
 									conditionTrue = parseFloat(value) > parseFloat(compareTo);
-								} else if (dataIsDate) {
-									conditionTrue =
-										dataIsDate.getTime() >
-										parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || self.appSettings.defaultDateFormat || 'United States']).getTime();
 								}
 								break;
-
 							case '<':
-								if (dataIsNumeric) {
+								if (dataIsDate) {
+									var cmpD = asDate(compareTo);
+									if (cmpD) conditionTrue = dataIsDate.getTime() < cmpD.getTime();
+								} else if (dataIsNumeric) {
 									conditionTrue = parseFloat(value) < parseFloat(compareTo);
-								} else if (dataIsDate) {
-									conditionTrue =
-										dataIsDate.getTime() <
-										parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || self.appSettings.defaultDateFormat || 'United States']).getTime();
 								}
 								break;
-
 							case '>=':
-								if (dataIsNumeric) {
+								if (dataIsDate) {
+									var cmpD = asDate(compareTo);
+									if (cmpD) conditionTrue = dataIsDate.getTime() >= cmpD.getTime();
+								} else if (dataIsNumeric) {
 									conditionTrue = parseFloat(value) >= parseFloat(compareTo);
-								} else if (dataIsDate) {
-									conditionTrue =
-										dataIsDate.getTime() >=
-									parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || self.appSettings.defaultDateFormat || 'United States']).getTime();
 								}
 								break;
-
 							case '<=':
-								if (dataIsNumeric) {
+								if (dataIsDate) {
+									var cmpD = asDate(compareTo);
+									if (cmpD) conditionTrue = dataIsDate.getTime() <= cmpD.getTime();
+								} else if (dataIsNumeric) {
 									conditionTrue = parseFloat(value) <= parseFloat(compareTo);
-								} else if (dataIsDate) {
-									conditionTrue =
-										dataIsDate.getTime() <=
-									parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || self.appSettings.defaultDateFormat || 'United States']).getTime();
 								}
 								break;
-
 							case 'between':
-								if (dataIsNumeric) {
-									conditionTrue = value >= parseFloat(compareTo) && value <= parseFloat(compareTo2);
-								} else if (dataIsDate) {
-									var dateValue = dataIsDate;
-									var startDate = parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || self.appSettings.defaultDateFormat || 'United States']).getTime();
-									var endDate = parseDate(compareTo2, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || self.appSettings.defaultDateFormat || 'United States']) .getTime();
-									conditionTrue = dateValue >= startDate && dateValue <= endDate;
+								if (dataIsDate) {
+									var startD = asDate(compareTo);
+									var endD = asDate(compareTo2);
+									if (startD && endD) conditionTrue = dataIsDate.getTime() >= startD.getTime() && dataIsDate.getTime() <= endD.getTime();
+								} else if (dataIsNumeric) {
+									conditionTrue = parseFloat(value) >= parseFloat(compareTo) && parseFloat(value) <= parseFloat(compareTo2);
 								}
 								break;
 							case 'range':
 								if (dataIsDate) {
 									var { start, end } = getDateRange(compareTo, compareTo2);
-									var dateValue =dataIsDate;
-									conditionTrue = dateValue >= start.getTime() && dateValue <= end.getTime();
+									conditionTrue = dataIsDate.getTime() >= start.getTime() && dataIsDate.getTime() <= end.getTime();
 								}
 								break;
 						}
@@ -7029,19 +7040,25 @@ var reportViewModel = function (options) {
 				});
 				function formatValue(val, r) {
 					let style = '';
-					const bgColor = r._backColor || (ko.isObservable(r.backColor) ? r.backColor() : null);
+					const bgColor = r._backColor != null ? r._backColor : (ko.isObservable(r.backColor) ? r.backColor() : null);
 					if (bgColor) {
 						style += `background-color:${bgColor};`;
 					}
-					const fontColor = r._fontColor || (ko.isObservable(r.fontColor) ? r.fontColor() : null);
+					const fontColor = r._fontColor != null ? r._fontColor : (ko.isObservable(r.fontColor) ? r.fontColor() : null);
 					if (fontColor) {
 						style += `color:${fontColor};`;
 					}
-					const isBold = r._fontBold !== undefined
-						? r._fontBold
-						: (ko.isObservable(r.fontBold) ? r.fontBold() : false);
+					const isBold = r._fontBold != null ? r._fontBold : (ko.isObservable(r.fontBold) ? r.fontBold() : false);
 					if (isBold) {
 						style += `font-weight:bold;`;
+					}
+					const align = ko.isObservable(r.fieldAlign) ? r.fieldAlign() : null;
+					if (align) {
+						style += `text-align:${align};`;
+					}
+					const width = r.fieldWidth ? ko.unwrap(r.fieldWidth) : null;
+					if (width) {
+						style += `display:inline-block;width:${width};`;
 					}
 					if (!style) return val;
 					return `<span style="${style}">${val}</span>`;
