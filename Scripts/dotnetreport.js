@@ -745,7 +745,9 @@ function filterGroupViewModel(args) {
 		}
 
 		var field = ko.observable();
-		var valueIn = e.Operator == 'in' || e.Operator == 'not in' ? (e.Value1 || '').split(',') : [];
+		var valueIn = (e.Operator == 'in' || e.Operator == 'not in')
+			? (e.Value1 || '').split(',').map(function (v) { return v.trim(); }).filter(function (v) { return v.length; })
+			: [];
 		var parentIn = e.ParentIn ? e.ParentIn.split(',') : [];
 		var filter = {
 			AndOr: ko.observable(e.AndOr),
@@ -753,18 +755,19 @@ function filterGroupViewModel(args) {
 			Operator: ko.observable(e.Operator),
 			Value: ko.observable(e.Value1),
 			Value2: ko.observable(e.Value2),
-			ValueIn: ko.observableArray(valueIn),
+			ValueIn: ko.observableArray(valueIn.slice()),
 			LookupList: lookupList,
 			ParentList: parentList,
 			ParentIn: ko.observableArray(parentIn),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			IsFilterOnFly: isFilterOnFly === true ? true : false,
-			IsConditionalFilter: e.IsConditionalFilter===true?true:false,
+			IsConditionalFilter: e.IsConditionalFilter === true ? true : false,
 			showParentFilter: ko.observable(true),
 			fmtValue: ko.observable(e.Value1),
 			fmtValue2: ko.observable(e.Value2),
 			Valuetime: ko.observable(timePart1),
 			Valuetime2: ko.observable(timePart2),
+			_savedValueIn: valueIn.slice()
 		};
 
 		//filter.Operator.subscribe(function () {
@@ -811,12 +814,30 @@ function filterGroupViewModel(args) {
 					if (value && !filter.Value()) {
 						filter.Value(value);
 					}
-					if (valueIn.length > 0) {
-						filter.ValueIn(valueIn);
-						valueIn = [];
+					var savedIn = (filter._savedValueIn && filter._savedValueIn.length > 0) ? filter._savedValueIn.slice() : valueIn.slice();
+					if (savedIn.length > 0) {
+						setTimeout(function () {
+							filter.ValueIn([]);
+							filter.ValueIn(savedIn);
+							setTimeout(function () { applyValueInToSelect2(filter, savedIn); }, 0);
+							filter._savedValueIn = [];
+						}, 0);
 					}
+					valueIn = [];
 				});
 			});
+		}
+
+		function applyValueInToSelect2(f, vals) {
+			var sel = document.querySelector('#filter-' + (f.Field() && f.Field().uiId) + ' select[multiple]');
+			if (sel && window.$ && $(sel).data('select2')) {
+				$(sel).val(vals).trigger('change.select2');
+				$(sel).trigger('change');
+				var $form = $(sel).closest('form');
+				if ($form.length && $.fn.valid && $form.data('validator')) {
+					$(sel).valid();
+				}
+			}
 		}
 
 		var addingFilter = true;
