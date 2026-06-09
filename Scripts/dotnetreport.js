@@ -6036,6 +6036,9 @@ var reportViewModel = function (options) {
 		self.ReportResult().HasError(false);
 		saveOnly = saveOnly === true ? true : false;
 		skipValidation = skipValidation === true ? true : false;
+		if (!saveOnly && self.pager && self.pager.currentPage && self.pager.currentPage() !== 1) {
+			self.pager.currentPage(1);
+		}
 		var _resetSaving = function () { self.savingReport(false); self.savingAndRunning(false); };
 		self.setFlyFilters();
 		var saveAlertFlag = false;
