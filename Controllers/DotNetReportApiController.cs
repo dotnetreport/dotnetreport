@@ -368,41 +368,20 @@ namespace ReportBuilder.Web.Controllers
                     }
                     if (!sql.StartsWith("EXEC"))
                     {
-                        var fromIndex = DotNetReportHelper.FindFromIndex(sql);
                         sqlFields = DotNetReportHelper.SplitSqlColumns(sql, DotNetReportHelper.dbtype);
+                        bool hasDistinct = Regex.IsMatch(sql, @"^\s*SELECT\s+(TOP\s+\d+\s+)?DISTINCT\b", RegexOptions.IgnoreCase);
 
-                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}".Replace("{FROM}", "FROM");
-                        bool hasDistinct = sql.Contains("DISTINCT");
-                        if (hasDistinct)
+                        var countInner = sql.Replace("{FROM}", "FROM");
+                        int countOrderByIndex = countInner.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+                        if (countOrderByIndex > -1)
                         {
-                            string distinctColumns = string.Join(", ", sqlFields);
-
-                            string fromClause = sql.Substring(fromIndex).Replace("{FROM}", "FROM");
-
-                            // Remove ORDER BY if present
-                            int orderByIndex = fromClause.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
-                            if (orderByIndex > -1)
-                            {
-                                fromClause = fromClause.Substring(0, orderByIndex).Trim();
-                            }
-
-                            if (DotNetReportHelper.dbtype == "Oracle")
-                                sqlCount = "SELECT COUNT(*) FROM (SELECT DISTINCT " + distinctColumns + " " + fromClause + ") countQry";
-                            else
-                                sqlCount = "SELECT COUNT(*) FROM (SELECT DISTINCT " + distinctColumns + " " + fromClause + ") AS countQry";
+                            countInner = countInner.Substring(0, countOrderByIndex).Trim();
                         }
+
+                        if (DotNetReportHelper.dbtype == "Oracle")
+                            sqlCount = "SELECT COUNT(*) FROM (" + countInner + ") countQry";
                         else
-                        {
-                            string inner =
-                                sqlFrom.Contains("ORDER BY", StringComparison.OrdinalIgnoreCase)
-                                ? sqlFrom.Substring(0, sqlFrom.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase))
-                                : sqlFrom;
-
-                            if (DotNetReportHelper.dbtype == "Oracle")
-                                sqlCount = "SELECT COUNT(*) FROM (" + inner + ") countQry";
-                            else
-                                sqlCount = "SELECT COUNT(*) FROM (" + inner + ") AS countQry";
-                        }
+                            sqlCount = "SELECT COUNT(*) FROM (" + countInner + ") AS countQry";
 
                         if (!String.IsNullOrEmpty(sortBy))
                         {

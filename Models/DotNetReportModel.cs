@@ -1222,6 +1222,14 @@ namespace ReportBuilder.Web.Models
             return sql.Length;
         }
 
+        public static string RemoveLeadingSelect(string selectClause)
+        {
+            var trimmed = selectClause.TrimStart();
+            if (trimmed.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
+                trimmed = trimmed.Substring("SELECT".Length);
+            return trimmed.Trim();
+        }
+
         public static async Task<List<TableViewModel>> GetApiTables(string accountKey, string dataConnectKey, bool loadColumns = false)
         {
             using (var client = new HttpClient())
@@ -1407,9 +1415,7 @@ namespace ReportBuilder.Web.Models
                     var fromIndexMy = FindFromIndex(sql);
                     if (fromIndexMy <= 0) return new List<string>();
 
-                    selectPart = sql.Substring(0, fromIndexMy)
-                         .Replace("SELECT", "", StringComparison.OrdinalIgnoreCase)
-                         .Trim();
+                    selectPart = RemoveLeadingSelect(sql.Substring(0, fromIndexMy));
 
 
                     foreach (char c in selectPart)
@@ -1450,9 +1456,7 @@ namespace ReportBuilder.Web.Models
                     var fromIndexPg = FindFromIndex(sql);
                     if (fromIndexPg <= 0) return new List<string>();
 
-                    var sqlSplitPg = sql.Substring(0, fromIndexPg)
-                        .Replace("SELECT", "", StringComparison.OrdinalIgnoreCase)
-                        .Trim();
+                    var sqlSplitPg = RemoveLeadingSelect(sql.Substring(0, fromIndexPg));
                     sqlSplitPg = Regex.Replace(sqlSplitPg, @"LIMIT\\s+\\d+(\\s+OFFSET\\s+\\d+)?", "", RegexOptions.IgnoreCase);
 
                     return Regex.Split(sqlSplitPg, ",(?![^()]*\\))")
@@ -1470,7 +1474,7 @@ namespace ReportBuilder.Web.Models
                     var fromIndex = FindFromIndex(sql);
                     if (fromIndex < 0) return new List<string>();
 
-                    selectPart = sql.Substring(0, fromIndex).Replace("SELECT", "", StringComparison.OrdinalIgnoreCase).Trim();
+                    selectPart = RemoveLeadingSelect(sql.Substring(0, fromIndex));
 
                     var cols = new List<string>();
                     var sb = new StringBuilder();
