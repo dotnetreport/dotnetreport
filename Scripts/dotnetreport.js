@@ -1891,7 +1891,11 @@ var reportViewModel = function (options) {
 		if (html == null) return '';
 		var userName = self.currentUserName || self.currentUserId || '';
 		var userRoles = self.currentUserRole || '';
-		var nowStr = new Date().toLocaleString();
+		var locale = self.resolveDateLocale ? self.resolveDateLocale() : 'en-US';
+		var now = new Date();
+		var dateStr = now.toLocaleDateString(locale);
+		var timeStr = now.toLocaleTimeString(locale);
+		var nowStr = dateStr + ' ' + timeStr;
 		var curPage = (self.pager && self.pager.currentPage) ? self.pager.currentPage() : 1;
 		var totPages = (self.pager && self.pager.pages) ? (self.pager.pages() || 1) : 1;
 		var reportName = (self.ReportName && self.ReportName()) ? self.ReportName() : '';
@@ -1901,7 +1905,22 @@ var reportViewModel = function (options) {
 			.replace(/\{current\.user\.roles\}/g, userRoles)
 			.replace(/\{current\.user\}/g, userName)
 			.replace(/\{current\.datetime\}/g, nowStr)
+			.replace(/\{current\.date\}/g, dateStr)
+			.replace(/\{current\.time\}/g, timeStr)
 			.replace(/\{report\.name\}/g, reportName);
+	};
+
+	self.resolveDateLocale = function () {
+		var name = (self.appSettings && self.appSettings.defaultDateFormat) || 'United States';
+		switch (name) {
+			case 'United Kingdom': return 'en-GB';
+			case 'New Zealand': return 'en-NZ';
+			case 'France': return 'fr-FR';
+			case 'German': return 'de-DE';
+			case 'Spanish': return 'es-ES';
+			case 'Chinese': return 'zh-CN';
+			default: return 'en-US';
+		}
 	};
 
 	self.layout = ko.observable('list');

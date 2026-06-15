@@ -3082,14 +3082,15 @@ namespace ReportBuilder.Web.Models
         {
             if (string.IsNullOrEmpty(text)) return "";
             DateTime now = DateTime.Now;
+            var culture = DotNetReportHelper.GetDateCulture(DotNetReportHelper.defaultDateFormat);
             text = text.Replace("{current.user}", userName ?? "")
                        .Replace("{CURRENTUSER}", userName ?? "")
                        .Replace("{current.user.roles}", userRoles ?? "")
                        .Replace("{CURRENTUSERROLES}", userRoles ?? "")
-                       .Replace("{current.datetime}", now.ToString("g"))
-                       .Replace("{CURRENTDATETIME}", now.ToString("g"))
-                       .Replace("{current.date}", now.ToString("d"))
-                       .Replace("{current.time}", now.ToString("t"))
+                       .Replace("{current.datetime}", now.ToString("g", culture))
+                       .Replace("{CURRENTDATETIME}", now.ToString("g", culture))
+                       .Replace("{current.date}", now.ToString("d", culture))
+                       .Replace("{current.time}", now.ToString("t", culture))
                        .Replace("{page.number}", pageNumber > 0 ? pageNumber.ToString() : "")
                        .Replace("{page.total}", totalPages > 0 ? totalPages.ToString() : "")
                        .Replace("{report.name}", reportName ?? "");
@@ -3473,14 +3474,15 @@ namespace ReportBuilder.Web.Models
                 pageField = pageNumber > 0 ? pageNumber.ToString() : "";
                 totalField = totalPages > 0 ? totalPages.ToString() : "";
             }
+            var culture = DotNetReportHelper.GetDateCulture(DotNetReportHelper.defaultDateFormat);
             return html.Replace("{current.user}", System.Net.WebUtility.HtmlEncode(currentUserName ?? ""))
                        .Replace("{CURRENTUSER}", System.Net.WebUtility.HtmlEncode(currentUserName ?? ""))
                        .Replace("{current.user.roles}", System.Net.WebUtility.HtmlEncode(currentUserRoles ?? ""))
                        .Replace("{CURRENTUSERROLES}", System.Net.WebUtility.HtmlEncode(currentUserRoles ?? ""))
-                       .Replace("{current.datetime}", now.ToString("g"))
-                       .Replace("{CURRENTDATETIME}", now.ToString("g"))
-                       .Replace("{current.date}", now.ToString("d"))
-                       .Replace("{current.time}", now.ToString("t"))
+                       .Replace("{current.datetime}", now.ToString("g", culture))
+                       .Replace("{CURRENTDATETIME}", now.ToString("g", culture))
+                       .Replace("{current.date}", now.ToString("d", culture))
+                       .Replace("{current.time}", now.ToString("t", culture))
                        .Replace("{page.number}", pageField)
                        .Replace("{page.total}", totalField)
                        .Replace("{report.name}", System.Net.WebUtility.HtmlEncode(reportName ?? ""));

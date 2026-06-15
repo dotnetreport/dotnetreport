@@ -510,7 +510,11 @@
                 try {
                     var userName = vm.currentUserName || vm.currentUserId || '';
                     var userRoles = vm.currentUserRole || '';
-                    var nowStr = new Date().toLocaleString();
+                    var locale = vm.resolveDateLocale ? vm.resolveDateLocale() : 'en-US';
+                    var now = new Date();
+                    var dateStr = now.toLocaleDateString(locale);
+                    var timeStr = now.toLocaleTimeString(locale);
+                    var nowStr = dateStr + ' ' + timeStr;
                     var reportName = (vm.ReportName && vm.ReportName()) ? vm.ReportName() : '';
 
                     function substitutePlaceholders(html) {
@@ -522,6 +526,8 @@
                             .replace(/\{CURRENTUSERROLES\}/g, userRoles)
                             .replace(/\{current\.datetime\}/g, nowStr)
                             .replace(/\{CURRENTDATETIME\}/g, nowStr)
+                            .replace(/\{current\.date\}/g, dateStr)
+                            .replace(/\{current\.time\}/g, timeStr)
                             .replace(/\{report\.name\}/g, reportName);
                     }
                     function substituteInDocPagePlaceholders(html) {
