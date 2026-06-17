@@ -3961,40 +3961,29 @@ var reportViewModel = function (options) {
 
 	self.ManageFolder = {
 		FolderName: ko.observable(),
-		ShowAdminOnly: ko.observable(false),  // NEW: Add this
+		ShowAdminOnly: ko.observable(false),
 		IsNew: ko.observable(false),
+		ParentFolderId: ko.observable(null),
+		ParentFolderName: ko.observable(''),
 		newFolder: function () {
 			self.ManageFolder.IsNew(true);
 			self.ManageFolder.FolderName("");
-			self.ManageFolder.ShowAdminOnly(false);  // NEW: Reset to false for new folder
+			self.ManageFolder.ShowAdminOnly(false);
+			self.ManageFolder.ParentFolderId(null);      
+			self.ManageFolder.ParentFolderName(''); 
 			self.clearManageFolderAccess();
-
 			$("#folderModal").modal("show");
 		},
 		addSubFolder : function () {
 			var parent = self.SelectedFolder();
 			if (!parent) return;
-			var subFolderName = prompt('Enter Sub Folder Name under "' + parent.FolderName + '":');
-			if (!subFolderName || subFolderName.trim() === '') return;
-			ajaxcall({
-				url: options.apiUrl,
-				data: {
-					method: "/ReportApi/SaveFolderData",
-					model: JSON.stringify({
-						adminMode: self.adminMode(),
-						clientId: options.clientId,
-						userId: options.userId,
-						userRole: options.userRole,
-						folderData: JSON.stringify({
-							Id: 0,
-							FolderName: subFolderName.trim(),
-							ParentFolderId: parent.Id   // ← KEY PART
-						})
-					})
-				}
-			}).done(function () {
-				self.loadFolders();  
-			});
+			self.ManageFolder.IsNew(true);
+			self.ManageFolder.FolderName("");
+			self.ManageFolder.ShowAdminOnly(false);
+			self.ManageFolder.ParentFolderId(parent.Id);           // ← set parent
+			self.ManageFolder.ParentFolderName(parent.FolderName); // ← for display
+			self.clearManageFolderAccess();
+			$("#folderModal").modal("show");
 		},
 		editFolder: function () {
 			if (self.SelectedFolder() == null) {
@@ -4007,7 +3996,16 @@ var reportViewModel = function (options) {
 			}
 			self.ManageFolder.IsNew(false);
 			self.ManageFolder.FolderName(self.SelectedFolder().FolderName);
-			self.ManageFolder.ShowAdminOnly(self.SelectedFolder().ShowAdminOnly || false);  // NEW: Load existing value
+			self.ManageFolder.ShowAdminOnly(self.SelectedFolder().ShowAdminOnly || false);
+			self.ManageFolder.ParentFolderId(self.SelectedFolder().ParentFolderId || null);  // ← add
+			if (self.SelectedFolder().ParentFolderId) {
+				var parentFolder = _.find(self.allFolders || [], function (x) {
+					return x.Id == self.SelectedFolder().ParentFolderId;
+				});
+				self.ManageFolder.ParentFolderName(parentFolder ? parentFolder.FolderName : '');
+			} else {
+				self.ManageFolder.ParentFolderName('');
+			}
 			var fldr = self.SelectedFolder();
 			self.manageFolderAccess.clientId(fldr.ClientId);
 			self.manageFolderAccess.setupList(self.manageFolderAccess.users, fldr.UserId || '');
@@ -4033,7 +4031,8 @@ var reportViewModel = function (options) {
 			var folderToSave = {
 				Id: id,
 				FolderName: self.ManageFolder.FolderName(),
-				ShowAdminOnly: self.ManageFolder.ShowAdminOnly(),  // NEW: Add this
+				ShowAdminOnly: self.ManageFolder.ShowAdminOnly(),
+				ParentFolderId: self.ManageFolder.ParentFolderId() || null,
 				UserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.users),
 				ViewOnlyUserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.viewOnlyUsers),
 				DeleteOnlyUserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.deleteOnlyUsers),
@@ -4041,7 +4040,7 @@ var reportViewModel = function (options) {
 				ViewOnlyUserRoles: self.manageFolderAccess.getAsList(self.manageFolderAccess.viewOnlyUserRoles),
 				DeleteOnlyUserRoles: self.manageFolderAccess.getAsList(self.manageFolderAccess.deleteOnlyUserRoles),
 				ClientId: self.manageFolderAccess.clientId(),
-			}
+			};
 
 			ajaxcall({
 				url: options.apiUrl,
@@ -4056,30 +4055,37 @@ var reportViewModel = function (options) {
 				if (result.d) { result = result.d; }
 				if (result.result) { result = result.result; }
 				if (self.ManageFolder.IsNew()) {
-					folderToSave.Id = result;
-					folderToSave.canEdit = true;
-					folderToSave.canDelete = true;
-					folderToSave.isSelected = ko.observable(false);
-					self.Folders.push(folderToSave);
-					self.sortFolders();
-					toastr.success(folderToSave.FolderName + " added");
-				}
-				else {
-					var folderToUpdate = self.SelectedFolder();
-					self.Folders.remove(self.SelectedFolder());
-					folderToSave.canEdit = true;
-					folderToSave.canDelete = true;
-					folderToSave.isSelected = ko.observable(false);
-					self.Folders.push(folderToSave);
-					self.allFolders = self.Folders();
-					self.SelectedFolder(null);
-					self.sortFolders();
-					toastr.success(folderToSave.FolderName + " updated");
+					self.loadFolders().done(function () {
+						toastr.success(folderToSave.FolderName + " added");
+					});
+				} else {
+					var existing = _.find(self.allFolders || [], function (x) {
+						return x.Id == id;
+					});
+					if (existing) {
+						existing.FolderName = folderToSave.FolderName;
+						existing.ShowAdminOnly = folderToSave.ShowAdminOnly;
+						existing.ClientId = folderToSave.ClientId;
+						existing.UserId = folderToSave.UserId;
+						existing.UserRoles = folderToSave.UserRoles;
+						existing.ViewOnlyUserId = folderToSave.ViewOnlyUserId;
+						existing.ViewOnlyUserRoles = folderToSave.ViewOnlyUserRoles;
+						existing.DeleteOnlyUserId = folderToSave.DeleteOnlyUserId;
+						existing.DeleteOnlyUserRoles = folderToSave.DeleteOnlyUserRoles;
+					}
+
+					self.loadFolders().done(function () {
+						var updated = _.find(self.allFolders || [], function (x) {
+							return x.Id == id;
+						});
+						if (updated) self.SelectedFolder(updated);
+						toastr.success(folderToSave.FolderName + " updated");
+					});
 				}
 				$("#folderModal").modal("hide");
 			});
-
 		},
+
 		deleteFolder: function () {
 			if (self.SelectedFolder() == null) {
 				toastr.error("Please choose a folder first");
@@ -4089,24 +4095,37 @@ var reportViewModel = function (options) {
 				toastr.error("Cannot delete Default folder");
 				return;
 			}
-			bootbox.confirm("Are you sure you want to delete this Folder?\n\nWARNING: Deleting a folder will delete all reports in the folder and this action cannot be undone.", function (r) {
-				if (r) {
-					ajaxcall({
-						url: options.apiUrl,
-						data: {
-							method: "/ReportApi/DeleteFolder",
-							model: JSON.stringify({
-								folderId: self.SelectedFolder().Id,
-								adminMode: self.adminMode()
-							})
-						},
-					}).done(function () {
-						self.Folders.remove(self.SelectedFolder());
-						self.allFolders = self.Folders();
-						self.SelectedFolder(null);
-					});
+
+			bootbox.confirm(
+				"Are you sure you want to delete this Folder?\n\nWARNING: Deleting a folder will delete all reports in the folder and this action cannot be undone.",
+				function (r) {
+					if (r) {
+						var deletedId = self.SelectedFolder().Id;
+						var parentId = self.SelectedFolder().ParentFolderId || null;
+
+						ajaxcall({
+							url: options.apiUrl,
+							data: {
+								method: "/ReportApi/DeleteFolder",
+								model: JSON.stringify({
+									folderId: deletedId,
+									adminMode: self.adminMode()
+								})
+							}
+						}).done(function () {
+							self.SelectedFolder(null);
+							self.loadFolders().done(function () {
+								if (parentId) {
+									var parent = _.find(self.allFolders || [], function (x) {
+										return x.Id == parentId;
+									});
+									if (parent) self.SelectedFolder(parent);
+								}
+							});
+						});
+					}
 				}
-			});
+			);
 		}
 	};
 	self.ManageJsonFile = {

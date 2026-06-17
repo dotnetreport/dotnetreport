@@ -1125,6 +1125,19 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <div class="alert alert-info py-2 mb-3"
+                     data-bind="visible: IsNew() && ParentFolderId()">
+                    <span class="fa fa-folder me-1"></span>
+                    Creating sub folder inside:
+                    <strong data-bind="text: ParentFolderName"></strong>
+                </div>
+                <div class="alert alert-secondary py-2 mb-3"
+                     data-bind="visible:!IsNew() &&ParentFolderId()">
+                    <span class="fa fa-folder-open me-1"></span>
+                    Sub folder of:
+                    <strong data-bind="text: ParentFolderName"></strong>
+                </div>
+
                 <div class="form-group">
                     <label class="col-sm-4 col-md-4 control-label">Folder Name</label>
                     <div class="col-sm-8 col-md-8">
