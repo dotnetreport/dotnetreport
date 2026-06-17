@@ -1670,6 +1670,7 @@ var reportViewModel = function (options) {
 
 	self.ReportMode = ko.observable(options.reportMode || "start");
 	self.Folders = ko.observableArray();
+	self.rootFolders = ko.observableArray();
 	self.SavedReports = ko.observableArray(options.savedReports || []);
 	self.SelectedFolder = ko.observable(null); // Folder selected in start
 	self.CanSaveReports = ko.observable(true);
@@ -3970,6 +3971,31 @@ var reportViewModel = function (options) {
 
 			$("#folderModal").modal("show");
 		},
+		addSubFolder : function () {
+			var parent = self.SelectedFolder();
+			if (!parent) return;
+			var subFolderName = prompt('Enter Sub Folder Name under "' + parent.FolderName + '":');
+			if (!subFolderName || subFolderName.trim() === '') return;
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/SaveFolderData",
+					model: JSON.stringify({
+						adminMode: self.adminMode(),
+						clientId: options.clientId,
+						userId: options.userId,
+						userRole: options.userRole,
+						folderData: JSON.stringify({
+							Id: 0,
+							FolderName: subFolderName.trim(),
+							ParentFolderId: parent.Id   // ← KEY PART
+						})
+					})
+				}
+			}).done(function () {
+				self.loadFolders();  
+			});
+		},
 		editFolder: function () {
 			if (self.SelectedFolder() == null) {
 				toastr.error("Please choose a folder first");
@@ -4415,7 +4441,25 @@ var reportViewModel = function (options) {
 			})
 			.value();
 	});
+	// Breadcrumb trail — selected folder se root tak
+	self.folderBreadcrumb = ko.computed(function () {
+		var trail = [];
+		var current = self.SelectedFolder();
+		if (!current) return trail;
 
+		var folderMap = {};
+		_.each(self.allFolders || [], function (f) { folderMap[f.Id] = f; });
+
+		while (current) {
+			trail.unshift(current);  // front mein add karo
+			current = current.ParentFolderId ? folderMap[current.ParentFolderId] : null;
+		}
+		return trail;
+	});
+	self.subFoldersInFolder = ko.computed(function () {
+		if (!self.SelectedFolder()) return [];
+		return self.SelectedFolder().children();
+	});
 	var tokenKey = 'token-key';
 	var token = JSON.parse(localStorage.getItem(tokenKey));
 	self.searchFieldsInReport = {
@@ -9568,6 +9612,7 @@ var reportViewModel = function (options) {
 			});
 			_.each(folders, function (f) {
 				f.isSelected = ko.observable(false);
+				f.children = ko.observableArray([]);     
 				f.isSelected.subscribe(function (val) {
 					var reportsInFolder = _.filter(self.SavedReports(), function (r) { return r.folderId == f.Id; });
 					_.each(reportsInFolder, function (r) {
@@ -9575,6 +9620,19 @@ var reportViewModel = function (options) {
 					});
 				});
 			});
+			// Flat → tree
+			var folderMap = {};
+			_.each(folders, function (f) { folderMap[f.Id] = f; });
+			_.each(folders, function (f) { f.children([]); });
+			var rootFolders = [];
+			_.each(folders, function (f) {
+				if (f.ParentFolderId && folderMap[f.ParentFolderId]) {
+					folderMap[f.ParentFolderId].children.push(f);
+				} else {
+					rootFolders.push(f);
+				}
+			});
+			self.rootFolders(rootFolders);   
 			self.SelectedFolder(null);
 			if (folderId) {
 				var match = _.filter(folders, function (x) { return x.Id == folderId; });
