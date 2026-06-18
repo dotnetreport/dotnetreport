@@ -3009,9 +3009,34 @@ namespace ReportBuilder.Web.Models
                 if (size.Width > rect.Width)
                 {
                     if (!string.IsNullOrEmpty(line))
+                    {
                         lines.Add(line);
+                        line = "";
+                    }
 
-                    line = word;
+                    if (gfx.MeasureString(word, font).Width > rect.Width)
+                    {
+                        string current = "";
+                        foreach (var ch in word)
+                        {
+                            string test = current + ch;
+                            if (gfx.MeasureString(test, font).Width > rect.Width)
+                            {
+                                if (!string.IsNullOrEmpty(current))
+                                    lines.Add(current);
+                                current = ch.ToString();
+                            }
+                            else
+                            {
+                                current = test;
+                            }
+                        }
+                        line = current;
+                    }
+                    else
+                    {
+                        line = word;
+                    }
                 }
                 else
                 {
@@ -3044,13 +3069,20 @@ namespace ReportBuilder.Web.Models
             {
                 foreach (var col in columns)
                 {
-                    if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
+                    if (string.IsNullOrEmpty(col.fieldName)) continue;
+
+                    DataColumn target = dt.Columns.Contains(col.fieldName)
+                        ? dt.Columns[col.fieldName]
+                        : dt.Columns.Cast<DataColumn>().FirstOrDefault(x => x.ColumnName.StartsWith(col.fieldName));
+                    if (target == null) continue;
+
+                    if (col.hideStoredProcColumn)
                     {
-                        dt.Columns.Remove(col.fieldName);
+                        dt.Columns.Remove(target);
                     }
-                    else if (!String.IsNullOrWhiteSpace(col.fieldLabel))
+                    else if (!string.IsNullOrWhiteSpace(col.fieldLabel) && target.ColumnName != col.fieldLabel)
                     {
-                        dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
+                        target.ColumnName = col.fieldLabel;
                     }
                 }
             }
@@ -3115,6 +3147,28 @@ namespace ReportBuilder.Web.Models
             double maxColumnWidth = 300; // optional max width limit
 
             var tempPage = document.AddPage();
+            if (!String.IsNullOrEmpty(pageSize))
+            {
+                switch (pageSize.ToUpper())
+                {
+                    case "A4": tempPage.Size = PdfSharp.PageSize.A4; break;
+                    case "LEGAL": tempPage.Size = PdfSharp.PageSize.Legal; break;
+                    case "A1": tempPage.Size = PdfSharp.PageSize.A1; break;
+                    case "A2": tempPage.Size = PdfSharp.PageSize.A2; break;
+                    case "A3": tempPage.Size = PdfSharp.PageSize.A3; break;
+                    case "TABLOID": tempPage.Size = PdfSharp.PageSize.Tabloid; break;
+                    case "LETTER": default: tempPage.Size = PdfSharp.PageSize.Letter; break;
+                }
+            }
+            if (!String.IsNullOrEmpty(pageOrientation))
+            {
+                switch (pageOrientation.ToUpper())
+                {
+                    case "LANDSCAPE": tempPage.Orientation = PdfSharp.PageOrientation.Landscape; break;
+                    case "PORTRIAT": default: tempPage.Orientation = PdfSharp.PageOrientation.Portrait; break;
+                }
+            }
+            double availableContentWidth = tempPage.Width.Point - leftMargin - rightMargin;
             var gfxMeasure = XGraphics.FromPdfPage(tempPage);
             var fontMeasure = new XFont("Arial", 11, XFontStyleEx.Bold);
             List<double> columnWidths = new List<double>();
@@ -3135,6 +3189,27 @@ namespace ReportBuilder.Web.Models
             gfxMeasure.Dispose();
             gfxMeasure = null;
             document.Pages.Remove(tempPage); // remove temp measuring page
+
+            if (!String.IsNullOrEmpty(pageSize) && availableContentWidth > 0 && columnWidths.Count > 0)
+            {
+                double sumWidths = columnWidths.Sum();
+                if (sumWidths > availableContentWidth)
+                {
+                    double minAllowed = minColumnWidth * 0.5;
+                    if (availableContentWidth >= columnWidths.Count * minAllowed)
+                    {
+                        double scale = availableContentWidth / sumWidths;
+                        for (int idx = 0; idx < columnWidths.Count; idx++)
+                            columnWidths[idx] = Math.Max(minAllowed, columnWidths[idx] * scale);
+                    }
+                    else
+                    {
+                        double equalWidth = availableContentWidth / columnWidths.Count;
+                        for (int idx = 0; idx < columnWidths.Count; idx++)
+                            columnWidths[idx] = equalWidth;
+                    }
+                }
+            }
             double totalWidth = columnWidths.Sum() + leftMargin + rightMargin;
             PdfPage page = null;
             XGraphics gfx = null;
@@ -3196,7 +3271,7 @@ namespace ReportBuilder.Web.Models
                                 break;
                         }
                     }
-                    if (totalWidth > page.Width) page.Width = totalWidth;
+                    if (string.IsNullOrEmpty(pageSize) && totalWidth > page.Width) page.Width = totalWidth;
                     pageHeight = page.Height.Point - 50;
                     gfx = XGraphics.FromPdfPage(page);
                     tfx = new XTextFormatter(gfx);
@@ -3272,6 +3347,9 @@ namespace ReportBuilder.Web.Models
 
                     currentXPosition = leftMargin;
 
+                    var headerLines = new List<List<string>>();
+                    var headerNames = new List<string>();
+                    int headerMaxLines = 1;
                     for (int k = 0; k < dt.Columns.Count; k++)
                     {
                         var columnFormatting = columns != null && columns.Count > k ? columns[k] : new ReportHeaderColumn();
@@ -3280,14 +3358,35 @@ namespace ReportBuilder.Web.Models
                             : (!string.IsNullOrEmpty(columnFormatting.fieldName)
                                 ? columnFormatting.fieldName
                                 : dt.Columns[k].ColumnName);
-                        rect = new XRect(currentXPosition, currentYPosition, columnWidths[k], 20);
+                        headerNames.Add(columnName ?? "");
+                        var lines = WrapText(gfx, columnName ?? "",
+                            new XRect(0, 0, columnWidths[k] - cellPadding * 2, 9999),
+                            fontBold,
+                            XStringFormats.TopLeft);
+                        headerLines.Add(lines);
+                        if (lines.Count > headerMaxLines) headerMaxLines = lines.Count;
+                    }
+
+                    int headerHeight = (int)((fontBold.Height + cellPadding * 2) * headerMaxLines);
+                    for (int k = 0; k < dt.Columns.Count; k++)
+                    {
+                        rect = new XRect(currentXPosition, currentYPosition, columnWidths[k], headerHeight);
                         gfx.DrawRectangle(XPens.LightGray, rect);
-                        rect.Inflate(-cellPadding, -cellPadding);
-                        tfx.DrawString(columnName ?? "", fontBold, GetBrushWithColor(), rect, XStringFormats.TopLeft);
+
+                        var cellLines = headerLines[k];
+                        double textBlockHeight = cellLines.Count * fontBold.Height;
+                        double yPos = currentYPosition + (headerHeight - textBlockHeight) / 2;
+                        foreach (var l in cellLines)
+                        {
+                            XRect lineRect = new XRect(rect.Left, yPos, rect.Width, fontBold.Height);
+                            lineRect.Inflate(-cellPadding, 0);
+                            gfx.DrawString(l, fontBold, GetBrushWithColor(), lineRect, XStringFormats.TopLeft);
+                            yPos += fontBold.Height;
+                        }
                         currentXPosition += (int)columnWidths[k];
                     }
 
-                    currentYPosition += 20;
+                    currentYPosition += headerHeight + 1;
                 }
                 
                 AddNewPageWithHeaders(true);
@@ -4359,7 +4458,7 @@ namespace ReportBuilder.Web.Models
                     if (width > usableWidthPx && usableWidthPx > 0)
                     {
                         double scale = usableWidthPx / width;
-                        pdfOptions.Scale = (decimal) Math.Max(0.1, scale); 
+                        pdfOptions.Scale = (decimal) Math.Max(0.1, scale);
                     }
                 }
                 else
