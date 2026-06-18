@@ -1397,8 +1397,9 @@ var textQuery = function (options) {
         var prefixes = ['C', 'F', 'M', 'P'];
         var filterInputs = [];
         prefixes.forEach(function (p) {
-            var el = document.getElementById('ctl-' + p + '-' + uiId);
-            if (el) filterInputs.push(el);
+            document.querySelectorAll('[id="ctl-' + p + '-' + uiId + '"]').forEach(function (el) {
+                filterInputs.push(el);
+            });
         });
 
         // Detach the previous tribute for this field so its keyboard/input handlers are removed
@@ -1428,6 +1429,7 @@ var textQuery = function (options) {
                 // the data operation changes.
                 filterInput._lookupFilter = filter;
                 filterInput._currentTribute = tribute;
+                filterInput._currentQuery = self;
 
                 if (!filterInput._tributeEventsAdded) {
                     filterInput._tributeEventsAdded = true;
@@ -1441,23 +1443,26 @@ var textQuery = function (options) {
 
                     filterInput.addEventListener("tribute-replaced", function (e) {
                         if (filterInput._currentTribute) filterInput._currentTribute._noMatch = false;
-                        self.addQueryItem(e.detail.item.original);
+                        filterInput._currentQuery.addQueryItem(e.detail.item.original);
                     });
 
                     filterInput.addEventListener("menuItemRemoved", function (e) {
-                        self.queryItems.remove(e.detail.item.original);
+                        filterInput._currentQuery.queryItems.remove(e.detail.item.original);
                     });
 
                     filterInput.addEventListener('blur', function () {
                         var f = filterInput._lookupFilter;
-                        if (f && self.queryItems.length > 0) {
-                            f.Value(self.queryItems.map(x => x.text).join(','));
+                        var q = filterInput._currentQuery;
+                        if (f && q.queryItems.length > 0) {
+                            var items = q.queryItems.map(x => x.text);
+                            f.Value(items.join(', '));
+                            if (f.Operator() === 'in' || f.Operator() === 'not in') f.ValueIn(items);
                         }
                     });
 
                     filterInput.addEventListener("input", function () {
                         if (!filterInput.value.trim()) {
-                            self.queryItems = [];
+                            filterInput._currentQuery.queryItems = [];
                             var f = filterInput._lookupFilter;
                             if (f) f.Value("");
                         }

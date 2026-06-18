@@ -743,17 +743,20 @@ function filterGroupViewModel(args) {
 			}
 			lookupList.push({ id: e.Value2, text: e.Value2 });
 		}
-
+		function parseInList(s) {
+			var out = [], re = /'((?:[^']|'')*)'/g, m;
+			s = '' + (s || '');
+			while ((m = re.exec(s)) !== null) out.push(m[1].replace(/''/g, "'"));
+			return out.length ? out : s.split(',').map(function (v) { return v.trim(); }).filter(function (v) { return v.length; });
+		}
 		var field = ko.observable();
-		var valueIn = (e.Operator == 'in' || e.Operator == 'not in')
-			? (e.Value1 || '').split(',').map(function (v) { return v.trim(); }).filter(function (v) { return v.length; })
-			: [];
+		var valueIn = (e.Operator == 'in' || e.Operator == 'not in') ? parseInList(e.Value1) : [];
 		var parentIn = e.ParentIn ? e.ParentIn.split(',') : [];
 		var filter = {
 			AndOr: ko.observable(e.AndOr),
 			Field: field,
 			Operator: ko.observable(e.Operator),
-			Value: ko.observable(e.Value1),
+			Value: ko.observable((e.Operator == 'in' || e.Operator == 'not in') ? valueIn.join(', ') : e.Value1),
 			Value2: ko.observable(e.Value2),
 			ValueIn: ko.observableArray(valueIn.slice()),
 			LookupList: lookupList,
@@ -5695,6 +5698,15 @@ var reportViewModel = function (options) {
 		})
 	}
 
+	self.buildInValueList = function (e) {
+		var vals = e.ValueIn();
+		var ft = e.Field() ? e.Field().fieldType : '';
+		if (['Int', 'Date', 'DateTime', 'Boolean'].indexOf(ft) === -1) {
+			return vals.map(function (v) { return "'" + ('' + v).replace(/'/g, "''") + "'"; }).join(",");
+		}
+		return vals.join(",");
+	};
+
 	self.BuildFilterData = function (filtergroup) {
 
 		var groups = [];
@@ -5710,8 +5722,8 @@ var reportViewModel = function (options) {
 					FieldId: e.Field().fieldId,
 					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
 					Operator: e.Operator(),
-					Value1: hasTimeInDate ? (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? e.ValueIn().join(",") : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value() + " " + e.Valuetime()))
-										  : (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? e.ValueIn().join(",") : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value())), 
+					Value1: hasTimeInDate ? (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? self.buildInValueList(e) : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value() + " " + e.Valuetime()))
+										  : (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? self.buildInValueList(e) : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value())), 
 					Value2: hasTimeInDate ? (e.Value2() ? e.Value2() + " " + e.Valuetime2() : e.Value2()) : e.Value2(), 
 					ParentIn: e.ParentIn().join(","),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : [],
@@ -5771,7 +5783,7 @@ var reportViewModel = function (options) {
 					FieldId: e.Field().fieldId,
 					AndOr: "AND",
 					Operator: e.Operator().toLowerCase(),
-					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 ? "blank" : e.Value()),
+					Value1: e.Operator() == "in" || e.Operator() == "not in" ? self.buildInValueList(e) : (e.Operator().indexOf("blank") >= 0 ? "blank" : e.Value()),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				};
 
@@ -5788,7 +5800,7 @@ var reportViewModel = function (options) {
 					FieldId: e.Field().fieldId,
 					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
 					Operator: e.Operator(),
-					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value()),
+					Value1: e.Operator() == "in" || e.Operator() == "not in" ? self.buildInValueList(e) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value()),
 					Value2: e.Value2(),
 					Valuetime: e.Valuetime(),
 					Valuetime2: e.Valuetime2(),
