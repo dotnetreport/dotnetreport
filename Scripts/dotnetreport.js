@@ -4085,7 +4085,6 @@ var reportViewModel = function (options) {
 				$("#folderModal").modal("hide");
 			});
 		},
-
 		deleteFolder: function () {
 			if (self.SelectedFolder() == null) {
 				toastr.error("Please choose a folder first");
@@ -4096,12 +4095,79 @@ var reportViewModel = function (options) {
 				return;
 			}
 
-			bootbox.confirm(
-				"Are you sure you want to delete this Folder?\n\nWARNING: Deleting a folder will delete all reports in the folder and this action cannot be undone.",
-				function (r) {
+			var folder = self.SelectedFolder();
+			// Breadcrumb trail build karo
+			var trail = [];
+			var current = folder;
+			var folderMap = {};
+			_.each(self.allFolders || [], function (f) { folderMap[f.Id] = f; });
+			while (current) {
+				trail.unshift(current.FolderName);
+				current = current.ParentFolderId ? folderMap[current.ParentFolderId] : null;
+			}
+			var breadcrumb = trail.join(' › ');
+			// Sub-folder + report counts
+			function countDescendants(f) {
+				var subFolderCount = 0;
+				var stack = [f];
+				while (stack.length > 0) {
+					var node = stack.pop();
+					var children = node.children ? node.children() : [];
+					subFolderCount += children.length;
+					_.each(children, function (c) { stack.push(c); });
+				}
+				return subFolderCount;
+			}
+			var subFolderCount = countDescendants(folder);
+			var reportCount = _.filter(self.SavedReports(), function (r) {
+				// count reports in this folder and all descendant folders
+				var allDescendantIds = [folder.Id];
+				var stack = [folder];
+				while (stack.length > 0) {
+					var node = stack.pop();
+					var children = node.children ? node.children() : [];
+					_.each(children, function (c) {
+						allDescendantIds.push(c.Id);
+						stack.push(c);
+					});
+				}
+				return allDescendantIds.indexOf(r.folderId) >= 0;
+			}).length;
+			// Warning message build karo
+			var msg = '<div style="font-size: 14px;">';
+			msg += '<p><strong>Folder:</strong> <span class="text-muted">' + breadcrumb + '</span></p>';
+			msg += '<hr/>';
+			msg += '<p class="text-secondary"><strong>⚠️ This action cannot be undone. The following will be permanently deleted:</strong></p>';
+			msg += '<ul>';
+			msg += '<li>This folder</li>';
+			if (subFolderCount > 0) {
+				msg += '<li><strong>' + subFolderCount + '</strong> sub-folder' + (subFolderCount > 1 ? 's' : '') + ' inside this folder</li>';
+			}
+			if (reportCount > 0) {
+				msg += '<li><strong>' + reportCount + '</strong> report' + (reportCount > 1 ? 's' : '') + ' across all folders</li>';
+			}
+			if (subFolderCount === 0 && reportCount === 0) {
+				msg += '<li>No sub-folders or reports (folder is empty)</li>';
+			}
+			msg += '</ul>';
+			msg += '</div>';
+			bootbox.confirm({
+				title: '<i class="fa fa-trash"></i> Delete Folder',
+				message: msg,
+				buttons: {
+					confirm: {
+						label: 'Yes, Delete',
+						className: 'btn-primary'
+					},
+					cancel: {
+						label: 'Cancel',
+						className: 'btn-secondary'
+					}
+				},
+				callback: function (r) {
 					if (r) {
-						var deletedId = self.SelectedFolder().Id;
-						var parentId = self.SelectedFolder().ParentFolderId || null;
+						var deletedId = folder.Id;
+						var parentId = folder.ParentFolderId || null;
 
 						ajaxcall({
 							url: options.apiUrl,
@@ -4122,10 +4188,11 @@ var reportViewModel = function (options) {
 									if (parent) self.SelectedFolder(parent);
 								}
 							});
+							toastr.success(folder.FolderName + ' deleted successfully');
 						});
 					}
 				}
-			);
+			});
 		}
 	};
 	self.ManageJsonFile = {
