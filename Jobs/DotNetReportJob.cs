@@ -425,15 +425,32 @@ namespace ReportBuilder.Web.Jobs
                                     //smtpServer.EnableSsl = true;
                                     smtpServer.Send(mail);
                                 }
+
+                                await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: false, message: "Sent");
                             }
                         }
                         catch (Exception ex)
                         {
+                            await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, report.DashboardId > 0, isError: true, message: ex.Message);
                             // could not run, ignore error
                         }
                     }
                 }
             }
+        }
+
+        private static async Task LogScheduleSent(HttpClient client, string apiUrl, string accountApiKey, string databaseApiKey, ReportSchedule schedule, ReportWithSchedule report, bool isDashboard, bool isError, string message)
+        {
+            try
+            {
+                var itemId = isDashboard ? report.DashboardId : report.ReportId;
+                var itemName = System.Web.HttpUtility.UrlEncode(report.Name ?? "");
+                var format = System.Web.HttpUtility.UrlEncode(schedule.Format ?? "");
+                var sentTo = System.Web.HttpUtility.UrlEncode(schedule.EmailTo ?? "");
+                var msg = System.Web.HttpUtility.UrlEncode(message ?? "");
+                await client.GetAsync($"{apiUrl}/ReportApi/LogScheduleSent?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&itemId={itemId}&isDashboard={isDashboard}&itemName={itemName}&format={format}&sentTo={sentTo}&isError={isError}&message={msg}");
+            }
+            catch { /* logging failure should not break the job */ }
         }
 
         public (string PivotColumn, string PivotFunction) PreparePivotData(List<ReportHeaderColumn> columns)
