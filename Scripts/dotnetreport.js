@@ -1262,7 +1262,7 @@ var reportViewModel = function (options) {
 	self.userIdForFilter = options.userSettings.userIdForFilter || '';
 
 	self.clientId = options.userSettings.clientId;
-
+	self.onlyFavorites = ko.observable(false);
 	self.ChartData = ko.observable();
 	self.ReportName = ko.observable();
 	self.ReportType = ko.observable("List");
@@ -1629,7 +1629,23 @@ var reportViewModel = function (options) {
 			self.FilterGroups.push(new filterGroupViewModel({ isRoot: true, parent: self, options: options }));
 		}
 	});
-
+	self.toggleFavorite = function (report) {
+		ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: report.isFavorite() ? '/ReportApi/RemoveFavorite' : '/ReportApi/AddFavorite',
+				model: JSON.stringify({ adminMode: self.adminMode(), reportId: report.reportId, userId: self.currentUserId })
+			},
+		}).done(function (result) {
+			if (result.d) result = result.d;
+			var action = report.isFavorite() ? 'removed' : 'added';
+			toastr.success(`Report ${action} to favorites`)
+			report.isFavorite(!report.isFavorite());
+		});
+	};
+	self.onlyFavorites.subscribe(function (newValue) {
+		self.LoadAllSavedReports();
+	});
 	self.addSortField = function (fieldId, sort) {
 		var newField = {
 			sortByFieldId: ko.observable(fieldId),
@@ -10327,7 +10343,7 @@ var reportViewModel = function (options) {
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetSavedReports",
-				model: JSON.stringify({ adminMode: self.adminMode(), applyClientInAdmin: self.appSettings.useClientIdInAdmin })
+				model: JSON.stringify({ adminMode: self.adminMode(), onlyFavorites:self.onlyFavorites(), applyClientInAdmin: self.appSettings.useClientIdInAdmin })
 			}
 		}).done(function (reports) {
 			if (reports.d) { reports = reports.d; }
@@ -10337,6 +10353,7 @@ var reportViewModel = function (options) {
 				e.isSelected = ko.observable(false);
 				e.isSubReportOnly = ko.observable(e.isSubReportOnly || false);
 				e.showAdminOnly = ko.observable(e.showAdminOnly || false);
+				e.isFavorite = ko.observable(e.isFavorite);
 				e.openReport = function () {
 					if (!e.runMode && !e.canEdit && !self.appSettings.canCopyReport()) {
 						options.reportWizard.modal('hide');
@@ -10478,10 +10495,8 @@ var reportViewModel = function (options) {
 					options.reportWizard.modal('show');
 				}
 			});
-
+			var foldersToDisplay = self.allFolders;
 			if (!self.adminMode()) {
-				var foldersToDisplay = self.allFolders;
-
 				if (!self.appSettings.showEmptyFolders) { 
 					var foldersInUse = _.uniqBy(reports, 'folderId').map(function (r) { return r.folderId });
 					foldersToDisplay = _.filter(foldersToDisplay, function (folder) { return foldersInUse.includes(folder.Id) || folder.Id == 0 });
@@ -10490,11 +10505,19 @@ var reportViewModel = function (options) {
 				if (self.appSettings.noDefaultFolder) { 
 					foldersToDisplay = _.filter(foldersToDisplay, function (folder) { return folder.Id != 0 });
 				}
-				self.Folders(foldersToDisplay);
+				self.rootFolders(foldersToDisplay);
 			} else {
-				self.Folders(self.allFolders);
+				self.rootFolders(self.allFolders);
 			}
-
+			if (self.onlyFavorites()) {
+				var favoriteFolderIds = _.uniq(
+					_.map(reports, function (r) { return r.folderId; })
+				);
+				foldersToDisplay = _.filter(foldersToDisplay, function (folder) {
+					return favoriteFolderIds.includes(folder.Id) || folder.Id == 0;
+				});
+				self.rootFolders(foldersToDisplay);
+			}
 			self.SavedReports(reports);
 			if (self.searchReports()) {
 				_.forEach(self.reportsInSearch(), (searchItem, index) => {

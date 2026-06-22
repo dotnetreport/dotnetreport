@@ -54,11 +54,42 @@
     padding-left: 0;
     list-style: none;
 }
+/* Favorite Star Styles */
+.favorite-star {
+    cursor: pointer;
+    font-size: 24px;
+    color: #ccc; /* Grey color for non-favorite */
+    transition: color 0.2s;
+    user-select: none;
+}
+.favorite-star.favorited {
+    color: #ffc107 !important; /* Yellow color for favorite */
+}
+.favorite-star:hover {
+   color: #ffc107 !important;; /* Yellow on hover */
+}
+.favorite-filter {
+    background: #f8f9fa;
+    padding: 6px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+.favorite-filter label {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 500;
+        color: #495057;
+}
+.favorite-filter label:hover {
+            color: #21252b;
+}
 
     .folder-list li {
         float: left;
-        width: 95px;
-        height: 95px;
+        width: 100px;
+        height: 100px;
         padding: 10px;
         font-size: 12px;
         line-height: 1.4;

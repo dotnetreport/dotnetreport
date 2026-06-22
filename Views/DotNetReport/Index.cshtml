@@ -297,7 +297,16 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <span class="fa fa-th-large"></span>
                         </button>
                     </div>
-
+                    <div class="favorite-filter" data-bind="visible: !selectMode()">
+                        <label class="cursor-pointer d-flex align-items-center gap-2" style="cursor: pointer;">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   data-bind="checked: onlyFavorites"
+                                   style="width: 20px; height: 20px;" />
+                            <span class="fa fa-star" style="color: #ffc107;"></span>
+                            <span>Show only favorites</span>
+                        </label>
+                    </div>
                     <div data-bind="if: layout()=='icons'">
                         <div data-bind="visible: !SelectedFolder() && !searchReports()">
                             <p>Please choose Folders below to view Reports</p>
@@ -389,7 +398,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     </ul>
                                     <hr class="my-2" />
                                 </div>
-
+                                
                                 <!-- REPORTS (icon view) -->
                                 <div class="list-group"
                                      data-bind="foreach: searchReports() ? reportsInSearch() : reportsInFolder()">
@@ -404,6 +413,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <span data-bind="highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }"></span>
                                                         </a>
                                                     </h4>
+                                                </div>
+                                                <!-- Favorite Star Icon (Add this after report name) -->
+                                                <div class="pull-left ms-2" style="margin-top: 5px;">
+                                                    <span class="fa fa-star favorite-star"
+                                                          data-bind="click: $parent.toggleFavorite,css: { favorited: isFavorite },visible: !$root.selectMode()"
+                                                          title="Toggle Favorite" data-is-favorite="isFavorite()"></span>
                                                 </div>
                                                 <div class="clearfix"></div>
                                                 <p data-bind="text: reportDescription"></p>
@@ -750,6 +765,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     }"></span>
                                                     <a class="ms-2" data-bind="click: runReport, highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }" style="cursor: pointer"></a>&nbsp;
                                                     <span data-bind="text: message" class="highlight small"></span>
+                                                    <div class="pull-left ms-2" style="margin-top: 5px;">
+                                                        <span class="fa fa-star favorite-star"
+                                                              data-bind="click: $parent.toggleFavorite,css: { favorited: isFavorite },visible: !$root.selectMode()"
+                                                              title="Toggle Favorite" data-is-favorite="isFavorite()"></span>
+                                                    </div>
                                                     <span class="badge bg-warning text-dark ms-1"
                                                           title="This report is only used as a linked or sub report"
                                                           data-bind="visible: isSubReportOnly && isSubReportOnly()">
