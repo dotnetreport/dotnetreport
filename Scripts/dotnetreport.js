@@ -4005,12 +4005,12 @@ var reportViewModel = function (options) {
 
 	self.ManageFolder = {
 		FolderName: ko.observable(),
-		ShowAdminOnly: ko.observable(false),  // NEW: Add this
+		ShowAdminOnly: ko.observable(false),
 		IsNew: ko.observable(false),
 		newFolder: function () {
 			self.ManageFolder.IsNew(true);
 			self.ManageFolder.FolderName("");
-			self.ManageFolder.ShowAdminOnly(false);  // NEW: Reset to false for new folder
+			self.ManageFolder.ShowAdminOnly(false);  
 			self.clearManageFolderAccess();
 
 			$("#folderModal").modal("show");
@@ -4052,7 +4052,7 @@ var reportViewModel = function (options) {
 			var folderToSave = {
 				Id: id,
 				FolderName: self.ManageFolder.FolderName(),
-				ShowAdminOnly: self.ManageFolder.ShowAdminOnly(),  // NEW: Add this
+				ShowAdminOnly: self.ManageFolder.ShowAdminOnly(), 
 				UserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.users),
 				ViewOnlyUserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.viewOnlyUsers),
 				DeleteOnlyUserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.deleteOnlyUsers),
@@ -5891,7 +5891,7 @@ var reportViewModel = function (options) {
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : (self.ReportType() == 'List' || self.ReportType() == 'Treemap' || self.dontGroupCustom() ? false : self.AggregateReport()),
 			ShowDataWithGraph: self.ShowDataWithGraph(),
-			ShowAdminOnly: self.ShowAdminOnly(),
+			showAdminOnly: self.showAdminOnly(),
 			IsSubReportOnly: self.isSubReportOnly(),
 			ShowOnDashboard: self.ShowOnDashboard(),
 			HideReportHeader: self.HideReportHeader(),
