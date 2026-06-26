@@ -91,7 +91,7 @@ Explore the capabilities of Dotnet Report in action:
 For inquiries, feature requests, or bug reports, contact us via:
 
 - **Website**: [https://dotnetreport.com](https://dotnetreport.com)
-- **Email**: [support@dotnetreport.com](mailto:contact@dotnetreport.com)
+- **Email**: [contact@dotnetreport.com](mailto:contact@dotnetreport.com)
 
 ---
 
