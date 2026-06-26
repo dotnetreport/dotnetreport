@@ -7059,7 +7059,9 @@ var reportViewModel = function (options) {
 							case 'range':
 								if (dataIsDate) {
 									var { start, end } = getDateRange(compareTo, compareTo2);
-									conditionTrue = dataIsDate.getTime() >= start.getTime() && dataIsDate.getTime() <= end.getTime();
+									var afterStart = !start || dataIsDate.getTime() >= start.getTime();
+									var beforeEnd = !end || dataIsDate.getTime() <= end.getTime();
+									conditionTrue = afterStart && beforeEnd;
 								}
 								break;
 						}
