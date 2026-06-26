@@ -7095,7 +7095,7 @@ var reportViewModel = function (options) {
 					}
 					const width = r.fieldWidth ? ko.unwrap(r.fieldWidth) : null;
 					if (width) {
-						style += `display:inline-block;width:${width};`;
+						style += `display:inline-block;width:${width};white-space:normal;overflow-wrap:break-word;`;
 					}
 					if (!style) return val;
 					return `<span style="${style}">${val}</span>`;

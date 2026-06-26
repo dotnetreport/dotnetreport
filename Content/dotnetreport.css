@@ -894,7 +894,20 @@ thead th {
     padding: 10px 12px;
     border-top: none;
     border-bottom: 2px solid #d0d5dd;
-    white-space: nowrap;
+    white-space: normal;
+}
+
+.report-view thead th,
+.report-inner thead th,
+.live-preview-area thead th,
+.list-overflow-auto thead th,
+.report-view thead th *,
+.report-inner thead th *,
+.live-preview-area thead th *,
+.list-overflow-auto thead th * {
+    white-space: normal !important;
+    overflow-wrap: normal;
+    word-break: normal;
 }
 
 .report-view thead th a,
