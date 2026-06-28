@@ -4667,7 +4667,7 @@ var reportViewModel = function (options) {
 
 				if (reports.length > 0) {
 					self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
-						if (!self.adminMode() && x.showAdminOnly) {
+						if (!self.adminMode() && x.showAdminOnly()) {
 							return false;
 						}
 						if (!self.adminMode() && x.isSubReportOnly && x.isSubReportOnly()) {
@@ -10506,8 +10506,10 @@ var reportViewModel = function (options) {
 					foldersToDisplay = _.filter(foldersToDisplay, function (folder) { return folder.Id != 0 });
 				}
 				self.rootFolders(foldersToDisplay);
+				self.Folders(foldersToDisplay);
 			} else {
 				self.rootFolders(self.allFolders);
+				self.Folders(self.allFolders);
 			}
 			if (self.onlyFavorites()) {
 				var favoriteFolderIds = _.uniq(
