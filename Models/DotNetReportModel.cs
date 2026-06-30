@@ -3050,6 +3050,15 @@ namespace ReportBuilder.Web.Models
             return lines;
         }
 
+        private static string GetUniqueColumnName(DataTable dt, string desired)
+        {
+            if (!dt.Columns.Contains(desired)) return desired;
+            int i = 2;
+            string candidate;
+            do { candidate = desired + " (" + i++ + ")"; } while (dt.Columns.Contains(candidate));
+            return candidate;
+        }
+
         private async static Task<DataTable> BuildExportData(string reportSql, string connectKey, string expandSqls = null, List<ReportHeaderColumn> columns = null, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
         {
 
@@ -3082,7 +3091,7 @@ namespace ReportBuilder.Web.Models
                     }
                     else if (!string.IsNullOrWhiteSpace(col.fieldLabel) && target.ColumnName != col.fieldLabel)
                     {
-                        target.ColumnName = col.fieldLabel;
+                        target.ColumnName = GetUniqueColumnName(dt, col.fieldLabel);
                     }
                 }
             }
@@ -3775,13 +3784,16 @@ namespace ReportBuilder.Web.Models
                         int[] maxColumnWidths = new int[dt.Columns.Count];
                         foreach (DataColumn column in dt.Columns)
                         {
-                            maxColumnWidths[column.Ordinal] = EstimateTextWidth(column.ColumnName);
+                            var headerText = (columns != null && columns.Count > column.Ordinal && !string.IsNullOrEmpty(columns[column.Ordinal].fieldLabel))
+                                ? columns[column.Ordinal].fieldLabel
+                                : column.ColumnName;
+                            maxColumnWidths[column.Ordinal] = EstimateTextWidth(headerText);
                             RunProperties runProperties = new RunProperties(
                                 new Bold(),
                                 new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "16" }, // 8pt
                                 new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "156082" }
                             );
-                            Run run = new Run(runProperties, new Text(column.ColumnName));
+                            Run run = new Run(runProperties, new Text(headerText));
                             ParagraphProperties paragraphProperties = new ParagraphProperties(
                                 new SpacingBetweenLines() { Before = "20", After = "20", Line = "220", LineRule = LineSpacingRuleValues.Auto },
                                 new Indentation() { Left = "40", Right = "40" }
