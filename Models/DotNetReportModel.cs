@@ -4354,14 +4354,27 @@ namespace ReportBuilder.Web.Models
                 }
                 catch { }
 
-                // Replace page-number placeholders for Puppeteer's built-in classes
+                string pageStyles = "";
+                try
+                {
+                    pageStyles = await page.EvaluateExpressionAsync<string>(@"
+                        Array.from(document.styleSheets)
+                            .map(function(s) {
+                                try { return Array.from(s.cssRules).map(function(r) { return r.cssText; }).join('\n'); }
+                                catch(e) { return ''; }
+                            })
+                            .join('\n')
+                    ") ?? "";
+                }
+                catch { }
+
                 string PreparePuppeteerTemplate(string html)
                 {
                     if (string.IsNullOrEmpty(html)) return "";
                     html = html.Replace("{page.number}", "<span class=\"pageNumber\"></span>")
                                .Replace("{page.total}", "<span class=\"totalPages\"></span>");
-                    // Wrap in a container with min font-size since Puppeteer uses 0 by default
-                    return "<div style=\"font-size:10px; width:100%; padding: 0 0.4in;\">" + html + "</div>";
+                    return "<style>" + pageStyles + " * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }</style>"
+                         + "<div style=\"font-size:10px; width:100%; padding: 0 0.4in; -webkit-print-color-adjust: exact; print-color-adjust: exact;\">" + html + "</div>";
                 }
 
                 if (headerEveryPage || footerEveryPage)
