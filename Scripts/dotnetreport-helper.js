@@ -563,6 +563,41 @@ ko.bindingHandlers.moveToInlineContainer = {
     }
 };
 
+function stripPositionRelativeDeclaration(style) {
+    if (!style) return style;
+    return style
+        .replace(/(?:^|;)\s*position\s*:\s*relative\s*(?=;|$)/i, '')
+        .replace(/^\s*;+\s*/, '')
+        .replace(/;\s*$/, '')
+        .trim();
+}
+
+function stripTableResizeArtifacts(html) {
+    if (!html) return html;
+    var wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+
+    wrapper.querySelectorAll('.resize-col, .resize-row, .resize-corner').forEach(function (handle) {
+        if (handle.parentNode) handle.parentNode.removeChild(handle);
+    });
+
+    wrapper.querySelectorAll('.dnr-resize-anchor').forEach(function (el) {
+        el.classList.remove('dnr-resize-anchor');
+        if (!el.getAttribute('class')) el.removeAttribute('class');
+    });
+
+    wrapper.querySelectorAll('table[style], th[style], td[style]').forEach(function (el) {
+        var raw = el.getAttribute('style');
+        var stripped = stripPositionRelativeDeclaration(raw);
+        if (stripped !== raw) {
+            if (stripped) el.setAttribute('style', stripped);
+            else el.removeAttribute('style');
+        }
+    });
+
+    return wrapper.innerHTML;
+}
+
 ko.bindingHandlers.summernote = {
     init: function (element, valueAccessor, allBindings) {
         const observable = valueAccessor();
@@ -606,6 +641,19 @@ ko.bindingHandlers.summernote = {
         };
 
         $(element).summernote(options);
+
+        var _codeViewActive = false;
+        $(element).on('summernote.codeview.toggled', function () {
+            _codeViewActive = !_codeViewActive;
+            if (_codeViewActive) {
+                var $codable = $(element).next('.note-editor').find('.note-codable');
+                var html = $codable.val();
+                var cleaned = stripTableResizeArtifacts(html);
+                if (cleaned !== html) {
+                    $codable.val(cleaned);
+                }
+            }
+        });
 
         const value = ko.unwrap(observable);
         $(element).summernote('code', value || "");
@@ -1563,8 +1611,15 @@ $.extend($.summernote.plugins, {
     'tableresize': function (context) {
         var $editable = context.layoutInfo.editable;
 
+        if (!document.getElementById('dnr-tableresize-style')) {
+            var st = document.createElement('style');
+            st.id = 'dnr-tableresize-style';
+            st.textContent = '.note-editable .dnr-resize-anchor{position:relative;}';
+            document.head.appendChild(st);
+        }
+
         function makeResizable(table) {
-            $(table).css('position', 'relative');
+            $(table).addClass('dnr-resize-anchor');
 
             $(table).find('th, td').each(function () {
                 var $cell = $(this);
@@ -1579,7 +1634,7 @@ $.extend($.summernote.plugins, {
                         userSelect: 'none',
                         height: '100%'
                     });
-                    $cell.css('position', 'relative').append($colHandle);
+                    $cell.addClass('dnr-resize-anchor').append($colHandle);
 
                     $colHandle.on('mousedown', function (e) {
                         e.preventDefault();

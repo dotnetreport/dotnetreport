@@ -3754,7 +3754,11 @@ var reportViewModel = function (options) {
 	self.selectedLinkedField = ko.observable();
 
 	self.getReportHtml = function () {
-		return self.reportHtml();
+		var html = self.reportHtml() || '';
+		if (typeof stripTableResizeArtifacts === 'function') {
+			html = stripTableResizeArtifacts(html);
+		}
+		return html;
 	};
 
 	self.setReportType = function (reportType) {
