@@ -3363,19 +3363,106 @@ namespace ReportBuilder.Web.Models
                        .Replace("{report.name}", reportName ?? "");
             return text;
         }
-
         public async static Task<byte[]> GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "", bool subTotalPerGroup = false, string filterDetailsText = null, string reportDescription = null)
+    string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null,
+    string pageSize = "", string pageOrientation = "", bool subTotalPerGroup = false, string filterDetailsText = null, string reportDescription = null,
+    List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null)
         {
             var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
             var allRowsList = new List<DataRow>();
             var currentGroupRowsList = new List<DataRow>();
+
+            var drilldownData = new Dictionary<int, DataTable>();
+            if (allExpanded && dt.Rows.Count > 0)
+            {
+                var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                var data = await GetDataTable(reportSql, connectKey);
+                var qry = data.qry;
+                var sqlFields = data.sqlFields;
+                if (onlyAndGroupInDetailColumns != null && onlyAndGroupInDetailColumns.Any())
+                {
+                    columns.AddRange(onlyAndGroupInDetailColumns);
+                    var columnOrderList = GetGroupFunctionList(expandSqls);
+                    columns = columns.OrderBy(c => columnOrderList.FindIndex(g => g.CustomLabel == c.fieldName)).ToList();
+                }
+                var drilldownRow = new List<string>();
+                var dr = dt.Rows[0];
+                int fi = 0;
+                foreach (DataColumn dc in dt.Columns)
+                {
+                    if (fi >= sqlFields.Count) break;
+                    var col = sqlFields[fi++];
+                    drilldownRow.Add($@"
+                {{
+                    ""Value"":""{dr[dc]}"",
+                    ""FormattedValue"":""{dr[dc]}"",
+                    ""LabelValue"":""'{dr[dc]}'"",
+                    ""NumericValue"":null,
+                    ""Column"":{{
+                        ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
+                        ""ColumnName"":""{dc.ColumnName}"",
+                        ""DataType"":""{dc.DataType}"",
+                        ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
+                        ""FormatType"":""""
+                    }}
+                }}");
+                }
+
+                bool isGroupInDetailExist = ContainsGroupInDetail(expandSqls);
+                var drillDownRowValue = $"\"DrillDownRow\": [{string.Join(',', drilldownRow)}]";
+                var reportData = expandSqls.Replace("\"DrillDownRow\":[]", drillDownRowValue);
+                if (!isGroupInDetailExist)
+                {
+                    reportData = reportData.Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+                }
+                reportData = UpdateOnlyTop(reportData);
+
+                var drilldownSqlStr = await RunReportApiCall(reportData);
+                SqlQuery ddQuery = null;
+                if (drilldownSqlStr.StartsWith("{\"sql\""))
+                {
+                    ddQuery = JsonConvert.DeserializeObject<SqlQuery>(drilldownSqlStr);
+                }
+                string drilldownSql = ddQuery?.sql ?? drilldownSqlStr;
+
+                if (!string.IsNullOrEmpty(drilldownSql))
+                {
+                    int batchSize = 100;
+                    for (int startIndex = 0; startIndex < dt.Rows.Count; startIndex += batchSize)
+                    {
+                        int endIndex = Math.Min(startIndex + batchSize, dt.Rows.Count);
+                        var combinedSqls = new StringBuilder();
+
+                        for (int rowIndex = startIndex; rowIndex < endIndex; rowIndex++)
+                        {
+                            var ddr = dt.Rows[rowIndex];
+                            string filteredSql = drilldownSql;
+                            foreach (DataColumn dc in dt.Columns)
+                            {
+                                var value = ddr[dc]?.ToString().Replace("'", "''") ?? "";
+                                filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
+                            }
+                            combinedSqls.AppendLine(filteredSql + ";");
+                        }
+                        var dts = databaseConnection.ExecuteDataSetQuery(connectionString, combinedSqls.ToString(), qry?.parameters);
+
+                        int t = 0;
+                        for (int rowIndex = startIndex; rowIndex < endIndex && t < dts.Tables.Count; rowIndex++, t++)
+                        {
+                            drilldownData[rowIndex] = dts.Tables[t];
+                        }
+                    }
+                }
+            }
+            // ---------- END DRILLDOWN PRE-FETCH ----------
 
             var document = new PdfDocument();
             int leftMargin = 40;
             int rightMargin = 40;
             double minColumnWidth = 100; // minimum column width
             double maxColumnWidth = 300; // optional max width limit
+            double detailIndent = 20;    // ADDED: indent for drilldown detail rows
 
             var tempPage = document.AddPage();
             if (!String.IsNullOrEmpty(pageSize))
@@ -3619,7 +3706,45 @@ namespace ReportBuilder.Web.Models
 
                     currentYPosition += headerHeight + 1;
                 }
-                
+
+                void DrawDrilldownTable(DataTable ddt)
+                {
+                    if (ddt == null || ddt.Rows.Count == 0) return;
+                    var detailFontHeader = new XFont("Arial", 9, XFontStyleEx.Bold);
+                    var detailFontNormal = new XFont("Arial", 9, XFontStyleEx.Regular);
+                    var detailBg = new XSolidBrush(XColor.FromArgb(245, 245, 245));
+                    double availableWidth = columnWidths.Sum() - detailIndent;
+                    double colWidth = Math.Max(60, availableWidth / ddt.Columns.Count);
+
+                    if (currentYPosition + 16 > pageHeight)
+                        AddNewPageWithHeaders();
+                    double xPos = leftMargin + detailIndent;
+                    foreach (DataColumn dc in ddt.Columns)
+                    {
+                        var r = new XRect(xPos, currentYPosition, colWidth, 16);
+                        gfx.DrawRectangle(XPens.LightGray,detailBg, r);
+                        r.Inflate(-3, -3);
+                        tfx.DrawString(dc.ColumnName, detailFontHeader, XBrushes.Black, r, XStringFormats.TopLeft);
+                        xPos += colWidth;
+                    }
+                    currentYPosition += 16;
+                    foreach (DataRow row in ddt.Rows)
+                    {
+                        if (currentYPosition + 16 > pageHeight)
+                            AddNewPageWithHeaders();
+                        xPos = leftMargin + detailIndent;
+                        foreach (DataColumn dc in ddt.Columns)
+                        {
+                            var r = new XRect(xPos, currentYPosition, colWidth, 16);
+                            gfx.DrawRectangle(XPens.WhiteSmoke, r);
+                            r.Inflate(-3, -3);
+                            tfx.DrawString(row[dc]?.ToString() ?? "", detailFontNormal, XBrushes.Black, r, XStringFormats.TopLeft);
+                            xPos += colWidth;
+                        }
+                        currentYPosition += 16;
+                    }
+                    currentYPosition += 4;
+                }
                 AddNewPageWithHeaders(true);
                 var outerGroupIndexes = new HashSet<int>();
 
@@ -3768,6 +3893,13 @@ namespace ReportBuilder.Web.Models
                     allRowsList.Add(dt.Rows[i]);
                     currentGroupRowsList.Add(dt.Rows[i]);
                     lastGroupKey = groupKey;
+
+                    // ---------- ADDED: draw drilldown detail rows right under this parent row ----------
+                    if (allExpanded && drilldownData.TryGetValue(i, out var ddtForRow))
+                    {
+                        DrawDrilldownTable(ddtForRow);
+                    }
+                    // ---------- END ADDED ----------
                 }
 
                 // Last group subtotal

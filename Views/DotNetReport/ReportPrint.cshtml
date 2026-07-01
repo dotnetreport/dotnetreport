@@ -352,10 +352,10 @@
                         </td>
                     </tr>
                     <!-- /ko -->
-                     <!-- ko if: subReportsRan().length > 0 -->
+                     <!-- ko if: nonInlineSubReports().length > 0 -->
                 <tr>
                     <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
-                        <div data-bind="foreach: subReportsRan">
+                        <div data-bind="foreach: nonInlineSubReports">
                             <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
                         </div>
                     </td>
