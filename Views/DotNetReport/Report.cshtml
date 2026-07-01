@@ -129,6 +129,11 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                                         <i class="fa fa-file-pdf-o"></i> Pdf
                                     </a>
                                 </li>
+                                <li data-bind="visible: canDrilldown && appSettings.useAltPdf">
+                                    <a href="#" class="dropdown-item" data-bind="click: function() {downloadPdfAlt();}">
+                                        <i class="fa fa-file-pdf-o"></i> Pdf (Expanded)
+                                    </a>
+                                </li>
                                 <li>
                                     <a href="#" class="dropdown-item" data-bind="click: downloadExcel">
                                         <i class="fa fa-file-excel-o"></i> Excel

@@ -11122,7 +11122,7 @@ var reportViewModel = function (options) {
 		}, 250);
 	};
 
-	self.getExportJson = function (pageSize,pageOrientation) {
+	self.getExportJson = function (expand,pageSize,pageOrientation) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
@@ -11130,13 +11130,15 @@ var reportViewModel = function (options) {
 		var footerHtml = (self.useReportFooter() && self.footerDesigner) ? (self.footerDesigner.footerHtml() || '') : '';
 		var headerEveryPage = self.headerDesigner && self.headerDesigner.IncludeOnEveryPage ? self.headerDesigner.IncludeOnEveryPage() : false;
 		var footerEveryPage = self.footerDesigner && self.footerDesigner.IncludeOnEveryPage ? self.footerDesigner.IncludeOnEveryPage() : false;
+		var hasOnlyAndGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Only in Detail' || x.selectedAggregate() == 'Group in Detail' }) != null;
+		var onlyAndGroupInDetailColumnDetails = _.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() === 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'; });
 		return {
 			adminMode: self.adminMode(),
 			reportSql: self.currentSql(),
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			reportDescription: typeof self.ReportDescription === 'function' ? (self.ReportDescription() || '') : '',
-			allExpanded: false,
+			allExpanded: expand === true ? true : false,
 			expandSqls: JSON.stringify(reportData),
 			chartData: self.ChartData() || '',
 			columnDetails: self.getColumnDetails(),
@@ -11149,6 +11151,7 @@ var reportViewModel = function (options) {
 			pageSize: pageSize,
 			pageOrientation: pageOrientation,
 			filterDetailsText: self.ShowFilterDetails() ? self.buildFilterDetailsPlainText(self.FilterGroups(), false) : '',
+			onlyAndGroupInColumnDetail: hasOnlyAndGroupInDetail ? JSON.stringify(onlyAndGroupInDetailColumnDetails) : null,
 			headerHtml: encodeURIComponent(headerHtml),
 			footerHtml: encodeURIComponent(footerHtml),
 			headerEveryPage: headerEveryPage,
@@ -11158,8 +11161,8 @@ var reportViewModel = function (options) {
 		};
 	}
 
-	self.downloadPdfAlt = function (pageSize,pageOrientation) {
-		var data = self.getExportJson(pageSize, pageOrientation);
+	self.downloadPdfAlt = function (expand,pageSize,pageOrientation) {
+		var data = self.getExportJson(expand,pageSize, pageOrientation);
 		self.downloadExport("DownloadPdfAlt", data, 'pdf');
 	}
 
@@ -12905,7 +12908,7 @@ var dashboardViewModel = function (options) {
 		}
 		$('#exportAllPdfOptionsModal').modal('show');
 	}
-	self.ExportAllPdfAltReports = function (pageSize, pageOrientation) {
+	self.ExportAllPdfAltReports = function (expand,pageSize, pageOrientation) {
 		const reports = self.reports();
 		const allreports = [];
 		_.forEach(reports, function (report) {
@@ -12918,6 +12921,52 @@ var dashboardViewModel = function (options) {
 				reportName: report.ReportName(),
 				reportDescription: typeof report.ReportDescription === 'function' ? (report.ReportDescription() || '') : '',
 				expandAll: report.allExpanded(),
+				printUrl: options.printReportUrl,
+				clientId: report.clientid || '',
+				userId: report.currentUserId || '',
+				userRoles: report.currentUserRole || '',
+				dataFilters: JSON.stringify(options.dataFilters),
+				expandSqls: JSON.stringify(reportData),
+				chartData: report.ChartData() || '',
+				columnDetails: report.getColumnDetails(),
+				includeSubTotal: report.IncludeSubTotal(),
+				pivot: report.ReportType() == 'Pivot',
+				pivotColumn: pivotData.pivotColumn,
+				pivotFunction: pivotData.pivotFunction,
+				pageSize: pageSize,
+				pageOrientation: pageOrientation
+			});
+		});
+		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
+		reports[0]?.downloadExport("DownloadAllPdfAlt", {
+			reportdata: JSON.stringify(allreports),
+			dashboardName: dashboardName
+		}, 'pdf', dashboardName);
+	}
+	self.ExportAllExpendedPdfAltReportsWithPageOption = function () {
+		if (self.dashboard.PdfPage) {
+			self.dashboard.PdfPage.download = function () {
+				var pageSize = self.dashboard.PdfPage.selectedPageSize();
+				var orientation = self.dashboard.PdfPage.selectedPageOrientation();
+				self.ExportAllPdfAltReports(pageSize, orientation);
+			}
+		}
+		$('#exportAllPdfOptionsModal').modal('show');
+	}
+	self.ExportAllExpendedPdfAltReports = function (pageSize, pageOrientation) {
+		const reports = self.reports();
+		var expandedReport = _.filter(self.reports(), function (x) { return x.canDrilldown() == true });
+		const allreports = [];
+		_.forEach(expandedReport, function (report) {
+			const reportData = report.BuildReportData();
+			const pivotData = report.preparePivotData();
+			allreports.push({
+				reportId: report.ReportID(),
+				reportSql: report.currentSql(),
+				connectKey: report.currentConnectKey(),
+				reportName: report.ReportName(),
+				reportDescription: typeof report.ReportDescription === 'function' ? (report.ReportDescription() || '') : '',
+				expandAll: true,
 				printUrl: options.printReportUrl,
 				clientId: report.clientid || '',
 				userId: report.currentUserId || '',

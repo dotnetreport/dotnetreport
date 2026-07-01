@@ -923,8 +923,15 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <li data-bind="visible: appSettings.useAltPdf">
                                         <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
                                               ? function() { $('#pdfOptionsModal').modal('show'); }
-                                              : function() { downloadPdfAlt(); }">
+                                              : function() { downloadPdfAlt(false); }">
                                             <i class="fa fa-file-pdf-o"></i> Pdf
+                                        </a>
+                                    </li>
+                                    <li data-bind="visible: canDrilldown && appSettings.useAltPdf">
+                                        <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
+                                            ? function() { $('#pdfOptionsModal').modal('show'); }
+                                            : function() { downloadPdfAlt(true); }">
+                                            <i class="fa fa-file-pdf-o"></i> Pdf (Expanded)
                                         </a>
                                     </li>
                                     <li>
