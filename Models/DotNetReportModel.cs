@@ -448,6 +448,9 @@ namespace ReportBuilder.Web.Models
         public string fontColor { get; set; }
         public string backColor { get; set; }
         public string fieldWidth { get; set; }
+        public string dateFormat { get; set; }
+        public string customDateFormat { get; set; }
+        public string fieldType { get; set; }
     }
     public class LinkFieldItem
     {
@@ -526,6 +529,57 @@ namespace ReportBuilder.Web.Models
         private readonly static string _configFileName = "appsettings.dotnetreport.json";
         public static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
         public static bool useAltPivot = false;
+        public static string defaultDateFormat = "United States";
+
+        public static System.Globalization.CultureInfo GetDateCulture(string dateFormatName)
+        {
+            switch (dateFormatName)
+            {
+                case "United Kingdom": return System.Globalization.CultureInfo.GetCultureInfo("en-GB");
+                case "New Zealand": return System.Globalization.CultureInfo.GetCultureInfo("en-NZ");
+                case "France": return System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
+                case "German": return System.Globalization.CultureInfo.GetCultureInfo("de-DE");
+                case "Spanish": return System.Globalization.CultureInfo.GetCultureInfo("es-ES");
+                case "Chinese": return System.Globalization.CultureInfo.GetCultureInfo("zh-CN");
+                default: return System.Globalization.CultureInfo.GetCultureInfo("en-US");
+            }
+        }
+
+        public static string GetExcelDateFormat(ReportHeaderColumn formatColumn)
+        {
+            var ff = formatColumn?.fieldFormating;
+            var explicitDateFormat = ff == "Date" || ff == "Date and Time" || ff == "Time";
+
+            if (explicitDateFormat && formatColumn.dateFormat == "Custom" && !string.IsNullOrEmpty(formatColumn.customDateFormat))
+            {
+                return formatColumn.customDateFormat;
+            }
+
+            var resolvedName = explicitDateFormat && !string.IsNullOrEmpty(formatColumn.dateFormat)
+                ? formatColumn.dateFormat
+                : defaultDateFormat;
+
+            string dateOnly;
+            switch (resolvedName)
+            {
+                case "United Kingdom":
+                case "New Zealand":
+                case "France":
+                case "Spanish":
+                    dateOnly = "dd/mm/yyyy"; break;
+                case "German":
+                    dateOnly = "dd.mm.yyyy"; break;
+                case "Chinese":
+                    dateOnly = "yyyy/mm/dd"; break;
+                default:
+                    dateOnly = "mm/dd/yyyy"; break;
+            }
+
+            if (ff == "Date and Time") return dateOnly + " hh:mm:ss";
+            if (ff == "Time") return "hh:mm:ss";
+            return dateOnly;
+        }
+
 
         public static string GetConnectionString(string key, bool addOledbProvider = false)
         {
@@ -885,7 +939,7 @@ namespace ReportBuilder.Web.Models
                     isNumeric = true;
                 }
                 if (dc.DataType == typeof(DateTime))
-                    ws.Column(i).Style.Numberformat.Format = "mm/dd/yyyy";
+                    ws.Column(i).Style.Numberformat.Format = GetExcelDateFormat(formatColumn);
 
                 if (formatColumn != null && formatColumn.fieldFormating == "Currency")
                 {
@@ -1155,6 +1209,14 @@ namespace ReportBuilder.Web.Models
             return sql.Length;
         }
 
+        public static string RemoveLeadingSelect(string selectClause)
+        {
+            var trimmed = selectClause.TrimStart();
+            if (trimmed.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
+                trimmed = trimmed.Substring("SELECT".Length);
+            return trimmed.Trim();
+        }
+
         public static async Task<List<TableViewModel>> GetApiTables(string accountKey, string dataConnectKey, bool loadColumns = false)
         {
             using (var client = new HttpClient())
@@ -1340,9 +1402,7 @@ namespace ReportBuilder.Web.Models
                     var fromIndexMy = FindFromIndex(sql);
                     if (fromIndexMy <= 0) return new List<string>();
 
-                    selectPart = sql.Substring(0, fromIndexMy)
-                         .Replace("SELECT", "")
-                         .Trim();
+                    selectPart = RemoveLeadingSelect(sql.Substring(0, fromIndexMy));
 
 
                     foreach (char c in selectPart)
@@ -1383,9 +1443,7 @@ namespace ReportBuilder.Web.Models
                     var fromIndexPg = FindFromIndex(sql);
                     if (fromIndexPg <= 0) return new List<string>();
 
-                    var sqlSplitPg = sql.Substring(0, fromIndexPg)
-                        .Replace("SELECT", "")
-                        .Trim();
+                    var sqlSplitPg = RemoveLeadingSelect(sql.Substring(0, fromIndexPg));
                     sqlSplitPg = Regex.Replace(sqlSplitPg, @"LIMIT\\s+\\d+(\\s+OFFSET\\s+\\d+)?", "", RegexOptions.IgnoreCase);
 
                     return Regex.Split(sqlSplitPg, ",(?![^()]*\\))")
@@ -1403,7 +1461,7 @@ namespace ReportBuilder.Web.Models
                     var fromIndex = FindFromIndex(sql);
                     if (fromIndex < 0) return new List<string>();
 
-                    selectPart = sql.Substring(0, fromIndex).Replace("SELECT", "").Trim();
+                    selectPart = RemoveLeadingSelect(sql.Substring(0, fromIndex));
 
                     var cols = new List<string>();
                     var sb = new StringBuilder();
@@ -2559,7 +2617,7 @@ namespace ReportBuilder.Web.Models
                     if (dc.DataType == typeof(decimal) || fc?.fieldFormating == "Decimal")
                         ws.Column(colIdx).Style.Numberformat.Format = "###,###,##0." + decFmt;
                     if (dc.DataType == typeof(DateTime))
-                        ws.Column(colIdx).Style.Numberformat.Format = "mm/dd/yyyy";
+                        ws.Column(colIdx).Style.Numberformat.Format = GetExcelDateFormat(fc);
                     if (fc?.fieldFormating == "Currency")
                         ws.Column(colIdx).Style.Numberformat.Format = (fc.currencySymbol ?? "$") + "###,###,##0." + decFmt;
 
@@ -2914,12 +2972,37 @@ namespace ReportBuilder.Web.Models
                     }
                     isCurrency = true;
                 }
-                if (formatColumn != null && (formatColumn.fieldFormating == "Date" || formatColumn.fieldFormating == "Date and Time" || formatColumn.fieldFormating == "Time") && dc.DataType.Name == "DateTime")
                 {
-                    var date = Convert.ToDateTime(value);
-                    value = formatColumn.fieldFormating.StartsWith("Date") ? date.ToShortDateString() + " " : "";
-                    value += formatColumn.fieldFormating.EndsWith("Time") ? date.ToShortTimeString() : "";
-                    value = value.Trim();
+                    var ff = formatColumn?.fieldFormating;
+                    var ft = formatColumn?.fieldType;
+                    var explicitDateFormat = ff == "Date" || ff == "Date and Time" || ff == "Time";
+                    var autoDateField = string.IsNullOrEmpty(ff) || ff == "Auto";
+                    var isDateColumn = dc.DataType.Name == "DateTime" || ft == "Date" || ft == "DateTime" || ft == "Time";
+
+                    if ((explicitDateFormat || (autoDateField && isDateColumn)) && !string.IsNullOrEmpty(value))
+                    {
+                        var date = Convert.ToDateTime(value);
+                        string effectiveFormat = explicitDateFormat ? ff : (ft == "Time" ? "Time" : "Date");
+
+                        if (explicitDateFormat && formatColumn.dateFormat == "Custom" && !string.IsNullOrEmpty(formatColumn.customDateFormat))
+                        {
+                            value = date.ToString(formatColumn.customDateFormat);
+                        }
+                        else
+                        {
+                            var resolvedName = explicitDateFormat
+                                ? (!string.IsNullOrEmpty(formatColumn.dateFormat) ? formatColumn.dateFormat : defaultDateFormat)
+                                : defaultDateFormat;
+                            var culture = GetDateCulture(resolvedName);
+
+                            switch (effectiveFormat)
+                            {
+                                case "Date": value = date.ToString("d", culture); break;
+                                case "Date and Time": value = date.ToString("g", culture); break;
+                                case "Time": value = date.ToString("t", culture); break;
+                            }
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -2969,9 +3052,34 @@ namespace ReportBuilder.Web.Models
                 if (size.Width > rect.Width)
                 {
                     if (!string.IsNullOrEmpty(line))
+                    {
                         lines.Add(line);
+                        line = "";
+                    }
 
-                    line = word;
+                    if (gfx.MeasureString(word, font).Width > rect.Width)
+                    {
+                        string current = "";
+                        foreach (var ch in word)
+                        {
+                            string test = current + ch;
+                            if (gfx.MeasureString(test, font).Width > rect.Width)
+                            {
+                                if (!string.IsNullOrEmpty(current))
+                                    lines.Add(current);
+                                current = ch.ToString();
+                            }
+                            else
+                            {
+                                current = test;
+                            }
+                        }
+                        line = current;
+                    }
+                    else
+                    {
+                        line = word;
+                    }
                 }
                 else
                 {
@@ -2983,6 +3091,15 @@ namespace ReportBuilder.Web.Models
                 lines.Add(line);
 
             return lines;
+        }
+
+        private static string GetUniqueColumnName(DataTable dt, string desired)
+        {
+            if (!dt.Columns.Contains(desired)) return desired;
+            int i = 2;
+            string candidate;
+            do { candidate = desired + " (" + i++ + ")"; } while (dt.Columns.Contains(candidate));
+            return candidate;
         }
 
         private async static Task<DataTable> BuildExportData(string reportSql, string connectKey, string expandSqls = null, List<ReportHeaderColumn> columns = null, bool pivot = false, string pivotColumn = null, string pivotFunction = null)
@@ -3004,13 +3121,20 @@ namespace ReportBuilder.Web.Models
             {
                 foreach (var col in columns)
                 {
-                    if (dt.Columns.Contains(col.fieldName) && col.hideStoredProcColumn)
+                    if (string.IsNullOrEmpty(col.fieldName)) continue;
+
+                    DataColumn target = dt.Columns.Contains(col.fieldName)
+                        ? dt.Columns[col.fieldName]
+                        : dt.Columns.Cast<DataColumn>().FirstOrDefault(x => x.ColumnName.StartsWith(col.fieldName));
+                    if (target == null) continue;
+
+                    if (col.hideStoredProcColumn)
                     {
-                        dt.Columns.Remove(col.fieldName);
+                        dt.Columns.Remove(target);
                     }
-                    else if (!String.IsNullOrWhiteSpace(col.fieldLabel))
+                    else if (!string.IsNullOrWhiteSpace(col.fieldLabel) && target.ColumnName != col.fieldLabel)
                     {
-                        dt.Columns[col.fieldName].ColumnName = col.fieldLabel;
+                        target.ColumnName = GetUniqueColumnName(dt, col.fieldLabel);
                     }
                 }
             }
@@ -3046,14 +3170,15 @@ namespace ReportBuilder.Web.Models
         {
             if (string.IsNullOrEmpty(text)) return "";
             DateTime now = DateTime.Now;
+            var culture = DotNetReportHelper.GetDateCulture(DotNetReportHelper.defaultDateFormat);
             text = text.Replace("{current.user}", userName ?? "")
                        .Replace("{CURRENTUSER}", userName ?? "")
                        .Replace("{current.user.roles}", userRoles ?? "")
                        .Replace("{CURRENTUSERROLES}", userRoles ?? "")
-                       .Replace("{current.datetime}", now.ToString("g"))
-                       .Replace("{CURRENTDATETIME}", now.ToString("g"))
-                       .Replace("{current.date}", now.ToString("d"))
-                       .Replace("{current.time}", now.ToString("t"))
+                       .Replace("{current.datetime}", now.ToString("g", culture))
+                       .Replace("{CURRENTDATETIME}", now.ToString("g", culture))
+                       .Replace("{current.date}", now.ToString("d", culture))
+                       .Replace("{current.time}", now.ToString("t", culture))
                        .Replace("{page.number}", pageNumber > 0 ? pageNumber.ToString() : "")
                        .Replace("{page.total}", totalPages > 0 ? totalPages.ToString() : "")
                        .Replace("{report.name}", reportName ?? "");
@@ -3074,6 +3199,28 @@ namespace ReportBuilder.Web.Models
             double maxColumnWidth = 300; // optional max width limit
 
             var tempPage = document.AddPage();
+            if (!String.IsNullOrEmpty(pageSize))
+            {
+                switch (pageSize.ToUpper())
+                {
+                    case "A4": tempPage.Size = PdfSharp.PageSize.A4; break;
+                    case "LEGAL": tempPage.Size = PdfSharp.PageSize.Legal; break;
+                    case "A1": tempPage.Size = PdfSharp.PageSize.A1; break;
+                    case "A2": tempPage.Size = PdfSharp.PageSize.A2; break;
+                    case "A3": tempPage.Size = PdfSharp.PageSize.A3; break;
+                    case "TABLOID": tempPage.Size = PdfSharp.PageSize.Tabloid; break;
+                    case "LETTER": default: tempPage.Size = PdfSharp.PageSize.Letter; break;
+                }
+            }
+            if (!String.IsNullOrEmpty(pageOrientation))
+            {
+                switch (pageOrientation.ToUpper())
+                {
+                    case "LANDSCAPE": tempPage.Orientation = PdfSharp.PageOrientation.Landscape; break;
+                    case "PORTRIAT": default: tempPage.Orientation = PdfSharp.PageOrientation.Portrait; break;
+                }
+            }
+            double availableContentWidth = tempPage.Width.Point - leftMargin - rightMargin;
             var gfxMeasure = XGraphics.FromPdfPage(tempPage);
             var fontMeasure = new XFont("Arial", 11, XFontStyleEx.Bold);
             List<double> columnWidths = new List<double>();
@@ -3094,6 +3241,27 @@ namespace ReportBuilder.Web.Models
             gfxMeasure.Dispose();
             gfxMeasure = null;
             document.Pages.Remove(tempPage); // remove temp measuring page
+
+            if (!String.IsNullOrEmpty(pageSize) && availableContentWidth > 0 && columnWidths.Count > 0)
+            {
+                double sumWidths = columnWidths.Sum();
+                if (sumWidths > availableContentWidth)
+                {
+                    double minAllowed = minColumnWidth * 0.5;
+                    if (availableContentWidth >= columnWidths.Count * minAllowed)
+                    {
+                        double scale = availableContentWidth / sumWidths;
+                        for (int idx = 0; idx < columnWidths.Count; idx++)
+                            columnWidths[idx] = Math.Max(minAllowed, columnWidths[idx] * scale);
+                    }
+                    else
+                    {
+                        double equalWidth = availableContentWidth / columnWidths.Count;
+                        for (int idx = 0; idx < columnWidths.Count; idx++)
+                            columnWidths[idx] = equalWidth;
+                    }
+                }
+            }
             double totalWidth = columnWidths.Sum() + leftMargin + rightMargin;
             PdfPage page = null;
             XGraphics gfx = null;
@@ -3155,7 +3323,7 @@ namespace ReportBuilder.Web.Models
                                 break;
                         }
                     }
-                    if (totalWidth > page.Width) page.Width = totalWidth;
+                    if (string.IsNullOrEmpty(pageSize) && totalWidth > page.Width) page.Width = totalWidth;
                     pageHeight = page.Height.Point - 50;
                     gfx = XGraphics.FromPdfPage(page);
                     tfx = new XTextFormatter(gfx);
@@ -3231,6 +3399,9 @@ namespace ReportBuilder.Web.Models
 
                     currentXPosition = leftMargin;
 
+                    var headerLines = new List<List<string>>();
+                    var headerNames = new List<string>();
+                    int headerMaxLines = 1;
                     for (int k = 0; k < dt.Columns.Count; k++)
                     {
                         var columnFormatting = columns != null && columns.Count > k ? columns[k] : new ReportHeaderColumn();
@@ -3239,14 +3410,35 @@ namespace ReportBuilder.Web.Models
                             : (!string.IsNullOrEmpty(columnFormatting.fieldName)
                                 ? columnFormatting.fieldName
                                 : dt.Columns[k].ColumnName);
-                        rect = new XRect(currentXPosition, currentYPosition, columnWidths[k], 20);
+                        headerNames.Add(columnName ?? "");
+                        var lines = WrapText(gfx, columnName ?? "",
+                            new XRect(0, 0, columnWidths[k] - cellPadding * 2, 9999),
+                            fontBold,
+                            XStringFormats.TopLeft);
+                        headerLines.Add(lines);
+                        if (lines.Count > headerMaxLines) headerMaxLines = lines.Count;
+                    }
+
+                    int headerHeight = (int)((fontBold.Height + cellPadding * 2) * headerMaxLines);
+                    for (int k = 0; k < dt.Columns.Count; k++)
+                    {
+                        rect = new XRect(currentXPosition, currentYPosition, columnWidths[k], headerHeight);
                         gfx.DrawRectangle(XPens.LightGray, rect);
-                        rect.Inflate(-cellPadding, -cellPadding);
-                        tfx.DrawString(columnName ?? "", fontBold, GetBrushWithColor(), rect, XStringFormats.TopLeft);
+
+                        var cellLines = headerLines[k];
+                        double textBlockHeight = cellLines.Count * fontBold.Height;
+                        double yPos = currentYPosition + (headerHeight - textBlockHeight) / 2;
+                        foreach (var l in cellLines)
+                        {
+                            XRect lineRect = new XRect(rect.Left, yPos, rect.Width, fontBold.Height);
+                            lineRect.Inflate(-cellPadding, 0);
+                            gfx.DrawString(l, fontBold, GetBrushWithColor(), lineRect, XStringFormats.TopLeft);
+                            yPos += fontBold.Height;
+                        }
                         currentXPosition += (int)columnWidths[k];
                     }
 
-                    currentYPosition += 20;
+                    currentYPosition += headerHeight + 1;
                 }
                 
                 AddNewPageWithHeaders(true);
@@ -3437,14 +3629,15 @@ namespace ReportBuilder.Web.Models
                 pageField = pageNumber > 0 ? pageNumber.ToString() : "";
                 totalField = totalPages > 0 ? totalPages.ToString() : "";
             }
+            var culture = DotNetReportHelper.GetDateCulture(DotNetReportHelper.defaultDateFormat);
             return html.Replace("{current.user}", System.Net.WebUtility.HtmlEncode(currentUserName ?? ""))
                        .Replace("{CURRENTUSER}", System.Net.WebUtility.HtmlEncode(currentUserName ?? ""))
                        .Replace("{current.user.roles}", System.Net.WebUtility.HtmlEncode(currentUserRoles ?? ""))
                        .Replace("{CURRENTUSERROLES}", System.Net.WebUtility.HtmlEncode(currentUserRoles ?? ""))
-                       .Replace("{current.datetime}", now.ToString("g"))
-                       .Replace("{CURRENTDATETIME}", now.ToString("g"))
-                       .Replace("{current.date}", now.ToString("d"))
-                       .Replace("{current.time}", now.ToString("t"))
+                       .Replace("{current.datetime}", now.ToString("g", culture))
+                       .Replace("{CURRENTDATETIME}", now.ToString("g", culture))
+                       .Replace("{current.date}", now.ToString("d", culture))
+                       .Replace("{current.time}", now.ToString("t", culture))
                        .Replace("{page.number}", pageField)
                        .Replace("{page.total}", totalField)
                        .Replace("{report.name}", System.Net.WebUtility.HtmlEncode(reportName ?? ""));
@@ -3634,13 +3827,16 @@ namespace ReportBuilder.Web.Models
                         int[] maxColumnWidths = new int[dt.Columns.Count];
                         foreach (DataColumn column in dt.Columns)
                         {
-                            maxColumnWidths[column.Ordinal] = EstimateTextWidth(column.ColumnName);
+                            var headerText = (columns != null && columns.Count > column.Ordinal && !string.IsNullOrEmpty(columns[column.Ordinal].fieldLabel))
+                                ? columns[column.Ordinal].fieldLabel
+                                : column.ColumnName;
+                            maxColumnWidths[column.Ordinal] = EstimateTextWidth(headerText);
                             RunProperties runProperties = new RunProperties(
                                 new Bold(),
                                 new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "16" }, // 8pt
                                 new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "156082" }
                             );
-                            Run run = new Run(runProperties, new Text(column.ColumnName));
+                            Run run = new Run(runProperties, new Text(headerText));
                             ParagraphProperties paragraphProperties = new ParagraphProperties(
                                 new SpacingBetweenLines() { Before = "20", After = "20", Line = "220", LineRule = LineSpacingRuleValues.Auto },
                                 new Indentation() { Left = "40", Right = "40" }
@@ -4015,6 +4211,20 @@ namespace ReportBuilder.Web.Models
             return text.Length * averageCharWidthInTwips;
         }
 
+        private static async Task SafeDisposeBrowserAsync(IBrowser browser, IPage page)
+        {
+            if (page != null)
+            {
+                try { await page.DisposeAsync(); }
+                catch (Exception ex) { Console.Error.WriteLine($"[Puppeteer] page dispose failed: {ex.Message}"); }
+            }
+            if (browser != null)
+            {
+                try { await browser.DisposeAsync(); }
+                catch (Exception ex) { Console.Error.WriteLine($"[Puppeteer] browser dispose failed: {ex.Message}"); }
+            }
+        }
+
         private async static Task<(IBrowser browser, IPage page)> LaunchAndLoadReportPrintPageAsync(
             string printUrl, int reportId, string reportSql, string connectKey,
             string userId, string clientId, string currentUserRole, string dataFilters,
@@ -4137,8 +4347,7 @@ namespace ReportBuilder.Web.Models
             }
             catch
             {
-                if (page != null) await page.DisposeAsync();
-                await browser.DisposeAsync();
+                await SafeDisposeBrowserAsync(browser, page);
                 throw;
             }
         }
@@ -4149,15 +4358,18 @@ namespace ReportBuilder.Web.Models
         int pageNumber = 1,
         int currentPageSize = 1)
         {
-            var (browser, page) = await LaunchAndLoadReportPrintPageAsync(
-                printUrl, reportId, reportSql, connectKey,
-                userId, clientId, currentUserRole, dataFilters,
-                expandAll, expandSqls, pivotColumn, pivotFunction,
-                subTotalMode, includeColumnTotal, isSubreport,
-                pageNumber, currentPageSize, debug);
-
+            IBrowser browser = null;
+            IPage page = null;
+            string pdfFile = null;
             try
             {
+                (browser, page) = await LaunchAndLoadReportPrintPageAsync(
+                    printUrl, reportId, reportSql, connectKey,
+                    userId, clientId, currentUserRole, dataFilters,
+                    expandAll, expandSqls, pivotColumn, pivotFunction,
+                    subTotalMode, includeColumnTotal, isSubreport,
+                    pageNumber, currentPageSize, debug);
+
                 if (imageOnly)
                 {
                     try
@@ -4182,7 +4394,7 @@ namespace ReportBuilder.Web.Models
 
                 int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
                 int width = Convert.ToInt32(await page.EvaluateExpressionAsync<decimal>("$('table').width()"));
-                var pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
+                pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
 
                 // Read header/footer "include on every page" settings from the loaded print page
                 bool headerEveryPage = false;
@@ -4200,14 +4412,27 @@ namespace ReportBuilder.Web.Models
                 }
                 catch { }
 
-                // Replace page-number placeholders for Puppeteer's built-in classes
+                string pageStyles = "";
+                try
+                {
+                    pageStyles = await page.EvaluateExpressionAsync<string>(@"
+                        Array.from(document.styleSheets)
+                            .map(function(s) {
+                                try { return Array.from(s.cssRules).map(function(r) { return r.cssText; }).join('\n'); }
+                                catch(e) { return ''; }
+                            })
+                            .join('\n')
+                    ") ?? "";
+                }
+                catch { }
+
                 string PreparePuppeteerTemplate(string html)
                 {
                     if (string.IsNullOrEmpty(html)) return "";
                     html = html.Replace("{page.number}", "<span class=\"pageNumber\"></span>")
                                .Replace("{page.total}", "<span class=\"totalPages\"></span>");
-                    // Wrap in a container with min font-size since Puppeteer uses 0 by default
-                    return "<div style=\"font-size:10px; width:100%; padding: 0 0.4in;\">" + html + "</div>";
+                    return "<style>" + pageStyles + " * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }</style>"
+                         + "<div style=\"font-size:10px; width:100%; padding: 0 0.4in; -webkit-print-color-adjust: exact; print-color-adjust: exact;\">" + html + "</div>";
                 }
 
                 if (headerEveryPage || footerEveryPage)
@@ -4304,7 +4529,7 @@ namespace ReportBuilder.Web.Models
                     if (width > usableWidthPx && usableWidthPx > 0)
                     {
                         double scale = usableWidthPx / width;
-                        pdfOptions.Scale = (decimal) Math.Max(0.1, scale); 
+                        pdfOptions.Scale = (decimal) Math.Max(0.1, scale);
                     }
                 }
                 else
@@ -4325,16 +4550,21 @@ namespace ReportBuilder.Web.Models
                 await page.EmulateMediaTypeAsync(MediaType.Screen);
                 await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
                 await page.PdfAsync(pdfFile, pdfOptions);
+                await page.DisposeAsync();
+                await browser.DisposeAsync();
                 return File.ReadAllBytes(pdfFile);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                throw ex;
+                throw;
             }
             finally
             {
-                if (page != null) await page.DisposeAsync();
-                if (browser != null) await browser.DisposeAsync();
+                await SafeDisposeBrowserAsync(browser, page);
+                if (pdfFile != null)
+                {
+                    try { if (File.Exists(pdfFile)) File.Delete(pdfFile); } catch { /* best-effort */ }
+                }
             }
         }
 
@@ -4376,8 +4606,7 @@ namespace ReportBuilder.Web.Models
             }
             finally
             {
-                if (page != null) await page.DisposeAsync();
-                if (browser != null) await browser.DisposeAsync();
+                await SafeDisposeBrowserAsync(browser, page);
             }
         }
 
@@ -5411,31 +5640,38 @@ namespace ReportBuilder.Web.Models
                                 parameterViewModels.Add(parameter);
                             }
                         }
-                        DataTable dt = new DataTable();
-                        cmd = new SqlCommand($"[{procSchema}].[{procName}]", conn);
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        foreach (var data in parameterViewModels)
+                        DataTable dt = null;
+                        try
                         {
-                            cmd.Parameters.Add(new SqlParameter { Value = DBNull.Value, ParameterName = data.ParameterName, Direction = ParameterDirection.Input, IsNullable = true });
-                        }
-                        using (SqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            dt = reader.GetSchemaTable();
-                        }
-
-                        if (dt == null) continue;
-
-                        // Store the table names in the class scoped array list of table names
-                        List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
-                        for (int i = 0; i < dt.Rows.Count; i++)
-                        {
-                            var column = new ColumnViewModel
+                            cmd = new SqlCommand($"[{procSchema}].[{procName}]", conn);
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            foreach (var data in parameterViewModels)
                             {
-                                ColumnName = dt.Rows[i].ItemArray[0].ToString(),
-                                DisplayName = dt.Rows[i].ItemArray[0].ToString(),
-                                FieldType = ConvertToJetDataType(dt.Rows[i]["ProviderType"].ToString()).ToString()
-                            };
-                            columnViewModels.Add(column);
+                                cmd.Parameters.Add(new SqlParameter { Value = DBNull.Value, ParameterName = data.ParameterName, Direction = ParameterDirection.Input, IsNullable = true });
+                            }
+                            using (SqlDataReader reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                            {
+                                dt = reader.GetSchemaTable();
+                            }
+                        }
+                        catch
+                        {
+                            dt = null;
+                        }
+
+                        List<ColumnViewModel> columnViewModels = new List<ColumnViewModel>();
+                        if (dt != null)
+                        {
+                            for (int i = 0; i < dt.Rows.Count; i++)
+                            {
+                                var column = new ColumnViewModel
+                                {
+                                    ColumnName = dt.Rows[i].ItemArray[0].ToString(),
+                                    DisplayName = dt.Rows[i].ItemArray[0].ToString(),
+                                    FieldType = ConvertToJetDataType(dt.Rows[i]["ProviderType"].ToString()).ToString()
+                                };
+                                columnViewModels.Add(column);
+                            }
                         }
                         tables.Add(new TableViewModel
                         {
