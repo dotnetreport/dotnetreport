@@ -47,7 +47,7 @@ var manageViewModel = function (options) {
 
 	self.refreshAll = function () {
 		var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
-		ajaxcall({ url: options.loadSchemaUrl + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + self.onlyApi() }).done(function (model) {
+		return ajaxcall({ url: options.loadSchemaUrl + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + self.onlyApi() }).done(function (model) {
 			self.Tables.refresh(model);
 			self.LoadJoins();
 			self.LoadCategories();
@@ -790,8 +790,47 @@ var manageViewModel = function (options) {
 			})
 		}).done(function (result) {
 			if (result.d) result = result.d;
-			
+
 			self.schedules(result);
+		});
+	}
+
+	self.sentHistory = ko.observableArray([]);
+	self.sentHistoryPage = ko.observable(1);
+	self.sentHistoryPageSize = ko.observable(25);
+	self.sentHistoryTotal = ko.observable(0);
+	self.sentHistoryTotalPages = ko.observable(0);
+	self.sentHistoryLoading = ko.observable(false);
+	self.sentHistoryStartDate = ko.observable('');
+	self.sentHistoryEndDate = ko.observable('');
+
+	self.loadSentHistory = function (page) {
+		if (!page || page < 1) page = 1;
+		self.sentHistoryLoading(true);
+		var model = {
+			account: self.keys.AccountApiKey,
+			dataConnect: self.keys.DatabaseApiKey,
+			page: page,
+			pageSize: self.sentHistoryPageSize()
+		};
+		if (self.sentHistoryStartDate()) model.startDate = self.sentHistoryStartDate();
+		if (self.sentHistoryEndDate()) model.endDate = self.sentHistoryEndDate();
+		ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				method: '/ReportApi/GetScheduleSentHistory',
+				model: JSON.stringify(model)
+			})
+		}).done(function (result) {
+			if (result && result.d) result = result.d;
+			if (!result) result = { items: [], page: 1, total: 0, totalPages: 0 };
+			self.sentHistory(result.items || []);
+			self.sentHistoryPage(result.page || 1);
+			self.sentHistoryTotal(result.total || 0);
+			self.sentHistoryTotalPages(result.totalPages || 0);
+		}).always(function () {
+			self.sentHistoryLoading(false);
 		});
 	}
 	self.LoadCategories = function () {
@@ -1362,68 +1401,98 @@ var manageViewModel = function (options) {
 
 			const reader = new FileReader();
 			reader.onload = function (event) {
+				let parsed;
 				try {
-					const parsed = JSON.parse(event.target.result);
-					const tables = Array.isArray(parsed) ? parsed : [parsed];
-
-					const importPromises = tables.map(table => {
-						return new Promise(resolve => {
-							const tableName = table.TableName;
-							const tableId = table.Id;
-							table.Selected = ko.observable(true);
-
-							const anySelected = _.some(table.Columns, c => ko.unwrap(c.Selected) === true);
-							if (!anySelected) {
-								table.Columns.forEach(c => c.Selected = ko.observable(true));
-							}
-
-							const tableMatch = _.some(self.Tables.model(), t => t.TableName() === tableName);
-
-							const processAndSave = (existingId) => {
-								table.Id = existingId || 0;
-								const mapped = ko.mapping.fromJS(table);
-								self.Tables.model.push(self.Tables.processTable(mapped));
-								const newTable = self.Tables.model()[self.Tables.model().length - 1];
-
-								newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey)
-									.then(success => {
-										if (!success) {
-											self.Tables.model.remove(newTable);
-										}
-										resolve();
-									})
-									.catch(() => resolve());
-							};
-
-							if (tableMatch) {
-								handleOverwriteConfirmation(tableName, function (action) {
-									if (action === 'overwrite') {
-										const existingTable = _.find(self.Tables.model(), e => e.TableName() === tableName);
-										const existingId = existingTable ? existingTable.Id() : 0;
-										self.Tables.model.remove(existingTable);
-										processAndSave(existingId);
-									} else {
-										toastr.info('Upload canceled for ' + tableName + '.');
-										resolve();
-									}
-								});
-							} else {
-								processAndSave();
-							}
-						});
-					});
-
-					Promise.all(importPromises).then(() => {
-						self.LoadJoins();
-						$('#uploadTablesFileModal').modal('hide');
-						clearFileInput('tablesFileInputJson');
-						toastr.success('All tables processed successfully!');
-					});
-
+					parsed = JSON.parse(event.target.result);
 				} catch (e) {
 					toastr.error('Invalid JSON file: ' + e.message);
 					clearFileInput('tablesFileInputJson');
+					return;
 				}
+
+				const tables = Array.isArray(parsed) ? parsed : [parsed];
+
+				self.refreshAll().done(function () {
+					const succeeded = [];
+					const failed = [];
+					const skipped = [];
+
+					const finishImport = () => {
+						self.refreshAll();
+						$('#uploadTablesFileModal').modal('hide');
+						clearFileInput('tablesFileInputJson');
+						if (failed.length) {
+							toastr.warning('Imported ' + succeeded.length + ', failed ' + failed.length + ': ' + failed.join(', '));
+						} else {
+							toastr.success('Imported ' + succeeded.length + ' tables successfully' + (skipped.length ? ' (skipped ' + skipped.length + ')' : '') + '.');
+						}
+					};
+
+					const processNext = (index) => {
+						if (index >= tables.length) {
+							finishImport();
+							return;
+						}
+
+						const table = tables[index];
+						const tableName = table.TableName;
+
+						if (Array.isArray(table.Columns)) {
+							table.Columns.forEach(c => { c.Id = 0; });
+						}
+
+						table.Selected = true;
+						const anySelected = _.some(table.Columns, c => c.Selected === true);
+						if (!anySelected && Array.isArray(table.Columns)) {
+							table.Columns.forEach(c => { c.Selected = true; });
+						}
+
+						const existingTable = _.find(self.Tables.model(), t => t.TableName() === tableName);
+
+						const processAndSave = (existingId) => {
+							table.Id = existingId || 0;
+							const mapped = ko.mapping.fromJS(table);
+							self.Tables.model.push(self.Tables.processTable(mapped));
+							const newTable = self.Tables.model()[self.Tables.model().length - 1];
+
+							newTable.saveTable(self.keys.AccountApiKey, self.keys.DatabaseApiKey, true)
+								.then(success => {
+									if (success) {
+										succeeded.push(tableName);
+									} else {
+										failed.push(tableName);
+										self.Tables.model.remove(newTable);
+									}
+									processNext(index + 1);
+								})
+								.catch(() => {
+									failed.push(tableName);
+									self.Tables.model.remove(newTable);
+									processNext(index + 1);
+								});
+						};
+
+						if (existingTable) {
+							handleOverwriteConfirmation(tableName, function (action) {
+								if (action === 'overwrite') {
+									const existingId = existingTable.Id();
+									self.Tables.model.remove(existingTable);
+									processAndSave(existingId);
+								} else {
+									skipped.push(tableName);
+									processNext(index + 1);
+								}
+							});
+						} else {
+							processAndSave(0);
+						}
+					};
+
+					processNext(0);
+				}).fail(function () {
+					toastr.error('Failed to load current tables. Please try again.');
+					clearFileInput('tablesFileInputJson');
+				});
 			};
 			reader.onerror = function () {
 				toastr.error('Error reading file.');
@@ -1640,11 +1709,14 @@ var manageViewModel = function (options) {
 	self.reportsAndFolders = ko.observableArray([]);
 	self.Folders = ko.observableArray([]);
 
+	self.userSettingsData = {};
+
 	self.setupManageAccess = function () {
 
-		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {			
+		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {
 			if (data.d) data = data.d;
 			self.allRoles(data.userRoles)
+			self.userSettingsData = data;
 			self.manageAccess = manageAccess(data);
 		});
 
@@ -2227,7 +2299,10 @@ var manageViewModel = function (options) {
 									runReportApiUrl: options.runReportApiUrl,
 									reportWizard: options.reportWizard,
 									lookupListUrl: options.lookupListUrl,
-									userSettings: { currentUserId: options.currentUserId }
+									getSchemaFromSql: options.getSchemaFromSql,
+									getTimeZonesUrl: options.getTimeZonesUrl,
+									userSettings: self.userSettingsData || { currentUserId: options.currentUserId },
+									dataFilters: (self.userSettingsData && self.userSettingsData.dataFilters) || {}
 								});
 								reportview.adminMode(true);
 								report.data = report.data || {};
@@ -3095,6 +3170,8 @@ var settingPageViewModel = function (options) {
 	self.useFunctions = ko.observable(false);
 	self.showScheduling = ko.observable(true);
 	self.showDesignerHints = ko.observable(true);
+	self.defaultDateFormat = ko.observable('United States');
+	self.dateFormatOptions = ['United States', 'United Kingdom', 'New Zealand', 'France', 'German', 'Spanish', 'Chinese'];
 	self.aiProvider = ko.observable('');
 	self.aiApiKey = ko.observable('');
 	self.aiApiKeyChanged = false;
@@ -3191,6 +3268,7 @@ var settingPageViewModel = function (options) {
 							useFunctions: self.isEnterprise() ? self.useFunctions() : false,
 							showScheduling: self.showScheduling(),
 								showDesignerHints: self.showDesignerHints(),
+								defaultDateFormat: self.defaultDateFormat(),
 								aiProvider: self.aiProvider(),
 								aiApiKey: self.aiApiKeyChanged ? self.aiApiKey() : undefined,
 								aiModel: self.aiModel(),
@@ -3264,6 +3342,7 @@ var settingPageViewModel = function (options) {
 				}			
 				self.showScheduling(settings.showScheduling);
 				self.showDesignerHints(settings.showDesignerHints !== false);
+				self.defaultDateFormat(settings.defaultDateFormat || 'United States');
 				self.aiProvider(settings.aiProvider || '');
 				self.aiApiKey(settings.aiApiKey || '');
 				self.aiApiKeyChanged = false;

@@ -246,6 +246,9 @@ ko.bindingHandlers.datepicker = {
     init: function (element, valueAccessor, allBindingsAccessor) {
         //initialize datepicker with some optional options
         var options = allBindingsAccessor().datepickerOptions || {};
+        if (!options.dateFormat && window._defaultDateFormat) {
+            options.dateFormat = window._defaultDateFormat;
+        }
         $(element).datepicker(options);
 
         //handle the field changing
@@ -270,7 +273,8 @@ ko.bindingHandlers.datepicker = {
             $(element).datepicker("setDate", null);
             $(element).val('');
         } else if (value) {
-            var formattedDate = $.datepicker.formatDate($(element).datepicker("option", "dateFormat") || 'mm/dd/yy', new Date(value));
+            var fmt = $(element).datepicker("option", "dateFormat") || window._defaultDateFormat || 'mm/dd/yy';
+            var formattedDate = $.datepicker.formatDate(fmt, new Date(value));
             if (formattedDate !== $(element).val()) {
                 $(element).datepicker("setDate", formattedDate);
             }
@@ -326,7 +330,22 @@ ko.bindingHandlers.select2 = {
     init: function (el, valueAccessor, allBindingsAccessor, viewModel) {
         var allBindings = allBindingsAccessor();
         var s2opts = $.extend(
-            { width: '100%', dropdownParent: $(el).closest('.modal').length ? $(el).closest('.modal') : $(document.body) },
+            {
+                width: '100%',
+                dropdownParent: $(el).closest('.modal').length ? $(el).closest('.modal') : $(document.body),
+                templateResult: function (item) {
+                    if (!item.text) return item.text;
+                    return $('<span style="white-space: pre;">' + item.text + '</span>');
+                },
+                templateSelection: function (item) {
+                    if (!item.text) return item.text;
+                    return $('<span style="white-space: pre;">' + item.text + '</span>');
+                },
+                escapeMarkup: function (markup) {
+                    return markup; // IMPORTANT
+                }
+
+            },
             ko.unwrap(valueAccessor()) || {}
         );
         // Always use closest modal as dropdownParent if element is inside a modal
@@ -556,6 +575,41 @@ ko.bindingHandlers.moveToInlineContainer = {
     }
 };
 
+function stripPositionRelativeDeclaration(style) {
+    if (!style) return style;
+    return style
+        .replace(/(?:^|;)\s*position\s*:\s*relative\s*(?=;|$)/i, '')
+        .replace(/^\s*;+\s*/, '')
+        .replace(/;\s*$/, '')
+        .trim();
+}
+
+function stripTableResizeArtifacts(html) {
+    if (!html) return html;
+    var wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+
+    wrapper.querySelectorAll('.resize-col, .resize-row, .resize-corner').forEach(function (handle) {
+        if (handle.parentNode) handle.parentNode.removeChild(handle);
+    });
+
+    wrapper.querySelectorAll('.dnr-resize-anchor').forEach(function (el) {
+        el.classList.remove('dnr-resize-anchor');
+        if (!el.getAttribute('class')) el.removeAttribute('class');
+    });
+
+    wrapper.querySelectorAll('table[style], th[style], td[style]').forEach(function (el) {
+        var raw = el.getAttribute('style');
+        var stripped = stripPositionRelativeDeclaration(raw);
+        if (stripped !== raw) {
+            if (stripped) el.setAttribute('style', stripped);
+            else el.removeAttribute('style');
+        }
+    });
+
+    return wrapper.innerHTML;
+}
+
 ko.bindingHandlers.summernote = {
     init: function (element, valueAccessor, allBindings) {
         const observable = valueAccessor();
@@ -599,6 +653,19 @@ ko.bindingHandlers.summernote = {
         };
 
         $(element).summernote(options);
+
+        var _codeViewActive = false;
+        $(element).on('summernote.codeview.toggled', function () {
+            _codeViewActive = !_codeViewActive;
+            if (_codeViewActive) {
+                var $codable = $(element).next('.note-editor').find('.note-codable');
+                var html = $codable.val();
+                var cleaned = stripTableResizeArtifacts(html);
+                if (cleaned !== html) {
+                    $codable.val(cleaned);
+                }
+            }
+        });
 
         const value = ko.unwrap(observable);
         $(element).summernote('code', value || "");
@@ -807,6 +874,11 @@ var manageAccess = function (options) {
             var viewUserIds = userSettings.newReportViewUserId ? userSettings.newReportViewUserId.split(',') : [];
             var editUserRoles = userSettings.newReportEditUserRoles ? userSettings.newReportEditUserRoles.split(',') : [];
             var viewUserRoles = userSettings.newReportViewUserRoles ? userSettings.newReportViewUserRoles.split(',') : [];
+
+            var currentUserId = userSettings.currentUserId;
+            if (currentUserId && editUserIds.indexOf(currentUserId) === -1) {
+                editUserIds.push(currentUserId);
+            }
 
             access.addMissingAndSelect(access.users, editUserIds);
             access.addMissingAndSelect(access.deleteOnlyUsers, editUserIds);
@@ -1385,8 +1457,9 @@ var textQuery = function (options) {
         var prefixes = ['C', 'F', 'M', 'P'];
         var filterInputs = [];
         prefixes.forEach(function (p) {
-            var el = document.getElementById('ctl-' + p + '-' + uiId);
-            if (el) filterInputs.push(el);
+            document.querySelectorAll('[id="ctl-' + p + '-' + uiId + '"]').forEach(function (el) {
+                filterInputs.push(el);
+            });
         });
 
         // Detach the previous tribute for this field so its keyboard/input handlers are removed
@@ -1416,6 +1489,7 @@ var textQuery = function (options) {
                 // the data operation changes.
                 filterInput._lookupFilter = filter;
                 filterInput._currentTribute = tribute;
+                filterInput._currentQuery = self;
 
                 if (!filterInput._tributeEventsAdded) {
                     filterInput._tributeEventsAdded = true;
@@ -1429,23 +1503,26 @@ var textQuery = function (options) {
 
                     filterInput.addEventListener("tribute-replaced", function (e) {
                         if (filterInput._currentTribute) filterInput._currentTribute._noMatch = false;
-                        self.addQueryItem(e.detail.item.original);
+                        filterInput._currentQuery.addQueryItem(e.detail.item.original);
                     });
 
                     filterInput.addEventListener("menuItemRemoved", function (e) {
-                        self.queryItems.remove(e.detail.item.original);
+                        filterInput._currentQuery.queryItems.remove(e.detail.item.original);
                     });
 
                     filterInput.addEventListener('blur', function () {
                         var f = filterInput._lookupFilter;
-                        if (f && self.queryItems.length > 0) {
-                            f.Value(self.queryItems.map(x => x.text).join(','));
+                        var q = filterInput._currentQuery;
+                        if (f && q.queryItems.length > 0) {
+                            var items = q.queryItems.map(x => x.text);
+                            f.Value(items.join(', '));
+                            if (f.Operator() === 'in' || f.Operator() === 'not in') f.ValueIn(items);
                         }
                     });
 
                     filterInput.addEventListener("input", function () {
                         if (!filterInput.value.trim()) {
-                            self.queryItems = [];
+                            filterInput._currentQuery.queryItems = [];
                             var f = filterInput._lookupFilter;
                             if (f) f.Value("");
                         }
@@ -1546,8 +1623,15 @@ $.extend($.summernote.plugins, {
     'tableresize': function (context) {
         var $editable = context.layoutInfo.editable;
 
+        if (!document.getElementById('dnr-tableresize-style')) {
+            var st = document.createElement('style');
+            st.id = 'dnr-tableresize-style';
+            st.textContent = '.note-editable .dnr-resize-anchor{position:relative;}';
+            document.head.appendChild(st);
+        }
+
         function makeResizable(table) {
-            $(table).css('position', 'relative');
+            $(table).addClass('dnr-resize-anchor');
 
             $(table).find('th, td').each(function () {
                 var $cell = $(this);
@@ -1562,7 +1646,7 @@ $.extend($.summernote.plugins, {
                         userSelect: 'none',
                         height: '100%'
                     });
-                    $cell.css('position', 'relative').append($colHandle);
+                    $cell.addClass('dnr-resize-anchor').append($colHandle);
 
                     $colHandle.on('mousedown', function (e) {
                         e.preventDefault();

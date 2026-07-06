@@ -86,7 +86,7 @@ namespace ReportBuilder.Web.Jobs
             ITrigger trigger = TriggerBuilder.Create()
                 .WithIdentity("DotNetReportJobTrigger")
                 .StartNow()
-                .WithSimpleSchedule(s => s.WithIntervalInSeconds(60).RepeatForever())
+                .WithSimpleSchedule(s => s.WithIntervalInSeconds(60 * 5).RepeatForever())
                 .Build();
 
             await scheduler.ScheduleJob(job, trigger);
@@ -94,6 +94,7 @@ namespace ReportBuilder.Web.Jobs
         }
     }
 
+    [DisallowConcurrentExecution]
     public class DotNetReportJob : IJob
     {
         public (DateTime? NextRunLocal, bool ShouldRun, DateTime currentTimeInTargetTz) CalculateNextRun(
@@ -157,6 +158,24 @@ namespace ReportBuilder.Web.Jobs
             // Get all reports with schedule and run the ones that are due
             using (var client = new HttpClient())
             {
+                DotNetReportHelper.defaultDateFormat = "United States";
+                try
+                {
+                    var settingsResp = await client.GetAsync($"{apiUrl}/ReportApi/GetAccountSettings?account={accountApiKey}&dataConnect={databaseApiKey}&clientId={clientId}");
+                    if (settingsResp.IsSuccessStatusCode)
+                    {
+                        object tmp;
+                        string ddf = null;
+                        var settings = JsonConvert.DeserializeObject<Dictionary<string, object>>(await settingsResp.Content.ReadAsStringAsync());
+                        if (settings != null && settings.TryGetValue("defaultDateFormat", out tmp) && tmp != null)
+                        {
+                            ddf = tmp.ToString();
+                        }
+                        if (!string.IsNullOrWhiteSpace(ddf)) DotNetReportHelper.defaultDateFormat = ddf;
+                    }
+                }
+                catch { }
+
                 var response = await client.GetAsync($"{apiUrl}/ReportApi/GetScheduledReportsAndDashboards?account={accountApiKey}&dataConnect={databaseApiKey}&clientId={clientId}");
 
                 response.EnsureSuccessStatusCode();
@@ -407,15 +426,32 @@ namespace ReportBuilder.Web.Jobs
                                     //smtpServer.EnableSsl = true;
                                     smtpServer.Send(mail);
                                 }
+
+                                await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: false, message: "Sent");
                             }
                         }
                         catch (Exception ex)
                         {
+                            await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, report.DashboardId > 0, isError: true, message: ex.Message);
                             // could not run, ignore error
                         }
                     }
                 }
             }
+        }
+
+        private static async Task LogScheduleSent(HttpClient client, string apiUrl, string accountApiKey, string databaseApiKey, ReportSchedule schedule, ReportWithSchedule report, bool isDashboard, bool isError, string message)
+        {
+            try
+            {
+                var itemId = isDashboard ? report.DashboardId : report.ReportId;
+                var itemName = System.Web.HttpUtility.UrlEncode(report.Name ?? "");
+                var format = System.Web.HttpUtility.UrlEncode(schedule.Format ?? "");
+                var sentTo = System.Web.HttpUtility.UrlEncode(schedule.EmailTo ?? "");
+                var msg = System.Web.HttpUtility.UrlEncode(message ?? "");
+                await client.GetAsync($"{apiUrl}/ReportApi/LogScheduleSent?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&itemId={itemId}&isDashboard={isDashboard}&itemName={itemName}&format={format}&sentTo={sentTo}&isError={isError}&message={msg}");
+            }
+            catch { /* logging failure should not break the job */ }
         }
 
         public (string PivotColumn, string PivotFunction) PreparePivotData(List<ReportHeaderColumn> columns)
