@@ -5895,7 +5895,7 @@ var reportViewModel = function (options) {
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : (self.ReportType() == 'List' || self.ReportType() == 'Treemap' || self.dontGroupCustom() ? false : self.AggregateReport()),
 			ShowDataWithGraph: self.ShowDataWithGraph(),
-			showAdminOnly: self.showAdminOnly(),
+			showAdminOnly: self.ShowAdminOnly(),
 			IsSubReportOnly: self.isSubReportOnly(),
 			ShowOnDashboard: self.ShowOnDashboard(),
 			HideReportHeader: self.HideReportHeader(),
