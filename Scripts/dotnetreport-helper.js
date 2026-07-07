@@ -224,11 +224,31 @@ function downloadJson(content, fileName, contentType) {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
 }
-// knockout binding extenders
+   // knockout binding extenders
+ko.bindingHandlers.stopBindings = {
+    init: function () {
+        return { controlsDescendantBindings: true };
+    }
+};
+
+ko.bindingHandlers.bsPopover = {
+    init: function (element, valueAccessor) {
+        var opts = valueAccessor() || {};
+        opts.sanitize = false;
+        var pop = new bootstrap.Popover(element, opts);
+        ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
+            pop.dispose();
+        });
+    }
+};
+
 ko.bindingHandlers.datepicker = {
     init: function (element, valueAccessor, allBindingsAccessor) {
         //initialize datepicker with some optional options
         var options = allBindingsAccessor().datepickerOptions || {};
+        if (!options.dateFormat && window._defaultDateFormat) {
+            options.dateFormat = window._defaultDateFormat;
+        }
         $(element).datepicker(options);
 
         //handle the field changing
@@ -253,7 +273,8 @@ ko.bindingHandlers.datepicker = {
             $(element).datepicker("setDate", null);
             $(element).val('');
         } else if (value) {
-            var formattedDate = $.datepicker.formatDate($(element).datepicker("option", "dateFormat") || 'mm/dd/yy', new Date(value));
+            var fmt = $(element).datepicker("option", "dateFormat") || window._defaultDateFormat || 'mm/dd/yy';
+            var formattedDate = $.datepicker.formatDate(fmt, new Date(value));
             if (formattedDate !== $(element).val()) {
                 $(element).datepicker("setDate", formattedDate);
             }
@@ -307,8 +328,40 @@ ko.bindingHandlers.checkedInArray = {
 ko.bindingHandlers.select2 = {
     after: ["options", "value"],
     init: function (el, valueAccessor, allBindingsAccessor, viewModel) {
-        $(el).select2(ko.unwrap(valueAccessor()));
+        var allBindings = allBindingsAccessor();
+        var s2opts = $.extend(
+            {
+                width: '100%',
+                dropdownParent: $(el).closest('.modal').length ? $(el).closest('.modal') : $(document.body),
+                templateResult: function (item) {
+                    if (!item.text) return item.text;
+                    return $('<span style="white-space: pre;">' + item.text + '</span>');
+                },
+                templateSelection: function (item) {
+                    if (!item.text) return item.text;
+                    return $('<span style="white-space: pre;">' + item.text + '</span>');
+                },
+                escapeMarkup: function (markup) {
+                    return markup; // IMPORTANT
+                }
+
+            },
+            ko.unwrap(valueAccessor()) || {}
+        );
+        // Always use closest modal as dropdownParent if element is inside a modal
+        if ($(el).closest('.modal').length) {
+            s2opts.dropdownParent = $(el).closest('.modal');
+        }
+        $(el).select2(s2opts);
+        // Sync user selection back to KO value observable (Select2 v4)
+        $(el).on('change.select2binding', function () {
+            if (allBindings.value && ko.isObservable(allBindings.value)) {
+                var raw = $(el).val();
+                allBindings.value(raw ? (isNaN(raw) ? raw : parseInt(raw, 10)) : null);
+            }
+        });
         ko.utils.domNodeDisposal.addDisposeCallback(el, function () {
+            $(el).off('change.select2binding');
             if (el && $(el).length && $(el).data('select2')) {
                 $(el).select2('destroy');
             }
@@ -316,22 +369,14 @@ ko.bindingHandlers.select2 = {
     },
     update: function (el, valueAccessor, allBindingsAccessor, viewModel) {
         var allBindings = allBindingsAccessor();
-        var select2 = $(el).data("select2");
-        if (!select2) return;
-        if ("value" in allBindings) {
-            var newValue = "" + ko.unwrap(allBindings.value);
-            if ((allBindings.select2.multiple || el.multiple) && newValue.constructor !== Array) {
-                select2.val([newValue.split(",")]);
-            }
-            else {
-                select2.val([newValue]);
-            }
-        }
-        if ("selectedOptions" in allBindings && select2.val().length == 0) {
-            var newValue = ko.unwrap(allBindings.selectedOptions);
-            if ((allBindings.select2.multiple || el.multiple) && newValue && newValue.constructor == Array) {
-                select2.val([newValue]);
-            }
+        if (!$(el).data('select2')) return;
+        if (allBindings.selectedOptions && ko.isObservable(allBindings.selectedOptions)) {
+            var selectedVals = ko.unwrap(allBindings.selectedOptions) || [];
+            $(el).val(selectedVals).trigger('change.select2');
+
+        } else if ("value" in allBindings) {
+            var newValue = ko.unwrap(allBindings.value);
+            $(el).val(newValue != null ? newValue : null).trigger('change.select2');
         }
     }
 };
@@ -342,7 +387,11 @@ ko.bindingHandlers.select2Value = {
         var value = ko.unwrap(valueAccessor());
 
         // Initialize select2
-        $(element).select2(allBindings.select2Value);
+        var s2ValOpts = allBindings.select2Value || {};
+        if ($(element).closest('.modal').length) {
+            s2ValOpts.dropdownParent = $(element).closest('.modal');
+        }
+        $(element).select2(s2ValOpts);
 
         // When an item is selected, update the observable with the full item object
         $(element).on('select2:select', function (e) {
@@ -489,6 +538,78 @@ ko.bindingHandlers.sortableColumns = {
     }
 };
 
+ko.bindingHandlers.moveToInlineContainer = {
+    init: function (element, valueAccessor) {
+        var data = ko.unwrap(valueAccessor());
+        if (data && data._isInline) {
+            var tryMove = function (attempts) {
+                // Scope search to the sibling renderedHtml div within the same row
+                // DOM structure: foreach:Rows > [div html:renderedHtml] [div foreach:subReportsRan > element]
+                var searchScope = null;
+                var subReportsDiv = element.parentElement; // foreach:subReportsRan div
+                if (subReportsDiv) {
+                    searchScope = subReportsDiv.previousElementSibling; // html:renderedHtml div
+                }
+                if (!searchScope) {
+                    searchScope = document; // fallback
+                }
+                var selector = '.subreport-inline-container[data-subreport-report-id="' + data._inlineReportId + '"][data-subreport-field-id="' + data._inlineFieldId + '"]';
+                var container = searchScope.querySelector(selector);
+                if (container) {
+                    // Clear previous binding if placeholder was replaced
+                    if (container._bound) {
+                        ko.cleanNode(container);
+                        container.innerHTML = '';
+                    }
+                    container._bound = true;
+                    container._boundData = data;
+                    var wrapper = document.createElement('div');
+                    container.appendChild(wrapper);
+                    ko.applyBindingsToNode(wrapper, { template: { name: 'subreport-content', data: data } });
+                } else if (attempts > 0) {
+                    setTimeout(function () { tryMove(attempts - 1); }, 200);
+                }
+            };
+            setTimeout(function () { tryMove(8); }, 100);
+        }
+    }
+};
+
+function stripPositionRelativeDeclaration(style) {
+    if (!style) return style;
+    return style
+        .replace(/(?:^|;)\s*position\s*:\s*relative\s*(?=;|$)/i, '')
+        .replace(/^\s*;+\s*/, '')
+        .replace(/;\s*$/, '')
+        .trim();
+}
+
+function stripTableResizeArtifacts(html) {
+    if (!html) return html;
+    var wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+
+    wrapper.querySelectorAll('.resize-col, .resize-row, .resize-corner').forEach(function (handle) {
+        if (handle.parentNode) handle.parentNode.removeChild(handle);
+    });
+
+    wrapper.querySelectorAll('.dnr-resize-anchor').forEach(function (el) {
+        el.classList.remove('dnr-resize-anchor');
+        if (!el.getAttribute('class')) el.removeAttribute('class');
+    });
+
+    wrapper.querySelectorAll('table[style], th[style], td[style]').forEach(function (el) {
+        var raw = el.getAttribute('style');
+        var stripped = stripPositionRelativeDeclaration(raw);
+        if (stripped !== raw) {
+            if (stripped) el.setAttribute('style', stripped);
+            else el.removeAttribute('style');
+        }
+    });
+
+    return wrapper.innerHTML;
+}
+
 ko.bindingHandlers.summernote = {
     init: function (element, valueAccessor, allBindings) {
         const observable = valueAccessor();
@@ -532,6 +653,19 @@ ko.bindingHandlers.summernote = {
         };
 
         $(element).summernote(options);
+
+        var _codeViewActive = false;
+        $(element).on('summernote.codeview.toggled', function () {
+            _codeViewActive = !_codeViewActive;
+            if (_codeViewActive) {
+                var $codable = $(element).next('.note-editor').find('.note-codable');
+                var html = $codable.val();
+                var cleaned = stripTableResizeArtifacts(html);
+                if (cleaned !== html) {
+                    $codable.val(cleaned);
+                }
+            }
+        });
 
         const value = ko.unwrap(observable);
         $(element).summernote('code', value || "");
@@ -657,17 +791,15 @@ function pagerViewModel(args) {
 }
 
 var manageAccess = function (options) {
+    var buildList = function (array) { return _.map(array || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x, category: x.category || null }; }) };
     var access = {
         clientId: ko.observable(),
-        groupedUsers: ko.observableArray(),
-        groupedViewOnlyUsers: ko.observableArray(),
-        groupedDeleteOnlyUsers: ko.observableArray(),
-        users: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x,category: x.category || null }; }),
-        userRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-        viewOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x, category: x.category || null }; }),
-        viewOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
-        deleteOnlyUsers: _.map(options.users || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x,category: x.category || null }; }),
-        deleteOnlyUserRoles: _.map(options.userRoles || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x }; }),
+        users: ko.observableArray(buildList(options.users)),
+        userRoles: ko.observableArray(buildList(options.userRoles)),
+        viewOnlyUsers: ko.observableArray(buildList(options.users)),
+        viewOnlyUserRoles: ko.observableArray(buildList(options.userRoles)),
+        deleteOnlyUsers: ko.observableArray(buildList(options.users)),
+        deleteOnlyUserRoles: ko.observableArray(buildList(options.userRoles)),
         showManageUsers: ko.observable(false),
         showViewUsers: ko.observable(false),
         showDeleteUsers: ko.observable(false),
@@ -682,16 +814,52 @@ var manageAccess = function (options) {
         toggleDeleteRoles: function () { this.showDeleteRoles(!this.showDeleteRoles()); },
         getAsList: function (x) {
             var list = '';
-            _.forEach(x, function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
+            _.forEach(x(), function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
             return list;
         },
         setupList: function (x, value) {
-            _.forEach(x, function (e) { if (value.indexOf(e.value()) >= 0) e.selected(true); else e.selected(false); });
+            _.forEach(x(), function (e) { e.selected(false); });
+
+            var valueArray = value ? value.split(',').filter(function(v) { return v.trim(); }) : [];
+
+            _.forEach(valueArray, function (id) {
+                var existingItem = _.find(x(), function (e) { return e.value() === id; });
+
+                if (existingItem) {
+                    existingItem.selected(true);
+                } else {
+                    var newItem = {
+                        selected: ko.observable(true),
+                        value: ko.observable(id),
+                        text: id,
+                        category: null
+                    };
+                    x.push(newItem);
+                }
+            });
         },
         matchAndSelect: function (items, ids) {
-            _.forEach(items, function (item) {
+            _.forEach(items(), function (item) {
                 if (ids.indexOf(item.value()) >= 0) {
                     item.selected(true);
+                }
+            });
+        },
+        addMissingAndSelect: function (items, ids, category) {
+            _.forEach(items(), function (e) { e.selected(false); });
+            _.forEach(ids, function (id) {
+                var existingItem = _.find(items(), function (item) { return item.value() === id; });
+
+                if (!existingItem) {
+                    var newItem = {
+                        selected: ko.observable(true),
+                        value: ko.observable(id),
+                        text: id,
+                        category: category || null
+                    };
+                    items.push(newItem);
+                } else {
+                    existingItem.selected(true);
                 }
             });
         },
@@ -707,49 +875,64 @@ var manageAccess = function (options) {
             var editUserRoles = userSettings.newReportEditUserRoles ? userSettings.newReportEditUserRoles.split(',') : [];
             var viewUserRoles = userSettings.newReportViewUserRoles ? userSettings.newReportViewUserRoles.split(',') : [];
 
-            access.matchAndSelect(access.users, editUserIds);
-            access.matchAndSelect(access.deleteOnlyUsers, editUserIds);
-            access.matchAndSelect(access.userRoles, editUserRoles);
-            access.matchAndSelect(access.deleteOnlyUserRoles, editUserRoles);
-            access.matchAndSelect(access.viewOnlyUsers, viewUserIds);
-            access.matchAndSelect(access.viewOnlyUserRoles, viewUserRoles);
+            var currentUserId = userSettings.currentUserId;
+            if (currentUserId && editUserIds.indexOf(currentUserId) === -1) {
+                editUserIds.push(currentUserId);
+            }
+
+            access.addMissingAndSelect(access.users, editUserIds);
+            access.addMissingAndSelect(access.deleteOnlyUsers, editUserIds);
+            access.addMissingAndSelect(access.userRoles, editUserRoles);
+            access.addMissingAndSelect(access.deleteOnlyUserRoles, editUserRoles);
+            access.addMissingAndSelect(access.viewOnlyUsers, viewUserIds);
+            access.addMissingAndSelect(access.viewOnlyUserRoles, viewUserRoles);
         }
     }
 
     access.applyDefaultSettings();
-    var hasCategory = access.users.some(function (u) { return u.category; });
-    if (hasCategory) {
-        var groupedUsers = _.groupBy(access.users, 'category');
-        access.groupedUsers(
-            Object.keys(groupedUsers).map(function (cat) {
-                return {
-                    category: cat || 'Uncategorized',
-                    show: ko.observable(false),
-                    users: ko.observableArray(groupedUsers[cat])
-                };
-            })
-        );
-        var groupedViewOnlyUsers = _.groupBy(access.viewOnlyUsers, 'category');
-        access.groupedViewOnlyUsers(
-            Object.keys(groupedViewOnlyUsers).map(function (cat) {
-                return {
-                    category: cat || 'Uncategorized',
-                    show: ko.observable(false),
-                    viewOnlyUsers: ko.observableArray(groupedViewOnlyUsers[cat])
-                };
-            })
-        );
-        var groupedDeleteOnlyUsers = _.groupBy(access.deleteOnlyUsers, 'category');
-        access.groupedDeleteOnlyUsers(
-            Object.keys(groupedDeleteOnlyUsers).map(function (cat) {
-                return {
-                    category: cat || 'Uncategorized',
-                    show: ko.observable(false),
-                    deleteOnlyUsers: ko.observableArray(groupedDeleteOnlyUsers[cat])
-                };
-            })
-        );
-    }
+
+    access.groupedUsers = ko.computed(function () {
+        var hasCategory = access.users().some(function (u) { return u.category; });
+        if (!hasCategory) return [];
+
+        var groupedUsers = _.groupBy(access.users(), 'category');
+        return Object.keys(groupedUsers).map(function (cat) {
+            return {
+                category: cat || 'Uncategorized',
+                show: ko.observable(false),
+                users: ko.observableArray(groupedUsers[cat])
+            };
+        });
+    });
+
+    access.groupedViewOnlyUsers = ko.computed(function () {
+        var hasCategory = access.viewOnlyUsers().some(function (u) { return u.category; });
+        if (!hasCategory) return [];
+
+        var groupedViewOnlyUsers = _.groupBy(access.viewOnlyUsers(), 'category');
+        return Object.keys(groupedViewOnlyUsers).map(function (cat) {
+            return {
+                category: cat || 'Uncategorized',
+                show: ko.observable(false),
+                viewOnlyUsers: ko.observableArray(groupedViewOnlyUsers[cat])
+            };
+        });
+    });
+
+    access.groupedDeleteOnlyUsers = ko.computed(function () {
+        var hasCategory = access.deleteOnlyUsers().some(function (u) { return u.category; });
+        if (!hasCategory) return [];
+
+        var groupedDeleteOnlyUsers = _.groupBy(access.deleteOnlyUsers(), 'category');
+        return Object.keys(groupedDeleteOnlyUsers).map(function (cat) {
+            return {
+                category: cat || 'Uncategorized',
+                show: ko.observable(false),
+                deleteOnlyUsers: ko.observableArray(groupedDeleteOnlyUsers[cat])
+            };
+        });
+    });
+
     return access;
 };
 
@@ -1041,7 +1224,8 @@ var textQuery = function (options) {
                 }
             },
             values: function (token, callback) {
-                if (self.disabled) return;
+                if (!token || !token.trim()) return;
+
                 if (options.searchLookupFilter === true) {
                     self.SearchLookup(token, "").done(function (results) {
                         if (results.d) results = results.d;
@@ -1099,21 +1283,78 @@ var textQuery = function (options) {
         return tributeAttributes;
     }
 
+     self.patchTributeForSpaces = function (tribute) {
+        tribute.allowSpaces = true;
+        tribute._noMatch = false;
+
+        tribute.range.getLastWordInText = function (text) {
+            text = text.replace(/\u00A0/g, ' ');
+
+            if (tribute._noMatch) {
+                var gtIndex = text.lastIndexOf('>');
+                if (gtIndex !== -1) {
+                    var beforeGt = text.substring(0, gtIndex).replace(/\s+$/, '');
+                    var tableStart = beforeGt.search(/\S+\s*$/);
+                    if (tableStart === -1) tableStart = 0;
+                    var raw = text.substring(tableStart).trim();
+                    return raw.replace(/^[^\w]+/, '');
+                }
+                var words = text.split(' ');
+                var last = words[words.length - 1];
+                return last.replace(/^[^\w]+/, '').trim();
+            }
+
+            var segments = text.split(/  +/);
+            var last = segments[segments.length - 1].trim();
+            return last.replace(/^[^\w]+/, '');
+        };
+    }
+
     self.setupHints = function () {
+        var hintInputs = Array.from(document.querySelectorAll(".hint-input"));
+        if (self._hintsTribute) {
+            hintInputs.forEach(function (el) {
+                try { self._hintsTribute.detach(el); } catch (e) {}
+                el.removeAttribute('data-tribute'); // detach uses setTimeout; clear synchronously
+            });
+            self._hintsTribute = null;
+        }
+
         var tributeAttributes = self.getTributeAttributes({ concatFilterAndQuery: false, wrapText: true });
-        var tribute = new Tribute(tributeAttributes);
+        self._hintsTribute = new Tribute(tributeAttributes);
+        self.patchTributeForSpaces(self._hintsTribute);
 
-        var hintInputs = document.querySelectorAll(".hint-input");
         hintInputs.forEach(function (inputElement) {
-            tribute.attach(inputElement);
+            inputElement.removeAttribute('data-tribute'); // guard against any lingering attribute
+            inputElement._currentTribute = self._hintsTribute;
+            self._hintsTribute.attach(inputElement);
 
-            inputElement.addEventListener("tribute-replaced", function (e) {
-                self.addQueryItem(e.detail.item.original, true);
-            });
+            if (!inputElement._tributeEventsAdded) {
+                inputElement._tributeEventsAdded = true;
 
-            inputElement.addEventListener("menuItemRemoved", function (e) {
-                self.queryItems.remove(e.detail.item.original);
-            });
+                inputElement.addEventListener('tribute-no-match', function () {
+                    if (inputElement._currentTribute) inputElement._currentTribute._noMatch = true;
+                });
+
+                inputElement.addEventListener("tribute-replaced", function (e) {
+                    if (inputElement._currentTribute) inputElement._currentTribute._noMatch = false;
+                    self.addQueryItem(e.detail.item.original, true);
+                });
+
+                inputElement.addEventListener("menuItemRemoved", function (e) {
+                    self.queryItems.remove(e.detail.item.original);
+                });
+
+                inputElement.addEventListener('keydown', function (e) {
+                    if (e.ctrlKey && e.keyCode === 32) {
+                        var t = inputElement._currentTribute;
+                        if (!t) return;
+                        e.preventDefault();
+                        t._noMatch = true;
+                        inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                });
+            }
         });
 
     }
@@ -1131,6 +1372,7 @@ var textQuery = function (options) {
 
         var tributeAttributes = self.getTributeAttributes({ concatFilterAndQuery: true });
         var tribute = new Tribute(tributeAttributes);
+        self.patchTributeForSpaces(tribute);
         tribute.attach(inputEl);
 
         inputEl.addEventListener("tribute-replaced", function (e) {
@@ -1208,50 +1450,99 @@ var textQuery = function (options) {
         });
     }
 
+    self._lookupTributes = self._lookupTributes || {};
+
     self.setupLookup = function (field, filter) {
-        var tributeAttributes = self.getTributeAttributes({ searchLookupFilter: true });
-        var tribute = new Tribute(tributeAttributes);
+        var uiId = field.uiId;
         var prefixes = ['C', 'F', 'M', 'P'];
         var filterInputs = [];
         prefixes.forEach(function (p) {
-            var el = document.getElementById('ctl-' + p + '-' + field.uiId);
-            if (el) filterInputs.push(el);
+            document.querySelectorAll('[id="ctl-' + p + '-' + uiId + '"]').forEach(function (el) {
+                filterInputs.push(el);
+            });
         });
 
+        // Detach the previous tribute for this field so its keyboard/input handlers are removed
+        // before we create a fresh instance (e.g. when the data operation changes).
+        if (self._lookupTributes[uiId]) {
+            filterInputs.forEach(function (el) {
+                try { self._lookupTributes[uiId].detach(el); } catch (e) {}
+                el.removeAttribute('data-tribute');
+            });
+            delete self._lookupTributes[uiId];
+        }
+
         if (filterInputs.length > 0) {
+            var tributeAttributes = self.getTributeAttributes({ searchLookupFilter: true });
+            var tribute = new Tribute(tributeAttributes);
+            self.patchTributeForSpaces(tribute);
+            self._lookupTributes[uiId] = tribute;
+
             tribute.attach(filterInputs);
 
+            // initLookupQuery is per-field, not per-element — call it once.
+            self.initLookupQuery(field);
+
             filterInputs.forEach(function (filterInput) {
-                self.initLookupQuery(field);
+                // Always keep current references on the element so the single set of listeners
+                // (added only once via _tributeEventsAdded) uses up-to-date instances when
+                // the data operation changes.
+                filterInput._lookupFilter = filter;
+                filterInput._currentTribute = tribute;
+                filterInput._currentQuery = self;
 
-                filterInput.addEventListener("tribute-replaced", function (e) {
-                    self.addQueryItem(e.detail.item.original);
-                });
+                if (!filterInput._tributeEventsAdded) {
+                    filterInput._tributeEventsAdded = true;
 
-                filterInput.addEventListener("menuItemRemoved", function (e) {
-                    self.queryItems.remove(e.detail.item.original);
-                });
+                    filterInput.addEventListener('tribute-no-match', function () {
+                        if (filterInput._currentTribute) filterInput._currentTribute._noMatch = true;
+                    });
 
-                filterInput.addEventListener('blur', function () {
-                    if (self.queryItems.length > 0) {
-                        filter.Value(self.queryItems.map(x => x.text).join(','));
-                    }
-                });
+                    // NOTE: tribute-active-true intentionally not handled — see setupHints
+                    // for full explanation of the race condition it causes.
 
-                filterInput.addEventListener("input", function () {
-                    if (!filterInput.value.trim()) {
-                        self.queryItems = [];
-                        filter.Value("");
-                        return;
-                    }
-                });
+                    filterInput.addEventListener("tribute-replaced", function (e) {
+                        if (filterInput._currentTribute) filterInput._currentTribute._noMatch = false;
+                        filterInput._currentQuery.addQueryItem(e.detail.item.original);
+                    });
 
-                filterInput.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        filterInput.blur();
-                    }
-                });
+                    filterInput.addEventListener("menuItemRemoved", function (e) {
+                        filterInput._currentQuery.queryItems.remove(e.detail.item.original);
+                    });
+
+                    filterInput.addEventListener('blur', function () {
+                        var f = filterInput._lookupFilter;
+                        var q = filterInput._currentQuery;
+                        if (f && q.queryItems.length > 0) {
+                            var items = q.queryItems.map(x => x.text);
+                            f.Value(items.join(', '));
+                            if (f.Operator() === 'in' || f.Operator() === 'not in') f.ValueIn(items);
+                        }
+                    });
+
+                    filterInput.addEventListener("input", function () {
+                        if (!filterInput.value.trim()) {
+                            filterInput._currentQuery.queryItems = [];
+                            var f = filterInput._lookupFilter;
+                            if (f) f.Value("");
+                        }
+                    });
+
+                    filterInput.addEventListener('keydown', function (e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            filterInput.blur();
+                        }
+                        // Ctrl+Space: re-trigger search for the word at cursor.
+                        if (e.ctrlKey && e.keyCode === 32) {
+                            var t = filterInput._currentTribute;
+                            if (!t) return;
+                            e.preventDefault();
+                            t._noMatch = true;
+                            filterInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    });
+                }
             });
         }
     }
@@ -1291,7 +1582,8 @@ window.toastr = (function () {
     return {
         success: (msg) => show(msg, 'success'),
         error: (msg) => show(msg, 'danger'),
-        info: (msg) => show(msg, 'info')
+        info: (msg) => show(msg, 'info'),
+        warning: (msg) => show(msg, 'warning')
     };
 })();
 
@@ -1331,8 +1623,15 @@ $.extend($.summernote.plugins, {
     'tableresize': function (context) {
         var $editable = context.layoutInfo.editable;
 
+        if (!document.getElementById('dnr-tableresize-style')) {
+            var st = document.createElement('style');
+            st.id = 'dnr-tableresize-style';
+            st.textContent = '.note-editable .dnr-resize-anchor{position:relative;}';
+            document.head.appendChild(st);
+        }
+
         function makeResizable(table) {
-            $(table).css('position', 'relative');
+            $(table).addClass('dnr-resize-anchor');
 
             $(table).find('th, td').each(function () {
                 var $cell = $(this);
@@ -1347,7 +1646,7 @@ $.extend($.summernote.plugins, {
                         userSelect: 'none',
                         height: '100%'
                     });
-                    $cell.css('position', 'relative').append($colHandle);
+                    $cell.addClass('dnr-resize-anchor').append($colHandle);
 
                     $colHandle.on('mousedown', function (e) {
                         e.preventDefault();

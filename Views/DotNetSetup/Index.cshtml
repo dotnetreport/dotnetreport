@@ -238,9 +238,9 @@
                                     <small class="text-muted d-block">Allows the use of SQL expressions in custom fields.</small>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" data-bind="checked: usePromptBuilder">
-                                    <label class="form-check-label">Use AI aided, prompt based Report Builder</label>
-                                    <small class="text-muted d-block">Let non Admin users create reports using the AI aided Prompt based builder</small>
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showDesignerHints">
+                                    <label class="form-check-label">Show Designer Tips &amp; Guidance</label>
+                                    <small class="text-muted d-block">Display contextual tips and explanations throughout the report designer to help users understand available options.</small>
                                 </div>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" data-bind="checked: useAltPivot">
@@ -255,6 +255,12 @@
                                         Available for Enterprise license users.
                                     </small>
                                 </div>
+                                <div class="mb-2 mt-2">
+                                    <label class="form-label mb-1" for="defaultDateFormatSelect">Default Date Format</label>
+                                    <select class="form-select form-select-sm" id="defaultDateFormatSelect" style="max-width: 220px;"
+                                            data-bind="options: dateFormatOptions, value: defaultDateFormat"></select>
+                                    <small class="text-muted d-block">Date format used by all date pickers when a field doesn't override it. e.g. <em>New Zealand</em> uses <code>dd/mm/yyyy</code>.</small>
+                                </div>
                                 <h6 class="mt-3 mb-2">Report Options</h6>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="allowUsersToCreateReports" data-bind="checked: allowUsersToCreateReports">
@@ -266,6 +272,20 @@
                                     <label class="form-check-label">Allow All Users to export/import reports</label>
                                     <small class="text-muted d-block">
                                         Allow non admin users to export and import Reports in the system.
+                                    </small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: canCopyReport">
+                                    <label class="form-check-label">Always allow users to copy reports</label>
+                                    <small class="text-muted d-block">
+                                        Allow users with View Only access to copy Reports in the system.
+                                    </small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showScheduling">
+                                    <label class="form-check-label">Hide Report/Dashboard Scheduling</label>
+                                    <small class="text-muted d-block">
+                                        Removes scheduling in reports and dashboard, select only if you don't want to use scheduling feature.
                                     </small>
                                 </div>
                             </div>
@@ -311,7 +331,17 @@
                                     <input type="checkbox" class="form-check-input" data-bind="checked: showPageSize">
                                     <label class="form-check-label">Show Page Size on PDF & Word export</label>
                                     <small class="text-muted d-block">Display document dimensions in exported PDF & Word.</small>
-                                </div>                               
+                                </div>
+
+                                <h6 class="mt-3 mb-2">AI Assistant <span class="badge bg-warning text-dark" style="font-size: 10px;">BETA</span></h6>
+                                <div class="mb-2">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="aiEnabledSwitch"
+                                               data-bind="checked: aiEnabled">
+                                        <label class="form-check-label" for="aiEnabledSwitch">Enable AI Report Assistant</label>
+                                    </div>
+                                    <small class="text-muted d-block">When enabled, an AI-powered assistant will be available in the report designer to help build reports using natural language.</small>
+                                </div>
                             </div>
                         </div>
                         <div class="mt-3">
@@ -357,8 +387,17 @@
                 <button class="btn btn-sm btn-primary" title="Manage Categories" data-bs-toggle="modal" data-bs-target="#category-modal">
                     <span class="fa fa-server"></span> Manage Categories
                 </button>
-                <button class="btn btn-sm btn-primary" data-bind="click: selectAll, visible: !$root.onlyApi()">
-                    <span class="fa fa-check"></span> Select All Tables
+                <button class="btn btn-sm btn-primary" data-bind="click: function() { selectAll(false)},visible: !$root.customTableMode()">
+                     Select All Tables
+                </button>
+                <button class="btn btn-sm btn-primary" data-bind="click: function() { selectAll(true)}, visible: $root.customTableMode">
+                     Select All Custom Tables
+                </button>
+                <button class="btn btn-sm btn-primary" data-bind="click: function() { unselectAll(false)},visible: !$root.customTableMode()">
+                     UnSelect All Tables
+                </button>
+                <button class="btn btn-sm btn-primary" data-bind="click: function() { unselectAll(true)}, visible: $root.customTableMode">
+                     UnSelect All Custom Tables  
                 </button>
                 <button class="btn btn-sm btn-primary" data-bind="click: function() { $root.saveChanges($root.customTableMode()) }">
                     <span class="fa fa-floppy-o"></span> Save All Tables
@@ -476,8 +515,13 @@
                                 </div>
 
                                 <div class="d-flex align-items-center justify-content-end gap-2">
+                                    <button class="btn btn-sm btn-primary"
+                                            data-bind="click: addNewColumn, visible: false">
+                                        <i class="fa fa-plus"></i> Add Column
+                                    </button>
                                     <label class="label-sm m-0"><span data-bind="text: Columns().length"></span> Columns</label>
                                     <button class="btn btn-sm btn-outline-secondary" data-bind="click: autoFormat, visible: Selected">Auto Format</button>
+                                    <button class="btn btn-sm btn-outline-secondary" data-bind="click: autoSort, visible: Selected">Auto Sort</button>
                                     <button class="btn btn-sm btn-outline-secondary" data-bind="click: unselectAllColumns, visible: Selected">Unselect All</button>
                                     <button class="btn btn-sm btn-outline-secondary" data-bind="click: selectAllColumns, visible: Selected">Select All</button>
                                 </div>
@@ -495,6 +539,7 @@
                                             <span class="badge text-bg-info text-white" data-bind="text: FieldType"></span>
                                             <label data-bind="visible: PrimaryKey" class="badge text-bg-primary">Primary</label>
                                             <label data-bind="visible: ForeignKey" class="badge text-bg-info text-white">Foreign</label>
+                                            <label class="badge text-bg-warning" data-bind="visible: isNew">New</label>
                                         </label>
                                         <button class="btn btn-sm pull-right" data-bs-toggle="modal" data-bs-target="#column-modal" title="All column options" data-bind="click: $root.selectColumn.bind($data, false)">...</button>
                                         <div class="btn btn-sm pull-right sortable">
@@ -531,14 +576,12 @@
                 <div class="container-fluid">
                     <div class="row fw-bold bg-light border-bottom py-2" data-bind="with: JoinFilters">
                         <!-- Repeat for each column header -->
+                        <div class="col-md-1" style="max-width: 40px;"></div>
                         <div class="col-md-2">
                             Primary Table
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" data-bind="value: primaryTable, valueUpdate: 'afterkeydown'" placeholder="Search..." />
                                 <span class="input-group-text"><i class="fa fa-filter"></i></span>
-                                <button class="btn btn-sm" data-bind="click: $root.sortByPrimaryTable">
-                                    <i class="fa" data-bind="css: $root.sortDirection.primaryTable() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                </button>
                             </div>
                         </div>
                         <div class="col-md-2">
@@ -546,19 +589,13 @@
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" data-bind="value: primaryField, valueUpdate: 'afterkeydown'" placeholder="Search..." />
                                 <span class="input-group-text"><i class="fa fa-filter"></i></span>
-                                <button class="btn btn-sm" data-bind="click: $root.sortByField">
-                                    <i class="fa" data-bind="css: $root.sortDirection.primaryField() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                </button>
                             </div>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-1">
                             Join Type
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" data-bind="value: joinType, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                 <span class="input-group-text"><i class="fa fa-filter"></i></span>
-                                <span class="btn btn-sm" data-bind="click: $root.sortByJoinType">
-                                    <i class="fa" data-bind="css: $root.sortDirection.joinType() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                </span>
                             </div>
                         </div>
                         <div class="col-md-2">
@@ -566,31 +603,28 @@
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" data-bind="value: joinTable, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                 <span class="input-group-text"><i class="fa fa-filter"></i></span>
-                                <span class="btn btn-sm" data-bind="click: $root.sortByJoinTable">
-                                    <i class="fa" data-bind="css: $root.sortDirection.joinTable() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                </span>
                             </div>
                         </div>
                         <div class="col-md-2">
-                            Field<div class="input-group input-group-sm">
+                            Field
+                            <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" data-bind="value: joinField, valueUpdate: 'afterkeydown'" placeholder="Search...">
                                 <span class="input-group-text"><i class="fa fa-filter"></i></span>
-                                <span class="btn btn-sm" data-bind="click: $root.sortByJoinField">
-                                    <i class="fa" data-bind="css: $root.sortDirection.joinField() ? 'fa-sort-asc' : 'fa-sort-desc'"></i>
-                                </span>
                             </div>
                         </div>
+                        <div class="col-md-2"></div>
                     </div>
 
                     <!-- New Join Row -->
                     <div class="row bg-info bg-opacity-25 p-2" data-bind="visible: showNewJoinRow">
+                        <div class="col-md-1" style="max-width: 40px;"></div>
                         <div class="col-md-2">
                             <select class="form-select" data-bind="options: Tables.availableTables, optionsText: 'DisplayName', value: NewJoin().JoinTable, optionsCaption: 'Pick a table...'"></select>
                         </div>
                         <div class="col-md-2" data-bind="with: NewJoin().JoinTable">
                             <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsCaption: 'Pick a field...', optionsValue: 'ColumnName', value: $root.NewJoin().FieldName"></select>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-1">
                             <select class="form-select" data-bind="options: $root.JoinTypes, value: NewJoin().JoinType"></select>
                         </div>
                         <div class="col-md-2">
@@ -604,16 +638,19 @@
                         </div>
                     </div>
 
-                    <!-- Existing Join Rows -->
-                    <div data-bind="foreach: pagedJoins">
+                    <!-- Existing Join Rows with drag reorder -->
+                    <div data-bind="sortable: { data: reorderableJoins, options: { handle: '.join-drag-handle', cursor: 'move' }, afterMove: $root.joinSorted }">
                         <div class="row align-items-center border-bottom py-2">
+                            <div class="col-md-1 text-center" style="max-width: 40px;">
+                                <span class="btn btn-sm btn-outline-secondary join-drag-handle" title="Drag to reorder"><i class="fa fa-bars"></i></span>
+                            </div>
                             <div class="col-md-2">
                                 <select class="form-select" data-bind="options: $root.Tables.availableTables, optionsText: 'DisplayName', value: JoinTable"></select>
                             </div>
                             <div class="col-md-2" data-bind="with: JoinTable">
                                 <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.FieldName"></select>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-1">
                                 <select class="form-select" data-bind="options: $root.JoinTypes, value: JoinType"></select>
                             </div>
                             <div class="col-md-2">
@@ -622,7 +659,6 @@
                             <div class="col-md-2" data-bind="with: OtherTable">
                                 <select class="form-select" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', value: $parent.JoinFieldName"></select>
                             </div>
-
                             <div class="col-md-2 text-end">
                                 <span class="badge bg-warning text-dark me-2"
                                       data-bind="visible: isNew"
@@ -630,7 +666,6 @@
                                       title="New record added or imported, not saved yet">
                                     <i class="fa fa-warning"></i> New
                                 </span>
-
                                 <button class="btn btn-secondary btn-sm" data-bind="click: DeleteJoin">Delete</button>
                             </div>
                         </div>
@@ -1008,6 +1043,9 @@
             <p>
                 View Schedules setup for sending Reports and Dashboards
             </p>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#sentHistoryModal" data-bind="click: function() { loadSentHistory(1); }">
+                <span class="fa fa-history"></span> View Send History
+            </button>
             <hr />
 
             <div class="row">
@@ -1386,6 +1424,7 @@
                         <button class="btn btn-secondary" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
                             <i class="fa fa-user"></i>Manage Role Access
                         </button>
+                        @* <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-bind="click: function(){$root.saveColumn()}">Done</button> *@
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
                     </div>
                 </div>
@@ -2082,6 +2121,87 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary" data-bind="click: uploadFile">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="sentHistoryModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa fa-history"></i> Schedule Send History</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-2 align-items-end mb-3 border-bottom pb-2">
+                    <div class="col-sm-3">
+                        <label class="form-label small mb-0">From</label>
+                        <input type="date" class="form-control form-control-sm" data-bind="value: sentHistoryStartDate" />
+                    </div>
+                    <div class="col-sm-3">
+                        <label class="form-label small mb-0">To</label>
+                        <input type="date" class="form-control form-control-sm" data-bind="value: sentHistoryEndDate" />
+                    </div>
+                    <div class="col-sm-auto">
+                        <button class="btn btn-sm btn-primary" data-bind="click: function() { loadSentHistory(1); }, enable: !sentHistoryLoading()">Search</button>
+                        <button class="btn btn-sm btn-secondary" data-bind="click: function() { sentHistoryStartDate(''); sentHistoryEndDate(''); loadSentHistory(1); }, enable: !sentHistoryLoading()">Clear</button>
+                    </div>
+                </div>
+                <div data-bind="visible: sentHistoryLoading() && sentHistory().length === 0" class="text-center py-3 text-muted">
+                    <i class="fa fa-spinner fa-spin"></i> Loading...
+                </div>
+                <div data-bind="visible: !sentHistoryLoading() && sentHistory().length === 0" class="text-center py-3 text-muted">
+                    <i class="fa fa-inbox"></i> No history for this range.
+                </div>
+                <div data-bind="visible: sentHistory().length > 0">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>When</th>
+                                <th>Type</th>
+                                <th>Name</th>
+                                <th>Sent To</th>
+                                <th>Format</th>
+                                <th>Result</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody data-bind="foreach: sentHistory">
+                            <tr>
+                                <td><small data-bind="text: created"></small></td>
+                                <td><span class="badge bg-secondary" data-bind="text: itemType"></span></td>
+                                <td data-bind="text: itemName || ('#' + (itemId || ''))"></td>
+                                <td><small data-bind="text: sentTo"></small></td>
+                                <td data-bind="text: format"></td>
+                                <td>
+                                    <span data-bind="css: isError ? 'badge bg-danger' : (result === 'Triggered' ? 'badge bg-info' : 'badge bg-success'), text: result"></span>
+                                </td>
+                                <td><small class="text-muted" data-bind="text: message"></small></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <small class="text-muted">
+                            Page <span data-bind="text: sentHistoryPage"></span> of <span data-bind="text: sentHistoryTotalPages"></span>
+                            (<span data-bind="text: sentHistoryTotal"></span> total)
+                        </small>
+                        <div>
+                            <button class="btn btn-sm btn-outline-secondary" data-bind="click: function() { loadSentHistory(sentHistoryPage() - 1); }, enable: sentHistoryPage() > 1 && !sentHistoryLoading()">
+                                <i class="fa fa-chevron-left"></i> Prev
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" data-bind="click: function() { loadSentHistory(sentHistoryPage() + 1); }, enable: sentHistoryPage() < sentHistoryTotalPages() && !sentHistoryLoading()">
+                                Next <i class="fa fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bind="click: function() { loadSentHistory(sentHistoryPage()); }">
+                    <span class="fa fa-refresh"></span> Refresh
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
