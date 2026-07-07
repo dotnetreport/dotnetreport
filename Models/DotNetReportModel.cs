@@ -533,6 +533,13 @@ namespace ReportBuilder.Web.Models
         public static bool useAltPivot = false;
         public static string defaultDateFormat = "United States";
 
+        private static readonly AsyncLocal<string> _dataFilters = new AsyncLocal<string>();
+        public static string CurrentDataFilters
+        {
+            get => string.IsNullOrEmpty(_dataFilters.Value) ? "{}" : _dataFilters.Value;
+            set => _dataFilters.Value = value;
+        }
+
         public static System.Globalization.CultureInfo GetDateCulture(string dateFormatName)
         {
             switch (dateFormatName)
@@ -1174,6 +1181,7 @@ namespace ReportBuilder.Web.Models
                     new KeyValuePair<string, string>("UserIdForSchedule", ""),
                     new KeyValuePair<string, string>("ReportJson", postData),
                     new KeyValuePair<string, string>("SaveReport", "false"),
+                    new KeyValuePair<string, string>("dataFilters", CurrentDataFilters),
                 };
 
                 var encodedItems = keyvalues.Select(i => WebUtility.UrlEncode(i.Key) + "=" + WebUtility.UrlEncode(i.Value));

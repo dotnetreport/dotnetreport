@@ -48,6 +48,7 @@ namespace ReportBuilder.Web.Controllers
             settings.UserRoles = new List<string>() { }; // Populate all your application's user roles, ex  { "Admin", "Normal" }       
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
+            DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters);
 
             return settings;
         }
@@ -1190,6 +1191,7 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string filterDetailsText = null,
             [FromForm] string defaultDateFormat = null)
         {
+            GetSettings(); // must be called directly here so CurrentDataFilters flows to RunReportApiCall
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
@@ -1263,6 +1265,7 @@ namespace ReportBuilder.Web.Controllers
            [FromForm] string reportDescription = null,
            [FromForm] string defaultDateFormat = null)
         {
+            GetSettings(); // must be called directly here so CurrentDataFilters flows to RunReportApiCall
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
@@ -1303,6 +1306,7 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string customHtml = null,
             [FromForm] string defaultDateFormat = null)
         {
+            GetSettings(); // must be called directly here so CurrentDataFilters flows to RunReportApiCall
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
@@ -1339,6 +1343,7 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] bool adminMode = false,
             [FromForm] string defaultDateFormat = null)
         {
+            GetSettings(); // must be called directly here so CurrentDataFilters flows to RunReportApiCall
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
             DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
@@ -1362,8 +1367,9 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string userId = "",
             [FromForm] bool adminMode = false)
         {
+            GetSettings(); // must be called directly here so CurrentDataFilters flows to RunReportApiCall
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql, adminMode: adminMode);            
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);
             string xml = await DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName), expandSqls, pivotColumn, pivotFunction);
             var data = System.Text.Encoding.UTF8.GetBytes(xml);
             Response.ContentType = "text/txt";
