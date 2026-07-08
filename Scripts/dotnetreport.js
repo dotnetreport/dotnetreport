@@ -747,28 +747,34 @@ function filterGroupViewModel(args) {
 			}
 			lookupList.push({ id: e.Value2, text: e.Value2 });
 		}
-
+		function parseInList(s) {
+			var out = [], re = /'((?:[^']|'')*)'/g, m;
+			s = '' + (s || '');
+			while ((m = re.exec(s)) !== null) out.push(m[1].replace(/''/g, "'"));
+			return out.length ? out : s.split(',').map(function (v) { return v.trim(); }).filter(function (v) { return v.length; });
+		}
 		var field = ko.observable();
-		var valueIn = e.Operator == 'in' || e.Operator == 'not in' ? (e.Value1 || '').split(',') : [];
+		var valueIn = (e.Operator == 'in' || e.Operator == 'not in') ? parseInList(e.Value1) : [];
 		var parentIn = e.ParentIn ? e.ParentIn.split(',') : [];
 		var filter = {
 			AndOr: ko.observable(e.AndOr),
 			Field: field,
 			Operator: ko.observable(e.Operator),
-			Value: ko.observable(e.Value1),
+			Value: ko.observable((e.Operator == 'in' || e.Operator == 'not in') ? valueIn.join(', ') : e.Value1),
 			Value2: ko.observable(e.Value2),
-			ValueIn: ko.observableArray(valueIn),
+			ValueIn: ko.observableArray(valueIn.slice()),
 			LookupList: lookupList,
 			ParentList: parentList,
 			ParentIn: ko.observableArray(parentIn),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			IsFilterOnFly: isFilterOnFly === true ? true : false,
-			IsConditionalFilter: e.IsConditionalFilter===true?true:false,
+			IsConditionalFilter: e.IsConditionalFilter === true ? true : false,
 			showParentFilter: ko.observable(true),
 			fmtValue: ko.observable(e.Value1),
 			fmtValue2: ko.observable(e.Value2),
 			Valuetime: ko.observable(timePart1),
 			Valuetime2: ko.observable(timePart2),
+			_savedValueIn: valueIn.slice()
 		};
 
 		//filter.Operator.subscribe(function () {
@@ -816,12 +822,30 @@ function filterGroupViewModel(args) {
 					if (value && !filter.Value()) {
 						filter.Value(value);
 					}
-					if (valueIn.length > 0) {
-						filter.ValueIn(valueIn);
-						valueIn = [];
+					var savedIn = (filter._savedValueIn && filter._savedValueIn.length > 0) ? filter._savedValueIn.slice() : valueIn.slice();
+					if (savedIn.length > 0) {
+						setTimeout(function () {
+							filter.ValueIn([]);
+							filter.ValueIn(savedIn);
+							setTimeout(function () { applyValueInToSelect2(filter, savedIn); }, 0);
+							filter._savedValueIn = [];
+						}, 0);
 					}
+					valueIn = [];
 				});
 			});
+		}
+
+		function applyValueInToSelect2(f, vals) {
+			var sel = document.querySelector('#filter-' + (f.Field() && f.Field().uiId) + ' select[multiple]');
+			if (sel && window.$ && $(sel).data('select2')) {
+				$(sel).val(vals).trigger('change.select2');
+				$(sel).trigger('change');
+				var $form = $(sel).closest('form');
+				if ($form.length && $.fn.valid && $form.data('validator')) {
+					$(sel).valid();
+				}
+			}
 		}
 
 		var addingFilter = true;
@@ -892,11 +916,11 @@ function filterGroupViewModel(args) {
 
 			}
 
-			if (newField && !newField.hasForeignKey && newField.fieldType == 'Varchar') {
+			if (newField && newField.fieldId && !newField.hasForeignKey && newField.fieldType == 'Varchar') {
 				setTimeout(function () {
 					var txtqry = new textQuery(args.options);
 					txtqry.setupLookup(newField, filter);
-				}, 1000);				
+				}, 1000);
 			}
 			if (newField && !newField.fieldId && newField.tableName === "Custom" && !newField.dynamicTableId) {
 				if (newField.fieldFormat()) newField.fieldType = '';
@@ -1660,7 +1684,7 @@ var reportViewModel = function (options) {
 	self.ShowDataWithGraph = ko.observable(true);
 	self.ShowOnDashboard = ko.observable(false);
 	self.isSubReportOnly = ko.observable(false);
-	self.showAdminOnly = ko.observable(false);
+	self.ShowAdminOnly = ko.observable(false);
 	self.toggleIsSubReportOnly = function () {
 		var reportId = self.ReportID();
 		if (!reportId) return;
@@ -1837,7 +1861,7 @@ var reportViewModel = function (options) {
 
 	self.fieldFormatTypes = ['Auto', 'Number', 'Decimal', 'Currency', 'Percentage', 'Date', 'Date and Time', 'Time', 'String'];
 	self.decimalFormatTypes = ['Number', 'Decimal', 'Currency', 'Percentage'];
-	self.dateFormats = ['United States', 'United Kingdom', 'France', 'German', 'Spanish', 'Chinese', 'Custom'];
+	self.dateFormats = ['United States', 'United Kingdom', 'New Zealand', 'France', 'German', 'Spanish', 'Chinese', 'Custom'];
 	self.currencyFormats = [
 		{ value: '$', display: 'USD ($)' },
 		{ value: '€', display: 'EUR (€)' },
@@ -1860,6 +1884,7 @@ var reportViewModel = function (options) {
 	self.dateFormatMappings = {
 		'United States': 'mm/dd/yy',
 		'United Kingdom': 'dd/mm/yy',
+		'New Zealand': 'dd/mm/yy',
 		'France': 'dd/mm/yy',
 		'German': 'dd.mm.yy',
 		'Spanish': 'dd/mm/yy',
@@ -1883,7 +1908,11 @@ var reportViewModel = function (options) {
 		if (html == null) return '';
 		var userName = self.currentUserName || self.currentUserId || '';
 		var userRoles = self.currentUserRole || '';
-		var nowStr = new Date().toLocaleString();
+		var locale = self.resolveDateLocale ? self.resolveDateLocale() : 'en-US';
+		var now = new Date();
+		var dateStr = now.toLocaleDateString(locale);
+		var timeStr = now.toLocaleTimeString(locale);
+		var nowStr = dateStr + ' ' + timeStr;
 		var curPage = (self.pager && self.pager.currentPage) ? self.pager.currentPage() : 1;
 		var totPages = (self.pager && self.pager.pages) ? (self.pager.pages() || 1) : 1;
 		var reportName = (self.ReportName && self.ReportName()) ? self.ReportName() : '';
@@ -1893,7 +1922,22 @@ var reportViewModel = function (options) {
 			.replace(/\{current\.user\.roles\}/g, userRoles)
 			.replace(/\{current\.user\}/g, userName)
 			.replace(/\{current\.datetime\}/g, nowStr)
+			.replace(/\{current\.date\}/g, dateStr)
+			.replace(/\{current\.time\}/g, timeStr)
 			.replace(/\{report\.name\}/g, reportName);
+	};
+
+	self.resolveDateLocale = function () {
+		var name = (self.appSettings && self.appSettings.defaultDateFormat) || 'United States';
+		switch (name) {
+			case 'United Kingdom': return 'en-GB';
+			case 'New Zealand': return 'en-NZ';
+			case 'France': return 'fr-FR';
+			case 'German': return 'de-DE';
+			case 'Spanish': return 'es-ES';
+			case 'Chinese': return 'zh-CN';
+			default: return 'en-US';
+		}
 	};
 
 	self.layout = ko.observable('list');
@@ -2200,6 +2244,7 @@ var reportViewModel = function (options) {
 		canCopyReport: ko.observable(true),
 		showScheduling: ko.observable(false),
 		showDesignerHints: ko.observable(true),
+		defaultDateFormat: 'United States',
 		aiProvider: ko.observable(''),
 		aiEnabled: ko.observable(false)
 	};
@@ -3734,7 +3779,11 @@ var reportViewModel = function (options) {
 	self.selectedLinkedField = ko.observable();
 
 	self.getReportHtml = function () {
-		return self.reportHtml();
+		var html = self.reportHtml() || '';
+		if (typeof stripTableResizeArtifacts === 'function') {
+			html = stripTableResizeArtifacts(html);
+		}
+		return html;
 	};
 
 	self.setReportType = function (reportType) {
@@ -3985,12 +4034,12 @@ var reportViewModel = function (options) {
 
 	self.ManageFolder = {
 		FolderName: ko.observable(),
-		ShowAdminOnly: ko.observable(false),  // NEW: Add this
+		ShowAdminOnly: ko.observable(false),
 		IsNew: ko.observable(false),
 		newFolder: function () {
 			self.ManageFolder.IsNew(true);
 			self.ManageFolder.FolderName("");
-			self.ManageFolder.ShowAdminOnly(false);  // NEW: Reset to false for new folder
+			self.ManageFolder.ShowAdminOnly(false);  
 			self.clearManageFolderAccess();
 
 			$("#folderModal").modal("show");
@@ -4032,7 +4081,7 @@ var reportViewModel = function (options) {
 			var folderToSave = {
 				Id: id,
 				FolderName: self.ManageFolder.FolderName(),
-				ShowAdminOnly: self.ManageFolder.ShowAdminOnly(),  // NEW: Add this
+				ShowAdminOnly: self.ManageFolder.ShowAdminOnly(), 
 				UserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.users),
 				ViewOnlyUserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.viewOnlyUsers),
 				DeleteOnlyUserId: self.manageFolderAccess.getAsList(self.manageFolderAccess.deleteOnlyUsers),
@@ -4264,7 +4313,7 @@ var reportViewModel = function (options) {
 
 								const importReport = function (action) {
 									const reportview = new reportViewModel(options);
-									reportview.adminMode(self.adminMode()) 
+									reportview.adminMode(true);
 									report.data = report.data || {};
 									report.data.FolderID = folderId;
 									report.data.checkFields = true;
@@ -4275,6 +4324,15 @@ var reportViewModel = function (options) {
 										report.data.ReportID = 0;
 										if (action === 'duplicate') {
 											report.data.ReportName = reportName + " Copy";
+										}
+									}
+
+									var currentUserId = self.currentUserId;
+									if (currentUserId) {
+										var existingIds = (report.data.UserId || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+										if (existingIds.indexOf(currentUserId) === -1) {
+											existingIds.push(currentUserId);
+											report.data.UserId = existingIds.join(',');
 										}
 									}
 
@@ -4430,7 +4488,7 @@ var reportViewModel = function (options) {
 		return _.chain(self.SavedReports())
 			.filter(function (x) {
 				return x.folderId == self.SelectedFolder().Id
-					&& (self.adminMode() || !x.showAdminOnly)  
+					&& (self.adminMode() || !x.ShowAdminOnly)  
 					&& (self.adminMode() || !x.isSubReportOnly || !x.isSubReportOnly()); 
 			})
 			.sortBy(function (x) {
@@ -4637,7 +4695,7 @@ var reportViewModel = function (options) {
 		self.clearKpiSettings(true);
 		self.subReports([]);
 		self.isSubReportOnly(false);
-		self.showAdminOnly(false);
+		self.ShowAdminOnly(false);
 		self.editingSubReportParentId(null);
 		self.editingSubReportParentName('');
 		self.clearManageAccess();	
@@ -5681,6 +5739,15 @@ var reportViewModel = function (options) {
 		})
 	}
 
+	self.buildInValueList = function (e) {
+		var vals = e.ValueIn();
+		var ft = e.Field() ? e.Field().fieldType : '';
+		if (['Int', 'Date', 'DateTime', 'Boolean'].indexOf(ft) === -1) {
+			return vals.map(function (v) { return "'" + ('' + v).replace(/'/g, "''") + "'"; }).join(",");
+		}
+		return vals.join(",");
+	};
+
 	self.BuildFilterData = function (filtergroup) {
 
 		var groups = [];
@@ -5696,8 +5763,8 @@ var reportViewModel = function (options) {
 					FieldId: e.Field().fieldId,
 					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
 					Operator: e.Operator(),
-					Value1: hasTimeInDate ? (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? e.ValueIn().join(",") : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value() + " " + e.Valuetime()))
-										  : (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? e.ValueIn().join(",") : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value())), 
+					Value1: hasTimeInDate ? (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? self.buildInValueList(e) : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value() + " " + e.Valuetime()))
+										  : (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? self.buildInValueList(e) : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value())), 
 					Value2: hasTimeInDate ? (e.Value2() ? e.Value2() + " " + e.Valuetime2() : e.Value2()) : e.Value2(), 
 					ParentIn: e.ParentIn().join(","),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : [],
@@ -5757,7 +5824,7 @@ var reportViewModel = function (options) {
 					FieldId: e.Field().fieldId,
 					AndOr: "AND",
 					Operator: e.Operator().toLowerCase(),
-					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 ? "blank" : e.Value()),
+					Value1: e.Operator() == "in" || e.Operator() == "not in" ? self.buildInValueList(e) : (e.Operator().indexOf("blank") >= 0 ? "blank" : e.Value()),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				};
 
@@ -5774,7 +5841,7 @@ var reportViewModel = function (options) {
 					FieldId: e.Field().fieldId,
 					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
 					Operator: e.Operator(),
-					Value1: e.Operator() == "in" || e.Operator() == "not in" ? e.ValueIn().join(",") : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value()),
+					Value1: e.Operator() == "in" || e.Operator() == "not in" ? self.buildInValueList(e) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value()),
 					Value2: e.Value2(),
 					Valuetime: e.Valuetime(),
 					Valuetime2: e.Valuetime2(),
@@ -5865,7 +5932,8 @@ var reportViewModel = function (options) {
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : (self.ReportType() == 'List' || self.ReportType() == 'Treemap' || self.dontGroupCustom() ? false : self.AggregateReport()),
 			ShowDataWithGraph: self.ShowDataWithGraph(),
-			showAdminOnly: self.showAdminOnly(),
+			showAdminOnly: self.ShowAdminOnly(),
+			IsSubReportOnly: self.isSubReportOnly(),
 			ShowOnDashboard: self.ShowOnDashboard(),
 			HideReportHeader: self.HideReportHeader(),
 			HideReportFooter: self.HideReportFooter(),
@@ -6043,6 +6111,9 @@ var reportViewModel = function (options) {
 		self.ReportResult().HasError(false);
 		saveOnly = saveOnly === true ? true : false;
 		skipValidation = skipValidation === true ? true : false;
+		if (!saveOnly && self.pager && self.pager.currentPage && self.pager.currentPage() !== 1) {
+			self.pager.currentPage(1);
+		}
 		var _resetSaving = function () { self.savingReport(false); self.savingAndRunning(false); };
 		self.setFlyFilters();
 		var saveAlertFlag = false;
@@ -6118,6 +6189,7 @@ var reportViewModel = function (options) {
 								SaveReport: _saveReport && idx === 0,
 								ReportJson: importJson ? JSON.stringify(importJson) : JSON.stringify(self.BuildReportData([], isComparison, idx - 1)),
 								adminMode: self.adminMode(),
+								applyClientInAdmin: importJson ? false : self.appSettings.useClientIdInAdmin,
 								BypassDataFiltersToUpdate: self.bypassEnabled() ? (self.bypassMode() === "all" ? "/all/" : self.bypassSpecificIds().join(",")) : "",
 								userIdForFilter: self.userIdForFilter,
 								SubTotalMode: false,
@@ -6194,6 +6266,7 @@ var reportViewModel = function (options) {
 				return $.when.apply($, promises).done(function () {
 					self.allSqlQueries(orderedSqls.join(','));
 					if (previewOnly === true) {
+						self.ExecuteReportQuery(self.allSqlQueries(), _result.connectKey, _reportSeries, false, true);
 						$("#sqlModal").modal('show');
 						return;
 					}
@@ -6303,7 +6376,7 @@ var reportViewModel = function (options) {
 								showUniqueRecords: self.ShowUniqueRecords(),
 								aggregateReport: (self.ReportType() == 'List' || self.ReportType() == 'Treemap' || self.dontGroupCustom()) ? false : self.AggregateReport(),
 								showDataWithGraph: self.ShowDataWithGraph(),
-								showAdminOnly: self.showAdminOnly(),
+								showAdminOnly: self.ShowAdminOnly(),
 								reportSql: self.allSqlQueries(),
 								connectKey: _result.connectKey,
 								reportFilter: JSON.stringify(_.map(self.FlyFilters(), function (x) { return ko.toJS(x); })),
@@ -6861,33 +6934,61 @@ var reportViewModel = function (options) {
 				r.Column.fieldLabel = col.fieldLabel
 
 				r.formattedVal = ko.computed(function () {
-					if (col.fieldFormat && (col.fieldFormat() === null || col.fieldFormat() == 'Auto')) {
-						if (col.fieldType == 'Time') {
-							r.FormattedValue = (new Date(r.Value)).toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' });
+					function localeFor(name) {
+						switch (name) {
+							case 'United Kingdom': return 'en-GB';
+							case 'New Zealand': return 'en-NZ';
+							case 'France': return 'fr-FR';
+							case 'German': return 'de-DE';
+							case 'Spanish': return 'es-ES';
+							case 'Chinese': return 'zh-CN';
+							default: return 'en-US';
 						}
-						else if (col.fieldType == 'Date') {
-							r.FormattedValue = (new Date(r.Value)).toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric' }); 
-						}
-						else if (col.fieldType == 'Percentage') {
-							let num = parseFloat(r.FormattedValue);
-							if (!isNaN(num)) {
-								r.FormattedValue = (num * 100).toFixed(2) + '%';
+					}
+					var ff = col.fieldFormat ? col.fieldFormat() : null;
+					var ft = col.fieldType;
+					var _parsedDate = self.safeParseDate(r.Value);
+
+					var explicitDateFormat = self.dateFormatTypes.indexOf(ff) >= 0;
+					var autoDateField = (!ff || ff === 'Auto') && (ft === 'Date' || ft === 'DateTime' || ft === 'Time');
+					var globalDefaultName = (self.appSettings && self.appSettings.defaultDateFormat) || 'United States';
+					var resolvedDateFormatName = explicitDateFormat ? (col.dateFormat() || globalDefaultName) : globalDefaultName;
+					var dtFormat = localeFor(resolvedDateFormatName);
+
+					if (explicitDateFormat || autoDateField) {
+						if (_parsedDate) {
+							if (explicitDateFormat && col.dateFormat() === 'Custom' && col.customDateFormat()) {
+								r.FormattedValue = self.formatDate(r.Value, col.customDateFormat());
 							} else {
-								r.FormattedValue = r.FormattedValue + '%';
+								var effectiveFormat = explicitDateFormat
+									? ff
+									: (ft === 'Time' ? 'Time' : 'Date');
+								switch (effectiveFormat) {
+									case 'Date': r.FormattedValue = _parsedDate.toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
+									case 'Date and Time': r.FormattedValue = _parsedDate.toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+									case 'Time': r.FormattedValue = _parsedDate.toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
+								}
 							}
+						}
+					} else if ((!ff || ff === 'Auto') && ft === 'Percentage') {
+						let num = parseFloat(r.FormattedValue);
+						if (!isNaN(num)) {
+							r.FormattedValue = (num * 100).toFixed(2) + '%';
+						} else {
+							r.FormattedValue = r.FormattedValue + '%';
 						}
 					}
 
-					if (self.decimalFormatTypes.indexOf(col.fieldFormat()) >= 0 && !isNaN(r.Value)) {
+					if (self.decimalFormatTypes.indexOf(ff) >= 0 && !isNaN(r.Value)) {
 						r.FormattedValue = self.formatNumber(r.Value, col.decimalPlaces());
-						switch (col.fieldFormat()) {
-							case 'Percentage': r.FormattedValue = r.FormattedValue + '%'; break;
+						if (ff === 'Percentage') {
+							r.FormattedValue = r.FormattedValue + '%';
 						}
 					}
-					if (col.fieldFormat() === 'String') {
+					if (ff === 'String') {
 						r.FormattedValue = r.Value;
 					}
-					if (col.fieldFormat()==='Currency') {
+					if (ff === 'Currency') {
 						switch (col.currencyFormat()) {
 							case '€': r.FormattedValue = '€' + r.FormattedValue; break;
 							case '£': r.FormattedValue = '£' + r.FormattedValue; break;
@@ -6896,27 +6997,21 @@ var reportViewModel = function (options) {
 							default: r.FormattedValue = '$' + r.FormattedValue; break;
 						}
 					}
-					var _parsedDate = self.safeParseDate(r.Value);
-					if (self.dateFormatTypes.indexOf(col.fieldFormat()) >= 0 && _parsedDate) {
-						var dtFormat = "en-US";
-						switch (col.dateFormat()) {
-							case 'United Kingdom': dtFormat = 'en-GB'; break;
-							case 'France': dtFormat = 'fr-FR'; break;
-							case 'German': dtFormat = 'de-DE'; break;
-							case 'Spanish': dtFormat = 'es-ES'; break;
-							case 'Chinese': dtFormat = 'zn-CN'; break;
-						}
 
-						if (col.dateFormat() == 'Custom' && col.customDateFormat()) {
-							r.FormattedValue = self.formatDate(r.Value, col.customDateFormat());
-						}
-						else {
-							switch (col.fieldFormat()) {
-								case 'Date': r.FormattedValue = _parsedDate.toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric' }); break;
-								case 'Date and Time': r.FormattedValue = _parsedDate.toLocaleDateString(dtFormat, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
-								case 'Time': r.FormattedValue = _parsedDate.toLocaleTimeString(dtFormat, { hour: 'numeric', minute: 'numeric', second: 'numeric' }); break;
-							}
-						}
+					var fieldDateFmt = explicitDateFormat
+						? (col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || globalDefaultName])
+						: self.dateFormatMappings[globalDefaultName];
+					function asDate(v) {
+						if (v == null || v === '') return null;
+						if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+						var d = self.safeParseDate(v);
+						if (d && !isNaN(d.getTime())) return d;
+						try {
+							var dp = parseDate(v, fieldDateFmt);
+							if (dp && !isNaN(dp.getTime())) return dp;
+						} catch (e) {}
+						var d2 = new Date(v);
+						return isNaN(d2.getTime()) ? null : d2;
 					}
 
 					var conditions = col.fieldConditionVal && col.fieldConditionVal.length ? col.fieldConditionVal : [];
@@ -6927,14 +7022,13 @@ var reportViewModel = function (options) {
 						var compareTo = c.value;
 						var compareTo2 = c.value2;
 						var dataIsNumeric = !isNaN(r.Value);
-						var dataIsDate = parseDate(r.Value, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']);
+						var dataIsDate = asDate(r.Value);
 
 						switch (operation) {
 							case '=':
 								if (dataIsDate) {
-									conditionTrue =
-										dataIsDate.getTime() ==
-										parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
+									var cmpD = asDate(compareTo);
+									conditionTrue = cmpD ? dataIsDate.getTime() == cmpD.getTime() : value == compareTo;
 								} else {
 									conditionTrue = value == compareTo;
 								}
@@ -6968,60 +7062,52 @@ var reportViewModel = function (options) {
 								conditionTrue = !!value;
 								break;
 							case '>':
-								if (dataIsNumeric) {
+								if (dataIsDate) {
+									var cmpD = asDate(compareTo);
+									if (cmpD) conditionTrue = dataIsDate.getTime() > cmpD.getTime();
+								} else if (dataIsNumeric) {
 									conditionTrue = parseFloat(value) > parseFloat(compareTo);
-								} else if (dataIsDate) {
-									conditionTrue =
-										dataIsDate.getTime() >
-										parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
 								}
 								break;
-
 							case '<':
-								if (dataIsNumeric) {
+								if (dataIsDate) {
+									var cmpD = asDate(compareTo);
+									if (cmpD) conditionTrue = dataIsDate.getTime() < cmpD.getTime();
+								} else if (dataIsNumeric) {
 									conditionTrue = parseFloat(value) < parseFloat(compareTo);
-								} else if (dataIsDate) {
-									conditionTrue =
-										dataIsDate.getTime() <
-										parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
 								}
 								break;
-
 							case '>=':
-								if (dataIsNumeric) {
+								if (dataIsDate) {
+									var cmpD = asDate(compareTo);
+									if (cmpD) conditionTrue = dataIsDate.getTime() >= cmpD.getTime();
+								} else if (dataIsNumeric) {
 									conditionTrue = parseFloat(value) >= parseFloat(compareTo);
-								} else if (dataIsDate) {
-									conditionTrue =
-										dataIsDate.getTime() >=
-									parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
 								}
 								break;
-
 							case '<=':
-								if (dataIsNumeric) {
+								if (dataIsDate) {
+									var cmpD = asDate(compareTo);
+									if (cmpD) conditionTrue = dataIsDate.getTime() <= cmpD.getTime();
+								} else if (dataIsNumeric) {
 									conditionTrue = parseFloat(value) <= parseFloat(compareTo);
-								} else if (dataIsDate) {
-									conditionTrue =
-										dataIsDate.getTime() <=
-									parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
 								}
 								break;
-
 							case 'between':
-								if (dataIsNumeric) {
-									conditionTrue = value >= parseFloat(compareTo) && value <= parseFloat(compareTo2);
-								} else if (dataIsDate) {
-									var dateValue = dataIsDate;
-									var startDate = parseDate(compareTo, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']).getTime();
-									var endDate = parseDate(compareTo2, col.customDateFormat() || self.dateFormatMappings[col.dateFormat() || 'United States']) .getTime();
-									conditionTrue = dateValue >= startDate && dateValue <= endDate;
+								if (dataIsDate) {
+									var startD = asDate(compareTo);
+									var endD = asDate(compareTo2);
+									if (startD && endD) conditionTrue = dataIsDate.getTime() >= startD.getTime() && dataIsDate.getTime() <= endD.getTime();
+								} else if (dataIsNumeric) {
+									conditionTrue = parseFloat(value) >= parseFloat(compareTo) && parseFloat(value) <= parseFloat(compareTo2);
 								}
 								break;
 							case 'range':
 								if (dataIsDate) {
 									var { start, end } = getDateRange(compareTo, compareTo2);
-									var dateValue =dataIsDate;
-									conditionTrue = dateValue >= start.getTime() && dateValue <= end.getTime();
+									var afterStart = !start || dataIsDate.getTime() >= start.getTime();
+									var beforeEnd = !end || dataIsDate.getTime() <= end.getTime();
+									conditionTrue = afterStart && beforeEnd;
 								}
 								break;
 						}
@@ -7036,20 +7122,26 @@ var reportViewModel = function (options) {
 					return r.FormattedValue;
 				});
 				function formatValue(val, r) {
-					let style = 'white-space:pre-wrap;';
-					const bgColor = r._backColor || (ko.isObservable(r.backColor) ? r.backColor() : null);
+					let style = '';
+					const bgColor = r._backColor != null ? r._backColor : (ko.isObservable(r.backColor) ? r.backColor() : null);
 					if (bgColor) {
 						style += `background-color:${bgColor};`;
 					}
-					const fontColor = r._fontColor || (ko.isObservable(r.fontColor) ? r.fontColor() : null);
+					const fontColor = r._fontColor != null ? r._fontColor : (ko.isObservable(r.fontColor) ? r.fontColor() : null);
 					if (fontColor) {
 						style += `color:${fontColor};`;
 					}
-					const isBold = r._fontBold !== undefined
-						? r._fontBold
-						: (ko.isObservable(r.fontBold) ? r.fontBold() : false);
+					const isBold = r._fontBold != null ? r._fontBold : (ko.isObservable(r.fontBold) ? r.fontBold() : false);
 					if (isBold) {
 						style += `font-weight:bold;`;
+					}
+					const align = ko.isObservable(r.fieldAlign) ? r.fieldAlign() : null;
+					if (align) {
+						style += `text-align:${align};`;
+					}
+					const width = r.fieldWidth ? ko.unwrap(r.fieldWidth) : null;
+					if (width) {
+						style += `display:inline-block;width:${width};white-space:normal;overflow-wrap:break-word;`;
 					}
 					if (!style) return val;
 					return `<span style="${style}">${val}</span>`;
@@ -7130,6 +7222,7 @@ var reportViewModel = function (options) {
 			renderedHtml = renderedHtml.replace(/\{\{[^}]+>[^}]+\}\}/g, "");
 			// Strip summernote tableresize plugin handles from rendered HTML
 			renderedHtml = renderedHtml.replace(/<div[^>]*class="resize-(?:col|row|corner)"[^>]*><\/div>/g, "");
+			renderedHtml = renderedHtml.replace(/<div[^>]*style="[^"]*cursor:\s*(?:col|row)-resize[^"]*"[^>]*>[\s\S]*?<\/div>/g, "");
 
 			return renderedHtml;
 		}
@@ -7362,7 +7455,8 @@ var reportViewModel = function (options) {
 					onlyAndGroupInColumnDetail: null,
 					isSubReport: true,
 					userId: self.currentUserId || '',
-					filterDetailsText: ''
+					filterDetailsText: '',
+					defaultDateFormat: self.appSettings.defaultDateFormat || 'United States'
 				}, 'xlsx');
 			}
 
@@ -7687,7 +7781,6 @@ var reportViewModel = function (options) {
 								text-align:${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')};
 								width:${ko.unwrap(item.fieldWidth())};
 								text-wrap:${ko.unwrap(item.fieldWidth()) ? 'wrap' : 'nowrap'};
-								white-space:pre-wrap;
 								${leftBorder}
 							"
 						`;
@@ -7910,7 +8003,6 @@ var reportViewModel = function (options) {
 				col.fieldCondtionalFormats.forEach(fmt => {
 					if (fmt.filter && fmt.filter.Filters) {
 						fmt.filter.Filters.forEach(flt => {
-							// Avoid circular reference
 							if (flt.Field) {
 								flt.Field = {
 									fieldId: flt.Field.fieldId,
@@ -7920,6 +8012,27 @@ var reportViewModel = function (options) {
 						});
 					}
 				});
+			}
+
+			delete col.customSqlField;
+			delete col.fieldSettings;
+			delete col.functionConfig;
+
+			if (col.linkFieldItem) {
+				var lfi = col.linkFieldItem;
+				col.linkFieldItem = {
+					LinksToReport: lfi.LinksToReport,
+					LinkedToReportId: lfi.LinkedToReportId,
+					LinkedReportName: lfi.LinkedReportName,
+					LinkedReportFolderName: lfi.LinkedReportFolderName,
+					SendAsFilterParameter: lfi.SendAsFilterParameter,
+					SelectedFilterId: lfi.SelectedFilterId,
+					SelectedFilterTableName: lfi.SelectedFilterTableName,
+					SelectedFilterFieldName: lfi.SelectedFilterFieldName,
+					LinkToUrl: lfi.LinkToUrl,
+					SendAsQueryParameter: lfi.SendAsQueryParameter,
+					QueryParameterName: lfi.QueryParameterName
+				};
 			}
 		});
 
@@ -9899,7 +10012,7 @@ var reportViewModel = function (options) {
 		self.maxRecords(report.OnlyTop != null);
 		self.AggregateReport(report.IsAggregateReport);
 		self.ShowDataWithGraph(report.ShowDataWithGraph);
-		self.showAdminOnly(report.showAdminOnly);
+		self.ShowAdminOnly(report.ShowAdminOnly);
 		self.ShowOnDashboard(report.ShowOnDashboard);
 		self.SortByField(report.SortBy);
 		self.SortDesc(report.SortDesc);
@@ -10216,6 +10329,7 @@ var reportViewModel = function (options) {
 				e.runMode = false;
 				e.isSelected = ko.observable(false);
 				e.isSubReportOnly = ko.observable(e.isSubReportOnly || false);
+				e.showAdminOnly = ko.observable(e.showAdminOnly || false);
 				e.openReport = function () {
 					if (!e.runMode && !e.canEdit && !self.appSettings.canCopyReport()) {
 						options.reportWizard.modal('hide');
@@ -10270,6 +10384,20 @@ var reportViewModel = function (options) {
 						_.forEach(self.manageAccess.deleteOnlyUserRoles, function (x) { x.selected(false); });
 
 						self.manageAccess.applyDefaultSettings();
+
+						if (self.currentUserId) {
+							var existing = _.find(self.manageAccess.users(), function (u) { return u.value() === self.currentUserId; });
+							if (existing) {
+								existing.selected(true);
+							} else {
+								self.manageAccess.users.push({
+									selected: ko.observable(true),
+									value: ko.observable(self.currentUserId),
+									text: self.currentUserId,
+									category: null
+								});
+							}
+						}
 					});
 				};
 
@@ -10403,7 +10531,7 @@ var reportViewModel = function (options) {
 			return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
 		}
 	}
-	self.safeParseDate = function (val) {
+	self.safeParseDate = function (val, formatHint) {
 		if (!val) return null;
 		var s = val.toString().trim();
 
@@ -10417,12 +10545,22 @@ var reportViewModel = function (options) {
 			var a = parseInt(parts[1]), b = parseInt(parts[2]), c = parseInt(parts[3]);
 			if (c < 100) c += 2000;
 			if (a > 12) {
-				// a must be day: dd/mm/yyyy
 				return new Date(c, b - 1, a);
 			} else if (b > 12) {
-				// b must be day: mm/dd/yyyy
 				return new Date(c, a - 1, b);
 			}
+			var dayFirst = false;
+			if (formatHint) {
+				var dIdx = formatHint.search(/d/i);
+				var mIdx = formatHint.indexOf('M');
+				if (dIdx >= 0 && mIdx >= 0) dayFirst = dIdx < mIdx;
+			} else {
+				try {
+					var lang = (navigator && navigator.language || '').toLowerCase();
+					dayFirst = lang && !lang.startsWith('en-us');
+				} catch (e) { /* ignore */ }
+			}
+			return dayFirst ? new Date(c, b - 1, a) : new Date(c, a - 1, b);
 		}
 
 		var d = new Date(s);
@@ -10430,7 +10568,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.formatDate = function(dateOrValue, format) {
-		var date = (dateOrValue instanceof Date) ? dateOrValue : self.safeParseDate(dateOrValue);
+		var date = (dateOrValue instanceof Date) ? dateOrValue : self.safeParseDate(dateOrValue, format);
 		if (!date) return dateOrValue;
 
 		const pad = (n) => n < 10 ? '0' + n : n;
@@ -10602,7 +10740,8 @@ var reportViewModel = function (options) {
 			const fromContext = ko.contextFor(fromInput);
 			const toContext = ko.contextFor(toInput);
 			if (fromContext && toContext) {
-				var defaultFormat = "mm/dd/yyyy";
+				var configuredDefault = fromContext.$root.appSettings && fromContext.$root.appSettings.defaultDateFormat;
+				var defaultFormat = (configuredDefault && fromContext.$root.dateFormatMappings[configuredDefault]) || "mm/dd/yyyy";
 				var fromDateFormat = fromContext.$data.dateFormat() ? fromContext.$root.dateFormatMappings[fromContext.$data.dateFormat()] : defaultFormat;
 				var toDateFormat = toContext.$data.dateFormat() ? toContext.$root.dateFormatMappings[toContext.$data.dateFormat()] : defaultFormat;
 				var fromDateValue = fromInput.value;
@@ -10818,8 +10957,12 @@ var reportViewModel = function (options) {
 			self.appSettings.useFunctions(x.useFunctions);
 			self.appSettings.showScheduling(x.showScheduling);
 			self.appSettings.showDesignerHints(x.showDesignerHints !== false);
+			self.appSettings.defaultDateFormat = x.defaultDateFormat || 'United States';
 			self.appSettings.aiProvider(x.aiProvider || '');
 			self.appSettings.aiEnabled(x.aiEnabled === true || (x.aiProvider && x.aiProvider !== ''));
+			if (typeof window !== 'undefined') {
+				window._defaultDateFormat = (self.dateFormatMappings && self.dateFormatMappings[self.appSettings.defaultDateFormat]) || null;
+			}
 		});
 	}
 
@@ -10991,8 +11134,9 @@ var reportViewModel = function (options) {
 			headerEveryPage: headerEveryPage || false,
 			footerEveryPage: footerEveryPage || false,
 			currentUserName: self.currentUserName || self.currentUserId || '',
-			currentUserRoles: self.currentUserRole || ''
-};
+			currentUserRoles: self.currentUserRole || '',
+			defaultDateFormat: (self.appSettings && self.appSettings.defaultDateFormat) || 'United States'
+		};
 	}
 
 	self.downloadPdfAlt = function (pageSize,pageOrientation) {
@@ -11031,7 +11175,8 @@ var reportViewModel = function (options) {
 			adminMode: self.adminMode(),
 			isSubreport: self.subReports().length > 0 || false,
 			pageNumber: self.pager.currentPage(),
-			currentPageSize: self.pager.pageSize()
+            currentPageSize: self.pager.pageSize(),
+			defaultDateFormat: (self.appSettings && self.appSettings.defaultDateFormat) || 'United States'
 		}, 'pdf');
 	}
 	self.PdfPage = new PdfPageViewModel(self.appSettings, self.downloadPdf, self.downloadPdfAlt);
@@ -11060,7 +11205,8 @@ var reportViewModel = function (options) {
 			onlyAndGroupInColumnDetail: hasOnlyAndGroupInDetail ? JSON.stringify(onlyAndGroupInDetailColumnDetails) : null,
 			isSubReport: false,
 			userId: self.currentUserId || '',
-			filterDetailsText: self.ShowFilterDetails() ? self.buildFilterDetailsPlainText(self.FilterGroups(), false) : ''
+			filterDetailsText: self.ShowFilterDetails() ? self.buildFilterDetailsPlainText(self.FilterGroups(), false) : '',
+			defaultDateFormat: self.appSettings.defaultDateFormat || 'United States'
 		}, 'xlsx');
 	}
 
@@ -11283,7 +11429,11 @@ var sqlFieldModel = function (options) {
 			]
 		}		
 	]
-	
+	self.getActiveSelector = function () {
+		var isLiveMode = $('.live-preview-area').is(':visible') &&
+			!$('.live-preview-area').hasClass('d-none');
+		return isLiveMode ? '.live-preview-area ' : '#customFieldSection ';
+	};
 	self.availableFunctionsGrouped = ko.observableArray(availableFunctions);
 
 	self.templateResult = function (option) {
@@ -11326,7 +11476,7 @@ var sqlFieldModel = function (options) {
 				c.conditionDisplay = encodeURIComponent(c.conditionDisplay);
 				return c;
 			}),
-			elseCase: encodeURIComponent($('#condition-else').text())
+			elseCase: encodeURIComponent($(self.getActiveSelector() + '[id="condition-else"]').text())
 		};
 	}
 
@@ -11344,8 +11494,8 @@ var sqlFieldModel = function (options) {
 			c.conditionDisplay = decodeURIComponent(c.conditionDisplay);
 			return c;
 		}));
-		$('#condition-else').text(decodeURIComponent(x.elseCase));
-		$('#custom-sql').text(self.fieldSql());
+		$('[id="condition-else"]').text(decodeURIComponent(x.elseCase));
+		$('[id="custom-sql"]').text(self.fieldSql());
 	}
 
 	self.clear = function () {
@@ -11354,6 +11504,8 @@ var sqlFieldModel = function (options) {
 		self.inputValue(null);
 		self.customSQL('');
 		self.conditions([]);
+		$('[id="custom-sql"]').text('');
+		$('[id="condition-else"]').text('');
 	}
 
 	self.requiresValue = ko.computed(function () {
@@ -11364,9 +11516,9 @@ var sqlFieldModel = function (options) {
 		return ['CASE', 'IIF', 'COALESCE', 'NULLIF', 'DECODE', 'ISNULL', 'IFNULL'].includes(self.selectedSqlFunction());  
 	});
 	self.addOrUpdateCondition = function () {
-		var conditionField = $('#condition-field').text();
-		var conditionValue = $('#condition-value').text();
-		var conditionResult = $('#condition-result').text();
+		var conditionField = $('[id="condition-field"]').text();
+		var conditionValue = $('[id="condition-value"]').text();
+		var conditionResult = $('[id="condition-result"]').text();
 		if (conditionField && conditionValue && conditionResult && self.selectedOperator()) {
 			if (self.editingCondition()) {
 				var cond = self.editingCondition();
@@ -11376,7 +11528,10 @@ var sqlFieldModel = function (options) {
 				cond.result = conditionResult;
 				cond.conditionDisplay =`${conditionField} ${self.selectedOperator()} ${conditionValue} THEN ${conditionResult}`;
 				var index = self.conditions.indexOf(cond);
-				document.querySelectorAll('.list-group-item span')[index].innerText = cond.conditionDisplay;
+				var spans = document.querySelectorAll(selector + '.list-group-item span[data-bind*="conditionDisplay"]');
+				if (spans[index]) {
+					spans[index].innerText = cond.conditionDisplay;
+				}
 				self.editingCondition(null);
 			} else {
 				self.conditions.push({
@@ -11387,9 +11542,9 @@ var sqlFieldModel = function (options) {
 					conditionDisplay:`${conditionField} ${self.selectedOperator()} ${conditionValue} THEN ${conditionResult}`
 				});
 			}
-			$('#condition-field').text('');
-			$('#condition-value').text('');
-			$('#condition-result').text('');
+			$('[id="condition-field"]').text('');
+			$('[id="condition-value"]').text('');
+			$('[id="condition-result"]').text('');
 			self.selectedOperator('');
 		}
 	};
@@ -11398,9 +11553,9 @@ var sqlFieldModel = function (options) {
 		if (self.editingCondition() === item) self.editingCondition(null);
 	};
 	self.editCondition = function (item) {
-		$('#condition-field').text(item.field);
-		$('#condition-value').text(item.value);
-		$('#condition-result').text(item.result);
+		$('[id="condition-field"]').text(item.field);
+		$('[id="condition-value"]').text(item.value);
+		$('[id="condition-result"]').text(item.result);
 		self.selectedOperator(item.operator);
 		self.editingCondition(item);
 	};
@@ -11408,7 +11563,7 @@ var sqlFieldModel = function (options) {
 		var field = self.selectedField();
 		var func = self.selectedSqlFunction();
 		var value = self.inputValue();
-		var final = $('#condition-else').text() || 'NULL';
+		var final = $(self.getActiveSelector() + '[id="condition-else"]').text() || 'NULL';
 
 		var sql = '';
 
@@ -11447,7 +11602,7 @@ var sqlFieldModel = function (options) {
 		} else if (['LEFT', 'RIGHT', 'SUBSTRING'].includes(func)) {
 			sql = `${func}({${field}}, ${value})`;
 		} else if (func == 'Other') {
-			sql = $('#custom-sql').text();
+			sql = $(self.getActiveSelector() + '[id="custom-sql"]').text();
 		} else if (func) {
 			sql = `${func}({${field}})`; 
 		}
@@ -11653,6 +11808,7 @@ var dashboardViewModel = function (options) {
 		showImportExport: ko.observable(false),
 		showScheduling: ko.observable(false),
 		showDesignerHints: true,
+		defaultDateFormat: 'United States',
 		aiProvider: '',
 		aiEnabled: false
 	};
@@ -11687,10 +11843,14 @@ var dashboardViewModel = function (options) {
 			self.appSettings.canCopyReport = x.canCopyReport;
 			self.appSettings.useFunctions = x.useFunctions;
 			self.appSettings.showDesignerHints = x.showDesignerHints !== false;
+			self.appSettings.defaultDateFormat = x.defaultDateFormat || 'United States';
 			self.appSettings.aiProvider = x.aiProvider || '';
 			self.appSettings.aiEnabled = x.aiEnabled === true || (x.aiProvider && x.aiProvider !== '');
 			self.appSettings.showImportExport(x.showImportExport);
 			self.appSettings.showScheduling(x.showScheduling);
+			if (typeof window !== 'undefined') {
+				window._defaultDateFormat = (self.dateFormatMappings && self.dateFormatMappings[self.appSettings.defaultDateFormat]) || null;
+			}
 		});
 	}
 
@@ -11706,6 +11866,7 @@ var dashboardViewModel = function (options) {
 	self.dateFormatMappings = {
 		'United States': 'mm/dd/yy',
 		'United Kingdom': 'dd/mm/yy',
+		'New Zealand': 'dd/mm/yy',
 		'France': 'dd/mm/yy',
 		'German': 'dd.mm.yy',
 		'Spanish': 'dd/mm/yy',
@@ -12734,7 +12895,8 @@ var dashboardViewModel = function (options) {
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
 		reports[0]?.downloadExport("DownloadAllPdf", {
 			reportdata: JSON.stringify(allreports),
-			dashboardName: dashboardName
+			dashboardName: dashboardName,
+			defaultDateFormat: (self.appSettings && self.appSettings.defaultDateFormat) || 'United States'
 		}, 'pdf', dashboardName);
 	}
 	self.ExportAllPdfAltReportsWithPageOption = function () {
@@ -12779,7 +12941,8 @@ var dashboardViewModel = function (options) {
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
 		reports[0]?.downloadExport("DownloadAllPdfAlt", {
 			reportdata: JSON.stringify(allreports),
-			dashboardName: dashboardName
+			dashboardName: dashboardName,
+			defaultDateFormat: (self.appSettings && self.appSettings.defaultDateFormat) || 'United States'
 		}, 'pdf', dashboardName);
 	}
 	self.ExportAllExcelReports = function () {
@@ -12806,7 +12969,8 @@ var dashboardViewModel = function (options) {
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
 		reports[0]?.downloadExport("DownloadAllExcel", {
 			reportdata: JSON.stringify(allreports),
-			dashboardName: dashboardName
+			dashboardName: dashboardName,
+			defaultDateFormat: (self.appSettings && self.appSettings.defaultDateFormat) || 'United States'
 		}, 'xlsx', dashboardName);
 	}
 	self.ExportAllExcelExpandedReports = function () {
@@ -12837,7 +13001,8 @@ var dashboardViewModel = function (options) {
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
 		reports[0]?.downloadExport("DownloadAllExcel", {
 			reportdata: JSON.stringify(allreports),
-			dashboardName: dashboardName
+			dashboardName: dashboardName,
+			defaultDateFormat: (self.appSettings && self.appSettings.defaultDateFormat) || 'United States'
 		}, 'xlsx', dashboardName);
 	}
 	self.canDrilldown = ko.computed(function () {
@@ -12879,7 +13044,8 @@ var dashboardViewModel = function (options) {
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
 		reports[0]?.downloadExport("DownloadAllWord", {
 			reportdata: JSON.stringify(allreports),
-			dashboardName: dashboardName
+			dashboardName: dashboardName,
+			defaultDateFormat: (self.appSettings && self.appSettings.defaultDateFormat) || 'United States'
 		}, 'docx', dashboardName);
 	}
 

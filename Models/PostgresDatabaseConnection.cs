@@ -58,7 +58,7 @@ namespace ReportBuilder.Web.Models
                     using (NpgsqlCommand command = new NpgsqlCommand(sqlCount, conn))
                     {
                         if (!sql.StartsWith("EXEC"))
-                            totalRecords = (int)command.ExecuteScalar();
+                            totalRecords = Convert.ToInt32(command.ExecuteScalar());
                     }
 
                     conn.Close();

@@ -49,9 +49,9 @@ namespace ReportBuilder.Web.Controllers
                 CurrentUserRole = (currentUserRole ?? "")
                     .Split(',')
                     .ToList(),
-                DataFilters = string.IsNullOrEmpty(dataFilters) ? 
-                                    new { } : 
-                                    Newtonsoft.Json.JsonConvert.DeserializeObject<object>(dataFilters)
+                DataFilters = string.IsNullOrEmpty(dataFilters) ?
+                                    new { } :
+                                    Newtonsoft.Json.JsonConvert.DeserializeObject<object>(dataFilters) ?? new { }
             };
 
             var exportId = ExportSessionStore.Save(settings);

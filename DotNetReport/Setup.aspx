@@ -264,6 +264,12 @@
                                         Available for Enterprise license users.
                                     </small>
                                 </div>
+                                <div class="mb-2 mt-2">
+                                    <label class="form-label mb-1" for="defaultDateFormatSelect">Default Date Format</label>
+                                    <select class="form-select form-select-sm" id="defaultDateFormatSelect" style="max-width: 220px;"
+                                            data-bind="options: dateFormatOptions, value: defaultDateFormat"></select>
+                                    <small class="text-muted d-block">Date format used by all date pickers when a field doesn't override it. e.g. <em>New Zealand</em> uses <code>dd/mm/yyyy</code>.</small>
+                                </div>
                                 <h6 class="mt-3 mb-2">Report Options</h6>
                                 <div class="form-check">
                                     <input type="checkbox" class="form-check-input" id="allowUsersToCreateReports" data-bind="checked: allowUsersToCreateReports">
@@ -1046,6 +1052,9 @@
             <p>
                 View Schedules setup for sending Reports and Dashboards
             </p>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#sentHistoryModal" data-bind="click: function() { loadSentHistory(1); }">
+                <span class="fa fa-history"></span> View Send History
+            </button>
             <hr />
 
             <div class="row">
@@ -1424,7 +1433,8 @@
                         <button class="btn btn-secondary" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
                             <i class="fa fa-user"></i>Manage Role Access
                         </button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-bind="click: function(){$root.saveColumn()}">Done</button>
+                        @* <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-bind="click: function(){$root.saveColumn()}">Done</button> *@
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
                     </div>
                 </div>
             </div>
@@ -2125,5 +2135,84 @@
     </div>
 </div>
 
-
+<div class="modal" id="sentHistoryModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa fa-history"></i> Schedule Send History</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-2 align-items-end mb-3 border-bottom pb-2">
+                    <div class="col-sm-3">
+                        <label class="form-label small mb-0">From</label>
+                        <input type="date" class="form-control form-control-sm" data-bind="value: sentHistoryStartDate" />
+                    </div>
+                    <div class="col-sm-3">
+                        <label class="form-label small mb-0">To</label>
+                        <input type="date" class="form-control form-control-sm" data-bind="value: sentHistoryEndDate" />
+                    </div>
+                    <div class="col-sm-auto">
+                        <button class="btn btn-sm btn-primary" data-bind="click: function() { loadSentHistory(1); }, enable: !sentHistoryLoading()">Search</button>
+                        <button class="btn btn-sm btn-secondary" data-bind="click: function() { sentHistoryStartDate(''); sentHistoryEndDate(''); loadSentHistory(1); }, enable: !sentHistoryLoading()">Clear</button>
+                    </div>
+                </div>
+                <div data-bind="visible: sentHistoryLoading() && sentHistory().length === 0" class="text-center py-3 text-muted">
+                    <i class="fa fa-spinner fa-spin"></i> Loading...
+                </div>
+                <div data-bind="visible: !sentHistoryLoading() && sentHistory().length === 0" class="text-center py-3 text-muted">
+                    <i class="fa fa-inbox"></i> No history for this range.
+                </div>
+                <div data-bind="visible: sentHistory().length > 0">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>When</th>
+                                <th>Type</th>
+                                <th>Name</th>
+                                <th>Sent To</th>
+                                <th>Format</th>
+                                <th>Result</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody data-bind="foreach: sentHistory">
+                            <tr>
+                                <td><small data-bind="text: created"></small></td>
+                                <td><span class="badge bg-secondary" data-bind="text: itemType"></span></td>
+                                <td data-bind="text: itemName || ('#' + (itemId || ''))"></td>
+                                <td><small data-bind="text: sentTo"></small></td>
+                                <td data-bind="text: format"></td>
+                                <td>
+                                    <span data-bind="css: isError ? 'badge bg-danger' : (result === 'Triggered' ? 'badge bg-info' : 'badge bg-success'), text: result"></span>
+                                </td>
+                                <td><small class="text-muted" data-bind="text: message"></small></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <small class="text-muted">
+                            Page <span data-bind="text: sentHistoryPage"></span> of <span data-bind="text: sentHistoryTotalPages"></span>
+                            (<span data-bind="text: sentHistoryTotal"></span> total)
+                        </small>
+                        <div>
+                            <button class="btn btn-sm btn-outline-secondary" data-bind="click: function() { loadSentHistory(sentHistoryPage() - 1); }, enable: sentHistoryPage() > 1 && !sentHistoryLoading()">
+                                <i class="fa fa-chevron-left"></i> Prev
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" data-bind="click: function() { loadSentHistory(sentHistoryPage() + 1); }, enable: sentHistoryPage() < sentHistoryTotalPages() && !sentHistoryLoading()">
+                                Next <i class="fa fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bind="click: function() { loadSentHistory(sentHistoryPage()); }">
+                    <span class="fa fa-refresh"></span> Refresh
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 </asp:Content>

@@ -96,6 +96,8 @@ namespace ReportBuilder.WebForms.DotNetReport
             var data = new List<object>();
             foreach (DataRow dr in dt.Rows)
             {
+                if (dr[0] == DBNull.Value || dr[1] == DBNull.Value) continue;
+                if (string.IsNullOrWhiteSpace(dr[0]?.ToString()) || string.IsNullOrWhiteSpace(dr[1]?.ToString())) continue;
                 data.Add(new { id = dr[0], text = dr[1] });
             }
 
@@ -333,41 +335,20 @@ namespace ReportBuilder.WebForms.DotNetReport
                     }
                     if (!sql.StartsWith("EXEC"))
                     {
-                        var fromIndex = DotNetReportHelper.FindFromIndex(sql);
                         sqlFields = DotNetReportHelper.SplitSqlColumns(sql, DotNetReportHelper.dbtype);
+                        bool hasDistinct = Regex.IsMatch(sql, @"^\s*SELECT\s+(TOP\s+\d+\s+)?DISTINCT\b", RegexOptions.IgnoreCase);
 
-                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}".Replace("{FROM}", "FROM");
-                        bool hasDistinct = sql.Contains("DISTINCT");
-                        if (hasDistinct)
+                        var countInner = sql.Replace("{FROM}", "FROM");
+                        int countOrderByIndex = countInner.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+                        if (countOrderByIndex > -1)
                         {
-                            string distinctColumns = string.Join(", ", sqlFields);
-
-                            string fromClause = sql.Substring(fromIndex).Replace("{FROM}", "FROM");
-
-                            // Remove ORDER BY if present
-                            int orderByIndex = fromClause.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
-                            if (orderByIndex > -1)
-                            {
-                                fromClause = fromClause.Substring(0, orderByIndex).Trim();
-                            }
-
-                            if (DotNetReportHelper.dbtype == "Oracle")
-                                sqlCount = "SELECT COUNT(*) FROM (SELECT DISTINCT " + distinctColumns + " " + fromClause + ") countQry";
-                            else
-                                sqlCount = "SELECT COUNT(*) FROM (SELECT DISTINCT " + distinctColumns + " " + fromClause + ") AS countQry";
+                            countInner = countInner.Substring(0, countOrderByIndex).Trim();
                         }
+
+                        if (DotNetReportHelper.dbtype == "Oracle")
+                            sqlCount = "SELECT COUNT(*) FROM (" + countInner + ") countQry";
                         else
-                        {
-                            string inner =
-                                sqlFrom.Contains("ORDER BY")
-                                ? sqlFrom.Substring(0, sqlFrom.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase))
-                                : sqlFrom;
-
-                            if (DotNetReportHelper.dbtype == "Oracle")
-                                sqlCount = "SELECT COUNT(*) FROM (" + inner + ") countQry";
-                            else
-                                sqlCount = "SELECT COUNT(*) FROM (" + inner + ") AS countQry";
-                        }
+                            sqlCount = "SELECT COUNT(*) FROM (" + countInner + ") AS countQry";
 
                         if (!String.IsNullOrEmpty(sortBy))
                         {
@@ -1031,8 +1012,9 @@ namespace ReportBuilder.WebForms.DotNetReport
             return sql;
         }
         [WebMethod(EnableSession = true)]
-        public async Task DownloadAllPdf(string reportdata, string dashboardName = "CombinedReports")
+        public async Task DownloadAllPdf(string reportdata, string dashboardName = "CombinedReports", string defaultDateFormat = null)
         {
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var pdfBytesList = new List<byte[]>();
             var settings = GetSettings();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
@@ -1052,11 +1034,13 @@ namespace ReportBuilder.WebForms.DotNetReport
         }
 
         [WebMethod(EnableSession = true)]
-        public async Task DownloadAllPdfAlt(string reportdata, string dashboardName = "CombinedReports")
+        public async Task DownloadAllPdfAlt(string reportdata, string dashboardName = "CombinedReports", string defaultDateFormat = null)
         {
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var pdfBytesList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
             var settings = GetSettings();
+
             foreach (var report in reports)
             {
                 if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != report.userId)
@@ -1065,6 +1049,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 }
                 report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
+                await ValidateAccess(report.userId, report.reportSql);
                 var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
 
                 var pdf = await DotNetReportHelper.GetPdfFileAlt(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, report.expandSqls, columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction, report.pageSize, report.pageOrientation, reportDescription: HttpUtility.UrlDecode(report.reportDescription));
@@ -1079,11 +1064,13 @@ namespace ReportBuilder.WebForms.DotNetReport
         }
 
         [WebMethod(EnableSession = true)]
-        public async Task DownloadAllExcel(string reportdata, string dashboardName = "CombinedReports")
+        public async Task DownloadAllExcel(string reportdata, string dashboardName = "CombinedReports", string defaultDateFormat = null)
         {
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var excelbyteList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
-            var settings = GetSettings(); 
+            var settings = GetSettings();
+
             foreach (var report in reports)
             {
                 if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != report.userId)
@@ -1095,7 +1082,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 await ValidateAccess(report.userId, report.reportSql);
                 var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
                 var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(report.onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.onlyAndGroupInColumnDetail));
-                var excelreport = await DotNetReportHelper.GetExcelFile(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, HttpUtility.UrlDecode(report.expandSqls), columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction, onlyAndGroupInDetailColumns,report.isSubReport,report.subTotalPerGroup,report.totalRowFormat);
+                var excelreport = await DotNetReportHelper.GetExcelFile(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, HttpUtility.UrlDecode(report.expandSqls), columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction, onlyAndGroupInDetailColumns);
                 excelbyteList.Add(excelreport);
             }
             // Combine all Excel files into one workbook
@@ -1110,11 +1097,13 @@ namespace ReportBuilder.WebForms.DotNetReport
         }
 
         [WebMethod(EnableSession = true)]
-        public async Task DownloadAllWord(string reportdata, string dashboardName = "CombinedReports")
+        public async Task DownloadAllWord(string reportdata, string dashboardName = "CombinedReports", string defaultDateFormat = null)
         {
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var wordbyteList = new List<byte[]>();
             var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
             var settings = GetSettings();
+
             foreach (var report in ListofReports)
             {
                 if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != report.userId)
@@ -1154,7 +1143,8 @@ namespace ReportBuilder.WebForms.DotNetReport
             bool adminMode = false,
             bool subTotalPerGroup = false,
             string totalRowFormat = "row",
-            string filterDetailsText = null)
+            string filterDetailsText = null,
+            string defaultDateFormat = null)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -1165,6 +1155,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(onlyAndGroupInColumnDetail));
 
@@ -1201,7 +1192,8 @@ namespace ReportBuilder.WebForms.DotNetReport
             bool footerEveryPage = false,
             string currentUserName = null,
             string currentUserRoles = null,
-            string customHtml = null)
+            string customHtml = null,
+            string defaultDateFormat = null)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -1212,15 +1204,16 @@ namespace ReportBuilder.WebForms.DotNetReport
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, HttpUtility.UrlDecode(filterDetailsText),
-                           headerHtml: headerHtml != null ? HttpUtility.UrlDecode(headerHtml) : null,
-                           footerHtml: footerHtml != null ? HttpUtility.UrlDecode(footerHtml) : null,
-                           headerEveryPage: headerEveryPage,
-                           footerEveryPage: footerEveryPage,
-                           currentUserName: currentUserName,
-                           currentUserRoles: currentUserRoles,
-                           customHtml: !string.IsNullOrEmpty(customHtml) ? HttpUtility.UrlDecode(customHtml) : null);
+                headerHtml: headerHtml != null ? HttpUtility.UrlDecode(headerHtml) : null,
+                footerHtml: footerHtml != null ? HttpUtility.UrlDecode(footerHtml) : null,
+                headerEveryPage: headerEveryPage,
+                footerEveryPage: footerEveryPage,
+                currentUserName: currentUserName,
+                currentUserRoles: currentUserRoles,
+                customHtml: !string.IsNullOrEmpty(customHtml) ? HttpUtility.UrlDecode(customHtml) : null);
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + HttpUtility.UrlDecode(reportName) + ".docx");
             Context.Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             Context.Response.BinaryWrite(word);
@@ -1310,7 +1303,8 @@ namespace ReportBuilder.WebForms.DotNetReport
            bool adminMode = false,
            bool subTotalPerGroup = false,
            string filterDetailsText = null,
-           string reportDescription = null)
+           string reportDescription = null,
+           string defaultDateFormat = null)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -1322,9 +1316,10 @@ namespace ReportBuilder.WebForms.DotNetReport
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             reportName = HttpUtility.UrlDecode(reportName);
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
-            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, subTotalPerGroup, HttpUtility.UrlDecode(filterDetailsText),HttpUtility.UrlDecode(reportDescription));
+            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, subTotalPerGroup, HttpUtility.UrlDecode(filterDetailsText), HttpUtility.UrlDecode(reportDescription));
 
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".pdf");
             Context.Response.ContentType = "application/pdf";
@@ -1346,7 +1341,8 @@ namespace ReportBuilder.WebForms.DotNetReport
             string pivotColumn = null,
             string pivotFunction = null,
             string userId = "",
-            bool adminMode = false)
+            bool adminMode = false,
+            string defaultDateFormat = null)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -1355,6 +1351,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             }
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
             var csv = await DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal, expandSqls, pivot, pivotColumn, pivotFunction);
