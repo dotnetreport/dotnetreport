@@ -51,7 +51,7 @@ namespace ReportBuilder.Web.Controllers
                     .ToList(),
                 DataFilters = string.IsNullOrEmpty(dataFilters) ?
                                     new { } :
-                                    Newtonsoft.Json.JsonConvert.DeserializeObject<object>(dataFilters) ?? new { }
+                                    System.Text.Json.JsonSerializer.Deserialize<object>(dataFilters) ?? new { }
             };
 
             var exportId = ExportSessionStore.Save(settings);

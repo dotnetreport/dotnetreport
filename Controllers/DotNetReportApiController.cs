@@ -147,6 +147,7 @@ namespace ReportBuilder.Web.Controllers
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
             settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
             settings.CanUseAdminMode = true;
+            DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters ?? new { });
             return await ExecuteCallReportApi(method, model, null, settings);
         }
 
@@ -304,8 +305,10 @@ namespace ReportBuilder.Web.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> RunReportUnAuth([FromQuery] string exportId, [FromBody] RunReportParameters data)
         {
-            if (ExportSessionStore.Get(exportId) == null)
+            var sessionSettings = ExportSessionStore.Get(exportId);
+            if (sessionSettings == null)
                 return Unauthorized();
+            DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(sessionSettings.DataFilters ?? new { });
             return await ExecuteRunReport(data);
         }
 
@@ -321,6 +324,7 @@ namespace ReportBuilder.Web.Controllers
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
             settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
             settings.CanUseAdminMode = true;
+            DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters ?? new { });
             return await ExecuteCallReportApi(data.Method, JsonSerializer.Serialize(data), data.userId, settings);
         }
 
@@ -657,6 +661,7 @@ namespace ReportBuilder.Web.Controllers
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
             settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
             settings.CanUseAdminMode = true;
+            DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters ?? new { });
 
             using (var client = new HttpClient())
             {

@@ -536,7 +536,7 @@ namespace ReportBuilder.Web.Models
         private static readonly AsyncLocal<string> _dataFilters = new AsyncLocal<string>();
         public static string CurrentDataFilters
         {
-            get => string.IsNullOrEmpty(_dataFilters.Value) ? "{}" : _dataFilters.Value;
+            get => string.IsNullOrEmpty(_dataFilters.Value) || _dataFilters.Value == "null" ? "{}" : _dataFilters.Value;
             set => _dataFilters.Value = value;
         }
 
