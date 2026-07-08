@@ -136,6 +136,34 @@ namespace ReportBuilder.Web.Controllers
             public string? userId { get; set; }
         }
 
+        public class SaveExportSessionRequest
+        {
+            public string? clientId { get; set; }
+            public string? userId { get; set; }
+            public string? currentUserRole { get; set; } // comma separated
+            public string? dataFilters { get; set; } // json string
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        public async Task<IActionResult> SaveExportSession([FromBody] SaveExportSessionRequest data)
+        {
+            var settings = new DotNetReportSettings
+            {
+                ClientId = HttpUtility.HtmlDecode(data?.clientId ?? ""),
+                UserId = HttpUtility.HtmlDecode(data?.userId ?? ""),
+                CurrentUserRole = HttpUtility.HtmlDecode(data?.currentUserRole ?? "")
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .ToList(),
+                DataFilters = string.IsNullOrEmpty(data?.dataFilters)
+                    ? new { }
+                    : JsonSerializer.Deserialize<object>(HttpUtility.HtmlDecode(data.dataFilters)) ?? new { }
+            };
+
+            var exportId = ExportSessionStore.Save(settings);
+            return Ok(new { exportId });
+        }
+
         [AllowAnonymous]
         public async Task<IActionResult> CallReportApiUnAuth(string method, string model, string exportId)
         {

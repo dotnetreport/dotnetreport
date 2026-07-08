@@ -417,7 +417,7 @@
         var data = {
             currentUserId: '@Model.UserId',
             currentUserRoles: ('@Model.CurrentUserRoles' ||'').split(','),
-            dataFilters: '@Model.DataFilters',
+            dataFilters: decodeHTMLEntities('@Model.DataFilters'),
             clientId: '@Model.ClientId'
         };
 
@@ -429,16 +429,28 @@
             // Remove new lines and carriage returns
             return decodedText.replace(/[\n\r]/g, '');
         }
-        
+
+        var exportId = '@ViewBag.ExportId';
+        ajaxcall({
+            url: '@Url.Action("SaveExportSession", "DotNetReportApi")',
+            type: 'POST',
+            async: false,
+            noBlocking: true,
+            data: JSON.stringify(data)
+        }).done(function (result) {
+            if (result && result.exportId) exportId = result.exportId;
+        });
+        $('#exportId').val(exportId);
+
         var vm = new reportViewModel({
             runReportUrl: "@Url.Action("Report")",
-            execReportUrl: "@Url.Action("RunReportUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId",
-            runLinkReportUrl: "@Url.Action("RunReportLinkUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId",
+            execReportUrl: "@Url.Action("RunReportUnAuth", "DotNetReportApi")?exportId=" + exportId,
+            runLinkReportUrl: "@Url.Action("RunReportLinkUnAuth", "DotNetReportApi")?exportId=" + exportId,
             reportWizard: $("#filter-panel"),
             reportHeader: "report-header",
             lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
-            apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId',
-            runReportApiUrl: '@Url.Action("RunReportApiUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId',
+            apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")?exportId=' + exportId,
+            runReportApiUrl: '@Url.Action("RunReportApiUnAuth", "DotNetReportApi")?exportId=' + exportId,
             reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)') || '{}',
             reportMode: "print",
             reportSql: "@Model.ReportSql",
@@ -446,7 +458,7 @@
             ReportSeries : "@Model.ReportSeries",
             reportHeader: 'report-header',
             userSettings: data,
-            dataFilters: JSON.parse(decodeHTMLEntities(data.dataFilters) || '{}'),
+            dataFilters: JSON.parse(data.dataFilters || '{}'),
             reportData: JSON.parse(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ReportData ?? "{}"))),
             getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
             chartSize: { width: 800, height: 450 }
