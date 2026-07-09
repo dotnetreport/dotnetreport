@@ -4364,24 +4364,26 @@ namespace ReportBuilder.Web.Models
         int pageNumber = 1,
         int currentPageSize = 1)
         {
-            IBrowser browser = null;
-            IPage page = null;
-            string pdfFile = null;
-            try
+            var file = Task.Run(async () =>
             {
-                (browser, page) = await LaunchAndLoadReportPrintPageAsync(
-                    printUrl, reportId, reportSql, connectKey,
-                    userId, clientId, currentUserRole, dataFilters,
-                    expandAll, expandSqls, pivotColumn, pivotFunction,
-                    subTotalMode, includeColumnTotal, isSubreport,
-                    pageNumber, currentPageSize, debug);
-
-                if (imageOnly)
+                IBrowser browser = null;
+                IPage page = null;
+                string pdfFile = null;
+                try
                 {
-                    try
+                    (browser, page) = await LaunchAndLoadReportPrintPageAsync(
+                        printUrl, reportId, reportSql, connectKey,
+                        userId, clientId, currentUserRole, dataFilters,
+                        expandAll, expandSqls, pivotColumn, pivotFunction,
+                        subTotalMode, includeColumnTotal, isSubreport,
+                        pageNumber, currentPageSize, debug);
+
+                    if (imageOnly)
                     {
-                        var imageData = await page.EvaluateExpressionAsync<string>("window.chartImageUrl");
-                        await page.EvaluateExpressionAsync("delete window.chartImageUrl;");
+                        try
+                        {
+                            var imageData = await page.EvaluateExpressionAsync<string>("window.chartImageUrl");
+                            await page.EvaluateExpressionAsync("delete window.chartImageUrl;");
 
                             if (!string.IsNullOrEmpty(imageData))
                             {
@@ -4398,30 +4400,30 @@ namespace ReportBuilder.Web.Models
                         return new byte[0];
                     }
 
-                int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
-                int width = Convert.ToInt32(await page.EvaluateExpressionAsync<decimal>("$('table').width()"));
-                pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
+                    int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
+                    int width = Convert.ToInt32(await page.EvaluateExpressionAsync<decimal>("$('table').width()"));
+                    pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
 
-                // Read header/footer "include on every page" settings from the loaded print page
-                bool headerEveryPage = false;
-                bool footerEveryPage = false;
-                string everyPageHeaderHtml = "";
-                string everyPageFooterHtml = "";
-                try
-                {
-                    headerEveryPage = await page.EvaluateExpressionAsync<bool>("window.reportHeaderIncludeOnEveryPage === true");
-                    footerEveryPage = await page.EvaluateExpressionAsync<bool>("window.reportFooterIncludeOnEveryPage === true");
-                    if (headerEveryPage)
-                        everyPageHeaderHtml = await page.EvaluateExpressionAsync<string>("window.reportHeaderHtml || ''") ?? "";
-                    if (footerEveryPage)
-                        everyPageFooterHtml = await page.EvaluateExpressionAsync<string>("window.reportFooterHtml || ''") ?? "";
-                }
-                catch { }
+                    // Read header/footer "include on every page" settings from the loaded print page
+                    bool headerEveryPage = false;
+                    bool footerEveryPage = false;
+                    string everyPageHeaderHtml = "";
+                    string everyPageFooterHtml = "";
+                    try
+                    {
+                        headerEveryPage = await page.EvaluateExpressionAsync<bool>("window.reportHeaderIncludeOnEveryPage === true");
+                        footerEveryPage = await page.EvaluateExpressionAsync<bool>("window.reportFooterIncludeOnEveryPage === true");
+                        if (headerEveryPage)
+                            everyPageHeaderHtml = await page.EvaluateExpressionAsync<string>("window.reportHeaderHtml || ''") ?? "";
+                        if (footerEveryPage)
+                            everyPageFooterHtml = await page.EvaluateExpressionAsync<string>("window.reportFooterHtml || ''") ?? "";
+                    }
+                    catch { }
 
-                string pageStyles = "";
-                try
-                {
-                    pageStyles = await page.EvaluateExpressionAsync<string>(@"
+                    string pageStyles = "";
+                    try
+                    {
+                        pageStyles = await page.EvaluateExpressionAsync<string>(@"
                         Array.from(document.styleSheets)
                             .map(function(s) {
                                 try { return Array.from(s.cssRules).map(function(r) { return r.cssText; }).join('\n'); }
@@ -4429,149 +4431,151 @@ namespace ReportBuilder.Web.Models
                             })
                             .join('\n')
                     ") ?? "";
-                }
-                catch { }
-
-                string PreparePuppeteerTemplate(string html)
-                {
-                    if (string.IsNullOrEmpty(html)) return "";
-                    html = html.Replace("{page.number}", "<span class=\"pageNumber\"></span>")
-                               .Replace("{page.total}", "<span class=\"totalPages\"></span>");
-                    return "<style>" + pageStyles + " * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }</style>"
-                         + "<div style=\"font-size:10px; width:100%; padding: 0 0.4in; -webkit-print-color-adjust: exact; print-color-adjust: exact;\">" + html + "</div>";
-                }
-
-                if (headerEveryPage || footerEveryPage)
-                {
-                    // Hide in-document header/footer to avoid double rendering
-                    try
-                    {
-                        if (headerEveryPage) await page.AddStyleTagAsync(new AddTagOptions { Content = "#report-header { display: none !important; }" });
-                        if (footerEveryPage) await page.AddStyleTagAsync(new AddTagOptions { Content = "#report-footer { display: none !important; }" });
                     }
                     catch { }
-                }
 
-                string headerTemplate = headerEveryPage ? PreparePuppeteerTemplate(everyPageHeaderHtml) : "<span></span>";
-                string footerTemplate = footerEveryPage ? PreparePuppeteerTemplate(everyPageFooterHtml) : "<span></span>";
-                double headerHeightIn = 0;
-                double footerHeightIn = 0;
-                try
-                {
-                    if (headerEveryPage)
-                        headerHeightIn = await page.EvaluateExpressionAsync<double>("window.reportHeaderHeightIn || 0");
-                    if (footerEveryPage)
-                        footerHeightIn = await page.EvaluateExpressionAsync<double>("window.reportFooterHeightIn || 0");
-                }
-                catch { }
-
-                double topMarginIn = headerEveryPage ? Math.Max(1.0, headerHeightIn + 0.3) : 0.75;
-                double bottomMarginIn = footerEveryPage ? Math.Max(1.0, footerHeightIn + 0.3) : 0.75;
-
-                var pdfOptions = new PdfOptions
-                {
-                    PrintBackground = true,
-                    PreferCSSPageSize = false,
-                    MarginOptions = new MarginOptions()
+                    string PreparePuppeteerTemplate(string html)
                     {
-                        Top = topMarginIn.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "in",
-                        Bottom = bottomMarginIn.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "in",
-                        Left = "0.1in",
-                        Right = "0.1in"
-                    },
-                    DisplayHeaderFooter = headerEveryPage || footerEveryPage,
-                    HeaderTemplate = headerTemplate,
-                    FooterTemplate = footerTemplate
-                };
-                if (!String.IsNullOrEmpty(pageOrientation))
-                {
-                    var Oreintation = (pageOrientation ?? "PORTRAIT").ToUpperInvariant();
-                    switch (Oreintation)
-                    {
-                        case "LANDSCAPE":
-                            pdfOptions.Landscape = true;
-                            break;
-                        case "PORTRAIT":
-                        default:
-                            pdfOptions.Landscape = false;
-                            break;
+                        if (string.IsNullOrEmpty(html)) return "";
+                        html = html.Replace("{page.number}", "<span class=\"pageNumber\"></span>")
+                                   .Replace("{page.total}", "<span class=\"totalPages\"></span>");
+                        return "<style>" + pageStyles + " * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }</style>"
+                             + "<div style=\"font-size:10px; width:100%; padding: 0 0.4in; -webkit-print-color-adjust: exact; print-color-adjust: exact;\">" + html + "</div>";
                     }
-                }
-                if (!String.IsNullOrEmpty(pageSize))
-                {
-                    var normalizedPageSize = (pageSize ?? "Letter").ToUpperInvariant();
-                    PaperFormat selectedFormat = PaperFormat.A4;
-                    switch (normalizedPageSize)
-                    {
-                        case "A4":
-                            selectedFormat = PaperFormat.A4;
-                            break;
-                        case "LEGAL":
-                            selectedFormat = PaperFormat.Legal;
-                            break;
-                        case "A1":
-                            selectedFormat = PaperFormat.A1;
-                            break;
-                        case "A2":
-                            selectedFormat = PaperFormat.A2;
-                            break;
-                        case "A3":
-                            selectedFormat = PaperFormat.A3;
-                            break;
-                        case "TABLOID":
-                            selectedFormat = PaperFormat.Tabloid;
-                            break;
-                        case "LETTER":
-                        default:
-                            selectedFormat = PaperFormat.Letter;
-                            break;
-                    }
-                    pdfOptions.Format = selectedFormat;
 
-                    // Auto-scale to fit wide tables within the selected page width
-                    bool isLandscape = pdfOptions.Landscape == true;
-                    double pageWidthInches = GetPaperFormatWidthInches(normalizedPageSize, isLandscape);
-                    double usableWidthPx = (pageWidthInches - 0.2) * 96.0 - 100; // subtract margins (0.1in each side at 96 DPI) plus 100px buffer to prevent right-side clipping
-                    if (width > usableWidthPx && usableWidthPx > 0)
+                    if (headerEveryPage || footerEveryPage)
                     {
-                        double scale = usableWidthPx / width;
-                        pdfOptions.Scale = (decimal) Math.Max(0.1, scale);
+                        // Hide in-document header/footer to avoid double rendering
+                        try
+                        {
+                            if (headerEveryPage) await page.AddStyleTagAsync(new AddTagOptions { Content = "#report-header { display: none !important; }" });
+                            if (footerEveryPage) await page.AddStyleTagAsync(new AddTagOptions { Content = "#report-footer { display: none !important; }" });
+                        }
+                        catch { }
                     }
-                }
-                else
-                {
-                    if (width < 900)
+
+                    string headerTemplate = headerEveryPage ? PreparePuppeteerTemplate(everyPageHeaderHtml) : "<span></span>";
+                    string footerTemplate = footerEveryPage ? PreparePuppeteerTemplate(everyPageFooterHtml) : "<span></span>";
+                    double headerHeightIn = 0;
+                    double footerHeightIn = 0;
+                    try
                     {
-                        pdfOptions.Format = PaperFormat.Letter;
-                        pdfOptions.Landscape = false;
+                        if (headerEveryPage)
+                            headerHeightIn = await page.EvaluateExpressionAsync<double>("window.reportHeaderHeightIn || 0");
+                        if (footerEveryPage)
+                            footerHeightIn = await page.EvaluateExpressionAsync<double>("window.reportFooterHeightIn || 0");
+                    }
+                    catch { }
+
+                    double topMarginIn = headerEveryPage ? Math.Max(1.0, headerHeightIn + 0.3) : 0.75;
+                    double bottomMarginIn = footerEveryPage ? Math.Max(1.0, footerHeightIn + 0.3) : 0.75;
+
+                    var pdfOptions = new PdfOptions
+                    {
+                        PrintBackground = true,
+                        PreferCSSPageSize = false,
+                        MarginOptions = new MarginOptions()
+                        {
+                            Top = topMarginIn.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "in",
+                            Bottom = bottomMarginIn.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "in",
+                            Left = "0.1in",
+                            Right = "0.1in"
+                        },
+                        DisplayHeaderFooter = headerEveryPage || footerEveryPage,
+                        HeaderTemplate = headerTemplate,
+                        FooterTemplate = footerTemplate
+                    };
+                    if (!String.IsNullOrEmpty(pageOrientation))
+                    {
+                        var Oreintation = (pageOrientation ?? "PORTRAIT").ToUpperInvariant();
+                        switch (Oreintation)
+                        {
+                            case "LANDSCAPE":
+                                pdfOptions.Landscape = true;
+                                break;
+                            case "PORTRAIT":
+                            default:
+                                pdfOptions.Landscape = false;
+                                break;
+                        }
+                    }
+                    if (!String.IsNullOrEmpty(pageSize))
+                    {
+                        var normalizedPageSize = (pageSize ?? "Letter").ToUpperInvariant();
+                        PaperFormat selectedFormat = PaperFormat.A4;
+                        switch (normalizedPageSize)
+                        {
+                            case "A4":
+                                selectedFormat = PaperFormat.A4;
+                                break;
+                            case "LEGAL":
+                                selectedFormat = PaperFormat.Legal;
+                                break;
+                            case "A1":
+                                selectedFormat = PaperFormat.A1;
+                                break;
+                            case "A2":
+                                selectedFormat = PaperFormat.A2;
+                                break;
+                            case "A3":
+                                selectedFormat = PaperFormat.A3;
+                                break;
+                            case "TABLOID":
+                                selectedFormat = PaperFormat.Tabloid;
+                                break;
+                            case "LETTER":
+                            default:
+                                selectedFormat = PaperFormat.Letter;
+                                break;
+                        }
+                        pdfOptions.Format = selectedFormat;
+
+                        // Auto-scale to fit wide tables within the selected page width
+                        bool isLandscape = pdfOptions.Landscape == true;
+                        double pageWidthInches = GetPaperFormatWidthInches(normalizedPageSize, isLandscape);
+                        double usableWidthPx = (pageWidthInches - 0.2) * 96.0 - 100; // subtract margins (0.1in each side at 96 DPI) plus 100px buffer to prevent right-side clipping
+                        if (width > usableWidthPx && usableWidthPx > 0)
+                        {
+                            double scale = usableWidthPx / width;
+                            pdfOptions.Scale = (decimal)Math.Max(0.1, scale);
+                        }
                     }
                     else
                     {
-                        await page.SetViewportAsync(new ViewPortOptions { Width = width });
-                        await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
-                        pdfOptions.Width = $"{width+100}px";
-                        pdfOptions.MarginOptions.Right = "0.5in";
+                        if (width < 900)
+                        {
+                            pdfOptions.Format = PaperFormat.Letter;
+                            pdfOptions.Landscape = false;
+                        }
+                        else
+                        {
+                            await page.SetViewportAsync(new ViewPortOptions { Width = width });
+                            await page.AddStyleTagAsync(new AddTagOptions { Content = "@page {size: landscape }" });
+                            pdfOptions.Width = $"{width + 100}px";
+                            pdfOptions.MarginOptions.Right = "0.5in";
+                        }
+                    }
+                    await page.EmulateMediaTypeAsync(MediaType.Screen);
+                    await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
+                    await page.PdfAsync(pdfFile, pdfOptions);
+                    await page.DisposeAsync();
+                    await browser.DisposeAsync();
+                    return File.ReadAllBytes(pdfFile);
+                }
+                catch (Exception)
+                {
+                    throw;
+                }
+                finally
+                {
+                    await SafeDisposeBrowserAsync(browser, page);
+                    if (pdfFile != null)
+                    {
+                        try { if (File.Exists(pdfFile)) File.Delete(pdfFile); } catch { /* best-effort */ }
                     }
                 }
-                await page.EmulateMediaTypeAsync(MediaType.Screen);
-                await page.EvaluateExpressionAsync("$('.report-inner').css('transform','none')");
-                await page.PdfAsync(pdfFile, pdfOptions);
-                await page.DisposeAsync();
-                await browser.DisposeAsync();
-                return File.ReadAllBytes(pdfFile);
-            }
-            catch (Exception)
-            {
-                throw;
-            }
-            finally
-            {
-                await SafeDisposeBrowserAsync(browser, page);
-                if (pdfFile != null)
-                {
-                    try { if (File.Exists(pdfFile)) File.Delete(pdfFile); } catch { /* best-effort */ }
-                }
-            }
+            }).GetAwaiter().GetResult();
+            return file;
         }
 
         public async static Task<string> GetReportRenderedHtml(string printUrl, int reportId, string reportSql, string connectKey, string reportName,

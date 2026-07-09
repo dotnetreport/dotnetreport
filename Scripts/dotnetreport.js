@@ -6083,7 +6083,8 @@ var reportViewModel = function (options) {
 				SubTotalMode: false,
 				reportData: '',
 				pivotColumn: '',
-				pivotFunction: ''
+				pivotFunction: '',
+				userId: self.currentUserId || ''
 			})
 		}).done(function () {
 			self.ExecuteReport();
@@ -10440,7 +10441,8 @@ var reportViewModel = function (options) {
 								reportId: e.reportId,
 								adminMode: self.adminMode(),
 								userIdForSchedule: self.userIdForSchedule
-							})
+							}),
+							userId: self.currentUserId || ''
 						},
 						noBlocking: true
 					});
@@ -12308,7 +12310,8 @@ var dashboardViewModel = function (options) {
 					url: options.apiUrl,
 					data: {
 						method: "/ReportApi/DeleteDashboard",
-						model: JSON.stringify({ dashboardId: self.currentDashboard().id, adminMode: self.adminMode() })
+						model: JSON.stringify({ dashboardId: self.currentDashboard().id, adminMode: self.adminMode() }),
+                        userId: self.currentUserId || ''
 					}
 				}).done(function (result) {
 					toastr.success("Dashboard deleted successfully");
@@ -12701,7 +12704,8 @@ var dashboardViewModel = function (options) {
 					dashboardId: self.currentDashboard().id,
 					widgetId: widgetId,
 					adminMode: self.adminMode()
-				})
+				}),
+				userId: self.currentUserId || ''
 			}
 		});
 	};
