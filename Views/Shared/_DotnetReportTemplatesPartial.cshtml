@@ -5,7 +5,7 @@
         <!-- ko if: ['DateTime','Date','Time'].indexOf(fieldType) != -1 -->
         <div style="display: flex; align-items: center; gap: 8px;">
             <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
-            <input class="form-control" data-bind="datepicker: $parent.fmtValue, datepickerOptions: {value: $parent.Value, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" required />
+            <input class="form-control" data-bind="datepicker: $parent.fmtValue, datepickerOptions: {value: $parent.Value, dateFormat: (['Date','Date and Time','Time'].indexOf(fieldFormat()) >= 0 && dateFormat() && dateFormat() !== 'Custom') ? $root.dateFormatMappings[dateFormat()] : $root.dateFormatMappings[($root.appSettings && $root.appSettings.defaultDateFormat) || 'United States']}" required />
             <!-- ko if: fieldType=='Time' || fieldFormat()=='Time' || fieldFormat()=='Date and Time'-->
             <input class="form-control" type="time" data-bind="value:$parent.Valuetime" required>
             <!-- /ko -->
@@ -14,14 +14,14 @@
         <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
         From
         <div style="display: flex; align-items: center; gap: 8px;">
-            <input required class="form-control from-date" data-bind="datepicker: $parent.fmtValue, datepickerOptions: {value: $parent.Value, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" />
+            <input required class="form-control from-date" data-bind="datepicker: $parent.fmtValue, datepickerOptions: {value: $parent.Value, dateFormat: (['Date','Date and Time','Time'].indexOf(fieldFormat()) >= 0 && dateFormat() && dateFormat() !== 'Custom') ? $root.dateFormatMappings[dateFormat()] : $root.dateFormatMappings[($root.appSettings && $root.appSettings.defaultDateFormat) || 'United States']}" />
             <!-- ko if:fieldType=='Time' || fieldFormat()=='Time' || fieldFormat()=='Date and Time'-->
             <input class="form-control" type="time" data-bind="value:$parent.Valuetime" required>
             <!-- /ko -->
         </div>
         to
         <div style="display: flex; align-items: center; gap: 8px;">
-            <input data-bind="datepicker: $parent.fmtValue2, datepickerOptions: {value: $parent.Value2, dateFormat: dateFormat() === 'Custom' ? customDateFormat().replace(/yyyy/g, 'yy') : $root.dateFormatMappings[dateFormat()]}" class="form-control to-date" required />
+            <input data-bind="datepicker: $parent.fmtValue2, datepickerOptions: {value: $parent.Value2, dateFormat: (['Date','Date and Time','Time'].indexOf(fieldFormat()) >= 0 && dateFormat() && dateFormat() !== 'Custom') ? $root.dateFormatMappings[dateFormat()] : $root.dateFormatMappings[($root.appSettings && $root.appSettings.defaultDateFormat) || 'United States']}" class="form-control to-date" required />
             <!-- ko if:fieldType=='Time' || fieldFormat()=='Time' || fieldFormat()=='Date and Time'-->
             <input class="form-control" type="time" data-bind="value:$parent.Valuetime2" required>
             <!-- /ko -->

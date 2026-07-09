@@ -790,8 +790,47 @@ var manageViewModel = function (options) {
 			})
 		}).done(function (result) {
 			if (result.d) result = result.d;
-			
+
 			self.schedules(result);
+		});
+	}
+
+	self.sentHistory = ko.observableArray([]);
+	self.sentHistoryPage = ko.observable(1);
+	self.sentHistoryPageSize = ko.observable(25);
+	self.sentHistoryTotal = ko.observable(0);
+	self.sentHistoryTotalPages = ko.observable(0);
+	self.sentHistoryLoading = ko.observable(false);
+	self.sentHistoryStartDate = ko.observable('');
+	self.sentHistoryEndDate = ko.observable('');
+
+	self.loadSentHistory = function (page) {
+		if (!page || page < 1) page = 1;
+		self.sentHistoryLoading(true);
+		var model = {
+			account: self.keys.AccountApiKey,
+			dataConnect: self.keys.DatabaseApiKey,
+			page: page,
+			pageSize: self.sentHistoryPageSize()
+		};
+		if (self.sentHistoryStartDate()) model.startDate = self.sentHistoryStartDate();
+		if (self.sentHistoryEndDate()) model.endDate = self.sentHistoryEndDate();
+		ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				method: '/ReportApi/GetScheduleSentHistory',
+				model: JSON.stringify(model)
+			})
+		}).done(function (result) {
+			if (result && result.d) result = result.d;
+			if (!result) result = { items: [], page: 1, total: 0, totalPages: 0 };
+			self.sentHistory(result.items || []);
+			self.sentHistoryPage(result.page || 1);
+			self.sentHistoryTotal(result.total || 0);
+			self.sentHistoryTotalPages(result.totalPages || 0);
+		}).always(function () {
+			self.sentHistoryLoading(false);
 		});
 	}
 	self.LoadCategories = function () {
@@ -3131,6 +3170,8 @@ var settingPageViewModel = function (options) {
 	self.useFunctions = ko.observable(false);
 	self.showScheduling = ko.observable(true);
 	self.showDesignerHints = ko.observable(true);
+	self.defaultDateFormat = ko.observable('United States');
+	self.dateFormatOptions = ['United States', 'United Kingdom', 'New Zealand', 'France', 'German', 'Spanish', 'Chinese'];
 	self.aiProvider = ko.observable('');
 	self.aiApiKey = ko.observable('');
 	self.aiApiKeyChanged = false;
@@ -3227,6 +3268,7 @@ var settingPageViewModel = function (options) {
 							useFunctions: self.isEnterprise() ? self.useFunctions() : false,
 							showScheduling: self.showScheduling(),
 								showDesignerHints: self.showDesignerHints(),
+								defaultDateFormat: self.defaultDateFormat(),
 								aiProvider: self.aiProvider(),
 								aiApiKey: self.aiApiKeyChanged ? self.aiApiKey() : undefined,
 								aiModel: self.aiModel(),
@@ -3300,6 +3342,7 @@ var settingPageViewModel = function (options) {
 				}			
 				self.showScheduling(settings.showScheduling);
 				self.showDesignerHints(settings.showDesignerHints !== false);
+				self.defaultDateFormat(settings.defaultDateFormat || 'United States');
 				self.aiProvider(settings.aiProvider || '');
 				self.aiApiKey(settings.aiApiKey || '');
 				self.aiApiKeyChanged = false;

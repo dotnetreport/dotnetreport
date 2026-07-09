@@ -417,7 +417,7 @@
         var data = {
             currentUserId: '@Model.UserId',
             currentUserRoles: ('@Model.CurrentUserRoles' ||'').split(','),
-            dataFilters: '@Model.DataFilters',
+            dataFilters: decodeHTMLEntities('@Model.DataFilters'),
             clientId: '@Model.ClientId'
         };
 
@@ -429,16 +429,28 @@
             // Remove new lines and carriage returns
             return decodedText.replace(/[\n\r]/g, '');
         }
-        
+
+        var exportId = '@ViewBag.ExportId';
+        ajaxcall({
+            url: '@Url.Action("SaveExportSession", "DotNetReportApi")',
+            type: 'POST',
+            async: false,
+            noBlocking: true,
+            data: JSON.stringify(data)
+        }).done(function (result) {
+            if (result && result.exportId) exportId = result.exportId;
+        });
+        $('#exportId').val(exportId);
+
         var vm = new reportViewModel({
             runReportUrl: "@Url.Action("Report")",
-            execReportUrl: "@Url.Action("RunReportUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId",
-            runLinkReportUrl: "@Url.Action("RunReportLinkUnAuth", "DotNetReportApi")",
+            execReportUrl: "@Url.Action("RunReportUnAuth", "DotNetReportApi")?exportId=" + exportId,
+            runLinkReportUrl: "@Url.Action("RunReportLinkUnAuth", "DotNetReportApi")?exportId=" + exportId,
             reportWizard: $("#filter-panel"),
             reportHeader: "report-header",
             lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
-            apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")',
-            runReportApiUrl: '@Url.Action("RunReportApiUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId',
+            apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")?exportId=' + exportId,
+            runReportApiUrl: '@Url.Action("RunReportApiUnAuth", "DotNetReportApi")?exportId=' + exportId,
             reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)') || '{}',
             reportMode: "print",
             reportSql: "@Model.ReportSql",
@@ -446,7 +458,7 @@
             ReportSeries : "@Model.ReportSeries",
             reportHeader: 'report-header',
             userSettings: data,
-            dataFilters: JSON.parse(decodeHTMLEntities(data.dataFilters) || '{}'),
+            dataFilters: JSON.parse(data.dataFilters || '{}'),
             reportData: JSON.parse(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ReportData ?? "{}"))),
             getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
             chartSize: { width: 800, height: 450 }
@@ -510,7 +522,11 @@
                 try {
                     var userName = vm.currentUserName || vm.currentUserId || '';
                     var userRoles = vm.currentUserRole || '';
-                    var nowStr = new Date().toLocaleString();
+                    var locale = vm.resolveDateLocale ? vm.resolveDateLocale() : 'en-US';
+                    var now = new Date();
+                    var dateStr = now.toLocaleDateString(locale);
+                    var timeStr = now.toLocaleTimeString(locale);
+                    var nowStr = dateStr + ' ' + timeStr;
                     var reportName = (vm.ReportName && vm.ReportName()) ? vm.ReportName() : '';
 
                     function substitutePlaceholders(html) {
@@ -522,6 +538,8 @@
                             .replace(/\{CURRENTUSERROLES\}/g, userRoles)
                             .replace(/\{current\.datetime\}/g, nowStr)
                             .replace(/\{CURRENTDATETIME\}/g, nowStr)
+                            .replace(/\{current\.date\}/g, dateStr)
+                            .replace(/\{current\.time\}/g, timeStr)
                             .replace(/\{report\.name\}/g, reportName);
                     }
                     function substituteInDocPagePlaceholders(html) {

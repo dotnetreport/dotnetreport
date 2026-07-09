@@ -48,6 +48,7 @@ namespace ReportBuilder.Web.Controllers
             settings.UserRoles = new List<string>() { }; // Populate all your application's user roles, ex  { "Admin", "Normal" }       
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
+            DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters);
 
             return settings;
         }
@@ -138,6 +139,34 @@ namespace ReportBuilder.Web.Controllers
             public string? userId { get; set; }
         }
 
+        public class SaveExportSessionRequest
+        {
+            public string? clientId { get; set; }
+            public string? userId { get; set; }
+            public string? currentUserRole { get; set; } // comma separated
+            public string? dataFilters { get; set; } // json string
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        public async Task<IActionResult> SaveExportSession([FromBody] SaveExportSessionRequest data)
+        {
+            var settings = new DotNetReportSettings
+            {
+                ClientId = HttpUtility.HtmlDecode(data?.clientId ?? ""),
+                UserId = HttpUtility.HtmlDecode(data?.userId ?? ""),
+                CurrentUserRole = HttpUtility.HtmlDecode(data?.currentUserRole ?? "")
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .ToList(),
+                DataFilters = string.IsNullOrEmpty(data?.dataFilters)
+                    ? new { }
+                    : JsonSerializer.Deserialize<object>(HttpUtility.HtmlDecode(data.dataFilters)) ?? new { }
+            };
+
+            var exportId = ExportSessionStore.Save(settings);
+            return Ok(new { exportId });
+        }
+
         [AllowAnonymous]
         public async Task<IActionResult> CallReportApiUnAuth(string method, string model, string exportId)
         {
@@ -149,6 +178,7 @@ namespace ReportBuilder.Web.Controllers
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
             settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
             settings.CanUseAdminMode = true;
+            DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters ?? new { });
             return await ExecuteCallReportApi(method, model, null, settings);
         }
 
@@ -306,8 +336,10 @@ namespace ReportBuilder.Web.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> RunReportUnAuth([FromQuery] string exportId, [FromBody] RunReportParameters data)
         {
-            if (ExportSessionStore.Get(exportId) == null)
+            var sessionSettings = ExportSessionStore.Get(exportId);
+            if (sessionSettings == null)
                 return Unauthorized();
+            DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(sessionSettings.DataFilters ?? new { });
             return await ExecuteRunReport(data);
         }
 
@@ -323,6 +355,7 @@ namespace ReportBuilder.Web.Controllers
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
             settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
             settings.CanUseAdminMode = true;
+            DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters ?? new { });
             return await ExecuteCallReportApi(data.Method, JsonSerializer.Serialize(data), data.userId, settings);
         }
 
@@ -371,41 +404,20 @@ namespace ReportBuilder.Web.Controllers
                     }
                     if (!sql.StartsWith("EXEC"))
                     {
-                        var fromIndex = DotNetReportHelper.FindFromIndex(sql);
                         sqlFields = DotNetReportHelper.SplitSqlColumns(sql, DotNetReportHelper.dbtype);
+                        bool hasDistinct = Regex.IsMatch(sql, @"^\s*SELECT\s+(TOP\s+\d+\s+)?DISTINCT\b", RegexOptions.IgnoreCase);
 
-                        var sqlFrom = $"SELECT {sqlFields[0]} {sql.Substring(fromIndex)}".Replace("{FROM}", "FROM");
-                        bool hasDistinct = sql.Contains("DISTINCT");
-                        if (hasDistinct)
+                        var countInner = sql.Replace("{FROM}", "FROM");
+                        int countOrderByIndex = countInner.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
+                        if (countOrderByIndex > -1)
                         {
-                            string distinctColumns = string.Join(", ", sqlFields);
-
-                            string fromClause = sql.Substring(fromIndex).Replace("{FROM}", "FROM");
-
-                            // Remove ORDER BY if present
-                            int orderByIndex = fromClause.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
-                            if (orderByIndex > -1)
-                            {
-                                fromClause = fromClause.Substring(0, orderByIndex).Trim();
-                            }
-
-                            if (DotNetReportHelper.dbtype == "Oracle")
-                                sqlCount = "SELECT COUNT(*) FROM (SELECT DISTINCT " + distinctColumns + " " + fromClause + ") countQry";
-                            else
-                                sqlCount = "SELECT COUNT(*) FROM (SELECT DISTINCT " + distinctColumns + " " + fromClause + ") AS countQry";
+                            countInner = countInner.Substring(0, countOrderByIndex).Trim();
                         }
+
+                        if (DotNetReportHelper.dbtype == "Oracle")
+                            sqlCount = "SELECT COUNT(*) FROM (" + countInner + ") countQry";
                         else
-                        {
-                            string inner =
-                                sqlFrom.Contains("ORDER BY", StringComparison.OrdinalIgnoreCase)
-                                ? sqlFrom.Substring(0, sqlFrom.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase))
-                                : sqlFrom;
-
-                            if (DotNetReportHelper.dbtype == "Oracle")
-                                sqlCount = "SELECT COUNT(*) FROM (" + inner + ") countQry";
-                            else
-                                sqlCount = "SELECT COUNT(*) FROM (" + inner + ") AS countQry";
-                        }
+                            sqlCount = "SELECT COUNT(*) FROM (" + countInner + ") AS countQry";
 
                         if (!String.IsNullOrEmpty(sortBy))
                         {
@@ -680,6 +692,7 @@ namespace ReportBuilder.Web.Controllers
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
             settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
             settings.CanUseAdminMode = true;
+            DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters ?? new { });
 
             using (var client = new HttpClient())
             {
@@ -1211,12 +1224,15 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] bool adminMode = false,
             [FromForm] bool subTotalPerGroup = false,
             [FromForm] string totalRowFormat = "row",
-            [FromForm] string filterDetailsText = null)
+            [FromForm] string filterDetailsText = null,
+            [FromForm] string defaultDateFormat = null)
         {
+            GetSettings(); // must be called directly here so CurrentDataFilters flows to RunReportApiCall
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(onlyAndGroupInColumnDetail));
 
@@ -1283,13 +1299,16 @@ namespace ReportBuilder.Web.Controllers
            [FromForm] bool adminMode = false,
            [FromForm] bool subTotalPerGroup = false,
            [FromForm] string filterDetailsText = null,
-           [FromForm] string reportDescription = null)
+           [FromForm] string reportDescription = null,
+           [FromForm] string defaultDateFormat = null)
         {
+            GetSettings(); // must be called directly here so CurrentDataFilters flows to RunReportApiCall
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
             reportName = HttpUtility.UrlDecode(reportName);
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(onlyAndGroupInColumnDetail));
 
@@ -1322,12 +1341,15 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] bool footerEveryPage = false,
             [FromForm] string currentUserName = null,
             [FromForm] string currentUserRoles = null,
-            [FromForm] string customHtml = null)
+            [FromForm] string customHtml = null,
+            [FromForm] string defaultDateFormat = null)
         {
+            GetSettings(); // must be called directly here so CurrentDataFilters flows to RunReportApiCall
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
             chartData = HttpUtility.UrlDecode(chartData);
             chartData = chartData?.Replace(" ", " +");
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var word = await DotNetReportHelper.GetWordFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, HttpUtility.UrlDecode(filterDetailsText),
                 headerHtml: headerHtml != null ? HttpUtility.UrlDecode(headerHtml) : null,
@@ -1356,10 +1378,13 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string pivotColumn = null,
             [FromForm] string pivotFunction = null,
             [FromForm] string userId = "",
-            [FromForm] bool adminMode = false)
+            [FromForm] bool adminMode = false,
+            [FromForm] string defaultDateFormat = null)
         {
+            GetSettings(); // must be called directly here so CurrentDataFilters flows to RunReportApiCall
             reportSql = HttpUtility.HtmlDecode(reportSql);
             await ValidateAccess(userId, reportSql, adminMode: adminMode);
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
 
             var csv = await DotNetReportHelper.GetCSVFile(reportSql, HttpUtility.UrlDecode(connectKey), columns, includeSubtotal, expandSqls, pivot, pivotColumn, pivotFunction);
@@ -1380,8 +1405,9 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string userId = "",
             [FromForm] bool adminMode = false)
         {
+            GetSettings(); // must be called directly here so CurrentDataFilters flows to RunReportApiCall
             reportSql = HttpUtility.HtmlDecode(reportSql);
-            await ValidateAccess(userId, reportSql, adminMode: adminMode);            
+            await ValidateAccess(userId, reportSql, adminMode: adminMode);
             string xml = await DotNetReportHelper.GetXmlFile(reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName), expandSqls, pivotColumn, pivotFunction);
             var data = System.Text.Encoding.UTF8.GetBytes(xml);
             Response.ContentType = "text/txt";
@@ -1389,8 +1415,9 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadAllPdf([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports")
+        public async Task<IActionResult> DownloadAllPdf([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports", [FromForm] string defaultDateFormat = null)
         {
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var pdfBytesList = new List<byte[]>();
             var settings = GetSettings();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
@@ -1406,8 +1433,9 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadAllPdfAlt([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports")
+        public async Task<IActionResult> DownloadAllPdfAlt([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports", [FromForm] string defaultDateFormat = null)
         {
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var pdfBytesList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
             var settings = GetSettings();
@@ -1428,8 +1456,9 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadAllExcel([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports")
+        public async Task<IActionResult> DownloadAllExcel([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports", [FromForm] string defaultDateFormat = null)
         {
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var excelbyteList = new List<byte[]>();
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
             var settings = GetSettings();
@@ -1453,8 +1482,9 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> DownloadAllWord([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports")
+        public async Task<IActionResult> DownloadAllWord([FromForm] string reportdata, [FromForm] string dashboardName = "CombinedReports", [FromForm] string defaultDateFormat = null)
         {
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var wordbyteList = new List<byte[]>();
             var ListofReports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
             var settings = GetSettings();
