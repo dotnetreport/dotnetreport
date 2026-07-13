@@ -540,6 +540,198 @@ namespace ReportBuilder.Web.Models
             set => _dataFilters.Value = value;
         }
 
+        #region Report HTML sanitization (server-side XSS guard)
+
+        [ThreadStatic] private static bool _htmlRemovedSomething;
+        private static Ganss.Xss.HtmlSanitizer _reportHtmlSanitizer;
+
+        private static readonly (string method, string leaf, string requireFlag, (string name, bool isJson)[] containers)[] _reportHtmlFields =
+        {
+            ("SaveReportHeader",      "headerJson", null,         new (string, bool)[0]),
+            ("SaveReportFooter",      "footerJson", null,         new (string, bool)[0]),
+            ("RunReport",             "reportHtml", "SaveReport",  new[] { ("ReportJson", true), ("ReportSettings", true) }),
+            ("AddDashboardWidget",    "text",       null,         new[] { ("widgetSettings", true), ("Widget", false) }),
+            ("UpdateDashboardWidget", "text",       null,         new[] { ("widgetSettings", true), ("Widget", false) }),
+        };
+
+        private static Ganss.Xss.HtmlSanitizer GetReportHtmlSanitizer()
+        {
+            if (_reportHtmlSanitizer != null) return _reportHtmlSanitizer;
+
+            var s = new Ganss.Xss.HtmlSanitizer();
+
+            s.KeepChildNodes = true;
+            foreach (var tag in new[] { "font", "u", "s", "strike", "small", "sub", "sup", "mark",
+                                        "figure", "figcaption", "section", "article", "header", "footer", "main" })
+                s.AllowedTags.Add(tag);
+            foreach (var attr in new[] { "style", "class", "align", "valign", "width", "height", "border",
+                                         "cellpadding", "cellspacing", "colspan", "rowspan", "bgcolor" })
+                s.AllowedAttributes.Add(attr);
+            s.AllowDataAttributes = true;
+
+            // Allow base64 images (data:image/...) but nothing else through the data: scheme.
+            s.AllowedSchemes.Add("data");
+            s.FilterUrl += (sender, e) =>
+            {
+                var url = (e.OriginalUrl ?? e.SanitizedUrl)?.TrimStart().ToLowerInvariant();
+                if (url != null && url.StartsWith("data:") && !url.StartsWith("data:image/"))
+                {
+                    e.SanitizedUrl = null;
+                    _htmlRemovedSomething = true;
+                }
+            };
+            s.RemovingTag += (_, _) => _htmlRemovedSomething = true;
+            s.RemovingAttribute += (_, _) => _htmlRemovedSomething = true;
+            s.RemovingStyle += (_, _) => _htmlRemovedSomething = true;
+            s.RemovingAtRule += (_, _) => _htmlRemovedSomething = true;
+            s.RemovingCssClass += (_, _) => _htmlRemovedSomething = true;
+
+            return _reportHtmlSanitizer = s;
+        }
+
+        /// <summary>Strip executable markup from a raw HTML fragment. Null/empty passes through.</summary>
+        public static string SanitizeReportHtml(string html)
+            => string.IsNullOrEmpty(html) ? html : GetReportHtmlSanitizer().Sanitize(html);
+
+        private static bool TrySanitizeReportHtml(string html, out string clean)
+        {
+            _htmlRemovedSomething = false;
+            clean = GetReportHtmlSanitizer().Sanitize(html);
+            return _htmlRemovedSomething;
+        }
+
+        public static string SanitizeReportModelForMethod(string method, string model)
+        {
+            if (string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model)) return model;
+
+            (string method, string leaf, string requireFlag, (string name, bool isJson)[] containers) field = default;
+            var matched = false;
+            foreach (var f in _reportHtmlFields)
+            {
+                if (method.EndsWith(f.method, StringComparison.OrdinalIgnoreCase)) { field = f; matched = true; break; }
+            }
+            if (!matched) return model;
+
+            try
+            {
+                var root = JObject.Parse(model);
+                if (field.requireFlag != null && !GetBoolCI(root, field.requireFlag)) return model;
+                return SanitizeHtmlField(root, field.containers, 0, field.leaf) ? root.ToString(Formatting.None) : model;
+            }
+            catch
+            {
+                return model;
+            }
+        }
+
+        private static bool SanitizeHtmlField(JObject obj, (string name, bool isJson)[] containers, int idx, string leaf)
+        {
+            if (idx == containers.Length) return SanitizeHtmlLeaf(obj, leaf);
+
+            var (name, isJson) = containers[idx];
+            var prop = obj.Property(name, StringComparison.OrdinalIgnoreCase);
+            if (prop == null) return false;
+
+            if (isJson)
+            {
+                var innerJson = prop.Value.Type == JTokenType.String ? (string)prop.Value : null;
+                if (string.IsNullOrEmpty(innerJson)) return false;
+                JObject child;
+                try { child = JObject.Parse(innerJson); } catch { return false; }
+                if (!SanitizeHtmlField(child, containers, idx + 1, leaf)) return false;
+                prop.Value = child.ToString(Formatting.None);
+                return true;
+            }
+
+            // Plain nested object: descend in place; the change is captured when the nearest
+            // JSON-string ancestor is re-serialized.
+            if (prop.Value is not JObject childObj) return false;
+            return SanitizeHtmlField(childObj, containers, idx + 1, leaf);
+        }
+
+        private static bool SanitizeHtmlLeaf(JObject obj, string leaf)
+        {
+            var prop = obj.Property(leaf, StringComparison.OrdinalIgnoreCase);
+            if (prop == null || prop.Value.Type != JTokenType.String) return false;
+            var raw = (string)prop.Value;
+            if (string.IsNullOrEmpty(raw)) return false;
+
+            var decoded = Uri.UnescapeDataString(raw);
+            if (!TrySanitizeReportHtml(decoded, out var clean)) return false; // already safe -> leave bytes as-is
+
+            prop.Value = Uri.EscapeDataString(clean);
+            return true;
+        }
+
+        private static bool GetBoolCI(JObject obj, string name)
+        {
+            var prop = obj.Property(name, StringComparison.OrdinalIgnoreCase);
+            return prop != null && prop.Value.Type == JTokenType.Boolean && (bool)prop.Value;
+        }
+
+        #endregion
+
+        #region Custom SQL safety (read-only SELECT guard)
+
+        private static readonly string[] _sqlWriteKeywords =
+        {
+            "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "TRUNCATE", "MERGE",
+            "EXEC", "EXECUTE", "GRANT", "REVOKE", "DENY", "WAITFOR", "SHUTDOWN", "KILL",
+            "BACKUP", "RESTORE", "RECONFIGURE", "OPENROWSET", "OPENQUERY", "OPENDATASOURCE",
+            "OPENXML", "BULK", "INTO", "DBCC"
+        };
+
+        public static bool IsReadOnlySelectSql(string sql, out string reason)
+        {
+            reason = null;
+            if (string.IsNullOrWhiteSpace(sql)) { reason = "Empty SQL"; return false; }
+
+            // Strip block comments, line comments, and single-quoted string literals so keyword
+            // checks can't be fooled by content inside strings/comments.
+            var stripped = Regex.Replace(sql, @"/\*.*?\*/", " ", RegexOptions.Singleline);
+            stripped = Regex.Replace(stripped, @"--[^\n]*", " ");
+            stripped = Regex.Replace(stripped, @"'(?:''|[^'])*'", " '' ");
+            stripped = stripped.Trim();
+
+            if (stripped.Length == 0) { reason = "Empty SQL"; return false; }
+
+            // Must be a read query.
+            if (!Regex.IsMatch(stripped, @"^\s*(SELECT|WITH)\b", RegexOptions.IgnoreCase))
+            {
+                reason = "Only SELECT queries are allowed";
+                return false;
+            }
+
+            // Single statement only: no ';' other than an optional trailing one.
+            var withoutTrailing = stripped.TrimEnd().TrimEnd(';').TrimEnd();
+            if (withoutTrailing.Contains(';'))
+            {
+                reason = "Multiple SQL statements are not allowed";
+                return false;
+            }
+
+            // System / extended stored procedures.
+            if (Regex.IsMatch(stripped, @"\b(sp_|xp_)\w+", RegexOptions.IgnoreCase))
+            {
+                reason = "System stored procedures are not allowed";
+                return false;
+            }
+
+            // Data-modifying / procedural keywords.
+            foreach (var kw in _sqlWriteKeywords)
+            {
+                if (Regex.IsMatch(stripped, $@"\b{kw}\b", RegexOptions.IgnoreCase))
+                {
+                    reason = $"Keyword '{kw}' is not allowed in custom SQL";
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        #endregion
+
         public static System.Globalization.CultureInfo GetDateCulture(string dateFormatName)
         {
             switch (dateFormatName)

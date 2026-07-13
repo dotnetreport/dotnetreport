@@ -217,6 +217,8 @@ namespace ReportBuilder.Web.Controllers
 
         private async Task<IActionResult> ExecuteCallReportApi(string method, string model, string userId, DotNetReportSettings settings = null)
         {
+            model = DotNetReportHelper.SanitizeReportModelForMethod(method, model);
+
             using (var client = new HttpClient())
             {
                 settings = settings ?? GetSettings();
@@ -871,9 +873,9 @@ namespace ReportBuilder.Web.Controllers
 
                 data.value = DotNetReportHelper.TryDecrypt(data.value);
 
-                if (string.IsNullOrEmpty(data.value) || !data.value.StartsWith("SELECT ", StringComparison.OrdinalIgnoreCase))
+                if (!DotNetReportHelper.IsReadOnlySelectSql(data.value, out var sqlReason))
                 {
-                    throw new Exception("Invalid SQL");
+                    throw new Exception("Invalid SQL: " + sqlReason);
                 }
                 table.CustomTableSql = data.value;
 
@@ -908,6 +910,10 @@ namespace ReportBuilder.Web.Controllers
                 }
                 sql = DotNetReportHelper.TryDecrypt(HttpUtility.HtmlDecode(reportSql));
                 sql = ConvertTopQuery(sql, DotNetReportHelper.dbtype);
+                if (!DotNetReportHelper.IsReadOnlySelectSql(sql, out var sqlReason))
+                {
+                    throw new Exception("Invalid SQL: " + sqlReason);
+                }
                 List<string> fields = new List<string>();
                 List<string> sqlFields = new List<string>();
                 // Execute sql
