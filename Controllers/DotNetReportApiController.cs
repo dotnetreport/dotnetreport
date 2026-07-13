@@ -109,9 +109,11 @@ namespace ReportBuilder.Web.Controllers
             {
                 var id = dr[0];
                 var text = dr[1];
-                // Skip null, DBNull, or empty text values
-                if (text == null || text is DBNull || string.IsNullOrWhiteSpace(text.ToString()))
+                // Skip null, DBNull, or empty values
+                if (id == null || id is DBNull || string.IsNullOrEmpty(id.ToString()) || 
+                    text == null || text is DBNull || string.IsNullOrWhiteSpace(text.ToString()))
                     continue;
+
                 data.Add(new { id = id, text = text });
             }
 
