@@ -3800,11 +3800,33 @@ namespace ReportBuilder.Web.Models
                        .Replace("{report.name}", System.Net.WebUtility.HtmlEncode(reportName ?? ""));
         }
 
+        private static string _wordReportCss;
+
+        private static string GetWordReportCss()
+        {
+            if (_wordReportCss != null) return _wordReportCss;
+
+            var css = "";
+            try
+            {
+                var path = new[]
+                    {
+                        Path.Combine(AppContext.BaseDirectory, "wwwroot", "css", "dotnetreport.css"),
+                        Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "css", "dotnetreport.css")
+                    }.FirstOrDefault(File.Exists);
+
+                if (path != null) css = File.ReadAllText(path);
+            }
+            catch { }
+            return _wordReportCss = css;
+        }
+
         private static string WrapHtmlForWord(string innerHtml)
         {
             return "<html xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:w=\"urn:schemas-microsoft-com:office:word\">" +
                    "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />" +
                    "<style>" +
+                   GetWordReportCss() +
                    "body, p, div, span, td, th, li { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; font-size: 11pt; }" +
                    "</style></head><body>" + (innerHtml ?? "") + "</body></html>";
         }

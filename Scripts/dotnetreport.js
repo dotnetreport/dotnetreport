@@ -1098,7 +1098,7 @@ var headerDesigner = function (options) {
 			tableresize: true
 		});
 		self.executeMode = executeMode;
-		self.loadHtmlHeader(false);
+		return self.loadHtmlHeader(false);
 	};
 
 	self.insertPlaceholder = function (placeholder) {
@@ -1207,7 +1207,7 @@ var footerDesigner = function (options) {
 			tableresize: true
 		});
 		self.executeMode = executeMode;
-		self.loadHtmlFooter(false);
+		return self.loadHtmlFooter(false);
 	};
 
 	self.insertPlaceholder = function (placeholder) {
@@ -4456,8 +4456,8 @@ var reportViewModel = function (options) {
 		return _.chain(self.SavedReports())
 			.filter(function (x) {
 				return x.folderId == self.SelectedFolder().Id
-					&& (self.adminMode() || !x.ShowAdminOnly)  
-					&& (self.adminMode() || !x.isSubReportOnly || !x.isSubReportOnly()); 
+					&& (self.adminMode() || !x.showAdminOnly || !x.showAdminOnly())
+					&& (self.adminMode() || !x.isSubReportOnly || !x.isSubReportOnly());
 			})
 			.sortBy(function (x) {
 				return x.reportName.toLowerCase();
@@ -4570,12 +4570,12 @@ var reportViewModel = function (options) {
 
 				if (reports.length > 0) {
 					self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
-						if (!self.adminMode() && x.showAdminOnly) {
+						if (!self.adminMode() && x.showAdminOnly && x.showAdminOnly()) {
 							return false;
 						}
 						if (!self.adminMode() && x.isSubReportOnly && x.isSubReportOnly()) {
 							return false;
-						} 
+						}
 						var parentFolder = _.find(self.Folders(), function (f) {
 							return f.Id == x.folderId;
 						});
@@ -5895,7 +5895,7 @@ var reportViewModel = function (options) {
 			OnlyTop: drilldown.length > 0 ? null : (self.maxRecords() ? self.OnlyTop() : null),
 			IsAggregateReport: drilldown.length > 0 && !hasGroupInDetail ? false : (self.ReportType() == 'List' || self.ReportType() == 'Treemap' || self.dontGroupCustom() ? false : self.AggregateReport()),
 			ShowDataWithGraph: self.ShowDataWithGraph(),
-			showAdminOnly: self.showAdminOnly(),
+			ShowAdminOnly: self.ShowAdminOnly(),
 			IsSubReportOnly: self.isSubReportOnly(),
 			ShowOnDashboard: self.ShowOnDashboard(),
 			HideReportHeader: self.HideReportHeader(),
