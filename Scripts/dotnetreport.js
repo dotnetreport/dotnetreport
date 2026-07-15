@@ -6058,6 +6058,7 @@ var reportViewModel = function (options) {
 			UseStoredProc: self.useStoredProc(),
 			StoredProcId: self.useStoredProc() ? self.SelectedProc().Id : null,
 			GroupFunctionList: _.map(self.SelectedFields(), function (x) {
+				var effectiveDrillDataFormat = (x.fieldType == 'Date' || x.fieldType == 'DateTime') ? x.drillDataFormat() : '';
 				return {
 					FieldID: x.fieldId,
 					GroupFunc: x.selectedAggregate(),
@@ -6088,7 +6089,7 @@ var reportViewModel = function (options) {
 						customDateFormat: x.customDateFormat(),
 						currencyFormat: x.currencyFormat(),
 						fieldLabel2: x.fieldLabel2(),
-						drillDataFormat: x.drillDataFormat(),
+						drillDataFormat: effectiveDrillDataFormat,
 						seriesType: x.seriesType(),
 						formulaType: x.formulaType,
 						functionConfig: x.functionConfig,
@@ -6096,7 +6097,7 @@ var reportViewModel = function (options) {
 						outerGroup: x.outerGroup(),
 						totalRowAggregate: x.totalRowAggregate()
 					}),
-					DrillDataFormat: x.drillDataFormat(),
+					DrillDataFormat: effectiveDrillDataFormat,
 					FieldAlign: x.fieldAlign(),
 					FontColor: x.fontColor(),
 					BackColor: x.backColor(),
