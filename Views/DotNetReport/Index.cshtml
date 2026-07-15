@@ -128,6 +128,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     </a>
                                 </div>
                             </li>
+                            <li class="nav-item" data-bind="visible: !selectMode()">
+                                <a href="#" class="nav-link" title="Show only reports you have favorited" data-bind="click: function(){ onlyFavorites(!onlyFavorites()); }">
+                                    <span data-bind="css: onlyFavorites() ? 'fa fa-star text-warning' : 'fa fa-star-o'"></span>
+                                    <span data-bind="text: onlyFavorites() ? 'Showing Favorites' : 'Show only Favorites'"></span>
+                                </a>
+                            </li>
                         </ul>
                         <div class="form-inline my-2 my-lg-0 ms-auto w-50">
                             <div class="input-group w-100">
@@ -297,16 +303,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <span class="fa fa-th-large"></span>
                         </button>
                     </div>
-                    <div class="favorite-filter" data-bind="visible: !selectMode()">
-                        <label class="cursor-pointer d-flex align-items-center gap-2" style="cursor: pointer;">
-                            <input type="checkbox"
-                                   class="form-check-input"
-                                   data-bind="checked: onlyFavorites"
-                                   style="width: 20px; height: 20px;" />
-                            <span class="fa fa-star" style="color: #ffc107;"></span>
-                            <span>Show only favorites</span>
-                        </label>
-                    </div>
                     <div data-bind="if: layout()=='icons'">
                         <div data-bind="visible: !SelectedFolder() && !searchReports()">
                             <p>Please choose Folders below to view Reports</p>
@@ -412,13 +408,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         <a data-bind="click: runReport" style="cursor: pointer">
                                                             <span data-bind="highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }"></span>
                                                         </a>
+                                                        <span class="fa favorite-hover-star ms-1"
+                                                              data-bind="css: isFavorite() ? 'fa-star text-warning favorited' : 'fa-star-o',
+                                                                         click: $parent.toggleFavorite, clickBubble: false,
+                                                                         visible: !$root.selectMode()"
+                                                              title="Add/Remove Favorite"></span>
                                                     </h4>
-                                                </div>
-                                                <!-- Favorite Star Icon (Add this after report name) -->
-                                                <div class="pull-left ms-2" style="margin-top: 5px;">
-                                                    <span class="fa fa-star favorite-star"
-                                                          data-bind="click: $parent.toggleFavorite,css: { favorited: isFavorite },visible: !$root.selectMode()"
-                                                          title="Toggle Favorite" data-is-favorite="isFavorite()"></span>
                                                 </div>
                                                 <div class="clearfix"></div>
                                                 <p data-bind="text: reportDescription"></p>
@@ -464,6 +459,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <span class="sr-only"></span>
                                                         </button>
                                                         <div class="dropdown-menu dropdown-menu-right">
+                                                            <a class="dropdown-item" href="#" data-bind="click: $parent.toggleFavorite, visible: !$root.selectMode()">
+                                                                <span data-bind="css: isFavorite() ? 'fa fa-star text-warning' : 'fa fa-star-o'"></span>
+                                                                <span data-bind="text: isFavorite() ? 'Remove from Favorites' : 'Add to Favorites'"></span>
+                                                            </a>
+                                                            <div class="dropdown-divider" data-bind="visible: !$root.selectMode()"></div>
                                                             <a class="dropdown-item" href="#" data-bind="click: function() { exportReport($root.appSettings.useAltPdf ? 'pdfalt' : 'pdf');}">
                                                                 <span class="fa fa-file-pdf-o"></span> Download PDF
                                                             </a>
@@ -503,6 +503,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <span class="sr-only"></span>
                                                         </button>
                                                         <div class="dropdown-menu">
+                                                            <a class="dropdown-item" href="#" data-bind="click: $parent.toggleFavorite, visible: !$root.selectMode()">
+                                                                <span data-bind="css: isFavorite() ? 'fa fa-star text-warning' : 'fa fa-star-o'"></span>
+                                                                <span data-bind="text: isFavorite() ? 'Remove from Favorites' : 'Add to Favorites'"></span>
+                                                            </a>
+                                                            <div class="dropdown-divider" data-bind="visible: !$root.selectMode()"></div>
                                                             <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('excel');}">
                                                                 <span class="fa fa-file-excel-o"></span> Download Excel
                                                             </a>
@@ -765,11 +770,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     }"></span>
                                                     <a class="ms-2" data-bind="click: runReport, highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }" style="cursor: pointer"></a>&nbsp;
                                                     <span data-bind="text: message" class="highlight small"></span>
-                                                    <div class="pull-left ms-2" style="margin-top: 5px;">
-                                                        <span class="fa fa-star favorite-star"
-                                                              data-bind="click: $parent.toggleFavorite,css: { favorited: isFavorite },visible: !$root.selectMode()"
-                                                              title="Toggle Favorite" data-is-favorite="isFavorite()"></span>
-                                                    </div>
+                                                    <span class="fa fa-star favorite-indicator ms-2 text-warning" data-bind="visible: isFavorite() && !$root.selectMode()" title="Favorite"></span>
                                                     <span class="badge bg-warning text-dark ms-1"
                                                           title="This report is only used as a linked or sub report"
                                                           data-bind="visible: isSubReportOnly && isSubReportOnly()">
@@ -783,6 +784,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                             <span class="fa fa-ellipsis-h"></span>
                                                         </button>
                                                         <ul class="dropdown-menu">
+                                                            <li data-bind="visible: !$root.selectMode()">
+                                                                <a class="dropdown-item" href="#" data-bind="click: $parent.toggleFavorite">
+                                                                    <span data-bind="css: isFavorite() ? 'fa fa-star text-warning' : 'fa fa-star-o'"></span>
+                                                                    <span data-bind="text: isFavorite() ? 'Remove from Favorites' : 'Add to Favorites'"></span>
+                                                                </a>
+                                                            </li>
+                                                            <li data-bind="visible: !$root.selectMode()"><hr class="dropdown-divider"></li>
                                                             <li data-bind="visible: canEdit">
                                                                 <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder" data-bind="click: openReport">
                                                                     <span class="fa fa-edit"></span> Edit
@@ -805,7 +813,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                 </a>
                                                             </li>
                                                             <li class="dropdown-submenu">
-                                                                <a class="dropdown-item dropdown-toggle" href="#">Export</a>
+                                                                <a class="dropdown-item dropdown-toggle" href="#"><span class="fa fa-download"></span> Export</a>
                                                                 <ul class="dropdown-menu">
                                                                     <li>
                                                                         <a class="dropdown-item" href="#" data-bind="click: function() {exportReport($root.appSettings.useAltPdf ? 'pdfalt' : 'pdf');}">

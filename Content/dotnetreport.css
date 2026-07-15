@@ -54,36 +54,27 @@
     padding-left: 0;
     list-style: none;
 }
-/* Favorite Star Styles */
-.favorite-star {
+/* Favorite indicator (read-only star shown next to favorited reports) */
+.favorite-indicator {
+    font-size: 14px;
+}
+
+/* Favorite star that reveals on card hover (icon view) */
+.favorite-hover-star {
     cursor: pointer;
-    font-size: 24px;
-    color: #ccc; /* Grey color for non-favorite */
-    transition: color 0.2s;
-    user-select: none;
+    font-size: 15px;
+    color: #adb5bd;
+    opacity: 0;
+    transition: opacity 0.15s ease, color 0.15s ease;
 }
-.favorite-star.favorited {
-    color: #ffc107 !important; /* Yellow color for favorite */
+.list-group-item:hover .favorite-hover-star {
+    opacity: 1;
 }
-.favorite-star:hover {
-   color: #ffc107 !important;; /* Yellow on hover */
+.favorite-hover-star:hover {
+    color: #ffc107;
 }
-.favorite-filter {
-    background: #f8f9fa;
-    padding: 6px;
-    border-radius: 8px;
-    border: 1px solid #e9ecef;
-}
-.favorite-filter label {
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: 500;
-        color: #495057;
-}
-.favorite-filter label:hover {
-            color: #21252b;
+.favorite-hover-star.favorited {
+    opacity: 1;
 }
 
     .folder-list li {
