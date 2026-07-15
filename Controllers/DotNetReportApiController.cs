@@ -15,16 +15,12 @@ namespace ReportBuilder.Web.Controllers
     [ApiController]
     public class DotNetReportApiController : ControllerBase
     {
-        private readonly IConfigurationRoot _configuration;
+        private readonly IConfiguration _configuration;
         public readonly static string _configFileName = "appsettings.dotnetreport.json";
-        
-        public DotNetReportApiController()
-        {
-            var builder = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
-            _configuration = builder.Build();
+        public DotNetReportApiController(IConfiguration configuration)
+        {
+            _configuration = configuration;
         }
 
         private DotNetReportSettings GetSettings()
