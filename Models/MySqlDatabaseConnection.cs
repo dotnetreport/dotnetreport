@@ -309,7 +309,7 @@ namespace ReportBuilder.Web.Models
                     @"SELECT ROUTINE_NAME, ROUTINE_SCHEMA
               FROM information_schema.ROUTINES
               WHERE ROUTINE_TYPE = 'PROCEDURE'
-              AND ROUTINE_DEFINITION LIKE @SearchValue";
+              AND ROUTINE_NAME LIKE @SearchValue";
 
                 var dtProcedures = new DataTable();
                 using (var cmd = new MySqlCommand(spQuery, conn))
@@ -375,7 +375,7 @@ namespace ReportBuilder.Web.Models
                         {
                             schemaTable = reader.GetSchemaTable();
                         }
-                    }
+                    }                   
 
                     var columnViewModels = new List<ColumnViewModel>();
                     if (schemaTable != null)
@@ -386,7 +386,7 @@ namespace ReportBuilder.Web.Models
                             {
                                 ColumnName = row["ColumnName"].ToString(),
                                 DisplayName = row["ColumnName"].ToString(),
-                                FieldType = ConvertToMySqlDataType(row["DataTypeName"].ToString()).ToString()
+                                FieldType = ConvertToMySqlDataType(row["DataType"].ToString()).ToString()
                             });
                         }
                     }
