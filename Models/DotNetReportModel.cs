@@ -1966,6 +1966,20 @@ namespace ReportBuilder.Web.Models
                 return (countdata, sqlQryforCount, 1, new List<List<string>>());
             }
 
+            string finalPivotSql;
+            if (firstAggIndex < 0)
+            {
+                finalPivotSql = $@"
+                    SELECT * FROM (
+                        {baseQuery}
+                    ) src
+                    PIVOT (
+                        {pivotFunction} ([{nextColumnName}])
+                        FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
+                    ) AS pvt";
+            }
+            else
+            {
             var rowFields = sqlFields.Take(firstAggIndex).ToList();
             var measureFields = sqlFields.Skip(firstAggIndex).ToList();
 
@@ -2082,11 +2096,12 @@ namespace ReportBuilder.Web.Models
 
             string fromSql = fromBuilder.ToString();
 
-            string finalPivotSql = $@"
+            finalPivotSql = $@"
                 SELECT
                 {selectList}
                 {fromSql}
                 ";
+            }
 
             var sqlQry = $@"
                 SELECT * FROM (
@@ -2105,7 +2120,14 @@ namespace ReportBuilder.Web.Models
                 $" ORDER BY 1 {(desc ? "DESC" : "")} \r\n" +
                 $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
 
-            dts = databaseConnection.ExecuteQuery(connectionString, finalPivotSql);
+            try
+            {
+                dts = databaseConnection.ExecuteQuery(connectionString, finalPivotSql);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"{ex.Message}\r\n\r\n-- Generated Pivot SQL --\r\n{finalPivotSql}", ex);
+            }
 
             var headerRows = new List<List<string>>();
             int levels = pivotColumns.Count;
@@ -2195,7 +2217,7 @@ namespace ReportBuilder.Web.Models
                 dts.Rows.Add(grand);
             }
 
-            return (dts, sqlQry, totalRecords, headerRows);
+            return (dts, finalPivotSql, totalRecords, headerRows);
         }
 
         public async static Task<DataSet> GetDrillDownDataAlternate(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson)
