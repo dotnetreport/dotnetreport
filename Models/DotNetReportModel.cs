@@ -479,6 +479,7 @@ namespace ReportBuilder.Web.Models
         public bool includeSubTotal { get; set; }
         public bool includeColumnTotal { get; set; }
         public bool pivot { get; set; }
+        public string reportType { get; set; }
     }
     public interface IDnrDataConnection
     {
@@ -3363,12 +3364,99 @@ namespace ReportBuilder.Web.Models
                        .Replace("{report.name}", reportName ?? "");
             return text;
         }
+        private static byte[] BuildKpiPdfAlt(DataTable dt, List<ReportHeaderColumn> columns, string reportName, string pageSize, string pageOrientation, string reportDescription)
+        {
+            using (var ms = new MemoryStream())
+            {
+                var document = new PdfDocument();
+                var page = document.AddPage();
+                if (!string.IsNullOrEmpty(pageSize))
+                {
+                    switch (pageSize.ToUpper())
+                    {
+                        case "A4": page.Size = PdfSharp.PageSize.A4; break;
+                        case "LEGAL": page.Size = PdfSharp.PageSize.Legal; break;
+                        case "A1": page.Size = PdfSharp.PageSize.A1; break;
+                        case "A2": page.Size = PdfSharp.PageSize.A2; break;
+                        case "A3": page.Size = PdfSharp.PageSize.A3; break;
+                        case "TABLOID": page.Size = PdfSharp.PageSize.Tabloid; break;
+                        case "LETTER": default: page.Size = PdfSharp.PageSize.Letter; break;
+                    }
+                }
+                if (!string.IsNullOrEmpty(pageOrientation) && pageOrientation.ToUpper() == "LANDSCAPE")
+                    page.Orientation = PdfSharp.PageOrientation.Landscape;
+
+                var gfx = XGraphics.FromPdfPage(page);
+                double y = 40;
+
+                gfx.DrawString(reportName ?? "", new XFont("Arial", 16, XFontStyleEx.Bold), XBrushes.Black,
+                    new XRect(0, y, page.Width, 30), XStringFormats.Center);
+                y += 40;
+
+                if (!string.IsNullOrEmpty(reportDescription))
+                {
+                    gfx.DrawString(reportDescription, new XFont("Arial", 10, XFontStyleEx.Italic),
+                        new XSolidBrush(XColor.FromArgb(102, 112, 133)),
+                        new XRect(40, y, page.Width - 80, 30), XStringFormats.Center);
+                    y += 30;
+                }
+
+                y += 20;
+
+                if (dt == null || dt.Rows.Count == 0)
+                {
+                    gfx.DrawString("No data found", new XFont("Arial", 14, XFontStyleEx.Regular),
+                        new XSolidBrush(XColor.FromArgb(102, 112, 133)),
+                        new XRect(0, y, page.Width, 30), XStringFormats.Center);
+                    gfx.Dispose();
+                    document.Save(ms);
+                    return ms.ToArray();
+                }
+
+                var row = dt.Rows[0];
+                double cardWidth = Math.Min(320, page.Width.Point - 80);
+                double cardHeight = 120;
+                double cardX = (page.Width - cardWidth) / 2;
+                var borderPen = new XPen(XColor.FromArgb(222, 226, 230), 1);
+                var labelBrush = new XSolidBrush(XColor.FromArgb(71, 84, 103));
+
+                for (int c = 0; c < dt.Columns.Count; c++)
+                {
+                    var col = columns != null && columns.Count > c ? columns[c] : null;
+                    string label = col != null && !string.IsNullOrEmpty(col.fieldLabel)
+                        ? col.fieldLabel
+                        : (col != null && !string.IsNullOrEmpty(col.fieldName) ? col.fieldName : dt.Columns[c].ColumnName);
+
+                    string value = row[c]?.ToString() ?? "";
+                    try { GetColumnFormatting(dt.Columns[c], columns, ref value); } catch { }
+
+                    var cardRect = new XRect(cardX, y, cardWidth, cardHeight);
+                    gfx.DrawRectangle(borderPen, new XSolidBrush(XColor.FromArgb(249, 250, 251)), cardRect);
+
+                    gfx.DrawString(label, new XFont("Arial", 11, XFontStyleEx.Bold), labelBrush,
+                        new XRect(cardX, y + 14, cardWidth, 20), XStringFormats.TopCenter);
+                    gfx.DrawString(value, new XFont("Arial", 34, XFontStyleEx.Bold), XBrushes.Black,
+                        new XRect(cardX, y + 44, cardWidth, 60), XStringFormats.TopCenter);
+
+                    y += cardHeight + 20;
+                }
+
+                gfx.Dispose();
+                document.Save(ms);
+                return ms.ToArray();
+            }
+        }
+
         public async static Task<byte[]> GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
     string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null,
     string pageSize = "", string pageOrientation = "", bool subTotalPerGroup = false, string filterDetailsText = null, string reportDescription = null,
-    List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null)
+    List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null, string reportType = null)
         {
             var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
+
+            if (reportType == "Single")
+                return BuildKpiPdfAlt(dt, columns, reportName, pageSize, pageOrientation, reportDescription);
+
             var allRowsList = new List<DataRow>();
             var currentGroupRowsList = new List<DataRow>();
 

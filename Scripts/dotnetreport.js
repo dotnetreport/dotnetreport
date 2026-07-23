@@ -11082,7 +11082,8 @@ var reportViewModel = function (options) {
 			footerEveryPage: footerEveryPage,
 			currentUserName: self.currentUserName || self.currentUserId || '',
 			currentUserRoles: self.currentUserRole || '',
-			defaultDateFormat: (self.appSettings && self.appSettings.defaultDateFormat) || 'United States'
+			defaultDateFormat: (self.appSettings && self.appSettings.defaultDateFormat) || 'United States',
+			reportType: self.ReportType()
 		};
 	}
 
@@ -12871,7 +12872,8 @@ var dashboardViewModel = function (options) {
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
 				pageSize: pageSize,
-				pageOrientation: pageOrientation
+				pageOrientation: pageOrientation,
+				reportType: report.ReportType()
 			});
 		});
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
@@ -12918,7 +12920,8 @@ var dashboardViewModel = function (options) {
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
 				pageSize: pageSize,
-				pageOrientation: pageOrientation
+				pageOrientation: pageOrientation,
+				reportType: report.ReportType()
 			});
 		});
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
@@ -13020,7 +13023,8 @@ var dashboardViewModel = function (options) {
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
 				pageSize: pageSize,
-				pageOrientation: pageOrientation
+				pageOrientation: pageOrientation,
+				reportType: report.ReportType()
 			});
 		});
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';

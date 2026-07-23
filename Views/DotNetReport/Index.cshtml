@@ -746,8 +746,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <i class="fa fa-file-pdf-o"></i> Pdf (Debug)
                                         </a>
                                     </li>
-                                    <!-- Alt PDF, drilldown available (non-pivot) -> submenu -->
-                                    <li class="dropdown-submenu dropdown-submenu-left" data-bind="visible: appSettings.useAltPdf && canDrilldown() && !hasPivotColumn()">
+                                    <!-- Alt PDF, drilldown available (non-pivot, non-kpi) -> submenu -->
+                                    <li class="dropdown-submenu dropdown-submenu-left" data-bind="visible: appSettings.useAltPdf && canDrilldown() && !hasPivotColumn() && ReportType() != 'Single'">
                                         <a class="dropdown-item dropdown-toggle" href="#"><i class="fa fa-file-pdf-o"></i> Pdf</a>
                                         <ul class="dropdown-menu">
                                             <li>
@@ -762,8 +762,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             </li>
                                         </ul>
                                     </li>
-                                    <!-- Alt PDF, no drilldown or pivot -> flat (no expand) -->
-                                    <li data-bind="visible: appSettings.useAltPdf && (!canDrilldown() || hasPivotColumn())">
+                                    <!-- Alt PDF, no drilldown / pivot / kpi -> flat (no expand) -->
+                                    <li data-bind="visible: appSettings.useAltPdf && (!canDrilldown() || hasPivotColumn() || ReportType() == 'Single')">
                                         <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
                                               ? function() { PdfPage.isExpanded = false; $('#pdfOptionsModal').modal('show'); }
                                               : function() { downloadPdfAlt(); }">
