@@ -10860,11 +10860,11 @@ var reportViewModel = function (options) {
 					if (reportId > 0) {
 						self.ReportMode('linked');
 						self.LoadReport(reportId, true);
-						self.inIinit = false;
 					}
+					self.inInit = false;
 				});
 			} else {
-				self.inIinit = false;
+				self.inInit = false;
 			}
 		});
 		
