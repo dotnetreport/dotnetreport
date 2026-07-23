@@ -106,9 +106,17 @@ namespace ReportBuilder.Web.Jobs
         {
             get
             {
-                
-                try { return _diagEnabled ??= ConfigurationManager.AppSettings["dotNetReport:scheduleDiagnostics"].ToBoolean(); }
-                catch { _diagEnabled = false; return false; }
+                try
+                {
+                    if (!_diagEnabled.HasValue)
+                    {
+                        bool enabled;
+                        bool.TryParse( ConfigurationManager.AppSettings["dotNetReport:scheduleDiagnostics"],out enabled);
+                        _diagEnabled = enabled;
+                    }
+                    return _diagEnabled.Value;
+                }
+                catch{_diagEnabled = false;return false;}
             }
         }
 

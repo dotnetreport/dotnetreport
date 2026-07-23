@@ -580,11 +580,11 @@ namespace ReportBuilder.Web.Models
                     _htmlRemovedSomething = true;
                 }
             };
-            s.RemovingTag += (_, _) => _htmlRemovedSomething = true;
-            s.RemovingAttribute += (_, _) => _htmlRemovedSomething = true;
-            s.RemovingStyle += (_, _) => _htmlRemovedSomething = true;
-            s.RemovingAtRule += (_, _) => _htmlRemovedSomething = true;
-            s.RemovingCssClass += (_, _) => _htmlRemovedSomething = true;
+            s.RemovingTag += (sender, args) => { _htmlRemovedSomething = true; };
+            s.RemovingAttribute += (sender, args) => { _htmlRemovedSomething = true; };
+            s.RemovingStyle += (sender, args) => { _htmlRemovedSomething = true; };
+            s.RemovingAtRule += (sender, args) => { _htmlRemovedSomething = true; };
+            s.RemovingCssClass += (sender, args) => { _htmlRemovedSomething = true; };
 
             return _reportHtmlSanitizer = s;
         }
@@ -645,8 +645,8 @@ namespace ReportBuilder.Web.Models
 
             // Plain nested object: descend in place; the change is captured when the nearest
             // JSON-string ancestor is re-serialized.
-            if (prop.Value is not JObject childObj) return false;
-            return SanitizeHtmlField(childObj, containers, idx + 1, leaf);
+            if (prop.Value is  JObject childObj) return SanitizeHtmlField(childObj, containers, idx + 1, leaf);
+            return false;
         }
         private static bool SanitizeHtmlLeaf(JObject obj, string leaf)
         {
