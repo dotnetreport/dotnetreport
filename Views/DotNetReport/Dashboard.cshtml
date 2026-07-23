@@ -407,8 +407,8 @@
                                         <span class="fa fa-file-pdf-o"></span> PDF
                                     </a>
                                 </li>
-                                <li data-bind="visible: canDrilldown && appSettings.useAltPdf">
-                                    <a href="#" class="dropdown-item" data-bind="click: $parent.appSettings.showPageSize ? function() { loadPdfModel() } : function() { $parent.appSettings.useAltPdf ? downloadPdfAlt(true,'','') : downloadPdf(false,'','') }">
+                                <li data-bind="visible: canDrilldown && appSettings.useAltPdf && !hasPivotColumn()">
+                                    <a href="#" class="dropdown-item" data-bind="click: $parent.appSettings.showPageSize ? function() { loadPdfModel() } : function() { $parent.appSettings.useAltPdf ? downloadPdfAlt('','',true) : downloadPdf(false,'','') }">
                                         <i class="fa fa-file-pdf-o"></i> Pdf (Expanded)
                                     </a>
                                 </li>

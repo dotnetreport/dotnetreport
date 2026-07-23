@@ -3393,6 +3393,8 @@ namespace ReportBuilder.Web.Models
                 {
                     if (fi >= sqlFields.Count) break;
                     var col = sqlFields[fi++];
+                    var asIdx = col.LastIndexOf(" AS ");
+                    var sqlFieldName = asIdx >= 0 ? col.Substring(0, asIdx) : col;
                     drilldownRow.Add($@"
                 {{
                     ""Value"":""{dr[dc]}"",
@@ -3400,7 +3402,7 @@ namespace ReportBuilder.Web.Models
                     ""LabelValue"":""'{dr[dc]}'"",
                     ""NumericValue"":null,
                     ""Column"":{{
-                        ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
+                        ""SqlField"":""{sqlFieldName}"",
                         ""ColumnName"":""{dc.ColumnName}"",
                         ""DataType"":""{dc.DataType}"",
                         ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
@@ -3632,34 +3634,41 @@ namespace ReportBuilder.Web.Models
 
                         if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
                         {
-                            byte[] sPDFDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
-                            var imageStream = new MemoryStream(sPDFDecoded, 0, sPDFDecoded.Length, false, true);
-                            var image = XImage.FromStream(imageStream);
-                            var maxWidth = page.Width - 100;
-                            var maxHeight = page.Height - currentYPosition - 20;
-
-                            if (image.PixelWidth > maxWidth || image.PixelHeight > maxHeight)
+                            try
                             {
-                                var aspectRatio = (double)image.PixelWidth / image.PixelHeight;
-                                var width = maxWidth;
-                                var height = maxWidth / aspectRatio;
+                                byte[] sPDFDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
+                                var imageStream = new MemoryStream(sPDFDecoded, 0, sPDFDecoded.Length, false, true);
+                                var image = XImage.FromStream(imageStream);
+                                var maxWidth = page.Width - 100;
+                                var maxHeight = page.Height - currentYPosition - 20;
 
-                                if (height > maxHeight)
+                                if (image.PixelWidth > maxWidth || image.PixelHeight > maxHeight)
                                 {
-                                    height = maxHeight;
-                                    width = maxHeight * aspectRatio;
+                                    var aspectRatio = (double)image.PixelWidth / image.PixelHeight;
+                                    var width = maxWidth;
+                                    var height = maxWidth / aspectRatio;
+
+                                    if (height > maxHeight)
+                                    {
+                                        height = maxHeight;
+                                        width = maxHeight * aspectRatio;
+                                    }
+
+                                    rect = new XRect(50, currentYPosition, width, height);
+                                    gfx.DrawImage(image, rect);
+                                }
+                                else
+                                {
+                                    rect = new XRect(50, currentYPosition, image.PixelWidth, image.PixelHeight);
+                                    gfx.DrawImage(image, rect);
                                 }
 
-                                rect = new XRect(50, currentYPosition, width, height);
-                                gfx.DrawImage(image, rect);
+                                currentYPosition += (int)rect.Height + 20;
                             }
-                            else
+                            catch
                             {
-                                rect = new XRect(50, currentYPosition, image.PixelWidth, image.PixelHeight);
-                                gfx.DrawImage(image, rect);
+                                // Malformed/unsupported chart image: skip it rather than failing the whole PDF.
                             }
-
-                            currentYPosition += (int)rect.Height + 20;
                         }
                     }
 

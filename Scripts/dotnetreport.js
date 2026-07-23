@@ -570,11 +570,14 @@ function PdfPageViewModel(appSettings, downloadPdf, downloadPdfAlt) {
 		return page ? page.bgstyle : '#f5f5f5';
 	});
 	self.isDebug = false;
+	self.isExpanded = false;
 	self.download = function () {
 		const selectedSize = self.selectedPageSize();
 		const selectedOrientation = self.selectedPageOrientation();
+		const expand = self.isExpanded === true;
+		self.isExpanded = false;
 		if (ko.unwrap(appSettings?.useAltPdf)) {
-			downloadPdfAlt(selectedSize, selectedOrientation);
+			downloadPdfAlt(selectedSize, selectedOrientation, expand);
 		} else {
 			downloadPdf(self.isDebug, selectedSize, selectedOrientation);
 		}
@@ -11043,7 +11046,7 @@ var reportViewModel = function (options) {
 		}, 250);
 	};
 
-	self.getExportJson = function (expand,pageSize,pageOrientation) {
+	self.getExportJson = function (pageSize, pageOrientation, expand) {
 		var reportData = self.BuildReportData();
 		reportData.DrillDownRowUsePlaceholders = true;
 		var pivotData = self.preparePivotData();
@@ -11083,14 +11086,17 @@ var reportViewModel = function (options) {
 		};
 	}
 
-	self.downloadPdfAlt = function (expand,pageSize,pageOrientation) {
-		var data = self.getExportJson(expand,pageSize, pageOrientation);
+	self.downloadPdfAlt = function (pageSize, pageOrientation, expand) {
+		var data = self.getExportJson(pageSize, pageOrientation, expand);
 		self.downloadExport("DownloadPdfAlt", data, 'pdf');
+	}
+	self.downloadPdfAltWithDrilldown = function (pageSize, pageOrientation) {
+		self.downloadPdfAlt(pageSize, pageOrientation, true);
 	}
 
 	self.downloadPdf = function (debug, pageSize, pageOrientation) {
 		if (self.pager.totalRecords() > 100 && self.subReports().length == 0) {
-			self.downloadPdfAlt(pageSize, pageOrientation);
+			self.downloadPdfAlt(pageSize, pageOrientation, self.allExpanded());
 			return;
 		}
 
@@ -12839,7 +12845,7 @@ var dashboardViewModel = function (options) {
 		}
 		$('#exportAllPdfOptionsModal').modal('show');
 	}
-	self.ExportAllPdfAltReports = function (expand,pageSize, pageOrientation) {
+	self.ExportAllPdfAltReports = function (pageSize, pageOrientation) {
 		const reports = self.reports();
 		const allreports = [];
 		_.forEach(reports, function (report) {
@@ -12880,7 +12886,7 @@ var dashboardViewModel = function (options) {
 			self.dashboard.PdfPage.download = function () {
 				var pageSize = self.dashboard.PdfPage.selectedPageSize();
 				var orientation = self.dashboard.PdfPage.selectedPageOrientation();
-				self.ExportAllPdfAltReports(pageSize, orientation);
+				self.ExportAllExpendedPdfAltReports(pageSize, orientation);
 			}
 		}
 		$('#exportAllPdfOptionsModal').modal('show');

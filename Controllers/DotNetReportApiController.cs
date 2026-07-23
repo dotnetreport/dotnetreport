@@ -1291,7 +1291,7 @@ namespace ReportBuilder.Web.Controllers
            [FromForm] string reportName,
            [FromForm] bool allExpanded,
            [FromForm] string expandSqls,
-           [FromForm] string onlyAndGroupInColumnDetail,
+           [FromForm] string onlyAndGroupInColumnDetail = null,
            [FromForm] string chartData = null,
            [FromForm] string columnDetails = null,
            [FromForm] bool includeSubtotal = false,
