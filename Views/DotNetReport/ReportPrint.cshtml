@@ -501,8 +501,9 @@
         }
 
         var checkInterval;
+        var placeholdersReady = false;
         function showReportWhenReady() {
-            if (checkReportsLoaded()) {
+            if (placeholdersReady && checkReportsLoaded()) {
                 $('.report-inner').show();
                 if (checkInterval) {
                     clearInterval(checkInterval);
@@ -511,14 +512,12 @@
         }
 
         vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
-            if (vm.useReportHeader()) {
-                vm.headerDesigner.init(true);
-            }
-            if (vm.useReportFooter()) {
-                vm.footerDesigner.init(true);
-            }
+            var headerLoaded = vm.useReportHeader() ? vm.headerDesigner.init(true) : null;
+            var footerLoaded = vm.useReportFooter() ? vm.footerDesigner.init(true) : null;
+            var settingsLoaded = vm.loadAppSettings ? vm.loadAppSettings() : null;
 
-            setTimeout(function () {
+            // The header/footer html is fetched over ajax, so wait for it
+            $.when(headerLoaded, footerLoaded, settingsLoaded).always(function () {
                 try {
                     var userName = vm.currentUserName || vm.currentUserId || '';
                     var userRoles = vm.currentUserRole || '';
@@ -580,7 +579,8 @@
                     window.reportHeaderHeightIn = $h.length ? measureHtmlHeightInches($h.html()) : 0;
                     window.reportFooterHeightIn = $f.length ? measureHtmlHeightInches($f.html()) : 0;
                 } catch (e) { console.log('placeholder substitution failed', e); }
-            }, 600);
+                placeholdersReady = true;
+            });
 
             if (vm.useStoredProc()) {
                 setTimeout(function(){
@@ -592,12 +592,13 @@
 
             checkInterval = setInterval(showReportWhenReady, 500);
 
+            // Safety net only. 
             setTimeout(function () {
                 $('.report-inner').show();
                 if (checkInterval) {
                     clearInterval(checkInterval);
                 }
-            }, 1000);
+            }, 15000);
         });
 
         $(window).resize(function(){

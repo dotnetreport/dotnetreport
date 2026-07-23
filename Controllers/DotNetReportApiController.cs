@@ -1271,11 +1271,13 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string userId = "",
             [FromForm] bool isSubreport = false,
             [FromForm] int pageNumber=1,
-            [FromForm] int currentPageSize = 1)
+            [FromForm] int currentPageSize = 1,
+            [FromForm] string defaultDateFormat = null)
         {
 
             var settings = GetSettings();
-            
+
+            DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             reportSql = HttpUtility.HtmlDecode(reportSql);
             if (!adminMode)
             {

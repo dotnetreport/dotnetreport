@@ -101,6 +101,44 @@ namespace ReportBuilder.Web.Jobs
             _configuration = builder.Build();
         }
 
+        #region Schedule diagnostics
+        private static readonly object _diagLock = new object();
+        private static bool? _diagEnabled;
+
+        private static bool DiagEnabled
+        {
+            get
+            {
+                try { return _diagEnabled ??= DotNetReportHelper.StaticConfig.GetValue<bool>("dotNetReport:scheduleDiagnostics"); }
+                catch { _diagEnabled = false; return false; }
+            }
+        }
+
+        private static void DiagLog(string message)
+        {
+            if (!DiagEnabled) return;
+            try
+            {
+                var dir = Path.Combine(AppContext.BaseDirectory, "App_Data");
+                Directory.CreateDirectory(dir);
+                var file = Path.Combine(dir, $"schedule-diagnostics-{DateTime.UtcNow:yyyy-MM-dd}.log");
+                var line = $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}Z  {message}{Environment.NewLine}";
+                lock (_diagLock) { File.AppendAllText(file, line); }
+            }
+            catch { /* diagnostics must never break the job */ }
+        }
+
+        // Records a swallowed exception with type, message, and stack trace (incl. inner).
+        private static void DiagLog(string context, Exception ex)
+        {
+            if (!DiagEnabled) return;
+            var detail = $"{context} EXCEPTION: {ex.GetType().Name}: {ex.Message}\n    {ex.StackTrace}";
+            if (ex.InnerException != null)
+                detail += $"\n    INNER: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}";
+            DiagLog(detail);
+        }
+        #endregion
+
         public (DateTime? NextRunLocal, bool ShouldRun, DateTime currentTimeInTargetTz) CalculateNextRun(
             string cron,
             string timeZoneId,
@@ -173,7 +211,7 @@ namespace ReportBuilder.Web.Jobs
                         if (!string.IsNullOrWhiteSpace(ddf)) DotNetReportHelper.defaultDateFormat = ddf;
                     }
                 }
-                catch { }
+                catch (Exception ex) { DiagLog("GetAccountSettings", ex); }
 
                 var response = await client.GetAsync($"{apiUrl}/ReportApi/GetScheduledReportsAndDashboards?account={accountApiKey}&dataConnect={databaseApiKey}&clientId={clientId}");
 
@@ -201,11 +239,21 @@ namespace ReportBuilder.Web.Jobs
                                  schedule.ScheduleEnd);
 
                             schedule.NextRun = nextRun;
+
+                            DiagLog($"[{report.Name}] schedule={schedule.Id} shouldRun={shouldRun}"
+                                  + $"\n    cron='{schedule.Schedule}' scheduleTz='{schedule.TimeZone}' serverTz='{TimeZoneInfo.Local.Id}'"
+                                  + $"\n    utcNow={DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} nowInScheduleTz={currentTimeInTargetTz:yyyy-MM-dd HH:mm:ss} serverLocalNow={DateTime.Now:yyyy-MM-dd HH:mm:ss}"
+                                  + $"\n    lastRunFromDb={(string.IsNullOrEmpty(schedule.LastRun) ? "(null)" : schedule.LastRun)}"
+                                  + $"\n    computedNextRun(localRunTime to be sent)={nextRun:yyyy-MM-ddTHH:mm:ss}");
+
                             if (shouldRun)
                             {
                                 var isDashboard = report.DashboardId > 0;
                                 var itemId = isDashboard ? report.DashboardId : report.ReportId;
                                 DotNetReportHelper.CurrentDataFilters = schedule.DataFilters ?? "";
+
+                                DiagLog($"[{report.Name}] dataFilters(schedule)={schedule.DataFilters ?? "(null)"}"
+                                      + $"\n    CurrentDataFilters(after set)={DotNetReportHelper.CurrentDataFilters}");
 
                                 string hfHeaderHtml = null;
                                 string hfFooterHtml = null;
@@ -226,7 +274,7 @@ namespace ReportBuilder.Web.Jobs
                                         }
                                     }
                                 }
-                                catch { /* ignore, header not critical */ }
+                                catch (Exception ex) { DiagLog("GetReportHeader", ex); /* not critical */ }
                                 try
                                 {
                                     var ftrResp = await client.GetAsync($"{apiUrl}/ReportApi/GetReportFooter?account={accountApiKey}&dataConnect={databaseApiKey}&clientId={clientId}&userId={schedule.UserId}");
@@ -242,7 +290,7 @@ namespace ReportBuilder.Web.Jobs
                                         }
                                     }
                                 }
-                                catch { /* ignore, footer not critical */ }
+                                catch (Exception ex) { DiagLog("GetReportFooter", ex); /* not critical */ }
 
                                 response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledItem?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&id={itemId}&localRunTime={schedule.NextRun:yyyy-MM-ddTHH:mm:ss}&isDashboard={isDashboard}&clientId={clientId}&dataFilters={schedule.DataFilters}");
                                 response.EnsureSuccessStatusCode();                            
@@ -260,6 +308,10 @@ namespace ReportBuilder.Web.Jobs
                                 {
                                     reportToRun = JsonConvert.DeserializeObject<DotNetReportScheduleModel>(content);
                                 }
+
+                                DiagLog($"[{report.Name}] RunScheduledItem sent localRunTime={schedule.NextRun:yyyy-MM-ddTHH:mm:ss} dataFilters={schedule.DataFilters ?? "(null)"}"
+                                      + $"\n    responseChars={content?.Length ?? 0}"
+                                      + $"\n    reportSql={(isDashboard ? string.Join(" || ", (reportsToRun ?? new List<DotNetReportScheduleModel>()).Select(x => x.ReportSql)) : reportToRun?.ReportSql) ?? "(null)"}");
 
                                 var files = new List<byte[]>();
                                 byte[] fileData;
@@ -305,10 +357,7 @@ namespace ReportBuilder.Web.Jobs
                                                 {
                                                     imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
                                                 }
-                                                catch
-                                                {
-                                                    imageData = ""; // this tries to get chart for export, it's not critical so we can ingore errors and continue
-                                                }
+                                                catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                                 string customHtmlR = null;
                                                 if (string.Equals(r.ReportType, "Html", StringComparison.OrdinalIgnoreCase))
                                                 {
@@ -316,7 +365,7 @@ namespace ReportBuilder.Web.Jobs
                                                     {
                                                         customHtmlR = await DotNetReportHelper.GetReportRenderedHtml(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
                                                     }
-                                                    catch { customHtmlR = null; }
+                                                    catch (Exception ex) { customHtmlR = null; DiagLog("GetReportRenderedHtml(dashboard)", ex); }
                                                 }
                                                 fileData = await DotNetReportHelper.GetWordFile(r.ReportSql, r.ConnectKey, r.ReportName, columns: r.Columns, includeSubtotal: r.IncludeSubTotals, pivot: r.ReportType == "Pivot", chartData: imageData, expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation,
                                                     headerHtml: hfHeaderHtml, footerHtml: hfFooterHtml, headerEveryPage: hfHeaderEveryPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
@@ -334,10 +383,7 @@ namespace ReportBuilder.Web.Jobs
                                             {
                                                 imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
                                             }
-                                            catch
-                                            {
-                                                imageData = ""; // this tries to get chart for export, it's not critical so we can ingore errors and continue
-                                            }
+                                            catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                             string customHtml = null;
                                             if (string.Equals(reportToRun.ReportType, "Html", StringComparison.OrdinalIgnoreCase))
                                             {
@@ -345,7 +391,7 @@ namespace ReportBuilder.Web.Jobs
                                                 {
                                                     customHtml = await DotNetReportHelper.GetReportRenderedHtml(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
                                                 }
-                                                catch { customHtml = null; }
+                                                catch (Exception ex) { customHtml = null; DiagLog("GetReportRenderedHtml", ex); }
                                             }
                                             fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData, expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation,
                                                 headerHtml: hfHeaderHtml, footerHtml: hfFooterHtml, headerEveryPage: hfHeaderEveryPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
@@ -370,10 +416,7 @@ namespace ReportBuilder.Web.Jobs
                                                 {
                                                     imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
                                                 }
-                                                catch
-                                                {
-                                                    imageData = ""; // this tries to get chart for export, it's not critical so we can ingore errors and continue
-                                                }
+                                                catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                                 fileData = await DotNetReportHelper.GetExcelFile(r.ReportSql, r.ConnectKey, r.ReportName, columns: r.Columns, expandSqls: r.ReportData, includeSubtotal: r.IncludeSubTotals, pivot: r.ReportType == "Pivot", chartData: imageData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
                                                 files.Add(fileData);
                                             }
@@ -388,15 +431,15 @@ namespace ReportBuilder.Web.Jobs
                                             {
                                                 imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
                                             }
-                                            catch
-                                            {
-                                                imageData = ""; // this tries to get chart for export, it's not critical so we can ingore errors and continue
-                                            }
+                                            catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                             fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, expandSqls: reportToRun.ReportData, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
                                             fileExt = ".xlsx";
                                         }
                                         break;
                                 }
+
+                                DiagLog($"[{report.Name}] format={schedule.Format} builtFileBytes={(fileData?.Length ?? 0)}"
+                                      + $"\n    CurrentDataFilters(before email)={DotNetReportHelper.CurrentDataFilters}");
 
                                 // send email
                                 var mail = new MailMessage
@@ -432,6 +475,7 @@ namespace ReportBuilder.Web.Jobs
                         }
                         catch (Exception ex)
                         {
+                            DiagLog($"[{report.Name}] schedule={schedule.Id} RUN FAILED", ex);
                             await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, report.DashboardId > 0, isError: true, message: ex.Message);
                             // could not run, ignore error
                         }

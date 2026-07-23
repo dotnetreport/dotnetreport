@@ -730,14 +730,18 @@ function filterGroupViewModel(args) {
 			});
 		}
 		if (e.Value1) {
-			if (isDateTimeByMappings(e.Value1, self.dateFormatMappings) && e.Operator !== 'range') {
+			if (e.Operator === 'range') {
+				e.Value1 = e.Value1.replace(" undefined", "");
+			} else if (isDateTimeByMappings(e.Value1, self.dateFormatMappings)) {
 				[datePart1, timePart1] = e.Value1.split(" ");
 				e.Value1 = datePart1;
 			}
 			lookupList.push({ id: e.Value1, text: e.Value1 });
 		}
 		if (e.Value2) {
-			if (isDateTimeByMappings(e.Value2, self.dateFormatMappings) && e.Operator !== 'range') {
+			if (e.Operator === 'range') {
+				e.Value2 = e.Value2.replace(" undefined", "");
+			} else if (isDateTimeByMappings(e.Value2, self.dateFormatMappings)) {
 				[datePart2, timePart2] = e.Value2.split(" ");
 				e.Value2 = datePart2;
 			}
@@ -1098,7 +1102,7 @@ var headerDesigner = function (options) {
 			tableresize: true
 		});
 		self.executeMode = executeMode;
-		self.loadHtmlHeader(false);
+		return self.loadHtmlHeader(false);
 	};
 
 	self.insertPlaceholder = function (placeholder) {
@@ -1207,7 +1211,7 @@ var footerDesigner = function (options) {
 			tableresize: true
 		});
 		self.executeMode = executeMode;
-		self.loadHtmlFooter(false);
+		return self.loadHtmlFooter(false);
 	};
 
 	self.insertPlaceholder = function (placeholder) {
@@ -4584,8 +4588,8 @@ var reportViewModel = function (options) {
 		return _.chain(self.SavedReports())
 			.filter(function (x) {
 				return x.folderId == self.SelectedFolder().Id
-					&& (self.adminMode() || !x.ShowAdminOnly)  
-					&& (self.adminMode() || !x.isSubReportOnly || !x.isSubReportOnly()); 
+					&& (self.adminMode() || !x.showAdminOnly || !x.showAdminOnly())
+					&& (self.adminMode() || !x.isSubReportOnly || !x.isSubReportOnly());
 			})
 			.sortBy(function (x) {
 				return x.reportName.toLowerCase();
@@ -4716,12 +4720,12 @@ var reportViewModel = function (options) {
 
 				if (reports.length > 0) {
 					self.reportsInSearch(_.filter(self.SavedReports(), function (x) {
-						if (!self.adminMode() && x.showAdminOnly()) {
+						if (!self.adminMode() && x.showAdminOnly && x.showAdminOnly()) {
 							return false;
 						}
 						if (!self.adminMode() && x.isSubReportOnly && x.isSubReportOnly()) {
 							return false;
-						} 
+						}
 						var parentFolder = _.find(self.Folders(), function (f) {
 							return f.Id == x.folderId;
 						});
@@ -5872,9 +5876,9 @@ var reportViewModel = function (options) {
 					FieldId: e.Field().fieldId,
 					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
 					Operator: e.Operator(),
-					Value1: hasTimeInDate ? (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? self.buildInValueList(e) : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value() + " " + e.Valuetime()))
-										  : (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? self.buildInValueList(e) : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value())), 
-					Value2: hasTimeInDate ? (e.Value2() ? e.Value2() + " " + e.Valuetime2() : e.Value2()) : e.Value2(), 
+					Value1: hasTimeInDate ? (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? self.buildInValueList(e) : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : (e.Operator() == 'range' ? e.Value() : e.Value() + " " + e.Valuetime())))
+										  : (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? self.buildInValueList(e) : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value())),
+					Value2: hasTimeInDate && e.Operator() != 'range' ? (e.Value2() ? e.Value2() + " " + e.Valuetime2() : e.Value2()) : e.Value2(),
 					ParentIn: e.ParentIn().join(","),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : [],
 					FilterSettings: ''
