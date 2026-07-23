@@ -353,10 +353,10 @@
                         </td>
                     </tr>
                     <!-- /ko -->
-                     <!-- ko if: subReportsRan().length > 0 -->
+                     <!-- ko if: nonInlineSubReports().length > 0 -->
                 <tr>
                     <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
-                        <div data-bind="foreach: subReportsRan">
+                        <div data-bind="foreach: nonInlineSubReports">
                             <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
                         </div>
                     </td>
@@ -413,14 +413,14 @@
         }
     </style>
     <script type="text/javascript">
-
-        $(document).ready(function () {
-            var data = {
-                currentUserId: '@Model.UserId',
-                currentUserRoles: ('@Model.CurrentUserRoles' || '').split(','),
-                dataFilters: '@Model.DataFilters',
-                clientId: '@Model.ClientId'
-            };
+    
+    $(document).ready(function () {
+        var data = {
+            currentUserId: '@Model.UserId',
+            currentUserRoles: ('@Model.CurrentUserRoles' ||'').split(','),
+            dataFilters: decodeHTMLEntities('@Model.DataFilters'),
+            clientId: '@Model.ClientId'
+        };
 
             function decodeHTMLEntities(text) {
                 var parser = new DOMParser();
@@ -430,16 +430,28 @@
             // Remove new lines and carriage returns
             return decodedText.replace(/[\n\r]/g, '');
         }
-        
+
+        var exportId = '@ViewBag.ExportId';
+        ajaxcall({
+            url: '@Url.Action("SaveExportSession", "DotNetReportApi")',
+            type: 'POST',
+            async: false,
+            noBlocking: true,
+            data: JSON.stringify(data)
+        }).done(function (result) {
+            if (result && result.exportId) exportId = result.exportId;
+        });
+        $('#exportId').val(exportId);
+
         var vm = new reportViewModel({
             runReportUrl: "@Url.Action("Report")",
-            execReportUrl: "@Url.Action("RunReportUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId",
-            runLinkReportUrl: "@Url.Action("RunReportLinkUnAuth", "DotNetReportApi")",
+            execReportUrl: "@Url.Action("RunReportUnAuth", "DotNetReportApi")?exportId=" + exportId,
+            runLinkReportUrl: "@Url.Action("RunReportLinkUnAuth", "DotNetReportApi")?exportId=" + exportId,
             reportWizard: $("#filter-panel"),
             reportHeader: "report-header",
             lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
-            apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")',
-            runReportApiUrl: '@Url.Action("RunReportApiUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId',
+            apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")?exportId=' + exportId,
+            runReportApiUrl: '@Url.Action("RunReportApiUnAuth", "DotNetReportApi")?exportId=' + exportId,
             reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)') || '{}',
             reportMode: "print",
             reportSql: "@Model.ReportSql",
@@ -447,7 +459,7 @@
             ReportSeries : "@Model.ReportSeries",
             reportHeader: 'report-header',
             userSettings: data,
-            dataFilters: JSON.parse(decodeHTMLEntities(data.dataFilters) || '{}'),
+            dataFilters: JSON.parse(data.dataFilters || '{}'),
             reportData: JSON.parse(@Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.ReportData ?? "{}"))),
             getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
             chartSize: { width: 800, height: 450 }
@@ -490,8 +502,9 @@
         }
 
         var checkInterval;
+        var placeholdersReady = false;
         function showReportWhenReady() {
-            if (checkReportsLoaded()) {
+            if (placeholdersReady && checkReportsLoaded()) {
                 $('.report-inner').show();
                 if (checkInterval) {
                     clearInterval(checkInterval);
@@ -500,14 +513,12 @@
         }
 
         vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
-            if (vm.useReportHeader()) {
-                vm.headerDesigner.init(true);
-            }
-            if (vm.useReportFooter()) {
-                vm.footerDesigner.init(true);
-            }
+            var headerLoaded = vm.useReportHeader() ? vm.headerDesigner.init(true) : null;
+            var footerLoaded = vm.useReportFooter() ? vm.footerDesigner.init(true) : null;
+            var settingsLoaded = vm.loadAppSettings ? vm.loadAppSettings() : null;
 
-            setTimeout(function () {
+            // The header/footer html is fetched over ajax, so wait for it
+            $.when(headerLoaded, footerLoaded, settingsLoaded).always(function () {
                 try {
                     var userName = vm.currentUserName || vm.currentUserId || '';
                     var userRoles = vm.currentUserRole || '';
@@ -569,7 +580,8 @@
                     window.reportHeaderHeightIn = $h.length ? measureHtmlHeightInches($h.html()) : 0;
                     window.reportFooterHeightIn = $f.length ? measureHtmlHeightInches($f.html()) : 0;
                 } catch (e) { console.log('placeholder substitution failed', e); }
-            }, 600);
+                placeholdersReady = true;
+            });
 
             if (vm.useStoredProc()) {
                 setTimeout(function(){
@@ -581,12 +593,13 @@
 
             checkInterval = setInterval(showReportWhenReady, 500);
 
+            // Safety net only. 
             setTimeout(function () {
                 $('.report-inner').show();
                 if (checkInterval) {
                     clearInterval(checkInterval);
                 }
-            }, 1000);
+            }, 15000);
         });
 
                 $(window).resize(function () {
