@@ -610,6 +610,94 @@ function stripTableResizeArtifacts(html) {
     return wrapper.innerHTML;
 }
 
+var _dnrUnsafeElements = { SCRIPT: 1, IFRAME: 1, OBJECT: 1, EMBED: 1, APPLET: 1, LINK: 1, META: 1, BASE: 1, FRAME: 1, FRAMESET: 1 };
+var _dnrUriAttributes = ['href', 'src', 'xlink:href', 'action', 'formaction', 'data'];
+
+function sanitizeReportHtml(html) {
+    if (html == null || typeof html !== 'string' || html.indexOf('<') < 0) return html;
+
+    var doc;
+    try {
+        doc = new DOMParser().parseFromString(html, 'text/html');
+    } catch (e) {
+        return '';
+    }
+
+    var all = doc.body.querySelectorAll('*');
+    for (var i = all.length - 1; i >= 0; i--) {
+        var el = all[i];
+        if (_dnrUnsafeElements[el.tagName]) {
+            if (el.parentNode) el.parentNode.removeChild(el);
+            continue;
+        }
+        for (var j = el.attributes.length - 1; j >= 0; j--) {
+            var attr = el.attributes[j];
+            var name = attr.name.toLowerCase();
+            if (name.indexOf('on') === 0 || name === 'srcdoc') {
+                el.removeAttribute(attr.name);
+            } else if (_dnrUriAttributes.indexOf(name) >= 0) {
+                // strip whitespace/control chars that can disguise the scheme (e.g. "java\nscript:")
+                var val = (attr.value || '').replace(/[\u0000-\u0020]/g, '').toLowerCase();
+                if (val.indexOf('javascript:') === 0 || val.indexOf('vbscript:') === 0 ||
+                    (val.indexOf('data:') === 0 && val.indexOf('data:image/') !== 0)) {
+                    el.removeAttribute(attr.name);
+                }
+            }
+        }
+    }
+    return doc.body.innerHTML;
+}
+
+function secureSummernoteCodeview($el) {
+    if (!$el || !$el.length || $el.data('dnrCodeviewSecured')) return;
+    $el.data('dnrCodeviewSecured', true);
+
+    try {
+        var context = $el.data('summernote');
+        var codeview = context && context.modules && context.modules.codeview;
+        if (codeview) {
+            var origPurify = codeview.purify ? codeview.purify.bind(codeview) : null;
+            codeview.purify = function (value) {
+                return sanitizeReportHtml(origPurify ? origPurify(value) : value);
+            };
+        }
+    } catch (e) { /* render-side sanitizer remains the safety net */ }
+
+    $el.on('summernote.codeview.toggled', function () {
+        var $editor = $el.next('.note-editor');
+        if (!$editor.hasClass('codeview')) {
+            var code = $el.summernote('code');
+            var clean = sanitizeReportHtml(code);
+            if (clean !== code) $el.summernote('code', clean);
+        }
+    });
+}
+
+(function () {
+    if (!$.fn || typeof $.fn.summernote !== 'function' || $.fn.summernote.__dnrSecured) return;
+    var origSummernote = $.fn.summernote;
+
+    var wrapped = function () {
+        var args = Array.prototype.slice.call(arguments);
+        if (args.length >= 2 && (args[0] === 'code' || args[0] === 'pasteHTML') && typeof args[1] === 'string') {
+            args[1] = sanitizeReportHtml(args[1]);
+        }
+        var isInit = args.length === 0 || $.isPlainObject(args[0]);
+        var result = origSummernote.apply(this, args);
+        if (isInit) {
+            this.each(function () { secureSummernoteCodeview($(this)); });
+        }
+        return result;
+    };
+
+    // Preserve any statics Summernote hung off the plugin function.
+    for (var k in origSummernote) {
+        if (Object.prototype.hasOwnProperty.call(origSummernote, k)) wrapped[k] = origSummernote[k];
+    }
+    wrapped.__dnrSecured = true;
+    $.fn.summernote = wrapped;
+})();
+
 ko.bindingHandlers.summernote = {
     init: function (element, valueAccessor, allBindings) {
         const observable = valueAccessor();

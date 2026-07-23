@@ -1426,6 +1426,11 @@ tfoot tr.sub-total {
     .dropdown-submenu:hover .dropdown-menu {
         display: block;
     }
+
+    .dropdown-submenu.dropdown-submenu-left .dropdown-menu {
+        left: auto;
+        right: 100%;
+    }
 .pager-container {
     display: flex;
     align-items: center;
