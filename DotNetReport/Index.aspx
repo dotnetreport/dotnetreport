@@ -36,7 +36,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                     reportId: queryParams.reportId || 0,
                     userSettings: data,
                     dataFilters: data.dataFilters,
-                    printReportUrl: window.location.protocol + "//" + window.location.host + "/DotnetReport/ReportPrint.aspx",
+                    printReportUrl: window.location.protocol + "//" + window.location.host + "/DotnetReport/ReportPrint",
                     getTimeZonesUrl: svc + "GetAllTimezones",
                     samePageOnRun: true,
                     runExportUrl: svc
@@ -750,21 +750,42 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <i class="fa fa-file-pdf-o"></i> Pdf (Debug)
                                         </a>
                                     </li>
-                                    <li data-bind="visible: appSettings.useAltPdf">
+                                    <!-- Alt PDF, drilldown available (non-pivot, non-kpi) -> submenu -->
+                                    <li class="dropdown-submenu dropdown-submenu-left" data-bind="visible: appSettings.useAltPdf && canDrilldown() && !hasPivotColumn() && ReportType() != 'Single'">
+                                        <a class="dropdown-item dropdown-toggle" href="#"><i class="fa fa-file-pdf-o"></i> Pdf</a>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
+                                                      ? function() { PdfPage.isExpanded = false; $('#pdfOptionsModal').modal('show'); }
+                                                      : function() { downloadPdfAlt(); }">Standard</a>
+                                            </li>
+                                            <li>
+                                                <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
+                                                      ? function() { PdfPage.isExpanded = true; $('#pdfOptionsModal').modal('show'); }
+                                                      : function() { downloadPdfAltWithDrilldown('',''); }">Expanded</a>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <!-- Alt PDF, no drilldown / pivot / kpi -> flat (no expand) -->
+                                    <li data-bind="visible: appSettings.useAltPdf && (!canDrilldown() || hasPivotColumn() || ReportType() == 'Single')">
                                         <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
-                                              ? function() { $('#pdfOptionsModal').modal('show'); }
+                                              ? function() { PdfPage.isExpanded = false; $('#pdfOptionsModal').modal('show'); }
                                               : function() { downloadPdfAlt(); }">
                                             <i class="fa fa-file-pdf-o"></i> Pdf
                                         </a>
                                     </li>
-                                    <li>
+                                    <!-- Excel, drilldown available -> submenu -->
+                                    <li class="dropdown-submenu dropdown-submenu-left" data-bind="visible: canDrilldown()">
+                                        <a class="dropdown-item dropdown-toggle" href="#"><i class="fa fa-file-excel-o"></i> Excel</a>
+                                        <ul class="dropdown-menu">
+                                            <li><a href="#" class="dropdown-item" data-bind="click: downloadExcel">Standard</a></li>
+                                            <li><a href="#" class="dropdown-item" data-bind="click: downloadExcelWithDrilldown">Expanded</a></li>
+                                        </ul>
+                                    </li>
+                                    <!-- Excel, no drilldown -> flat -->
+                                    <li data-bind="visible: !canDrilldown()">
                                         <a href="#" class="dropdown-item" data-bind="click: downloadExcel">
                                             <i class="fa fa-file-excel-o"></i> Excel
-                                        </a>
-                                    </li>
-                                    <li data-bind="visible: canDrilldown">
-                                        <a class="dropdown-item" href="#" data-bind="click: downloadExcelWithDrilldown">
-                                            <i class="fa fa-file-excel-o"></i> Excel (Expanded)
                                         </a>
                                     </li>
                                     <li data-bind="hidden: appSettings.dontWordExport">

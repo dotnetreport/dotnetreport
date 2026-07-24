@@ -31,6 +31,7 @@ using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
 using PdfSharp.Pdf.IO;
 using ReportBuilder.Web.Models;
+using System.Threading;
 
 namespace ReportBuilder.Web.Models
 {
@@ -490,6 +491,7 @@ namespace ReportBuilder.Web.Models
         public bool isSubReport { get; set; }
         public bool subTotalPerGroup { get; set; }
         public string totalRowFormat { get; set; }
+        public string reportType { get; set; }
     }
     public interface IDnrDataConnection
     {
@@ -534,6 +536,204 @@ namespace ReportBuilder.Web.Models
         public static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
         public static bool useAltPivot = false;
         public static string defaultDateFormat = "United States";
+
+        private static readonly AsyncLocal<string> _dataFilters = new AsyncLocal<string>();
+        public static string CurrentDataFilters
+        {
+            get => string.IsNullOrEmpty(_dataFilters.Value) || _dataFilters.Value == "null" ? "{}" : _dataFilters.Value;
+            set => _dataFilters.Value = value;
+        }
+
+        #region Report HTML sanitization (server-side XSS guard)
+
+        [ThreadStatic] private static bool _htmlRemovedSomething;
+        private static Ganss.Xss.HtmlSanitizer _reportHtmlSanitizer;
+
+        private static readonly (string method, string leaf, string requireFlag, (string name, bool isJson)[] containers)[] _reportHtmlFields =
+        {
+            ("SaveReportHeader",      "headerJson", null,         new (string, bool)[0]),
+            ("SaveReportFooter",      "footerJson", null,         new (string, bool)[0]),
+            ("RunReport",             "reportHtml", "SaveReport",  new[] { ("ReportJson", true), ("ReportSettings", true) }),
+            ("AddDashboardWidget",    "text",       null,         new[] { ("widgetSettings", true), ("Widget", false) }),
+            ("UpdateDashboardWidget", "text",       null,         new[] { ("widgetSettings", true), ("Widget", false) }),
+        };
+
+        private static Ganss.Xss.HtmlSanitizer GetReportHtmlSanitizer()
+        {
+            if (_reportHtmlSanitizer != null) return _reportHtmlSanitizer;
+
+            var s = new Ganss.Xss.HtmlSanitizer();
+
+            s.KeepChildNodes = true;
+            foreach (var tag in new[] { "font", "u", "s", "strike", "small", "sub", "sup", "mark",
+                                        "figure", "figcaption", "section", "article", "header", "footer", "main" })
+                s.AllowedTags.Add(tag);
+            foreach (var attr in new[] { "style", "class", "align", "valign", "width", "height", "border",
+                                         "cellpadding", "cellspacing", "colspan", "rowspan", "bgcolor" })
+                s.AllowedAttributes.Add(attr);
+            s.AllowDataAttributes = true;
+
+            // Allow base64 images (data:image/...) but nothing else through the data: scheme.
+            s.AllowedSchemes.Add("data");
+            s.FilterUrl += (sender, e) =>
+            {
+                var url = (e.OriginalUrl ?? e.SanitizedUrl)?.TrimStart().ToLowerInvariant();
+                if (url != null && url.StartsWith("data:") && !url.StartsWith("data:image/"))
+                {
+                    e.SanitizedUrl = null;
+                    _htmlRemovedSomething = true;
+                }
+            };
+            s.RemovingTag += (sender, args) => { _htmlRemovedSomething = true; };
+            s.RemovingAttribute += (sender, args) => { _htmlRemovedSomething = true; };
+            s.RemovingStyle += (sender, args) => { _htmlRemovedSomething = true; };
+            s.RemovingAtRule += (sender, args) => { _htmlRemovedSomething = true; };
+            s.RemovingCssClass += (sender, args) => { _htmlRemovedSomething = true; };
+
+            return _reportHtmlSanitizer = s;
+        }
+
+        /// <summary>Strip executable markup from a raw HTML fragment. Null/empty passes through.</summary>
+        public static string SanitizeReportHtml(string html)
+            => string.IsNullOrEmpty(html) ? html : GetReportHtmlSanitizer().Sanitize(html);
+
+        private static bool TrySanitizeReportHtml(string html, out string clean)
+        {
+            _htmlRemovedSomething = false;
+            clean = GetReportHtmlSanitizer().Sanitize(html);
+            return _htmlRemovedSomething;
+        }
+
+        public static string SanitizeReportModelForMethod(string method, string model)
+        {
+            if (string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model)) return model;
+
+            (string method, string leaf, string requireFlag, (string name, bool isJson)[] containers) field = default;
+            var matched = false;
+            foreach (var f in _reportHtmlFields)
+            {
+                if (method.EndsWith(f.method, StringComparison.OrdinalIgnoreCase)) { field = f; matched = true; break; }
+            }
+            if (!matched) return model;
+
+            try
+            {
+                var root = JObject.Parse(model);
+                if (field.requireFlag != null && !GetBoolCI(root, field.requireFlag)) return model;
+                return SanitizeHtmlField(root, field.containers, 0, field.leaf) ? root.ToString(Formatting.None) : model;
+            }
+            catch
+            {
+                return model;
+            }
+        }
+
+        private static bool SanitizeHtmlField(JObject obj, (string name, bool isJson)[] containers, int idx, string leaf)
+        {
+            if (idx == containers.Length) return SanitizeHtmlLeaf(obj, leaf);
+
+            var (name, isJson) = containers[idx];
+            var prop = obj.Property(name, StringComparison.OrdinalIgnoreCase);
+            if (prop == null) return false;
+
+            if (isJson)
+            {
+                var innerJson = prop.Value.Type == JTokenType.String ? (string)prop.Value : null;
+                if (string.IsNullOrEmpty(innerJson)) return false;
+                JObject child;
+                try { child = JObject.Parse(innerJson); } catch { return false; }
+                if (!SanitizeHtmlField(child, containers, idx + 1, leaf)) return false;
+                prop.Value = child.ToString(Formatting.None);
+                return true;
+            }
+
+            // Plain nested object: descend in place; the change is captured when the nearest
+            // JSON-string ancestor is re-serialized.
+            if (prop.Value is  JObject childObj) return SanitizeHtmlField(childObj, containers, idx + 1, leaf);
+            return false;
+        }
+        private static bool SanitizeHtmlLeaf(JObject obj, string leaf)
+        {
+            var prop = obj.Property(leaf, StringComparison.OrdinalIgnoreCase);
+            if (prop == null || prop.Value.Type != JTokenType.String) return false;
+            var raw = (string)prop.Value;
+            if (string.IsNullOrEmpty(raw)) return false;
+
+            var decoded = Uri.UnescapeDataString(raw);
+            if (!TrySanitizeReportHtml(decoded, out var clean)) return false; // already safe -> leave bytes as-is
+
+            prop.Value = Uri.EscapeDataString(clean);
+            return true;
+        }
+
+        private static bool GetBoolCI(JObject obj, string name)
+        {
+            var prop = obj.Property(name, StringComparison.OrdinalIgnoreCase);
+            return prop != null && prop.Value.Type == JTokenType.Boolean && (bool)prop.Value;
+        }
+
+        #endregion
+
+        #region Custom SQL safety (read-only SELECT guard)
+
+        private static readonly string[] _sqlWriteKeywords =
+        {
+            "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "TRUNCATE", "MERGE",
+            "EXEC", "EXECUTE", "GRANT", "REVOKE", "DENY", "WAITFOR", "SHUTDOWN", "KILL",
+            "BACKUP", "RESTORE", "RECONFIGURE", "OPENROWSET", "OPENQUERY", "OPENDATASOURCE",
+            "OPENXML", "BULK", "INTO", "DBCC"
+        };
+
+        public static bool IsReadOnlySelectSql(string sql, out string reason)
+        {
+            reason = null;
+            if (string.IsNullOrWhiteSpace(sql)) { reason = "Empty SQL"; return false; }
+
+            // Strip block comments, line comments, and single-quoted string literals so keyword
+            // checks can't be fooled by content inside strings/comments.
+            var stripped = Regex.Replace(sql, @"/\*.*?\*/", " ", RegexOptions.Singleline);
+            stripped = Regex.Replace(stripped, @"--[^\n]*", " ");
+            stripped = Regex.Replace(stripped, @"'(?:''|[^'])*'", " '' ");
+            stripped = stripped.Trim();
+
+            if (stripped.Length == 0) { reason = "Empty SQL"; return false; }
+
+            // Must be a read query.
+            if (!Regex.IsMatch(stripped, @"^\s*(SELECT|WITH)\b", RegexOptions.IgnoreCase))
+            {
+                reason = "Only SELECT queries are allowed";
+                return false;
+            }
+
+            // Single statement only: no ';' other than an optional trailing one.
+            var withoutTrailing = stripped.TrimEnd().TrimEnd(';').TrimEnd();
+            if (withoutTrailing.Contains(';'))
+            {
+                reason = "Multiple SQL statements are not allowed";
+                return false;
+            }
+
+            // System / extended stored procedures.
+            if (Regex.IsMatch(stripped, @"\b(sp_|xp_)\w+", RegexOptions.IgnoreCase))
+            {
+                reason = "System stored procedures are not allowed";
+                return false;
+            }
+
+            // Data-modifying / procedural keywords.
+            foreach (var kw in _sqlWriteKeywords)
+            {
+                if (Regex.IsMatch(stripped, $@"\b{kw}\b", RegexOptions.IgnoreCase))
+                {
+                    reason = $"Keyword '{kw}' is not allowed in custom SQL";
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        #endregion
 
         public static System.Globalization.CultureInfo GetDateCulture(string dateFormatName)
         {
@@ -1163,6 +1363,7 @@ namespace ReportBuilder.Web.Models
                     new KeyValuePair<string, string>("UserIdForSchedule", ""),
                     new KeyValuePair<string, string>("ReportJson", postData),
                     new KeyValuePair<string, string>("SaveReport", "false"),
+                    new KeyValuePair<string, string>("dataFilters", CurrentDataFilters),
                 };
 
                 var encodedItems = keyvalues.Select(i => WebUtility.UrlEncode(i.Key) + "=" + WebUtility.UrlEncode(i.Value));
@@ -1811,6 +2012,20 @@ namespace ReportBuilder.Web.Models
                 return (countdata, sqlQryforCount, 1, new List<List<string>>());
             }
 
+            string finalPivotSql;
+            if (firstAggIndex < 0)
+            {
+                finalPivotSql = $@"
+                    SELECT * FROM (
+                        {baseQuery}
+                    ) src
+                    PIVOT (
+                        {pivotFunction} ([{nextColumnName}])
+                        FOR [{pivotColumn}] IN ({string.Join(", ", distinctValues)})
+                    ) AS pvt";
+            }
+            else
+            {
             var rowFields = sqlFields.Take(firstAggIndex).ToList();
             var measureFields = sqlFields.Skip(firstAggIndex).ToList();
 
@@ -1927,11 +2142,12 @@ namespace ReportBuilder.Web.Models
 
             string fromSql = fromBuilder.ToString();
 
-            string finalPivotSql = $@"
+            finalPivotSql = $@"
                 SELECT
                 {selectList}
                 {fromSql}
                 ";
+            }
 
             var sqlQry = $@"
                 SELECT * FROM (
@@ -1950,7 +2166,14 @@ namespace ReportBuilder.Web.Models
                 $" ORDER BY 1 {(desc ? "DESC" : "")} \r\n" +
                 $" OFFSET {(pageNumber - 1) * pageSize} ROWS FETCH NEXT {pageSize} ROWS ONLY";
 
-            dts = databaseConnection.ExecuteQuery(connectionString, finalPivotSql);
+            try
+            {
+                dts = databaseConnection.ExecuteQuery(connectionString, finalPivotSql);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"{ex.Message}\r\n\r\n-- Generated Pivot SQL --\r\n{finalPivotSql}", ex);
+            }
 
             var headerRows = new List<List<string>>();
             int levels = pivotColumns.Count;
@@ -2040,7 +2263,7 @@ namespace ReportBuilder.Web.Models
                 dts.Rows.Add(grand);
             }
 
-            return (dts, sqlQry, totalRecords, headerRows);
+            return (dts, finalPivotSql, totalRecords, headerRows);
         }
 
         public async static Task<DataSet> GetDrillDownDataAlternate(IDatabaseConnection databaseConnection, string connectionString, DataTable dt, List<string> sqlFields, string reportDataJson)
@@ -3186,19 +3409,195 @@ namespace ReportBuilder.Web.Models
                        .Replace("{report.name}", reportName ?? "");
             return text;
         }
+        private static byte[] BuildKpiPdfAlt(DataTable dt, List<ReportHeaderColumn> columns, string reportName, string pageSize, string pageOrientation, string reportDescription)
+        {
+            using (var ms = new MemoryStream())
+            {
+                var document = new PdfDocument();
+                var page = document.AddPage();
+                if (!string.IsNullOrEmpty(pageSize))
+                {
+                    switch (pageSize.ToUpper())
+                    {
+                        case "A4": page.Size = PdfSharp.PageSize.A4; break;
+                        case "LEGAL": page.Size = PdfSharp.PageSize.Legal; break;
+                        case "A1": page.Size = PdfSharp.PageSize.A1; break;
+                        case "A2": page.Size = PdfSharp.PageSize.A2; break;
+                        case "A3": page.Size = PdfSharp.PageSize.A3; break;
+                        case "TABLOID": page.Size = PdfSharp.PageSize.Tabloid; break;
+                        case "LETTER": default: page.Size = PdfSharp.PageSize.Letter; break;
+                    }
+                }
+                if (!string.IsNullOrEmpty(pageOrientation) && pageOrientation.ToUpper() == "LANDSCAPE")
+                    page.Orientation = PdfSharp.PageOrientation.Landscape;
+
+                var gfx = XGraphics.FromPdfPage(page);
+                double y = 40;
+
+                gfx.DrawString(reportName ?? "", new XFont("Arial", 16, XFontStyleEx.Bold), XBrushes.Black,
+                    new XRect(0, y, page.Width, 30), XStringFormats.Center);
+                y += 40;
+
+                if (!string.IsNullOrEmpty(reportDescription))
+                {
+                    gfx.DrawString(reportDescription, new XFont("Arial", 10, XFontStyleEx.Italic),
+                        new XSolidBrush(XColor.FromArgb(102, 112, 133)),
+                        new XRect(40, y, page.Width - 80, 30), XStringFormats.Center);
+                    y += 30;
+                }
+
+                y += 20;
+
+                if (dt == null || dt.Rows.Count == 0)
+                {
+                    gfx.DrawString("No data found", new XFont("Arial", 14, XFontStyleEx.Regular),
+                        new XSolidBrush(XColor.FromArgb(102, 112, 133)),
+                        new XRect(0, y, page.Width, 30), XStringFormats.Center);
+                    gfx.Dispose();
+                    document.Save(ms);
+                    return ms.ToArray();
+                }
+
+                var row = dt.Rows[0];
+                double cardWidth = Math.Min(320, page.Width.Point - 80);
+                double cardHeight = 120;
+                double cardX = (page.Width - cardWidth) / 2;
+                var borderPen = new XPen(XColor.FromArgb(222, 226, 230), 1);
+                var labelBrush = new XSolidBrush(XColor.FromArgb(71, 84, 103));
+
+                for (int c = 0; c < dt.Columns.Count; c++)
+                {
+                    var col = columns != null && columns.Count > c ? columns[c] : null;
+                    string label = col != null && !string.IsNullOrEmpty(col.fieldLabel)
+                        ? col.fieldLabel
+                        : (col != null && !string.IsNullOrEmpty(col.fieldName) ? col.fieldName : dt.Columns[c].ColumnName);
+
+                    string value = row[c]?.ToString() ?? "";
+                    try { GetColumnFormatting(dt.Columns[c], columns, ref value); } catch { }
+
+                    var cardRect = new XRect(cardX, y, cardWidth, cardHeight);
+                    gfx.DrawRectangle(borderPen, new XSolidBrush(XColor.FromArgb(249, 250, 251)), cardRect);
+
+                    gfx.DrawString(label, new XFont("Arial", 11, XFontStyleEx.Bold), labelBrush,
+                        new XRect(cardX, y + 14, cardWidth, 20), XStringFormats.TopCenter);
+                    gfx.DrawString(value, new XFont("Arial", 34, XFontStyleEx.Bold), XBrushes.Black,
+                        new XRect(cardX, y + 44, cardWidth, 60), XStringFormats.TopCenter);
+
+                    y += cardHeight + 20;
+                }
+
+                gfx.Dispose();
+                document.Save(ms);
+                return ms.ToArray();
+            }
+        }
 
         public async static Task<byte[]> GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-            string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "", bool subTotalPerGroup = false, string filterDetailsText = null, string reportDescription = null)
+    string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null,
+    string pageSize = "", string pageOrientation = "", bool subTotalPerGroup = false, string filterDetailsText = null, string reportDescription = null,
+    List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null, string reportType = null)
         {
             var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
+
+            if (reportType == "Single")
+                return BuildKpiPdfAlt(dt, columns, reportName, pageSize, pageOrientation, reportDescription);
+
             var allRowsList = new List<DataRow>();
             var currentGroupRowsList = new List<DataRow>();
+
+            var drilldownData = new Dictionary<int, DataTable>();
+            if (allExpanded && dt.Rows.Count > 0)
+            {
+                var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+                var data = await GetDataTable(reportSql, connectKey);
+                var qry = data.qry;
+                var sqlFields = data.sqlFields;
+                if (onlyAndGroupInDetailColumns != null && onlyAndGroupInDetailColumns.Any())
+                {
+                    columns.AddRange(onlyAndGroupInDetailColumns);
+                    var columnOrderList = GetGroupFunctionList(expandSqls);
+                    columns = columns.OrderBy(c => columnOrderList.FindIndex(g => g.CustomLabel == c.fieldName)).ToList();
+                }
+                var drilldownRow = new List<string>();
+                var dr = dt.Rows[0];
+                int fi = 0;
+                foreach (DataColumn dc in dt.Columns)
+                {
+                    if (fi >= sqlFields.Count) break;
+                    var col = sqlFields[fi++];
+                    var asIdx = col.LastIndexOf(" AS ");
+                    var sqlFieldName = asIdx >= 0 ? col.Substring(0, asIdx) : col;
+                    drilldownRow.Add($@"
+                {{
+                    ""Value"":""{dr[dc]}"",
+                    ""FormattedValue"":""{dr[dc]}"",
+                    ""LabelValue"":""'{dr[dc]}'"",
+                    ""NumericValue"":null,
+                    ""Column"":{{
+                        ""SqlField"":""{sqlFieldName}"",
+                        ""ColumnName"":""{dc.ColumnName}"",
+                        ""DataType"":""{dc.DataType}"",
+                        ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
+                        ""FormatType"":""""
+                    }}
+                }}");
+                }
+
+                bool isGroupInDetailExist = ContainsGroupInDetail(expandSqls);
+                var drillDownRowValue = $"\"DrillDownRow\": [{string.Join(",", drilldownRow)}]";
+                var reportData = expandSqls.Replace("\"DrillDownRow\":[]", drillDownRowValue);
+                if (!isGroupInDetailExist)
+                {
+                    reportData = reportData.Replace("\"IsAggregateReport\":true", "\"IsAggregateReport\":false");
+                }
+                reportData = UpdateOnlyTop(reportData);
+
+                var drilldownSqlStr =  RunReportApiCall(reportData);
+                SqlQuery ddQuery = null;
+                if (drilldownSqlStr.StartsWith("{\"sql\""))
+                {
+                    ddQuery = JsonConvert.DeserializeObject<SqlQuery>(drilldownSqlStr);
+                }
+                string drilldownSql = ddQuery?.sql ?? drilldownSqlStr;
+
+                if (!string.IsNullOrEmpty(drilldownSql))
+                {
+                    int batchSize = 100;
+                    for (int startIndex = 0; startIndex < dt.Rows.Count; startIndex += batchSize)
+                    {
+                        int endIndex = Math.Min(startIndex + batchSize, dt.Rows.Count);
+                        var combinedSqls = new StringBuilder();
+
+                        for (int rowIndex = startIndex; rowIndex < endIndex; rowIndex++)
+                        {
+                            var ddr = dt.Rows[rowIndex];
+                            string filteredSql = drilldownSql;
+                            foreach (DataColumn dc in dt.Columns)
+                            {
+                                var value = ddr[dc]?.ToString().Replace("'", "''") ?? "";
+                                filteredSql = filteredSql.Replace($"<{dc.ColumnName}>", value);
+                            }
+                            combinedSqls.AppendLine(filteredSql + ";");
+                        }
+                        var dts = databaseConnection.ExecuteDataSetQuery(connectionString, combinedSqls.ToString(), qry?.parameters);
+
+                        int t = 0;
+                        for (int rowIndex = startIndex; rowIndex < endIndex && t < dts.Tables.Count; rowIndex++, t++)
+                        {
+                            drilldownData[rowIndex] = dts.Tables[t];
+                        }
+                    }
+                }
+            }
+            // ---------- END DRILLDOWN PRE-FETCH ----------
 
             var document = new PdfDocument();
             int leftMargin = 40;
             int rightMargin = 40;
             double minColumnWidth = 100; // minimum column width
             double maxColumnWidth = 300; // optional max width limit
+            double detailIndent = 20;    // ADDED: indent for drilldown detail rows
 
             var tempPage = document.AddPage();
             if (!String.IsNullOrEmpty(pageSize))
@@ -3368,34 +3767,41 @@ namespace ReportBuilder.Web.Models
 
                         if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
                         {
-                            byte[] sPDFDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
-                            var imageStream = new MemoryStream(sPDFDecoded, 0, sPDFDecoded.Length, false, true);
-                            var image = XImage.FromStream(imageStream);
-                            var maxWidth = page.Width - 100;
-                            var maxHeight = page.Height - currentYPosition - 20;
-
-                            if (image.PixelWidth > maxWidth || image.PixelHeight > maxHeight)
+                            try
                             {
-                                var aspectRatio = (double)image.PixelWidth / image.PixelHeight;
-                                var width = maxWidth;
-                                var height = maxWidth / aspectRatio;
+                                byte[] sPDFDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
+                                var imageStream = new MemoryStream(sPDFDecoded, 0, sPDFDecoded.Length, false, true);
+                                var image = XImage.FromStream(imageStream);
+                                var maxWidth = page.Width - 100;
+                                var maxHeight = page.Height - currentYPosition - 20;
 
-                                if (height > maxHeight)
+                                if (image.PixelWidth > maxWidth || image.PixelHeight > maxHeight)
                                 {
-                                    height = maxHeight;
-                                    width = maxHeight * aspectRatio;
+                                    var aspectRatio = (double)image.PixelWidth / image.PixelHeight;
+                                    var width = maxWidth;
+                                    var height = maxWidth / aspectRatio;
+
+                                    if (height > maxHeight)
+                                    {
+                                        height = maxHeight;
+                                        width = maxHeight * aspectRatio;
+                                    }
+
+                                    rect = new XRect(50, currentYPosition, width, height);
+                                    gfx.DrawImage(image, rect);
+                                }
+                                else
+                                {
+                                    rect = new XRect(50, currentYPosition, image.PixelWidth, image.PixelHeight);
+                                    gfx.DrawImage(image, rect);
                                 }
 
-                                rect = new XRect(50, currentYPosition, width, height);
-                                gfx.DrawImage(image, rect);
+                                currentYPosition += (int)rect.Height + 20;
                             }
-                            else
+                            catch
                             {
-                                rect = new XRect(50, currentYPosition, image.PixelWidth, image.PixelHeight);
-                                gfx.DrawImage(image, rect);
+                                // Malformed/unsupported chart image: skip it rather than failing the whole PDF.
                             }
-
-                            currentYPosition += (int)rect.Height + 20;
                         }
                     }
 
@@ -3443,6 +3849,44 @@ namespace ReportBuilder.Web.Models
                     currentYPosition += headerHeight + 1;
                 }
 
+                void DrawDrilldownTable(DataTable ddt)
+                {
+                    if (ddt == null || ddt.Rows.Count == 0) return;
+                    var detailFontHeader = new XFont("Arial", 9, XFontStyleEx.Bold);
+                    var detailFontNormal = new XFont("Arial", 9, XFontStyleEx.Regular);
+                    var detailBg = new XSolidBrush(XColor.FromArgb(245, 245, 245));
+                    double availableWidth = columnWidths.Sum() - detailIndent;
+                    double colWidth = Math.Max(60, availableWidth / ddt.Columns.Count);
+
+                    if (currentYPosition + 16 > pageHeight)
+                        AddNewPageWithHeaders();
+                    double xPos = leftMargin + detailIndent;
+                    foreach (DataColumn dc in ddt.Columns)
+                    {
+                        var r = new XRect(xPos, currentYPosition, colWidth, 16);
+                        gfx.DrawRectangle(XPens.LightGray,detailBg, r);
+                        r.Inflate(-3, -3);
+                        tfx.DrawString(dc.ColumnName, detailFontHeader, XBrushes.Black, r, XStringFormats.TopLeft);
+                        xPos += colWidth;
+                    }
+                    currentYPosition += 16;
+                    foreach (DataRow row in ddt.Rows)
+                    {
+                        if (currentYPosition + 16 > pageHeight)
+                            AddNewPageWithHeaders();
+                        xPos = leftMargin + detailIndent;
+                        foreach (DataColumn dc in ddt.Columns)
+                        {
+                            var r = new XRect(xPos, currentYPosition, colWidth, 16);
+                            gfx.DrawRectangle(XPens.WhiteSmoke, r);
+                            r.Inflate(-3, -3);
+                            tfx.DrawString(row[dc]?.ToString() ?? "", detailFontNormal, XBrushes.Black, r, XStringFormats.TopLeft);
+                            xPos += colWidth;
+                        }
+                        currentYPosition += 16;
+                    }
+                    currentYPosition += 4;
+                }
                 AddNewPageWithHeaders(true);
                 var outerGroupIndexes = new HashSet<int>();
 
@@ -3591,6 +4035,13 @@ namespace ReportBuilder.Web.Models
                     allRowsList.Add(dt.Rows[i]);
                     currentGroupRowsList.Add(dt.Rows[i]);
                     lastGroupKey = groupKey;
+
+                    // ---------- ADDED: draw drilldown detail rows right under this parent row ----------
+                    if (allExpanded && drilldownData.TryGetValue(i, out var ddtForRow))
+                    {
+                        DrawDrilldownTable(ddtForRow);
+                    }
+                    // ---------- END ADDED ----------
                 }
 
                 // Last group subtotal
@@ -3645,11 +4096,33 @@ namespace ReportBuilder.Web.Models
                        .Replace("{report.name}", System.Net.WebUtility.HtmlEncode(reportName ?? ""));
         }
 
+        private static string _wordReportCss;
+
+        private static string GetWordReportCss()
+        {
+            if (_wordReportCss != null) return _wordReportCss;
+
+            var css = "";
+            try
+            {
+                var path = new[]
+                    {
+                        Path.Combine(AppContext.BaseDirectory, "wwwroot", "css", "dotnetreport.css"),
+                        Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "css", "dotnetreport.css")
+                    }.FirstOrDefault(File.Exists);
+
+                if (path != null) css = File.ReadAllText(path);
+            }
+            catch { }
+            return _wordReportCss = css;
+        }
+
         private static string WrapHtmlForWord(string innerHtml)
         {
             return "<html xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:w=\"urn:schemas-microsoft-com:office:word\">" +
                    "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />" +
                    "<style>" +
+                   GetWordReportCss() +
                    "body, p, div, span, td, th, li { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; font-size: 11pt; }" +
                    "</style></head><body>" + (innerHtml ?? "") + "</body></html>";
         }

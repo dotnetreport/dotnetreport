@@ -47,6 +47,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/docs/advance-topics/global-filters/
+            DotNetReportHelper.CurrentDataFilters = JsonConvert.SerializeObject(settings.DataFilters);
 
             return settings;
         }
@@ -116,6 +117,34 @@ namespace ReportBuilder.WebForms.DotNetReport
             public bool includeOnEveryPage { get; set; }
             public string userId { get; set; } = "";
         }
+        public class SaveExportSessionRequest
+        {
+            public string clientId { get; set; }
+            public string userId { get; set; }
+            public string currentUserRole { get; set; } // comma separated
+            public string dataFilters { get; set; } // json string
+        }
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public async Task<object> SaveExportSession(string clientId, string userId, string currentUserRole, string dataFilters)
+        {
+
+            var settings = new DotNetReportSettings
+            {
+                ClientId = HttpUtility.HtmlDecode(clientId ?? ""),
+                UserId = HttpUtility.HtmlDecode(userId ?? ""),
+                CurrentUserRole = HttpUtility.HtmlDecode(currentUserRole ?? "")
+                    .Split(',', (char)StringSplitOptions.RemoveEmptyEntries)
+                    .ToList(),
+                DataFilters = string.IsNullOrEmpty(dataFilters)
+                    ? new { }
+                    : JsonConvert.DeserializeObject<object>(HttpUtility.HtmlDecode(dataFilters)) ?? new { }
+            };
+
+            var exportId = ExportSessionStore.Save(settings);
+            return exportId;
+
+        }
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public async Task<object> CallReportApiUnAuth(string method, string model)
@@ -124,7 +153,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             var settings = ExportSessionStore.Get(exportId);
             if (settings == null)
                 throw new Exception("Unauthorized");
-
+            DotNetReportHelper.CurrentDataFilters = JsonConvert.SerializeObject(settings.DataFilters ?? new { });
             return await CallReportApi(method, model, null);
         }
         [WebMethod(EnableSession = true)]
@@ -644,6 +673,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             var settings = ExportSessionStore.Get(exportId);
             if (settings == null)
                 throw new Exception("Unauthorized");
+            DotNetReportHelper.CurrentDataFilters = JsonConvert.SerializeObject(settings.DataFilters ?? new { });
             var data = new RunReportParameters
             {
                 reportSql = reportSql,
@@ -675,6 +705,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             var settings = ExportSessionStore.Get(exportId);
             if (settings == null)
                 throw new Exception("Unauthorized");
+            DotNetReportHelper.CurrentDataFilters = JsonConvert.SerializeObject(settings.DataFilters ?? new { });
             var data = new
             {
                 reportSql = reportSql,
@@ -708,6 +739,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             settings.AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"]; // Your Account Api Token from your http://dotnetreport.com Account
             settings.DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]; // Your Data Connect Api Token from your http://dotnetreport.com Account
             settings.CanUseAdminMode = true;
+            DotNetReportHelper.CurrentDataFilters = JsonConvert.SerializeObject(settings.DataFilters ?? new { });
             using (var client = new HttpClient())
             {
                 var content = new FormUrlEncodedContent(new[]
@@ -881,11 +913,10 @@ namespace ReportBuilder.WebForms.DotNetReport
 
                 value = TryDecrypt(value);
 
-                if (string.IsNullOrEmpty(value) || !value.StartsWith("SELECT ", StringComparison.OrdinalIgnoreCase))
+                if (!DotNetReportHelper.IsReadOnlySelectSql(value, out var sqlReason))
                 {
-                    throw new Exception("Invalid SQL");
+                    throw new Exception("Invalid SQL: " + sqlReason);
                 }
-
                 table.CustomTableSql = value;
 
                 var connect = DotNetReportHelper.GetConnection(dataConnectKey);
@@ -1051,8 +1082,8 @@ namespace ReportBuilder.WebForms.DotNetReport
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
                 await ValidateAccess(report.userId, report.reportSql);
                 var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
-
-                var pdf = await DotNetReportHelper.GetPdfFileAlt(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, report.expandSqls, columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction, report.pageSize, report.pageOrientation, reportDescription: HttpUtility.UrlDecode(report.reportDescription));
+                var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(report.onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.onlyAndGroupInColumnDetail));
+                var pdf = await DotNetReportHelper.GetPdfFileAlt(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, report.expandSqls, columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction, report.pageSize, report.pageOrientation, reportDescription: HttpUtility.UrlDecode(report.reportDescription),onlyAndGroupInDetailColumns: onlyAndGroupInDetailColumns, reportType: report.reportType);
                 pdfBytesList.Add(pdf);
             }
             var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);
@@ -1291,6 +1322,7 @@ namespace ReportBuilder.WebForms.DotNetReport
            string reportName,
            bool allExpanded,
            string expandSqls,
+           string onlyAndGroupInColumnDetail = null,
            string chartData = null,
            string columnDetails = null,
            bool includeSubtotal = false,
@@ -1304,7 +1336,8 @@ namespace ReportBuilder.WebForms.DotNetReport
            bool subTotalPerGroup = false,
            string filterDetailsText = null,
            string reportDescription = null,
-           string defaultDateFormat = null)
+           string defaultDateFormat = null,
+           string reportType = null)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -1318,8 +1351,8 @@ namespace ReportBuilder.WebForms.DotNetReport
             reportName = HttpUtility.UrlDecode(reportName);
             DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
-
-            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, subTotalPerGroup, HttpUtility.UrlDecode(filterDetailsText), HttpUtility.UrlDecode(reportDescription));
+            var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(onlyAndGroupInColumnDetail));
+            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, subTotalPerGroup, HttpUtility.UrlDecode(filterDetailsText), HttpUtility.UrlDecode(reportDescription), onlyAndGroupInDetailColumns, reportType);
 
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".pdf");
             Context.Response.ContentType = "application/pdf";
@@ -1329,7 +1362,7 @@ namespace ReportBuilder.WebForms.DotNetReport
 
         [WebMethod(EnableSession = true)]
         public async Task DownloadCsv(
-           string reportSql,
+            string reportSql,
             string connectKey,
             string reportName,
             bool allExpanded,

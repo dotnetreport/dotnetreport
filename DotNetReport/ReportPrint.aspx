@@ -71,7 +71,7 @@
 </head>
 
 <body>
-        <div data-bind="with: ReportResult">
+    <div data-bind="with: ReportResult">
 
         <!-- ko ifnot: HasError -->
         <div class="report-view" data-bind="with: $root">
@@ -348,10 +348,10 @@
                         </td>
                     </tr>
                     <!-- /ko -->
-                     <!-- ko if: subReportsRan().length > 0 -->
+                     <!-- ko if: nonInlineSubReports().length > 0 -->
                 <tr>
                     <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
-                        <div data-bind="foreach: subReportsRan">
+                        <div data-bind="foreach: nonInlineSubReports">
                             <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
                         </div>
                     </td>
@@ -379,8 +379,7 @@
                 </tfoot>
                 <!-- /ko -->
             </table>
-        </div>
-</script>
+        </div></script>
     <input type="hidden" id="exportId" value="<%= Session["ExportId"] %>" />
 
     <script src="../Scripts/jquery-3.7.1.min.js"></script>
@@ -413,7 +412,7 @@
             var data = {
                 currentUserId: '<%= Model.UserId %>',
                 currentUserRoles: ('<%= Model.CurrentUserRoles %>' || '').split(','),
-                dataFilters: '<%= Model.DataFilters %>',
+                dataFilters: decodeHTMLEntities('<%= Model.DataFilters %>') ,
                 clientId: '<%= Model.ClientId %>'
             };
 
@@ -425,9 +424,19 @@
                 // Remove new lines and carriage returns
                 return decodedText.replace(/[\n\r]/g, '');
             }
-
-            var svc = "/DotNetReport/ReportService.asmx/";
             var exportId = $("#exportId").val();
+            var svc = "/DotNetReport/ReportService.asmx/";
+
+            ajaxcall({
+                url: svc + "SaveExportSession",
+                type: 'POST',
+                async: false,
+                noBlocking: true,
+                data: JSON.stringify(data)
+            }).done(function (result) {
+                console.log(result)
+                if (result && result.exportId) exportId = result.exportId;
+            });
             var vm = new reportViewModel({
                 runReportUrl: svc + "Report",
                 execReportUrl: svc + "RunReportUnAuth",
@@ -485,8 +494,9 @@
             }
 
             var checkInterval;
+            var placeholdersReady = false;
             function showReportWhenReady() {
-                if (checkReportsLoaded()) {
+                if (placeholdersReady && checkReportsLoaded()) {
                     $('.report-inner').show();
                     if (checkInterval) {
                         clearInterval(checkInterval);
@@ -494,18 +504,20 @@
                 }
             }
             vm.LoadReport(<%= Model.ReportId %>, true,'<%= Model.ReportSeries %>').done(function () {
-            if (vm.useReportHeader()) {
-                        vm.headerDesigner.init(true);
-                    }
-                    if (vm.useReportFooter()) {
-                        vm.footerDesigner.init(true);
-                    }
+                    var headerLoaded = vm.useReportHeader() ? vm.headerDesigner.init(true) : null;
+                    var footerLoaded = vm.useReportFooter() ? vm.footerDesigner.init(true) : null;
+                    var settingsLoaded = vm.loadAppSettings ? vm.loadAppSettings() : null;
 
-                    setTimeout(function () {
+                    // The header/footer html is fetched over ajax, so wait for it
+                    $.when(headerLoaded, footerLoaded, settingsLoaded).always(function () {
                         try {
                             var userName = vm.currentUserName || vm.currentUserId || '';
                             var userRoles = vm.currentUserRole || '';
-                            var nowStr = new Date().toLocaleString();
+                            var locale = vm.resolveDateLocale ? vm.resolveDateLocale() : 'en-US';
+                            var now = new Date();
+                            var dateStr = now.toLocaleDateString(locale);
+                            var timeStr = now.toLocaleTimeString(locale);
+                            var nowStr = dateStr + ' ' + timeStr;
                             var reportName = (vm.ReportName && vm.ReportName()) ? vm.ReportName() : '';
 
                             function substitutePlaceholders(html) {
@@ -559,7 +571,8 @@
                             window.reportHeaderHeightIn = $h.length ? measureHtmlHeightInches($h.html()) : 0;
                             window.reportFooterHeightIn = $f.length ? measureHtmlHeightInches($f.html()) : 0;
                         } catch (e) { console.log('placeholder substitution failed', e); }
-                    }, 600);
+                        placeholdersReady = true;
+                    });
 
                     if (vm.useStoredProc()) {
                         setTimeout(function () {
@@ -571,12 +584,13 @@
 
                     checkInterval = setInterval(showReportWhenReady, 500);
 
+                    // Safety net only. 
                     setTimeout(function () {
                         $('.report-inner').show();
                         if (checkInterval) {
                             clearInterval(checkInterval);
                         }
-                    }, 1000);
+                    }, 15000);
                 });
 
                 $(window).resize(function () {
@@ -586,99 +600,99 @@
             });
     </script>
 
-            <script type="text/html" id="filter-details-summary">
-        <!-- ko if: typeof ShowFilterDetails === 'function' && ShowFilterDetails() && typeof filterDetailsSummary === 'function' && filterDetailsSummary() -->
-        <div style="border-left: 2px solid #adb5bd; padding-top: 4px; padding-left: 3px; padding-bottom: 4px; font-size: 0.8rem;">
-            <i class="fa fa-filter"></i>
-            <b>Filters:</b>
-            <span data-bind="html: filterDetailsSummary()"></span>
-        </div>
-        <!-- /ko -->
-    </script>
+ <script type="text/html" id="filter-details-summary">
+    <!-- ko if: typeof ShowFilterDetails === 'function' && ShowFilterDetails() && typeof filterDetailsSummary === 'function' && filterDetailsSummary() -->
+    <div style="border-left: 2px solid #adb5bd; padding-top: 4px; padding-left: 3px; padding-bottom: 4px; font-size: 0.8rem;">
+        <i class="fa fa-filter"></i>
+        <b>Filters:</b>
+        <span data-bind="html: filterDetailsSummary()"></span>
+    </div>
+    <!-- /ko -->
+</script>
 
-    <script type="text/html" id="fly-filter-template">
-        <div data-bind="visible: FlyFilters().length>0" style="padding-left: 30px; padding-right: 30px; padding-top: 20px">
-            <b>Filters</b>
-            <div class="">
-                <!-- ko foreach: FlyFilters -->
-                <div class="row">
-                    <div class="col-sm-5 col-xs-4">
-                        <div data-bind="with: Field">
-                            <div data-bind="if: $parent.Apply">
-                                <label>
-                                    <span data-bind="text: selectedFilterName"></span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <div data-bind="with: Field" class="col-sm-2 col-xs-3">
-                        <div class="form-group" data-bind="if: $parent.Apply">
-                            <span data-bind="text: $parent.Operator"></span>
-                        </div>
-                    </div>
-                    <div data-bind="with: Field" class="col-sm-5 col-xs-5">
+<script type="text/html" id="fly-filter-template">
+    <div data-bind="visible: FlyFilters().length>0" style="padding-left: 30px; padding-right: 30px; padding-top: 20px">
+        <b>Filters</b>
+        <div class="">
+            <!-- ko foreach: FlyFilters -->
+            <div class="row">
+                <div class="col-sm-5 col-xs-4">
+                    <div data-bind="with: Field">
                         <div data-bind="if: $parent.Apply">
-                            <div data-bind="template: 'report-filter', data: $data"></div>
+                            <label>
+                                <span data-bind="text: selectedFilterName"></span>
+                            </label>
                         </div>
                     </div>
                 </div>
-                <!-- /ko -->
-            </div>
-        </div>
-    </script>
-
-
-    <script type="text/html" id="report-filter">
-        <div class="form-group">
-            <!-- ko if: !hasForeignKey-->
-            <!-- ko if: fieldType=='DateTime'-->
-            <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
-            <span data-bind="text: $parent.Value"></span>
-            <!-- /ko -->
-            <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
-            From &nbsp;
-            <span data-bind="text: $parent.Value"></span>
-            to &nbsp;
-            <span data-bind="text: $parent.Value2"></span>
-            <!-- /ko -->
-            <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
-            <span data-bind="text: $parent.Value"></span>
-            <div data-bind="if: $parent.Value().indexOf('Today +') >= 0 || $parent.Value().indexOf('Today -') >= 0">
-                <span type="number" style="width: 80px;" data-bind="text: $parent.Value2"></span><span> days</span>
+                <div data-bind="with: Field" class="col-sm-2 col-xs-3">
+                    <div class="form-group" data-bind="if: $parent.Apply">
+                        <span data-bind="text: $parent.Operator"></span>
+                    </div>
+                </div>
+                <div data-bind="with: Field" class="col-sm-5 col-xs-5">
+                    <div data-bind="if: $parent.Apply">
+                        <div data-bind="template: 'report-filter', data: $data"></div>
+                    </div>
+                </div>
             </div>
             <!-- /ko -->
-            <!-- /ko -->
-            <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
-            <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-            <span type="number" data-bind="text: $parent.Value, disable: $parent.Operator() == 'is default'"></span>
-            <!-- /ko -->
-            <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
-            From &nbsp;
-            <span type="number" data-bind="text: $parent.Value"></span>
-            to &nbsp;
-            <span type="number" data-bind="text: $parent.Value2"></span>
-            <!-- /ko -->
-            <!-- /ko -->
-            <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-            <span data-bind="text: $parent.Value== '0' ? 'No' : 'Yes'">
-            </span>
-            <!-- /ko -->
-            <!-- ko if: ['Int','Money','Float','Double','Date','DateTime','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-            <span type="text" data-bind="text: $parent.Value, disable: $parent.Operator() == 'is default'"></span>
-            <!-- /ko -->
-            <!-- /ko -->
-            <!-- ko if: hasForeignKey && $parent.Operator() != 'all' -->
-            <!-- ko if: hasForeignParentKey && $parent.showParentFilter() -->
-            <span data-bind="text: $parent.ParentIn"></span>
-            <!-- /ko -->
-            <!-- ko if: $parent.Operator()=='='-->
-            <span data-bind="text: $parent.Value"></span>
-            <!-- /ko -->
-            <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-            <span data-bind="text: $parent.ValueIn"></span>
-            <!-- /ko -->
-            <!-- /ko -->
         </div>
-    </script>
+    </div>
+</script>
+
+
+<script type="text/html" id="report-filter">
+    <div class="form-group">
+        <!-- ko if: !hasForeignKey-->
+        <!-- ko if: fieldType=='DateTime'-->
+        <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
+        <span data-bind="text: $parent.Value"></span>
+        <!-- /ko -->
+        <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
+        From &nbsp;
+        <span data-bind="text: $parent.Value"></span>
+        to &nbsp;
+        <span data-bind="text: $parent.Value2"></span>
+        <!-- /ko -->
+        <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
+        <span data-bind="text: $parent.Value"></span>
+        <div data-bind="if: $parent.Value().indexOf('Today +') >= 0 || $parent.Value().indexOf('Today -') >= 0">
+            <span type="number" style="width: 80px;" data-bind="text: $parent.Value2"></span><span> days</span>
+        </div>
+        <!-- /ko -->
+        <!-- /ko -->
+        <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
+        <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
+        <span type="number" data-bind="text: $parent.Value, disable: $parent.Operator() == 'is default'"></span>
+        <!-- /ko -->
+        <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
+        From &nbsp;
+        <span type="number" data-bind="text: $parent.Value"></span>
+        to &nbsp;
+        <span type="number" data-bind="text: $parent.Value2"></span>
+        <!-- /ko -->
+        <!-- /ko -->
+        <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
+        <span data-bind="text: $parent.Value== '0' ? 'No' : 'Yes'">
+        </span>
+        <!-- /ko -->
+        <!-- ko if: ['Int','Money','Float','Double','Date','DateTime','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
+        <span type="text" data-bind="text: $parent.Value, disable: $parent.Operator() == 'is default'"></span>
+        <!-- /ko -->
+        <!-- /ko -->
+        <!-- ko if: hasForeignKey && $parent.Operator() != 'all' -->
+        <!-- ko if: hasForeignParentKey && $parent.showParentFilter() -->
+        <span data-bind="text: $parent.ParentIn"></span>
+        <!-- /ko -->
+        <!-- ko if: $parent.Operator()=='='-->
+        <span data-bind="text: $parent.Value"></span>
+        <!-- /ko -->
+        <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
+        <span data-bind="text: $parent.ValueIn"></span>
+        <!-- /ko -->
+        <!-- /ko -->
+    </div>
+</script>
 </body>
 </html>
