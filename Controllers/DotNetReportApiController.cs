@@ -401,7 +401,7 @@ namespace ReportBuilder.Web.Controllers
                         sql = qry.sql;
                         if (!string.IsNullOrEmpty(qry.dbType)) DotNetReportHelper.dbtype = qry.dbType;
                     }
-                    if (!sql.StartsWith("EXEC"))
+                    if (!sql.StartsWith("EXEC") && !sql.StartsWith("CALL"))
                     {
                         sqlFields = DotNetReportHelper.SplitSqlColumns(sql, DotNetReportHelper.dbtype);
                         bool hasDistinct = Regex.IsMatch(sql, @"^\s*SELECT\s+(TOP\s+\d+\s+)?DISTINCT\b", RegexOptions.IgnoreCase);
@@ -498,7 +498,7 @@ namespace ReportBuilder.Web.Controllers
                     dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
                     dtPagedRun = await DotNetReportHelper.ExecuteCustomFunction(dtPagedRun, sql);
 
-                    if (sql.StartsWith("EXEC"))
+                    if (sql.StartsWith("EXEC") || sql.StartsWith("CALL"))
                     {
                         totalRecords = dtPagedRun.Rows.Count;
                         if (dtPagedRun.Rows.Count > 0)
