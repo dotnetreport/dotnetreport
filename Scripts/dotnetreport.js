@@ -353,6 +353,10 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 
 	self.hasSchedule = ko.observable(false);
 	self.emailTo = ko.observable('');
+	self.scheduleId = ko.observable(0);
+	self.dataFilters = ko.observable('');
+	self.filters = ko.observable('');
+	self.filterDetails = ko.observable('');
 
 	self.hasScheduleStart = ko.observable(false);
 	self.hasScheduleEnd = ko.observable(false);
@@ -454,6 +458,9 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 	};
 	self.toJs = function () {
 		return self.hasSchedule() ? {
+			Id: self.scheduleId() || 0,
+			DataFilters: self.dataFilters() || '',
+			Filters: self.filters() || '',
 			SelectedOption: self.selectedOption(),
 			SelectedDays: self.selectedDays().join(","),
 			SelectedMonths: self.selectedMonths().join(","),
@@ -483,6 +490,9 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 			SelectedDates: ''
 		};
 
+		self.scheduleId(data.Id || 0);
+		self.dataFilters(data.DataFilters || '');
+		self.filters(data.Filters || '');
 		self.selectedOption(data.SelectedOption);
 		self.selectedDays((data.SelectedDays || '').split(','));
 		self.selectedMonths((data.SelectedMonths || '').split(','));
@@ -4355,32 +4365,221 @@ var reportViewModel = function (options) {
 	};
 
 	// Schedule Report Modal
+	self.buildScheduleSummary = function (s) {
+		if (!s) return '';
+		var time = (s.SelectedHour || '12') + ':' + (s.SelectedMinute || '00') + ' ' + (s.SelectedAmPm || 'PM');
+		switch (s.SelectedOption) {
+			case 'hour': return 'Every hour';
+			case 'once': return 'Once on ' + (s.SelectedDates || '') + ' at ' + time;
+			case 'day': return 'Every day at ' + time;
+			case 'week': return 'Weekly on ' + (s.SelectedDays || '(days)') + ' at ' + time;
+			case 'month': return 'Monthly on day ' + (s.SelectedDates || '(dates)') + ' at ' + time;
+			case 'year': return 'Yearly in ' + (s.SelectedMonths || '(months)') + ' on ' + (s.SelectedDates || '(dates)') + ' at ' + time;
+			default: return (s.SelectedOption || '') + ' at ' + time;
+		}
+	};
+
+	self.scheduleFilterGroups = ko.observableArray([]);
+	self.scheduleFilterHost = {
+		FilterGroups: self.scheduleFilterGroups,
+		RemoveFilterGroup: function (g) { self.scheduleFilterGroups.remove(g); }
+	};
+
+	self.loadFiltersIntoGroups = function (rootGroups, filters) {
+		function add(list, group) {
+			if (!list || !list.length) return;
+			_.forEach(list, function (e) {
+				if (!e.FieldId && !e.FilterSettings) {
+					group = (group == null) ? rootGroups()[0] : group.AddFilterGroup({ AndOr: e.AndOr });
+				} else {
+					if (group == null) group = rootGroups()[0];
+					group.AddFilter(e, false, false);
+				}
+				add(e.Filters, group);
+			});
+		}
+		add(filters, null);
+	};
+
+	// The report's current filters, serialized (used as the default for a new schedule).
+	self.getCurrentScheduleFilters = function () {
+		try { return JSON.stringify(self.BuildFilterData(self.FilterGroups())); } catch (e) { return ''; }
+	};
+
+	// Compact plain-English summary of a schedule's report-filter JSON. Kept byte-for-byte in sync
+	// with ReportHandlerService.BuildFilterDisplay (C#) so the report modal and Setup page read alike.
+	// Returns '' when there's no filter; callers show "Report default filters" for the empty case.
+	self.buildFilterSummaryFromJson = function (filtersJson) {
+		if (!filtersJson) return '';
+		try {
+			var arr = typeof filtersJson === 'string' ? JSON.parse(filtersJson) : filtersJson;
+			var parts = [];
+			(function walk(list) {
+				_.forEach(list, function (f) {
+					if (f.FieldId) {
+						var fld = _.find(self.SelectedFields(), function (x) { return x.fieldId == f.FieldId; });
+						var name = fld && fld.fieldName ? fld.fieldName : ('Field ' + f.FieldId);
+						var val = (f.Value1 != null && f.Value1 !== '') ? f.Value1 : '';
+						parts.push((name + ' ' + (f.Operator || '') + (val ? ' ' + val : '')).trim());
+					}
+					if (f.Filters && f.Filters.length) walk(f.Filters);
+				});
+			})(arr);
+			return parts.join(' and ');
+		} catch (e) { return ''; }
+	};
+
+	// Whitelist only the persistable schedule fields (drops audit fields like Created/Modified,
+	// which come back as DateTime.MinValue /Date(-62135575200000)/ and break server deserialization).
+	self.cleanScheduleForSave = function (s) {
+		function cleanDate(v) {
+			if (!v) return null;
+			if (typeof v === 'string') {
+				var mm = v.match(/\/Date\((-?\d+)\)\//);
+				if (mm) return parseInt(mm[1]) > 0 ? v : null; // drop MinValue/invalid
+			}
+			return v;
+		}
+		return {
+			Id: s.Id || 0,
+			UserId: s.UserId || '',
+			EmailTo: s.EmailTo || '',
+			Schedule: s.Schedule || '',
+			Format: s.Format || '',
+			SelectedOption: s.SelectedOption || '',
+			SelectedDays: s.SelectedDays || '',
+			SelectedDates: s.SelectedDates || '',
+			SelectedMonths: s.SelectedMonths || '',
+			SelectedHour: s.SelectedHour || '',
+			SelectedMinute: s.SelectedMinute || '',
+			SelectedAmPm: s.SelectedAmPm || '',
+			ScheduleStart: cleanDate(s.ScheduleStart),
+			ScheduleEnd: cleanDate(s.ScheduleEnd),
+			Timezone: s.Timezone || s.TimeZone || '',
+			DataFilters: s.DataFilters || '',
+			Filters: s.Filters || ''
+		};
+	};
+
 	self.scheduleReportModal = {
 		reportId: ko.observable(null),
 		reportName: ko.observable(''),
+		schedules: ko.observableArray([]),
+		loading: ko.observable(false),
+		viewMode: ko.observable('list'),   // 'list' | 'edit' | 'filter'
+		scheduleSummary: function (s) { return self.buildScheduleSummary(s); },
+		filterSummary: function (s) { return self.buildFilterSummaryFromJson(s ? s.Filters : '') || 'Report default filters'; },
+		filterEditingSchedule: null,
+		formatSummary: function (s) {
+			if (!s || !s.Format) return '';
+			try { var f = typeof s.Format === 'string' && s.Format.charAt(0) === '{' ? JSON.parse(s.Format) : { exportFormat: s.Format }; return f.exportFormat || ''; }
+			catch (e) { return s.Format; }
+		},
+
+		loadSchedules: function () {
+			var m = self.scheduleReportModal;
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/GetReportSchedules",
+					model: JSON.stringify({
+						reportId: m.reportId(),
+						adminMode: self.adminMode(),
+						userIdForSchedule: self.userIdForSchedule,
+						bypassThrottle: true
+					})
+				}
+			}).done(function (result) {
+				if (result && result.d) { result = result.d; }
+				if (result && result.result) { result = result.result; }
+				m.schedules(_.isArray(result) ? result : []);
+				m.viewMode('list');
+				m.loading(false);
+			}).fail(function () {
+				m.schedules([]);
+				m.viewMode('list');
+				m.loading(false);
+			});
+		},
+
+		addSchedule: function () {
+			self.scheduleBuilder.clear();
+			self.scheduleBuilder.hasSchedule(true);
+			self.scheduleBuilder.scheduleId(0);
+			self.scheduleBuilder.filters(self.getCurrentScheduleFilters());   // default = report's current filters
+			self.scheduleReportModal.viewMode('edit');
+		},
+
+		editSchedule: function (s) {
+			self.scheduleBuilder.fromJs(s);
+			self.scheduleBuilder.hasSchedule(true);
+			self.scheduleReportModal.viewMode('edit');
+		},
+
+		changeFilter: function (s) {
+			var m = self.scheduleReportModal;
+			m.filterEditingSchedule = s;
+			var root = new filterGroupViewModel({ isRoot: true, parent: self, options: options });
+			self.scheduleFilterGroups([root]);
+			var filters = (s && s.Filters) ? JSON.parse(s.Filters) : self.BuildFilterData(self.FilterGroups());
+			self.loadFiltersIntoGroups(self.scheduleFilterGroups, filters);
+			m.viewMode('filter');
+		},
+
+		applyScheduleFilter: function () {
+			var m = self.scheduleReportModal;
+			if (!m.filterEditingSchedule) { m.loadSchedules(); return; }
+			m.filterEditingSchedule.Filters = JSON.stringify(self.BuildFilterData(self.scheduleFilterGroups()));
+			m.persistSchedule(m.filterEditingSchedule);
+		},
+
+		deleteSchedule: function (s) {
+			var m = self.scheduleReportModal;
+			bootbox.confirm("Delete this schedule?", function (r) {
+				if (!r) return;
+				ajaxcall({
+					url: options.apiUrl,
+					data: {
+						method: "/ReportApi/DeleteReportSchedule",
+						model: JSON.stringify({ reportId: m.reportId(), scheduleId: s.Id })
+					}
+				}).done(function () {
+					toastr.success('Schedule deleted');
+					m.loadSchedules();
+				}).fail(function () { toastr.error('Failed to delete schedule'); });
+			});
+		},
+
+		backToList: function () {
+			self.scheduleReportModal.loadSchedules();
+		},
+
+		persistSchedule: function (scheduleData) {
+			var m = self.scheduleReportModal;
+			return ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/SaveReportSchedule",
+					model: JSON.stringify({ reportId: m.reportId(), scheduleData: JSON.stringify(self.cleanScheduleForSave(scheduleData)) })
+				}
+			}).done(function () {
+				toastr.success('Schedule saved');
+				m.loadSchedules();
+			}).fail(function () { toastr.error('Failed to save schedule'); });
+		},
+
 		saveSchedule: function () {
+			var m = self.scheduleReportModal;
 			var scheduleData = self.scheduleBuilder.toJs();
 
-			// If schedule is unchecked, confirm removal
+			// Unchecked "Set Schedule": delete if it was an existing row, else just go back.
 			if (!scheduleData) {
-				bootbox.confirm("Are you sure you want to remove the schedule for this report?", function (r) {
-					if (r) {
-						ajaxcall({
-							url: options.apiUrl,
-							data: {
-								method: "/ReportApi/DeleteReportSchedule",
-								model: JSON.stringify({
-									reportId: self.scheduleReportModal.reportId()								
-								})
-							}
-						}).done(function (result) {
-							toastr.success('Schedule removed successfully');
-							$('#modal-schedule-report').modal('hide');
-						}).fail(function (err) {
-							toastr.error('Failed to remove schedule');
-						});
-					}
-				});
+				var editingId = self.scheduleBuilder.scheduleId();
+				if (editingId > 0) {
+					m.deleteSchedule({ Id: editingId });
+				} else {
+					m.loadSchedules();
+				}
 				return;
 			}
 
@@ -4402,7 +4601,6 @@ var reportViewModel = function (options) {
 				return;
 			}
 
-			// Validate each comma-separated email address
 			var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 			var emails = scheduleData.EmailTo.split(',').map(function (e) { return e.trim(); }).filter(function (e) { return e !== ''; });
 			if (!emails.every(function (e) { return emailRegex.test(e); })) {
@@ -4411,47 +4609,26 @@ var reportViewModel = function (options) {
 				return;
 			}
 
-			// Save the schedule
-			ajaxcall({
-				url: options.apiUrl,
-				data: {
-					method: "/ReportApi/SaveReportSchedule",
-					model: JSON.stringify({
-						reportId: self.scheduleReportModal.reportId(),
-						scheduleData: JSON.stringify(scheduleData)
-					})
-				}
-			}).done(function (result) {
-				toastr.success('Schedule saved successfully');
-				$('#modal-schedule-report').modal('hide');
-			}).fail(function (err) {
-				toastr.error('Failed to save schedule');
-			});
+			m.persistSchedule(scheduleData);
 		}
 	};
 
+	$(document).off('shown.bs.modal.schedopts').on('shown.bs.modal.schedopts', '#pdfOptionsScheduleModal, #wordOptionsScheduleModal', function () {
+		$(this).css('z-index', 1065);
+		$('.modal-backdrop').last().css('z-index', 1060);
+	});
+
 	self.openScheduleModal = function (report) {
-		self.scheduleReportModal.reportId(report.reportId);
-		self.scheduleReportModal.reportName(report.reportName);
-
-		// Load existing schedule for this report and user
-		ajaxcall({
-			url: options.apiUrl,
-			data: {
-				method: "/ReportApi/GetReportSchedule",
-				model: JSON.stringify({
-					reportId: report.reportId
-				})
-			},
-			noBlocking: true
-		}).done(function (result) {
-			if (result && result.d) { result = result.d; }
-			if (result && result.result) { result = result.result; }
-
-			// Load the schedule data into the scheduleBuilder, or reset if none exists
-			self.scheduleBuilder.fromJs(result && result.SelectedOption ? result : null);
+		var m = self.scheduleReportModal;
+		m.reportId(report.reportId);
+		m.reportName(report.reportName);
+		m.schedules([]);
+		m.viewMode('list');
+		m.loading(true);
+		self.LoadReport(report.reportId, true, '', true).done(function () {
+			m.loadSchedules();
 		}).fail(function () {
-			self.scheduleBuilder.fromJs(null);
+			m.loadSchedules();
 		});
 	};
 

@@ -1051,49 +1051,48 @@
                     <div data-bind="visible: schedules().length === 0">
                         <i class="fa fa-exclamation-circle"></i> No scheduled Reports or Dashboards available.
                     </div>
-                    <div class="container-fluid" data-bind="if: schedules().length > 0">
-                        <div data-bind="foreach: schedules">
-                            <div class="row border-bottom py-2">
-                                <div class="col-12">
-                                    For <span class="text-muted" data-bind="text: DashboardId === 0 ? 'Report' : 'Dashboard'"></span>
-                                    <b><span data-bind="text: Name"></span></b>
-                                </div>
-                            </div>
-
-                            <!-- Inner schedule items -->
-                            <div class="row fw-bold bg-light py-2 d-none d-md-flex">
-                                <div class="col-md"><i class="fa fa-clock-o"></i> Schedule</div>
-                                <div class="col-md"><i class="fa fa-envelope"></i> Email To</div>
-                                <div class="col-md"><i class="fa fa-file"></i> Format</div>
-                                <div class="col-md"><i class="fa fa-history"></i> Last Run</div>
-                                <div class="col-md"><i class="fa fa-user"></i> User ID</div>
-                                <div class="col-md"><i class="fa fa-globe"></i> Time Zone</div>
-                                <div class="col-md"><i class="fa fa-cogs"></i> Actions</div>
-                            </div>
-
-                            <div data-bind="foreach: { data: Schedules, as: 'item' }">
-                                <div class="row border-bottom py-2 align-items-center">
-                                    <div class="col-md" data-bind="text: item.ScheduleDisplay"></div>
-                                    <div class="col-md" data-bind="text: item.EmailTo"></div>
-                                    <div class="col-md"
-                                         data-bind="if: item.Format && item.Format.trim().substring(0,1) === '{'">
-                                        <div data-bind="html: item.Format.slice(1,-1).split(',').join('<br>')"></div>
-                                    </div>
-                                    <div class="col-md"
-                                         data-bind="if: !item.Format || item.Format.trim().substring(0,1) !== '{'">
-                                        <div data-bind="text: item.Format"></div>
-                                    </div>
-                                    <div class="col-md" data-bind="text: item.LastRun"></div>
-                                    <div class="col-md" data-bind="text: item.UserId ? item.UserId : 'N/A'"></div>
-                                    <div class="col-md" data-bind="text: item.Timezone ? item.Timezone : 'N/A'"></div>
-                                    <div class="col-md">
+                    <div class="table-responsive" data-bind="if: schedules().length > 0">
+                        <table class="table table-sm align-middle mb-0 scheduled-reports-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th><i class="fa fa-file-text-o"></i> Report / Dashboard</th>
+                                    <th><i class="fa fa-clock-o"></i> Schedule</th>
+                                    <th><i class="fa fa-envelope"></i> Email To</th>
+                                    <th><i class="fa fa-file"></i> Format</th>
+                                    <th><i class="fa fa-filter"></i> Filter</th>
+                                    <th><i class="fa fa-history"></i> Last Run</th>
+                                    <th><i class="fa fa-user"></i> User ID</th>
+                                    <th><i class="fa fa-globe"></i> Time Zone</th>
+                                    <th><i class="fa fa-cogs"></i> Actions</th>
+                                </tr>
+                            </thead>
+                            <!-- ko foreach: schedules -->
+                            <tbody class="border-top">
+                                <!-- ko foreach: { data: Schedules, as: 'item' } -->
+                                <tr>
+                                    <!-- ko if: $index() === 0 -->
+                                    <td class="align-middle border-end bg-light" data-bind="attr: { rowspan: $parent.Schedules.length }">
+                                        <span class="fw-bold" data-bind="text: $parent.Name"></span>
+                                        <span class="badge" data-bind="css: $parent.DashboardId === 0 ? 'bg-secondary' : 'bg-info', text: $parent.DashboardId === 0 ? 'Report' : 'Dashboard'"></span>
+                                    </td>
+                                    <!-- /ko -->
+                                    <td data-bind="text: item.ScheduleDisplay"></td>
+                                    <td class="text-break" data-bind="text: item.EmailTo"></td>
+                                    <td data-bind="text: $root.formatDisplay(item.Format)"></td>
+                                    <td class="small text-muted" data-bind="text: item.FilterDisplay ? item.FilterDisplay : 'Report default filters'"></td>
+                                    <td data-bind="text: item.LastRun"></td>
+                                    <td data-bind="text: item.UserId ? item.UserId : 'N/A'"></td>
+                                    <td data-bind="text: item.Timezone ? item.Timezone : 'N/A'"></td>
+                                    <td>
                                         <button class="btn btn-sm btn-danger" data-bind="click: $root.deleteSchedule">
                                             <i class="fa fa-trash"></i> Delete
                                         </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                                    </td>
+                                </tr>
+                                <!-- /ko -->
+                            </tbody>
+                            <!-- /ko -->
+                        </table>
                     </div>
                 </div>
             </div>

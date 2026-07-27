@@ -568,17 +568,18 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     </div>
                                     <div data-bind="if: reportsInFolder().length > 0 || reportsInSearch().length > 0">
                                         <div class="row fw-bold border-bottom py-2 w-100">
-                                            <div class="col-md-4">Name</div>
+                                            <div class="col-md-3">Name</div>
                                             <div class="col-md-1"></div>
+                                            <div class="col-md-2" data-bind="visible: adminMode">Modified</div>
+                                            <div class="col-md-2" data-bind="visible: adminMode">Modified By</div>
                                             <div class="col-md-2" data-bind="visible: searchReports()">Folder</div>
-                                            <div class="col-md-2"></div>
                                             <div class="col-md-2" data-bind="visible: adminMode">Access</div>
                                             <div class="col-md-1" data-bind="visible: adminMode">Direct Link</div>
                                         </div>
 
                                         <div class="report-list" data-bind="foreach: searchReports() ? reportsInSearch() : reportsInFolder()">
                                             <div class="row border-bottom py-2 align-items-center w-100">
-                                                <div class="col-md-4 d-flex align-items-center">
+                                                <div class="col-md-3 d-flex align-items-center">
                                                     <input type="checkbox" data-bind="visible: $root.selectMode, checked: isSelected" class="me-2" />
                                                     <span class="fa" data-bind="css: {
                                                     'fa-file': reportType=='List',
@@ -660,8 +661,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     </div>
 
                                                 </div>
-                                                <div class="col-md-2" data-bind="text: folderName, visible: $parent.searchReports()"></div>                                                
-                                                <div class="col-md-4" data-bind="visible: $parent.adminMode">
+                                                <div class="col-md-2 small text-muted" data-bind="visible: $parent.adminMode, text: dateLastUpdated"></div>
+                                                <div class="col-md-2 small text-muted text-truncate" data-bind="visible: $parent.adminMode, text: modifiedBy || '', attr: { title: modifiedBy || '' }"></div>
+                                                <div class="col-md-2" data-bind="text: folderName, visible: $parent.searchReports()"></div>
+                                                <div class="col-md-2" data-bind="visible: $parent.adminMode">
                                                     <div class="d-flex flex-wrap gap-1 align-items-center mt-1">
                                                         <span class="badge bg-info text-white" title="Manage Users" data-bind="text: userId ? '👤 ' + userId : '👤 Any User'"> </span>
                                                         <span class="badge bg-info text-white border" title="View only Users" data-bind="visible: viewOnlyUserId"> 👁 <span data-bind="text: viewOnlyUserId"></span> </span>
@@ -1089,11 +1092,63 @@ Its Recommended you use it as is, and only change styling as needed to match you
             </div>
             <div class="modal-body">
                 <h6 data-bind="text: reportName" class="mb-3"></h6>
-                <div data-bind="template: { name: 'report-schedule', data: $parent }"></div>
+
+                <div class="text-center py-4" data-bind="visible: loading">
+                    <span class="fa fa-spinner fa-spin fa-2x text-secondary"></span>
+                    <div class="text-muted small mt-2">Loading schedules...</div>
+                </div>
+
+                <!-- all schedules for this report -->
+                <div data-bind="visible: viewMode() === 'list' && !loading()">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong>Schedules</strong>
+                        <button type="button" class="btn btn-sm btn-primary" data-bind="click: addSchedule">
+                            <i class="fa fa-plus"></i> Add Schedule
+                        </button>
+                    </div>
+                    <div class="text-muted small mb-2" data-bind="visible: schedules().length === 0">
+                        No schedules yet. Click "Add Schedule" to create one.
+                    </div>
+                    <table class="table table-sm align-middle" data-bind="visible: schedules().length > 0">
+                        <thead>
+                            <tr>
+                                <th>When</th>
+                                <th>Email</th>
+                                <th>Format</th>
+                                <th data-bind="visible: $parent.adminMode()">Filter</th>
+                                <th class="text-end"></th>
+                            </tr>
+                        </thead>
+                        <tbody data-bind="foreach: schedules">
+                            <tr>
+                                <td data-bind="text: $parent.scheduleSummary($data)"></td>
+                                <td data-bind="text: EmailTo"></td>
+                                <td data-bind="text: $parent.formatSummary($data)"></td>
+                                <td class="small text-muted" data-bind="visible: $parents[1].adminMode(), text: $parent.filterSummary($data)"></td>
+                                <td class="text-end text-nowrap">
+                                    <button type="button" class="btn btn-sm btn-link p-0 me-2" data-bind="click: function() { $parent.editSchedule($data); }">Edit</button>
+                                    <button type="button" class="btn btn-sm btn-link p-0 me-2" data-bind="visible: $parents[1].adminMode(), click: function() { $parent.changeFilter($data); }">Change Filter</button>
+                                    <button type="button" class="btn btn-sm btn-link p-0 text-danger" data-bind="click: function() { $parent.deleteSchedule($data); }">Delete</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div data-bind="visible: viewMode() === 'edit'">
+                    <div data-bind="template: { name: 'report-schedule', data: $parent }"></div>
+                </div>
+                <div data-bind="visible: viewMode() === 'filter'">
+                    <strong>Filter for this schedule</strong>
+                    <div class="small text-muted mb-2">Applied when this schedule runs, overriding the report's saved filters.</div>
+                    <div data-bind="template: { name: 'filter-group', data: $parent.scheduleFilterHost }"></div>
+                </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" data-bind="click: saveSchedule">Save Schedule</button>
+                <button type="button" class="btn btn-secondary" data-bind="visible: viewMode() === 'list'" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary" data-bind="visible: viewMode() === 'edit', click: backToList">Back</button>
+                <button type="button" class="btn btn-primary" data-bind="visible: viewMode() === 'edit', click: saveSchedule">Save Schedule</button>
+                <button type="button" class="btn btn-secondary" data-bind="visible: viewMode() === 'filter', click: backToList">Back</button>
+                <button type="button" class="btn btn-primary" data-bind="visible: viewMode() === 'filter', click: applyScheduleFilter">Apply Filter</button>
             </div>
         </div>
     </div>
