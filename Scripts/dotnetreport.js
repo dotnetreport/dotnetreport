@@ -2,6 +2,17 @@
 /// License must be purchased for commercial use
 /// 2025 (c) www.dotnetreport.com
 
+function sanitizeLinkHref(url) {
+	var s = (url == null ? '' : String(url)).trim();
+	if (/^(javascript|data|vbscript):/i.test(s.replace(/[\u0000-\u0020]+/g, ''))) return '#';
+	return s
+		.replace(/&/g, '&amp;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;');
+}
+
 function formulaFieldViewModel(args) {
 	args = args || {};
 	var self = this;
@@ -7281,7 +7292,7 @@ var reportViewModel = function (options) {
 					else {
 						link = linkItem.LinkToUrl + (linkItem.SendAsQueryParameter ? ('?' + linkItem.QueryParameterName + '=' + (r.LabelValue ? r.LabelValue.replace(/['"]+/g, '') : '')) : '');
 					}
-					r.LinkTo = link;
+					r.LinkTo = /^(javascript|data|vbscript):/i.test((link || '').replace(/[\u0000-\u0020]+/g, '')) ? '#' : link;
 
 					if (self.subReports().find(sr => (sr.fieldId || 0) == col.fieldId && sr.reportId == linkItem.LinkedToReportId)) {
 						// Create a lightweight placeholder immediately so the spinner shows right away
@@ -8244,7 +8255,7 @@ var reportViewModel = function (options) {
 
 						if (item.LinkTo) {
 							rowsHTML += `<td ${tdStyle}>
-								<a href="${item.LinkTo}" target="_blank">${item.formattedVal()}</a>
+								<a href="${sanitizeLinkHref(item.LinkTo)}" target="_blank">${item.formattedVal()}</a>
 							</td>`;
 						} else {
 							rowsHTML += `<td ${tdStyle}>${item.formattedVal()}</td>`;
