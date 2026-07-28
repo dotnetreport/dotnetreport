@@ -137,149 +137,182 @@ Its Recommended you use it as is, and only change styling as needed to match you
             </div>
             <div class="card-body">
                 <div data-bind="visible: designingHeader, with: headerDesigner" style="display: none;" class="overflow-auto">
-                    <div class="checkbox">
-                        <label>
-                            <input type="checkbox" data-bind="checked: UseReportHeader"> Use Report Header
-                        </label>
-                    </div>
-                    <div data-bind="visible: UseReportHeader">
-                        <p class="alert alert-info">
-                            You can design the common report header below that will be applied to all reports where report headers are turned on.
-                        </p>
-                        <div class="form-group row m-1" data-bind="visible: clientListIds().length > 0">
-                            <div class="col-md-3 col-sm-3">
-                                <label class="control-label">Headers for other Clients saved</label>
+                    <div class="report-header-designer">
+                        <div class="d-flex align-items-center flex-wrap mb-3">
+                            <h6 class="mb-0 me-2"><i class="fa fa-window-maximize text-primary"></i> Report Headers</h6>
+                            <span class="text-muted small">A client (or Global) can have several named headers. The one marked <b>Default</b> is used when a report doesn't pick one.</span>
+                        </div>
+
+                        <!-- Overall on/off for report headers -->
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="rptHeaderUse" data-bind="checked: UseReportHeader">
+                            <label class="form-check-label" for="rptHeaderUse">Use report headers <span class="text-muted small">(uncheck to stop applying headers in reports)</span></label>
+                        </div>
+
+                        <!-- Off state (use `if` so .d-flex !important can't override a hidden state) -->
+                        <div data-bind="if: !UseReportHeader()">
+                            <div class="alert alert-secondary d-flex align-items-center justify-content-between py-2">
+                                <span><i class="fa fa-eye-slash"></i> Report headers are turned off and won't be applied in reports.</span>
+                                <button class="btn btn-primary btn-sm" data-bind="click: saveHtmlHeader"><i class="fa fa-save"></i> Save</button>
                             </div>
-                            <div class="col-md-3 col-sm-3">
-                                <select class="form-control"
+                        </div>
+
+                        <!-- Designer (hidden when report headers are turned off) -->
+                        <div data-bind="visible: UseReportHeader">
+                        <!-- Selection toolbar -->
+                        <div class="d-flex flex-wrap align-items-end gap-2 mb-3">
+                            <div data-bind="visible: clientListIds().length > 0">
+                                <label class="form-label small text-muted mb-1">Client scope</label>
+                                <select class="form-select form-select-sm" style="min-width: 200px;"
                                         data-bind="options: clientListIds,
                                             value: selectedHeaderClientId,
-                                            optionsCaption: 'No Client Id (Global)',
-                                            event: { change: function () { loadHtmlHeader(true); } }">
+                                            optionsCaption: 'Global (all clients)',
+                                            event: { change: function () { loadHeadersList(); } }">
                                 </select>
                             </div>
-                            <div class="col-md-1 col-sm-1">
-                                <span data-bs-toggle="tooltip" class="fa fa-question-circle helptip"
-                                      title="Choose a client to design its report header"></span>
+                            <div>
+                                <label class="form-label small text-muted mb-1">Header</label>
+                                <select class="form-select form-select-sm" style="min-width: 240px;"
+                                        data-bind="options: headersList,
+                                            optionsText: 'label',
+                                            optionsValue: 'id',
+                                            value: selectedHeaderId,
+                                            event: { change: function () { loadHeaderById(); } }">
+                                </select>
+                            </div>
+                            <div class="ms-auto d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-primary" data-bind="click: newHeader"><i class="fa fa-plus"></i> New</button>
+                                <button class="btn btn-sm btn-outline-danger" data-bind="click: deleteHeader, visible: selectedHeaderId() > 0"><i class="fa fa-trash"></i> Delete</button>
                             </div>
                         </div>
-                        <div class="form-group row m-1">
-                            <div class="col-md-3 col-sm-3">
-                                <label class="control-label">Specify Client Id to Restrict Access</label>
-                            </div>
-                            <div class="col-md-3 col-sm-3">
-                                <input class="form-control text-box single-line" type="text" data-bind="value: headerClientId">
-                            </div>
-                            <div class="col-md-1 col-sm-1">
-                                <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give all clients access (Global Report Header)"></span>
-                            </div>
-                        </div>
-                        <div class="form-group row m-1">
-                            <div class="col-md-12">
-                                <div class="dropdown d-inline-block me-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Insert System Variable
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{page.number}'); }">Page Number</a></li>
-                                        <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{page.total}'); }">Total Pages</a></li>
-                                        <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{current.user}'); }">Current User</a></li>
-                                        <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{current.user.roles}'); }">Current User Roles</a></li>
-                                        <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{current.datetime}'); }">Current Date/Time</a></li>
-                                        <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{report.name}'); }">Report Name</a></li>
-                                    </ul>
+
+                        <!-- Editor card -->
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-light py-2 d-flex align-items-center flex-wrap gap-2">
+                                <div class="flex-grow-1" style="min-width: 220px;">
+                                    <input class="form-control form-control-sm fw-semibold" type="text" placeholder="Header name (e.g. Invoice header)" data-bind="value: headerName">
                                 </div>
-                                <label class="ms-2">
-                                    <input type="checkbox" data-bind="checked: IncludeOnEveryPage" /> Include on every page in PDF/Word export
-                                </label>
+                                <div class="form-check mb-0">
+                                    <input class="form-check-input" type="checkbox" id="rptHeaderDefault" data-bind="checked: isDefault">
+                                    <label class="form-check-label small" for="rptHeaderDefault">Default for this scope</label>
+                                </div>
+                            </div>
+                            <div class="card-body p-2">
+                                <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+                                    <div class="dropdown">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fa fa-code"></i> Insert Variable
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{page.number}'); }">Page Number</a></li>
+                                            <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{page.total}'); }">Total Pages</a></li>
+                                            <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{current.user}'); }">Current User</a></li>
+                                            <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{current.user.roles}'); }">Current User Roles</a></li>
+                                            <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{current.datetime}'); }">Current Date/Time</a></li>
+                                            <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{report.name}'); }">Report Name</a></li>
+                                        </ul>
+                                    </div>
+                                    <div class="form-check mb-0">
+                                        <input class="form-check-input" type="checkbox" id="rptHeaderEveryPage" data-bind="checked: IncludeOnEveryPage">
+                                        <label class="form-check-label small" for="rptHeaderEveryPage">Repeat on every page (PDF/Word)</label>
+                                    </div>
+                                </div>
+                                <textarea id="report-header-editor"></textarea>
+                            </div>
+                            <div class="card-footer bg-white d-flex align-items-center flex-wrap gap-2 py-2">
+                                <button type="button" class="btn btn-sm btn-link text-decoration-none px-0" data-bind="visible: !showClientScope(), click: function() { showClientScope(true); }">
+                                    <i class="fa fa-user"></i> <span data-bind="text: headerClientId() ? 'Change client (' + headerClientId() + ')' : 'Restrict to a Client Id'"></span>
+                                </button>
+                                <div class="input-group input-group-sm" style="max-width: 400px;" data-bind="visible: showClientScope">
+                                    <span class="input-group-text">Client Id</span>
+                                    <input class="form-control" type="text" placeholder="Blank = Global" data-bind="value: headerClientId, event: { change: function () { applyHeaderScope(); } }">
+                                    <button class="btn btn-outline-secondary" type="button" data-bind="click: cancelHeaderScope" title="Cancel"><i class="fa fa-times"></i></button>
+                                    <span class="input-group-text bg-white" data-bs-toggle="tooltip" data-placement="top" title="Leave blank for a Global header. Changing this switches to that client's headers."><i class="fa fa-question-circle helptip"></i></span>
+                                </div>
+                                <button class="btn btn-primary btn-sm ms-auto" data-bind="click: saveHtmlHeader">
+                                    <i class="fa fa-save"></i> Save Header
+                                </button>
                             </div>
                         </div>
-                        <textarea id="report-header-editor"></textarea>
-                        <button class="btn btn-primary btn-sm mt-2" data-bind="click: saveHtmlHeader">
-                            Save Changes
-                        </button>
-                    </div>
-                    <div data-bind="visible: !UseReportHeader()">
-                        <p class="alert alert-info">
-                            If you turn off the <b>Use Report Header</b> option,
-                            the <b>Report Header</b> will not be applied in reports.
-                        </p>
-                        <button class="btn btn-primary btn-sm mt-2" data-bind="click: saveHtmlHeader">
-                            Save Changes
-                        </button>
+                        </div>
                     </div>
                 </div>
                 <div data-bind="visible: designingFooter, with: footerDesigner" style="display: none;" class="overflow-auto">
-                    <div class="checkbox">
-                        <label>
-                            <input type="checkbox" data-bind="checked: UseReportFooter"> Use Report Footer
-                        </label>
-                    </div>
-                    <div data-bind="visible: UseReportFooter">
-                        <p class="alert alert-info">
-                            You can design the common report footer below that will be applied to all reports where report footers are turned on.
-                        </p>
-                        <div class="form-group row m-1" data-bind="visible: clientListIds().length > 0">
-                            <div class="col-md-3 col-sm-3">
-                                <label class="control-label">Footers for other Clients saved</label>
+                    <div class="report-header-designer">
+                        <div class="d-flex align-items-center flex-wrap mb-3">
+                            <h6 class="mb-0 me-2"><i class="fa fa-window-minimize text-primary"></i> Report Footer</h6>
+                            <span class="text-muted small">One footer per client (or Global), applied to reports where footers are turned on.</span>
+                        </div>
+
+                        <!-- Overall on/off for report footers -->
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="rptFooterUse" data-bind="checked: UseReportFooter">
+                            <label class="form-check-label" for="rptFooterUse">Use report footers <span class="text-muted small">(uncheck to stop applying footers in reports)</span></label>
+                        </div>
+
+                        <!-- Off state (use `if` so .d-flex !important can't override a hidden state) -->
+                        <div data-bind="if: !UseReportFooter()">
+                            <div class="alert alert-secondary d-flex align-items-center justify-content-between py-2">
+                                <span><i class="fa fa-eye-slash"></i> Report footers are turned off and won't be applied in reports.</span>
+                                <button class="btn btn-primary btn-sm" data-bind="click: saveHtmlFooter"><i class="fa fa-save"></i> Save</button>
                             </div>
-                            <div class="col-md-3 col-sm-3">
-                                <select class="form-control"
+                        </div>
+
+                        <!-- Designer (hidden when report footers are turned off) -->
+                        <div data-bind="visible: UseReportFooter">
+                        <!-- Selection toolbar (footer has one per scope, so just the client scope) -->
+                        <div class="d-flex flex-wrap align-items-end gap-2 mb-3" data-bind="visible: clientListIds().length > 0">
+                            <div>
+                                <label class="form-label small text-muted mb-1">Client scope</label>
+                                <select class="form-select form-select-sm" style="min-width: 200px;"
                                         data-bind="options: clientListIds,
                                             value: selectedFooterClientId,
-                                            optionsCaption: 'No Client Id (Global)',
-                                            event: { change: function () { loadHtmlFooter(true); } }">
+                                            optionsCaption: 'Global (all clients)',
+                                            event: { change: function () { loadHtmlFooter(false); } }">
                                 </select>
                             </div>
-                            <div class="col-md-1 col-sm-1">
-                                <span data-bs-toggle="tooltip" class="fa fa-question-circle helptip"
-                                      title="Choose a client to design its report footer"></span>
-                            </div>
                         </div>
-                        <div class="form-group row m-1">
-                            <div class="col-md-3 col-sm-3">
-                                <label class="control-label">Specify Client Id to Restrict Access</label>
-                            </div>
-                            <div class="col-md-3 col-sm-3">
-                                <input class="form-control text-box single-line" type="text" data-bind="value: footerClientId">
-                            </div>
-                            <div class="col-md-1 col-sm-1">
-                                <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give all clients access (Global Report Footer)"></span>
-                            </div>
-                        </div>
-                        <div class="form-group row m-1">
-                            <div class="col-md-12">
-                                <div class="dropdown d-inline-block me-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Insert System Variable
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{page.number}'); }">Page Number</a></li>
-                                        <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{page.total}'); }">Total Pages</a></li>
-                                        <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{current.user}'); }">Current User</a></li>
-                                        <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{current.user.roles}'); }">Current User Roles</a></li>
-                                        <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{current.datetime}'); }">Current Date/Time</a></li>
-                                        <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{report.name}'); }">Report Name</a></li>
-                                    </ul>
+
+                        <!-- Editor card -->
+                        <div class="card shadow-sm">
+                            <div class="card-body p-2">
+                                <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+                                    <div class="dropdown">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fa fa-code"></i> Insert Variable
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{page.number}'); }">Page Number</a></li>
+                                            <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{page.total}'); }">Total Pages</a></li>
+                                            <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{current.user}'); }">Current User</a></li>
+                                            <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{current.user.roles}'); }">Current User Roles</a></li>
+                                            <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{current.datetime}'); }">Current Date/Time</a></li>
+                                            <li><a class="dropdown-item" href="#" data-bind="click: function() { insertPlaceholder('{report.name}'); }">Report Name</a></li>
+                                        </ul>
+                                    </div>
+                                    <div class="form-check mb-0">
+                                        <input class="form-check-input" type="checkbox" id="rptFooterEveryPage" data-bind="checked: IncludeOnEveryPage">
+                                        <label class="form-check-label small" for="rptFooterEveryPage">Repeat on every page (PDF/Word)</label>
+                                    </div>
                                 </div>
-                                <label class="ms-2">
-                                    <input type="checkbox" data-bind="checked: IncludeOnEveryPage" /> Include on every page in PDF/Word export
-                                </label>
+                                <textarea id="report-footer-editor"></textarea>
+                            </div>
+                            <div class="card-footer bg-white d-flex align-items-center flex-wrap gap-2 py-2">
+                                <button type="button" class="btn btn-sm btn-link text-decoration-none px-0" data-bind="visible: !showClientScope(), click: function() { showClientScope(true); }">
+                                    <i class="fa fa-user"></i> <span data-bind="text: footerClientId() ? 'Change client (' + footerClientId() + ')' : 'Restrict to a Client Id'"></span>
+                                </button>
+                                <div class="input-group input-group-sm" style="max-width: 400px;" data-bind="visible: showClientScope">
+                                    <span class="input-group-text">Client Id</span>
+                                    <input class="form-control" type="text" placeholder="Blank = Global" data-bind="value: footerClientId, event: { change: function () { applyFooterScope(); } }">
+                                    <button class="btn btn-outline-secondary" type="button" data-bind="click: cancelFooterScope" title="Cancel"><i class="fa fa-times"></i></button>
+                                    <span class="input-group-text bg-white" data-bs-toggle="tooltip" data-placement="top" title="Leave blank for a Global footer. Changing this switches to that client's footer."><i class="fa fa-question-circle helptip"></i></span>
+                                </div>
+                                <button class="btn btn-primary btn-sm ms-auto" data-bind="click: saveHtmlFooter">
+                                    <i class="fa fa-save"></i> Save Footer
+                                </button>
                             </div>
                         </div>
-                        <textarea id="report-footer-editor"></textarea>
-                        <button class="btn btn-primary btn-sm mt-2" data-bind="click: saveHtmlFooter">
-                            Save Changes
-                        </button>
-                    </div>
-                    <div data-bind="visible: !UseReportFooter()">
-                        <p class="alert alert-info">
-                            If you turn off the <b>Use Report Footer</b> option,
-                            the <b>Report Footer</b> will not be applied in reports.
-                        </p>
-                        <button class="btn btn-primary btn-sm mt-2" data-bind="click: saveHtmlFooter">
-                            Save Changes
-                        </button>
+                        </div>
                     </div>
                 </div>
                 <div data-bind="visible: !designingHeader() && !designingFooter()">

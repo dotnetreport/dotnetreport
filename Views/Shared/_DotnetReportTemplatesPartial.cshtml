@@ -3356,6 +3356,23 @@
                                             <select class="form-select form-select-sm" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID, valueAllowUnset: true"></select>
                                         </div>
                                     </div>
+                                    <div class="form-group row mb-2" data-bind="visible: SaveReport">
+                                        <label class="control-label"><i class="fa fa-window-maximize"></i> Report Header</label>
+                                        <div>
+                                            <select class="form-select form-select-sm" style="width: 100%;"
+                                                    data-bind="options: reportHeadersList, optionsText: 'label', optionsValue: 'id', value: ReportHeaderId, enable: !UseCustomReportHeader()"></select>
+                                        </div>
+                                        <div class="checkbox mt-1">
+                                            <label>
+                                                <input type="checkbox" data-bind="checked: UseCustomReportHeader, click: function() { setTimeout(toggleCustomReportHeader, 0); return true; }" />
+                                                Customize header for this report only
+                                            </label>
+                                        </div>
+                                        <div data-bind="visible: UseCustomReportHeader" class="mt-1">
+                                            <textarea id="report-custom-header-editor"></textarea>
+                                            <small class="text-muted d-block mt-1">Stored with this report only &mdash; it won't change the shared header list.</small>
+                                        </div>
+                                    </div>
                                     <hr class="my-1" />
                                     <div data-bind="visible: !useStoredProc()">
                                         <div data-bind="template: 'designer-options'"></div>

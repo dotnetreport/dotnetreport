@@ -121,6 +121,9 @@ namespace ReportBuilder.Web.Controllers
             public string? headerJson { get; set; } = "";
             public bool useReportHeader { get; set; }
             public string? headerClientId { get; set; } = "";
+            public int id { get; set; }
+            public string? name { get; set; } = "";
+            public bool isDefault { get; set; }
             public string? footerJson { get; set; } = "";
             public bool useReportFooter { get; set; }
             public string? footerClientId { get; set; } = "";

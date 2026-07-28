@@ -551,6 +551,7 @@ namespace ReportBuilder.Web.Models
             ("SaveReportHeader",      "headerJson", null,         new (string, bool)[0]),
             ("SaveReportFooter",      "footerJson", null,         new (string, bool)[0]),
             ("RunReport",             "reportHtml", "SaveReport",  new[] { ("ReportJson", true), ("ReportSettings", true) }),
+            ("RunReport",             "CustomReportHeaderHtml", "SaveReport",  new[] { ("ReportJson", true), ("ReportSettings", true) }),
             ("AddDashboardWidget",    "text",       null,         new[] { ("widgetSettings", true), ("Widget", false) }),
             ("UpdateDashboardWidget", "text",       null,         new[] { ("widgetSettings", true), ("Widget", false) }),
         };
@@ -605,19 +606,19 @@ namespace ReportBuilder.Web.Models
         {
             if (string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model)) return model;
 
-            (string method, string leaf, string requireFlag, (string name, bool isJson)[] containers) field = default;
-            var matched = false;
-            foreach (var f in _reportHtmlFields)
-            {
-                if (method.EndsWith(f.method, StringComparison.OrdinalIgnoreCase)) { field = f; matched = true; break; }
-            }
-            if (!matched) return model;
+            var fields = _reportHtmlFields.Where(f => method.EndsWith(f.method, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (fields.Count == 0) return model;
 
             try
             {
                 var root = JObject.Parse(model);
-                if (field.requireFlag != null && !GetBoolCI(root, field.requireFlag)) return model;
-                return SanitizeHtmlField(root, field.containers, 0, field.leaf) ? root.ToString(Formatting.None) : model;
+                var changed = false;
+                foreach (var field in fields)
+                {
+                    if (field.requireFlag != null && !GetBoolCI(root, field.requireFlag)) continue;
+                    if (SanitizeHtmlField(root, field.containers, 0, field.leaf)) changed = true;
+                }
+                return changed ? root.ToString(Formatting.None) : model;
             }
             catch
             {
