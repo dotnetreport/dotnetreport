@@ -53,7 +53,11 @@ namespace ReportBuilder.Web.Models
     public class DotNetReportScheduleModel : DotNetReportModel
     {
         public List<ReportHeaderColumn> Columns { get; set; } = new List<ReportHeaderColumn>();
-    } 
+        // Per-report header selection (ReportSettings carries ReportHeaderId / UseCustomReportHeader /
+        // CustomReportHeaderHtml); HideReportHeader means "don't use a header for this report".
+        public string ReportSettings { get; set; }
+        public bool HideReportHeader { get; set; }
+    }
 
     public class DotNetReportPrintModel : DotNetReportModel
     {

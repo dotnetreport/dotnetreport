@@ -512,7 +512,8 @@
         }
 
         vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
-            var headerLoaded = vm.useReportHeader() ? vm.headerDesigner.init(true) : null;
+            // Resolve the per-report header (chosen named header / custom / don't-use) not just the default.
+            var headerLoaded = vm.initReportHeaderForRun ? vm.initReportHeaderForRun() : (vm.useReportHeader() ? vm.headerDesigner.init(true) : null);
             var footerLoaded = vm.useReportFooter() ? vm.footerDesigner.init(true) : null;
             var settingsLoaded = vm.loadAppSettings ? vm.loadAppSettings() : null;
 
