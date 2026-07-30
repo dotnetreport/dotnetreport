@@ -1,6 +1,8 @@
 ﻿using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
+using HtmlAgilityPack;
+using Microsoft.CodeAnalysis;
 using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -8,8 +10,10 @@ using OfficeOpenXml;
 using PdfSharp.Drawing;
 using PdfSharp.Drawing.Layout;
 using PdfSharp.Pdf;
+using PdfSharp.Pdf.IO;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
+using System.Collections.Concurrent;
 using System.Data;
 using System.Drawing;
 using System.Net;
@@ -17,12 +21,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
-using Microsoft.CodeAnalysis;
-using System.Collections.Concurrent;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
-using PdfSharp.Pdf.IO;
 
 namespace ReportBuilder.Web.Models
 {
@@ -4131,7 +4132,9 @@ namespace ReportBuilder.Web.Models
                         var processedHeader = SubstituteHtmlPlaceholders(headerHtml, currentUserName, currentUserRoles, 1, 1, useWordFields: true, reportName: reportName);
                         var headerPart = mainPart.AddNewPart<HeaderPart>();
                         headerRelId = mainPart.GetIdOfPart(headerPart);
-
+                        processedHeader = ConvertBootstrapGridToTable(processedHeader);
+                        processedHeader = ConvertFlexToTable(processedHeader);
+                        processedHeader = ConvertGridToTable(processedHeader);
                         var altHdrPart = headerPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
                         var altHdrRelId = headerPart.GetIdOfPart(altHdrPart);
                         var fullHdrHtml = WrapHtmlForWord(processedHeader);
@@ -4164,7 +4167,9 @@ namespace ReportBuilder.Web.Models
                     {
                         var footerPart = mainPart.AddNewPart<FooterPart>();
                         footerRelId = mainPart.GetIdOfPart(footerPart);
-
+                        processedFooterHtml = ConvertBootstrapGridToTable(processedFooterHtml);
+                        processedFooterHtml = ConvertFlexToTable(processedFooterHtml);
+                        processedFooterHtml = ConvertGridToTable(processedFooterHtml);
                         var altFtrPart = footerPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
                         var altFtrRelId = footerPart.GetIdOfPart(altFtrPart);
                         var fullFtrHtml = WrapHtmlForWord(processedFooterHtml);
@@ -4228,6 +4233,9 @@ namespace ReportBuilder.Web.Models
                     }
                     if (hasCustomHtml)
                     {
+                        customHtml = ConvertBootstrapGridToTable(customHtml);
+                        customHtml = ConvertFlexToTable(customHtml);
+                        customHtml = ConvertGridToTable(customHtml);
                         var altBodyPart = mainPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
                         var altBodyRelId = mainPart.GetIdOfPart(altBodyPart);
                         var fullBodyHtml = WrapHtmlForWord(customHtml);
@@ -4560,7 +4568,302 @@ namespace ReportBuilder.Web.Models
                 return memStream.ToArray();
             }
         }
-        
+        private static string ConvertGridToTable(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            bool convertedAny;
+            do
+            {
+                convertedAny = false;
+
+                var gridNodes = doc.DocumentNode
+                    .SelectNodes("//*[contains(translate(@style,' ',''),'display:grid')]");
+
+                if (gridNodes == null) break;
+
+                var deepestFirst = gridNodes.OrderByDescending(GetDepth).ToList();
+
+                foreach (var gridNode in deepestFirst)
+                {
+                    ConvertSingleGridNode(doc, gridNode);
+                    convertedAny = true;
+                    break; // ek convert karke dobara fetch karo, DOM change ho chuka hy
+                }
+
+            } while (convertedAny);
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        private static void ConvertSingleGridNode(HtmlAgilityPack.HtmlDocument doc, HtmlNode gridNode)
+        {
+            var style = gridNode.GetAttributeValue("style", "");
+
+            var children = gridNode.ChildNodes
+                .Where(n => n.NodeType == HtmlNodeType.Element)
+                .ToList();
+            if (children.Count == 0) return;
+
+            // grid-template-columns se column count nikalo
+            string templateCols = ExtractStyleValue(style, "grid-template-columns");
+            int colCount = GetColumnCount(templateCols, children.Count);
+
+            string columnGap = ExtractStyleValue(style, "column-gap") ?? ExtractStyleValue(style, "gap") ?? "0px";
+            string containerBg = ExtractStyleValue(style, "background-color");
+
+            var wrapper = doc.CreateElement("div");
+            if (!string.IsNullOrEmpty(containerBg))
+                wrapper.SetAttributeValue("style", $"background-color:{containerBg};");
+
+            var table = doc.CreateElement("table");
+            table.SetAttributeValue("width", "100%");
+            table.SetAttributeValue("style", $"border-collapse:collapse; width:100%;{(string.IsNullOrEmpty(containerBg) ? "" : $" background-color:{containerBg};")}");
+            table.SetAttributeValue("cellspacing", "0");
+
+            // Children ko rows mein group karo (colCount ke hisaab se wrap)
+            for (int i = 0; i < children.Count; i += colCount)
+            {
+                var tr = doc.CreateElement("tr");
+                var rowChildren = children.Skip(i).Take(colCount).ToList();
+
+                foreach (var child in rowChildren)
+                {
+                    var td = doc.CreateElement("td");
+
+                    // *** Yahi missing piece tha: child ka apna background-color nikal ke td pe daalo ***
+                    var childStyle = child.GetAttributeValue("style", "");
+                    string childBg = ExtractStyleValue(childStyle, "background-color");
+                    string childPadding = ExtractStyleValue(childStyle, "padding") ?? "10px";
+
+                    var tdStyleParts = new List<string>
+            {
+                "vertical-align:top",
+                $"padding:{childPadding}"
+            };
+                    if (!string.IsNullOrEmpty(childBg))
+                        tdStyleParts.Add($"background-color:{childBg}");
+                    if (columnGap != "0px" && rowChildren.IndexOf(child) < rowChildren.Count - 1)
+                        tdStyleParts.Add($"padding-right:{columnGap}");
+
+                    td.SetAttributeValue("style", string.Join("; ", tdStyleParts) + ";");
+                    td.SetAttributeValue("width", $"{100 / colCount}%");
+
+                    // child ka background-color style se hata do (ab td pe hy), baaki styles rehne do
+                    if (!string.IsNullOrEmpty(childBg))
+                    {
+                        var cleanedStyle = System.Text.RegularExpressions.Regex.Replace(
+                            childStyle, @"background-color\s*:\s*[^;]+;?", "",
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        child.SetAttributeValue("style", cleanedStyle);
+                    }
+
+                    td.InnerHtml = child.OuterHtml;
+                    tr.AppendChild(td);
+                }
+                table.AppendChild(tr);
+            }
+
+            wrapper.AppendChild(table);
+            gridNode.ParentNode.ReplaceChild(wrapper, gridNode);
+        }
+
+        private static int GetColumnCount(string templateCols, int fallbackChildCount)
+        {
+            if (string.IsNullOrEmpty(templateCols))
+                return fallbackChildCount;
+
+            // Pattern: repeat(3, 1fr)
+            var repeatMatch = System.Text.RegularExpressions.Regex.Match(
+                templateCols, @"repeat\(\s*(\d+)\s*,");
+            if (repeatMatch.Success)
+                return int.Parse(repeatMatch.Groups[1].Value);
+
+            // Pattern: 1fr 1fr 1fr  ya  200px 1fr auto
+            var parts = templateCols.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length > 0 ? parts.Length : fallbackChildCount;
+        }
+        private static string ConvertBootstrapGridToTable(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            var rows = doc.DocumentNode.SelectNodes("//div[contains(concat(' ', normalize-space(@class), ' '), ' row ')]");
+            if (rows == null) return customHtml;
+
+            foreach (var row in rows.ToList())
+            {
+                var cols = row.SelectNodes("./div[contains(@class,'col-')]");
+                if (cols == null) continue;
+
+                // row ka apna inline background/style bhi ho sakta hy — table pe copy kar do
+                string rowStyle = row.GetAttributeValue("style", "");
+                string rowBg = ExtractStyleValue(rowStyle, "background-color");
+
+                var table = doc.CreateElement("table");
+                table.SetAttributeValue("width", "100%");
+                var tableStyle = "border-collapse:collapse; margin-bottom:10px;";
+                if (!string.IsNullOrEmpty(rowBg))
+                    tableStyle += $" background-color:{rowBg};";
+                table.SetAttributeValue("style", tableStyle);
+
+                var tr = doc.CreateElement("tr");
+
+                foreach (var col in cols)
+                {
+                    var td = doc.CreateElement("td");
+
+                    // *** Fix: col ka apna style (background-color, padding, etc.) nikal ke td pe daalo ***
+                    string colStyle = col.GetAttributeValue("style", "");
+                    string colBg = ExtractStyleValue(colStyle, "background-color");
+                    string colPadding = ExtractStyleValue(colStyle, "padding");
+
+                    var tdStyleParts = new List<string> { "vertical-align:top" };
+                    tdStyleParts.Add($"padding:{(string.IsNullOrEmpty(colPadding) ? "8px" : colPadding)}");
+                    if (!string.IsNullOrEmpty(colBg))
+                        tdStyleParts.Add($"background-color:{colBg}");
+
+                    td.SetAttributeValue("style", string.Join("; ", tdStyleParts) + ";");
+
+                    // col ke baaki inline styles (background-color/padding chhor ke) child div pe hi rehne do
+                    if (!string.IsNullOrEmpty(colStyle))
+                    {
+                        var cleanedStyle = System.Text.RegularExpressions.Regex.Replace(
+                            colStyle, @"(background-color|padding)\s*:\s*[^;]+;?", "",
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        col.SetAttributeValue("style", cleanedStyle);
+                    }
+
+                    td.InnerHtml = col.InnerHtml;
+                    tr.AppendChild(td);
+                }
+                table.AppendChild(tr);
+                row.ParentNode.ReplaceChild(table, row);
+            }
+            return doc.DocumentNode.OuterHtml;
+        }
+        private static string ConvertFlexToTable(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            bool convertedAny;
+            do
+            {
+                convertedAny = false;
+
+                // Kisi bhi tag pe display:flex dhoondo (div, span, section, header, footer, etc.)
+                var flexNodes = doc.DocumentNode
+                    .SelectNodes("//*[contains(translate(@style,' ',''),'display:flex')]");
+
+                if (flexNodes == null) break;
+
+                // Sabse deep-nested wala pehle convert karo (bottom-up),
+                // warna outer conversion nested flex ko tor dega
+                var deepestFirst = flexNodes.OrderByDescending(GetDepth).ToList();
+
+                foreach (var flexNode in deepestFirst)
+                {
+                    ConvertSingleFlexNode(doc, flexNode);
+                    convertedAny = true;
+                    break; // ek convert karke list dobara fetch karo (DOM change ho chuka)
+                }
+
+            } while (convertedAny);
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        private static void ConvertSingleFlexNode(HtmlAgilityPack.HtmlDocument doc, HtmlNode flexNode)
+        {
+            var style = flexNode.GetAttributeValue("style", "");
+
+            var children = flexNode.ChildNodes
+                .Where(n => n.NodeType == HtmlNodeType.Element)
+                .ToList();
+            if (children.Count == 0) return;
+
+            bool isColumn = ExtractStyleValue(style, "flex-direction")?.Trim() == "column";
+            string justify = ExtractStyleValue(style, "justify-content")?.Trim();
+            string align = ExtractStyleValue(style, "align-items")?.Trim();
+            string bg = ExtractStyleValue(style, "background-color");
+            string padding = ExtractStyleValue(style, "padding");
+
+            string hAlign = justify switch
+            {
+                "center" => "center",
+                "flex-end" => "right",
+                _ => "left"
+            };
+            string vAlign = align switch
+            {
+                "flex-start" => "top",
+                "flex-end" => "bottom",
+                _ => "middle"
+            };
+
+            string bgStyle = string.IsNullOrEmpty(bg) ? "" : $"background-color:{bg};";
+
+            var wrapper = doc.CreateElement("div");
+            if (!string.IsNullOrEmpty(bgStyle))
+                wrapper.SetAttributeValue("style", bgStyle);
+
+            var table = doc.CreateElement("table");
+            // Table pe bhi bg set karo, warna Word default white fill de dega
+            table.SetAttributeValue("style", $"border-collapse:collapse; width:100%; {bgStyle}");
+            table.SetAttributeValue("width", "100%");
+
+            if (isColumn)
+            {
+                foreach (var child in children)
+                {
+                    var tr = doc.CreateElement("tr");
+                    var td = doc.CreateElement("td");
+                    // Har td pe bhi bg zaroori hy
+                    td.SetAttributeValue("style",
+                        $"vertical-align:{vAlign}; text-align:{hAlign}; padding:{(string.IsNullOrEmpty(padding) ? "6px" : padding)}; {bgStyle}");
+                    td.InnerHtml = child.OuterHtml;
+                    tr.AppendChild(td);
+                    table.AppendChild(tr);
+                }
+            }
+            else
+            {
+                var tr = doc.CreateElement("tr");
+                for (int i = 0; i < children.Count; i++)
+                {
+                    var td = doc.CreateElement("td");
+                    string cellAlign = (justify == "space-between" && i == children.Count - 1) ? "right" : hAlign;
+                    td.SetAttributeValue("style",
+                        $"vertical-align:{vAlign}; text-align:{cellAlign}; padding:{(string.IsNullOrEmpty(padding) ? "6px" : padding)}; {bgStyle}");
+                    td.InnerHtml = children[i].OuterHtml;
+                    tr.AppendChild(td);
+                }
+                table.AppendChild(tr);
+            }
+
+            wrapper.AppendChild(table);
+            flexNode.ParentNode.ReplaceChild(wrapper, flexNode);
+        }
+
+        private static int GetDepth(HtmlNode node)
+        {
+            int depth = 0;
+            while (node.ParentNode != null)
+            {
+                depth++;
+                node = node.ParentNode;
+            }
+            return depth;
+        }
+
+        private static string ExtractStyleValue(string styleAttr, string property)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(
+                styleAttr, $@"{property}\s*:\s*([^;]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            return match.Success ? match.Groups[1].Value.Trim() : null;
+        }
         static void AddImageToBody(WordprocessingDocument wordDoc, string relationshipId, long cx, long cy)
         {
             // Define the reference of the image.
