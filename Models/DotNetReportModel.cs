@@ -4697,7 +4697,6 @@ namespace ReportBuilder.Web.Models
                 var cols = row.SelectNodes("./div[contains(@class,'col-')]");
                 if (cols == null) continue;
 
-                // row ka apna inline background/style bhi ho sakta hy — table pe copy kar do
                 string rowStyle = row.GetAttributeValue("style", "");
                 string rowBg = ExtractStyleValue(rowStyle, "background-color");
 
@@ -4714,23 +4713,33 @@ namespace ReportBuilder.Web.Models
                 {
                     var td = doc.CreateElement("td");
 
-                    // *** Fix: col ka apna style (background-color, padding, etc.) nikal ke td pe daalo ***
+                    int colSpan = GetBootstrapColSpan(col.GetAttributeValue("class", ""));
+                    double widthPercent = Math.Round(colSpan / 12.0 * 100, 2);
+                    td.SetAttributeValue("width", $"{widthPercent}%");
+
                     string colStyle = col.GetAttributeValue("style", "");
                     string colBg = ExtractStyleValue(colStyle, "background-color");
                     string colPadding = ExtractStyleValue(colStyle, "padding");
 
-                    var tdStyleParts = new List<string> { "vertical-align:top" };
+                    // *** Fix: text-align aur vertical-align bhi nikalo ***
+                    string colTextAlign = ExtractStyleValue(colStyle, "text-align");
+                    string colVertAlign = ExtractStyleValue(colStyle, "vertical-align");
+
+                    var tdStyleParts = new List<string>();
+                    tdStyleParts.Add($"vertical-align:{(string.IsNullOrEmpty(colVertAlign) ? "top" : colVertAlign)}");
                     tdStyleParts.Add($"padding:{(string.IsNullOrEmpty(colPadding) ? "8px" : colPadding)}");
                     if (!string.IsNullOrEmpty(colBg))
                         tdStyleParts.Add($"background-color:{colBg}");
+                    if (!string.IsNullOrEmpty(colTextAlign))
+                        tdStyleParts.Add($"text-align:{colTextAlign}");
 
                     td.SetAttributeValue("style", string.Join("; ", tdStyleParts) + ";");
 
-                    // col ke baaki inline styles (background-color/padding chhor ke) child div pe hi rehne do
+                    // col ke baaki inline styles (jo td pe copy kar diye) uske apne style se hata do
                     if (!string.IsNullOrEmpty(colStyle))
                     {
                         var cleanedStyle = System.Text.RegularExpressions.Regex.Replace(
-                            colStyle, @"(background-color|padding)\s*:\s*[^;]+;?", "",
+                            colStyle, @"(background-color|padding|text-align|vertical-align)\s*:\s*[^;]+;?", "",
                             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                         col.SetAttributeValue("style", cleanedStyle);
                     }
@@ -4742,6 +4751,17 @@ namespace ReportBuilder.Web.Models
                 row.ParentNode.ReplaceChild(table, row);
             }
             return doc.DocumentNode.OuterHtml;
+        }
+
+        private static int GetBootstrapColSpan(string classAttr)
+        {
+            if (string.IsNullOrEmpty(classAttr)) return 12;
+
+            var match = System.Text.RegularExpressions.Regex.Match(
+                classAttr, @"col-(?:xs-|sm-|md-|lg-|xl-)?(\d+)");
+            if (match.Success) return int.Parse(match.Groups[1].Value);
+
+            return 12;
         }
         private static string ConvertFlexToTable(string customHtml)
         {
