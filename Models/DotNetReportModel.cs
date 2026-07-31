@@ -4086,7 +4086,7 @@ namespace ReportBuilder.Web.Models
                 }
             }
             catch { }
-            return _wordReportCss = css;
+            return _wordReportCss = css.ToString();
         }
 
         private static string WrapHtmlForWord(string innerHtml)
