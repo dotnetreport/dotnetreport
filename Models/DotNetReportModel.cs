@@ -4062,17 +4062,28 @@ namespace ReportBuilder.Web.Models
         private static string GetWordReportCss()
         {
             if (_wordReportCss != null) return _wordReportCss;
-
-            var css = "";
+            var css = new StringBuilder();
             try
             {
-                var path = new[]
+                var searchDirs = new[]
+                {
+                    Path.Combine(AppContext.BaseDirectory, "wwwroot", "css"),
+                    Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "css")
+                };
+                var cssDir = searchDirs.FirstOrDefault(Directory.Exists);
+                if (cssDir != null)
+                {
+                    var matchingFiles = Directory.GetFiles(cssDir, "dotnetreport*.css")
+                        .OrderBy(f => f);
+                    foreach (var file in matchingFiles)
                     {
-                        Path.Combine(AppContext.BaseDirectory, "wwwroot", "css", "dotnetreport.css"),
-                        Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "css", "dotnetreport.css")
-                    }.FirstOrDefault(File.Exists);
-
-                if (path != null) css = File.ReadAllText(path);
+                        try
+                        {
+                            css.AppendLine(File.ReadAllText(file));
+                        }
+                        catch {}
+                    }
+                }
             }
             catch { }
             return _wordReportCss = css;
