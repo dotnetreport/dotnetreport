@@ -11404,6 +11404,7 @@ var reportViewModel = function (options) {
 			self.CanSaveReports(x.allowUsersToCreateReports !== false ? true : false);
 			self.CanManageFolders(x.allowUsersToManageFolders !== false ? true : false);
 			self.appSettings.useClientIdInAdmin = x.useClientIdInAdmin;
+			self.appSettings.allowUsersToCreateDashboards = x.allowUsersToCreateDashboards;
 			self.appSettings.useSqlBuilderInAdminMode = x.useSqlBuilderInAdminMode;
 			self.appSettings.useSqlCustomField(x.useSqlCustomField);
 			self.appSettings.noFolders = x.noFolders;
@@ -12261,6 +12262,7 @@ var dashboardViewModel = function (options) {
 
 	self.appSettings = {
 		allowUsersToCreateReports: true,
+		allowUsersToCreateDashboards: true,
 		allowUsersToManageFolders: true,
 		useClientIdInAdmin: false,
 		useSqlBuilderInAdminMode: false,
@@ -12299,6 +12301,7 @@ var dashboardViewModel = function (options) {
 				allowUsersToManageFolders: true
 			};
 			self.appSettings.useClientIdInAdmin = x.useClientIdInAdmin;
+			self.appSettings.allowUsersToCreateDashboards = x.allowUsersToCreateDashboards;
 			self.appSettings.useSqlBuilderInAdminMode = x.useSqlBuilderInAdminMode;
 			self.appSettings.useSqlCustomField = x.useSqlCustomField;
 			self.appSettings.noFolders = x.noFolders;

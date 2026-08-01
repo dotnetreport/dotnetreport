@@ -3172,6 +3172,7 @@ var settingPageViewModel = function (options) {
 	self.showEmptyFolders = ko.observable(false);
 	self.allowUsersToManageFolders = ko.observable(true);
 	self.allowUsersToCreateReports = ko.observable(true);
+	self.allowUsersToCreateDashboards = ko.observable(true);
 	self.useAltPdf = ko.observable(false);
 	self.useAltPivot = ko.observable(false);
 	self.dontXmlExport = ko.observable(false);
@@ -3272,6 +3273,7 @@ var settingPageViewModel = function (options) {
 							showEmptyFolders: self.showEmptyFolders(),
 							allowUsersToManageFolders: self.allowUsersToManageFolders(),
 							allowUsersToCreateReports: self.allowUsersToCreateReports(),
+							allowUsersToCreateDashboards: self.allowUsersToCreateDashboards(),
 							useAltPdf: self.useAltPdf(),
 							useAltPivot: self.useAltPivot(),
 							dontXmlExport: self.dontXmlExport(),
@@ -3340,6 +3342,7 @@ var settingPageViewModel = function (options) {
 				self.showEmptyFolders(settings.showEmptyFolders);
 				self.allowUsersToManageFolders(settings.allowUsersToManageFolders === false ? false : true);
 				self.allowUsersToCreateReports(settings.allowUsersToCreateReports === false ? false : true);
+				self.allowUsersToCreateDashboards(settings.allowUsersToCreateDashboards === false ? false : true);
 				self.useAltPdf(settings.useAltPdf);
 				self.useAltPivot(settings.useAltPivot);
 				self.dontXmlExport(settings.dontXmlExport);

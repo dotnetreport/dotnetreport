@@ -172,7 +172,7 @@
                                     <span>Edit Dashboard</span>
                                 </button>
                             </li>
-                            <li>
+                            <li data-bind="visible: appSettings.allowUsersToCreateDashboards || adminMode()">
                                 <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
                                     <i class="fa fa-dashboard"></i>
                                     <span>Create a New Dashboard</span>
@@ -261,7 +261,7 @@
     </div>
 </div>
 
-<div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 ">
+<div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 && (appSettings.allowUsersToCreateDashboards || adminMode())">
     No Dashboards yet. Click below to Start<br />
     <button class="btn btn-lg btn-primary" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
 </div>
