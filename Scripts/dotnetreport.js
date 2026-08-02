@@ -939,10 +939,22 @@ function filterGroupViewModel(args) {
 			}
 
 			if (newField && newField.fieldId && !newField.hasForeignKey && newField.fieldType == 'Varchar') {
-				setTimeout(function () {
-					var txtqry = new textQuery(args.options);
-					txtqry.setupLookup(newField, filter);
-				}, 1000);
+				(function (lookupField, lookupFilter) {
+					var attempts = 0;
+					var trySetupLookup = function () {
+						attempts++;
+						var hasInputs = ['C', 'F', 'M', 'P'].some(function (p) {
+							return document.querySelector('[id="ctl-' + p + '-' + lookupField.uiId + '"]');
+						});
+						if (hasInputs) {
+							var txtqry = new textQuery(args.options);
+							txtqry.setupLookup(lookupField, lookupFilter);
+						} else if (attempts < 15) {
+							setTimeout(trySetupLookup, 500);
+						}
+					};
+					setTimeout(trySetupLookup, 100);
+				})(newField, filter);
 			}
 			if (newField && !newField.fieldId && newField.tableName === "Custom" && !newField.dynamicTableId) {
 				if (newField.fieldFormat()) newField.fieldType = '';
@@ -10804,6 +10816,8 @@ var reportViewModel = function (options) {
 		else {
 			addSavedFilters(report.Filters);
 		}
+
+		self.setFlyFilters();
 
 		_.forEach(report.Series, function (e) {
 			self.AddSeries(e);
