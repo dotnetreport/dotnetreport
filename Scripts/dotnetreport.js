@@ -4378,8 +4378,9 @@ var reportViewModel = function (options) {
 			self.ManageFolder.IsNew(true);
 			self.ManageFolder.FolderName("");
 			self.ManageFolder.ShowAdminOnly(false);
-			self.ManageFolder.ParentFolderId(null);      
-			self.ManageFolder.ParentFolderName(''); 
+			var parent = self.SelectedFolder();
+			self.ManageFolder.ParentFolderId(parent && parent.Id ? parent.Id : null);
+			self.ManageFolder.ParentFolderName(parent && parent.Id ? parent.FolderName : '');
 			self.clearManageFolderAccess();
 			$("#folderModal").modal("show");
 		},
@@ -4432,8 +4433,13 @@ var reportViewModel = function (options) {
 			}
 
 			var id = self.ManageFolder.IsNew() ? 0 : self.SelectedFolder().Id;
-			if (_.filter(self.Folders(), function (x) { return x.FolderName.toLowerCase() == self.ManageFolder.FolderName().toLowerCase() && (id == 0 || (id != 0 && x.Id != id)); }).length != 0) {
-				toastr.error("Folder name is already in use, please choose a different Folder Name");
+			var parentId = self.ManageFolder.ParentFolderId() || null;
+			if (_.filter(self.allFolders || [], function (x) {
+					return x.FolderName.toLowerCase() == self.ManageFolder.FolderName().toLowerCase()
+						&& (x.ParentFolderId || null) == parentId
+						&& (id == 0 || (id != 0 && x.Id != id));
+				}).length != 0) {
+				toastr.error("Folder name is already in use in this folder, please choose a different Folder Name");
 				return false;
 			}
 
@@ -4464,7 +4470,7 @@ var reportViewModel = function (options) {
 				if (result.d) { result = result.d; }
 				if (result.result) { result = result.result; }
 				if (self.ManageFolder.IsNew()) {
-					self.loadFolders().done(function () {
+					self.loadFolders(folderToSave.ParentFolderId || undefined).done(function () {
 						toastr.success(folderToSave.FolderName + " added");
 					});
 				} else {
@@ -5122,6 +5128,16 @@ var reportViewModel = function (options) {
 		if (!self.SelectedFolder()) return [];
 		return self.SelectedFolder().children();
 	});
+	// Navigates up one folder level (to the parent when inside a sub folder, else back to root).
+	self.goBackFolder = function () {
+		var current = self.SelectedFolder();
+		var parent = current && current.ParentFolderId
+			? _.find(self.allFolders || [], function (x) { return x.Id == current.ParentFolderId; })
+			: null;
+		self.SelectedFolder(parent || null);
+		self.searchReports('');
+		$('#search-report').val([]).trigger('change');
+	};
 	var tokenKey = 'token-key';
 	var token = JSON.parse(localStorage.getItem(tokenKey));
 	self.searchFieldsInReport = {
@@ -10332,6 +10348,14 @@ var reportViewModel = function (options) {
 					rootFolders.push(f);
 				}
 			});
+			_.each(folders, function (f) {
+				var names = [], cur = f, guard = 0;
+				while (cur && guard++ < 20) {
+					names.unshift(cur.FolderName);
+					cur = cur.ParentFolderId ? folderMap[cur.ParentFolderId] : null;
+				}
+				f.FolderPath = names.join(' › ');
+			});
 			self.rootFolders(rootFolders);   
 			self.SelectedFolder(null);
 			if (folderId) {
@@ -11100,20 +11124,25 @@ var reportViewModel = function (options) {
 					options.reportWizard.modal('show');
 				}
 			});
+			var onlyRootFolders = function (folders) {
+				var map = {};
+				_.each(folders, function (f) { map[f.Id] = f; });
+				return _.filter(folders, function (f) { return !(f.ParentFolderId && map[f.ParentFolderId]); });
+			};
 			var foldersToDisplay = self.allFolders;
 			if (!self.adminMode()) {
-				if (!self.appSettings.showEmptyFolders) { 
+				if (!self.appSettings.showEmptyFolders) {
 					var foldersInUse = _.uniqBy(reports, 'folderId').map(function (r) { return r.folderId });
 					foldersToDisplay = _.filter(foldersToDisplay, function (folder) { return foldersInUse.includes(folder.Id) || folder.Id == 0 });
 				}
 
-				if (self.appSettings.noDefaultFolder) { 
+				if (self.appSettings.noDefaultFolder) {
 					foldersToDisplay = _.filter(foldersToDisplay, function (folder) { return folder.Id != 0 });
 				}
-				self.rootFolders(foldersToDisplay);
+				self.rootFolders(onlyRootFolders(foldersToDisplay));
 				self.Folders(foldersToDisplay);
 			} else {
-				self.rootFolders(self.allFolders);
+				self.rootFolders(onlyRootFolders(self.allFolders));
 				self.Folders(self.allFolders);
 			}
 			if (self.onlyFavorites()) {
@@ -11123,7 +11152,7 @@ var reportViewModel = function (options) {
 				foldersToDisplay = _.filter(foldersToDisplay, function (folder) {
 					return favoriteFolderIds.includes(folder.Id) || folder.Id == 0;
 				});
-				self.rootFolders(foldersToDisplay);
+				self.rootFolders(onlyRootFolders(foldersToDisplay));
 			}
 			self.SavedReports(reports);
 			if (self.searchReports()) {

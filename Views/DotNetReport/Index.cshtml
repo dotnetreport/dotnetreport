@@ -74,7 +74,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
                     <div class="collapse navbar-collapse" id="navbarSupportedContent">
                         <ul class="navbar-nav mr-auto">
-                            <li class="nav-item" data-bind="visible: SelectedFolder() ? SelectedFolder().canEdit : (CanSaveReports() || adminMode())">
+                            <li class="nav-item" data-bind="visible: (CanSaveReports() || adminMode()) && (!SelectedFolder() || SelectedFolder().canEdit || adminMode())">
                                 <a href="#" class="nav-link" data-bind="click: createNewReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                     <span class="fa fa-plus"></span> New Report
                                 </a>
@@ -345,11 +345,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         css: isSelected() ? 'fa fa-check-square text-primary me-2' : 'fa fa-square-o me-2'"></span>
                                     <span class="fa fa-3x fa-folder text-secondary"></span>
                                     <span class="desc" data-bind="text: FolderName"></span>
-                                    <!-- sub-folder count hint -->
-                                    <span class="badge bg-secondary mt-1"
-                                          data-bind="visible: children().length > 0,
-                                        text: children().length + ' sub'">
-                                    </span>
                                     <div data-bind="visible: $root.adminMode" style="font-size: 0.75em; margin-top: 4px;" onclick="event.stopPropagation()">
                                         <span class="badge text-bg-info text-white" data-bind="text: UserId ? UserId : 'Any User'"></span>
                                         <span class="badge text-bg-info text-white" data-bind="text: UserRoles ? UserRoles : 'Any Role'"></span>
@@ -361,8 +356,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                             <div class="clearfix">
                                 <p class="pull-left">Please choose a Report from this Folder</p>
                                 <div class="pull-right">
-                                    <a href="#" class="btn btn-light" data-bind="click: function(){ SelectedFolder(null); searchReports(''); $('#search-report').val([]).trigger('change');}">
-                                        ..back to Folders
+                                    <a href="#" class="btn btn-light" data-bind="click: goBackFolder">
+                                        <span data-bind="text: SelectedFolder() && SelectedFolder().ParentFolderId ? '..back to ' + (folderBreadcrumb().length > 1 ? folderBreadcrumb()[folderBreadcrumb().length - 2].FolderName : 'Folders') : '..back to Folders'"></span>
                                     </a>
                                 </div>
                             </div>
@@ -404,17 +399,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
                                 <!-- SUB-FOLDERS inside selected folder -->
                                 <div data-bind="if: !searchReports() && subFoldersInFolder().length > 0">
-                                    <div class="mt-1 mb-1">
-                                        <strong><span class="fa fa-folder-open-o"></span> Sub Folders</strong>
-                                    </div>
                                     <ul class="folder-list" data-bind="foreach: subFoldersInFolder">
                                         <li data-bind="click: function(){ $parent.SelectedFolder($data); }">
                                             <span class="fa fa-3x fa-folder text-secondary"></span>
                                             <span class="desc" data-bind="text: FolderName"></span>
-                                            <span class="badge bg-secondary mt-1"
-                                                  data-bind="visible: children().length > 0,
-                                                text: children().length + ' sub'">
-                                            </span>
                                             <div data-bind="visible: $root.adminMode"
                                                  style="font-size: 0.75em; margin-top: 4px;"
                                                  onclick="event.stopPropagation()">
@@ -497,7 +485,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                 <span data-bind="text: isFavorite() ? 'Remove from Favorites' : 'Add to Favorites'"></span>
                                                             </a>
                                                             <div class="dropdown-divider" data-bind="visible: !$root.selectMode()"></div>
-                                                            <a class="dropdown-item" href="#" data-bind="click: function() { exportReport($root.appSettings.useAltPdf ? 'pdfalt' : 'pdf');}">
+                                                            <a class="dropdown-item" href="#" data-bind="click: function() { exportReport(ko.unwrap($root.appSettings.useAltPdf) ? 'pdfalt' : 'pdf');}">
                                                                 <span class="fa fa-file-pdf-o"></span> Download PDF
                                                             </a>
                                                             <a class="dropdown-item" href="#" data-bind="click: function() {exportReport('excel');}">
@@ -607,11 +595,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     css: isSelected() ? 'fa fa-check-square text-primary me-2' : 'fa fa-square-o me-2'"></span>
                                                 <span class="fa fa-folder text-secondary me-2"></span>
                                                 <span data-bind="text: FolderName"></span>
-                                                <span class="badge bg-secondary ms-2"
-                                                      data-bind="visible: children().length >
-                                                    0,
-                                                    text: children().length + ' sub-folder' + (children().length > 1 ? 's' : '')">
-                                                </span>
                                             </div>
                                             <div class="col-md-1" onclick="event.stopPropagation()">
                                                 <div class="dropdown" data-bind="visible: ($root.CanManageFolders() || $root.adminMode()) && (canEdit || canDelete || $root.adminMode())">
@@ -697,25 +680,26 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <div class="mb-2"></div>
                                     </div>
 
-                                    <!-- SUB-FOLDERS inside selected folder (list view) -->
-                                    <div data-bind="if: !searchReports() && subFoldersInFolder().length > 0">
-                                        <div class="row fw-bold py-1 border-bottom mt-2 w-100">
-                                            <div class="col-md-5">
-                                                <span class="fa fa-folder-open-o"></span> Sub Folders
-                                            </div>
+                                    <!-- FOLDERS + REPORTS (one unified list, folders first like a file explorer) -->
+                                    <div data-bind="if: (!searchReports() && subFoldersInFolder().length > 0) || reportsInFolder().length > 0 || reportsInSearch().length > 0">
+                                        <div class="row fw-bold border-bottom py-2 w-100">
+                                            <div class="col-md-3">Name</div>
                                             <div class="col-md-1"></div>
-                                            <div class="col-md-6" data-bind="visible: $root.adminMode">Access</div>
+                                            <div class="col-md-2" data-bind="visible: adminMode">Modified</div>
+                                            <div class="col-md-2" data-bind="visible: adminMode">Modified By</div>
+                                            <div class="col-md-2" data-bind="visible: searchReports()">Folder</div>
+                                            <div class="col-md-2" data-bind="visible: adminMode">Access</div>
+                                            <div class="col-md-1" data-bind="visible: adminMode">Direct Link</div>
                                         </div>
+
+                                        <!-- Sub folder rows (same column grid as report rows) -->
+                                        <!-- ko if: !searchReports() -->
                                         <div data-bind="foreach: subFoldersInFolder">
-                                            <div class="row py-2 border-bottom align-items-center w-100">
-                                                <div class="col-md-5 d-flex align-items-center clickable"
-                                                     data-bind="click: function(){ $parent.SelectedFolder($data); }">
+                                            <div class="row border-bottom py-2 align-items-center w-100">
+                                                <div class="col-md-3 d-flex align-items-center clickable"
+                                                     data-bind="click: function(){ $root.SelectedFolder($data); }">
                                                     <span class="fa fa-folder text-secondary me-2"></span>
                                                     <span data-bind="text: FolderName"></span>
-                                                    <span class="badge bg-secondary ms-2"
-                                                          data-bind="visible: children().length > 0,
-                                                        text: children().length + ' sub'">
-                                                    </span>
                                                 </div>
                                                 <div class="col-md-1" onclick="event.stopPropagation()">
                                                     <div class="dropdown"
@@ -727,21 +711,21 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         <ul class="dropdown-menu">
                                                             <li>
                                                                 <a class="dropdown-item" href="#"
-                                                                   data-bind="click: function(){ $parent.SelectedFolder($data); $parent.ManageFolder.editFolder(); },
+                                                                   data-bind="click: function(){ $root.SelectedFolder($data); $root.ManageFolder.editFolder(); },
                                                                     visible: canEdit || $root.adminMode()">
                                                                     <span class="fa fa-edit"></span> Edit Folder
                                                                 </a>
                                                             </li>
                                                             <li>
                                                                 <a class="dropdown-item text-danger" href="#"
-                                                                   data-bind="click: function(){ $parent.SelectedFolder($data); $parent.ManageFolder.deleteFolder(); },
+                                                                   data-bind="click: function(){ $root.SelectedFolder($data); $root.ManageFolder.deleteFolder(); },
                                                                     visible: canDelete || $root.adminMode()">
                                                                     <span class="fa fa-trash"></span> Delete Folder
                                                                 </a>
                                                             </li>
                                                             <li>
                                                                 <a class="dropdown-item" href="#"
-                                                                   data-bind="click: function(){ $parent.ManageFolder.addSubFolder($data); },
+                                                                   data-bind="click: function(){ $root.ManageFolder.addSubFolder($data); },
                                                                     visible: canEdit || $root.adminMode()">
                                                                     <span class="fa fa-folder"></span> Add Sub Folder
                                                                 </a>
@@ -749,7 +733,9 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         </ul>
                                                     </div>
                                                 </div>
-                                                <div class="col-md-6" data-bind="visible: $parent.adminMode">
+                                                <div class="col-md-2" data-bind="visible: $root.adminMode"></div>
+                                                <div class="col-md-2" data-bind="visible: $root.adminMode"></div>
+                                                <div class="col-md-2" data-bind="visible: $root.adminMode">
                                                     <div class="d-flex flex-wrap gap-1 align-items-center">
                                                         <span class="badge bg-info text-white" title="Manage Users"
                                                               data-bind="text: UserId ? '👤 ' + UserId : '👤 Any User'"></span>
@@ -767,22 +753,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                               data-bind="visible: ClientId"> 🏢 <span data-bind="text: ClientId"></span></span>
                                                     </div>
                                                 </div>
+                                                <div class="col-md-1" data-bind="visible: $root.adminMode"></div>
                                             </div>
                                         </div>
-                                        <hr class="my-2" />
-                                    </div>
-
-                                    <!-- REPORTS (list view) -->
-                                    <div data-bind="if: reportsInFolder().length > 0 || reportsInSearch().length > 0">
-                                        <div class="row fw-bold border-bottom py-2 w-100">
-                                            <div class="col-md-3">Name</div>
-                                            <div class="col-md-1"></div>
-                                            <div class="col-md-2" data-bind="visible: adminMode">Modified</div>
-                                            <div class="col-md-2" data-bind="visible: adminMode">Modified By</div>
-                                            <div class="col-md-2" data-bind="visible: searchReports()">Folder</div>
-                                            <div class="col-md-2" data-bind="visible: adminMode">Access</div>
-                                            <div class="col-md-1" data-bind="visible: adminMode">Direct Link</div>
-                                        </div>
+                                        <!-- /ko -->
 
                                         <div class="report-list" data-bind="foreach: searchReports() ? reportsInSearch() : reportsInFolder()">
                                             <div class="row border-bottom py-2 align-items-center w-100">
@@ -850,7 +824,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                 <a class="dropdown-item dropdown-toggle" href="#"><span class="fa fa-download"></span> Export</a>
                                                                 <ul class="dropdown-menu">
                                                                     <li>
-                                                                        <a class="dropdown-item" href="#" data-bind="click: function() {exportReport($root.appSettings.useAltPdf ? 'pdfalt' : 'pdf');}">
+                                                                        <a class="dropdown-item" href="#" data-bind="click: function() {exportReport(ko.unwrap($root.appSettings.useAltPdf) ? 'pdfalt' : 'pdf');}">
                                                                             <span class="fa fa-file-pdf-o"></span> Download PDF
                                                                         </a>
                                                                     </li>
@@ -876,7 +850,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     </div>
                                                 </div>
 
-                                                </div>
                                                 <div class="col-md-2 small text-muted" data-bind="visible: $parent.adminMode, text: dateLastUpdated"></div>
                                                 <div class="col-md-2 small text-muted text-truncate" data-bind="visible: $parent.adminMode, text: modifiedBy || '', attr: { title: modifiedBy || '' }"></div>
                                                 <div class="col-md-2" data-bind="text: folderName, visible: $parent.searchReports()"></div>
@@ -966,7 +939,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         </a>
                                     </li>
                                     <!-- Alt PDF, drilldown available (non-pivot, non-kpi) -> submenu -->
-                                    <li class="dropdown-submenu dropdown-submenu-left" data-bind="visible: appSettings.useAltPdf && canDrilldown() && !hasPivotColumn() && ReportType() != 'Single'">
+                                    <li class="dropdown-submenu dropdown-submenu-left" data-bind="visible: ko.unwrap(appSettings.useAltPdf) && canDrilldown() && !hasPivotColumn() && ReportType() != 'Single'">
                                         <a class="dropdown-item dropdown-toggle" href="#"><i class="fa fa-file-pdf-o"></i> Pdf</a>
                                         <ul class="dropdown-menu">
                                             <li>
@@ -982,7 +955,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         </ul>
                                     </li>
                                     <!-- Alt PDF, no drilldown / pivot / kpi -> flat (no expand) -->
-                                    <li data-bind="visible: appSettings.useAltPdf && (!canDrilldown() || hasPivotColumn() || ReportType() == 'Single')">
+                                    <li data-bind="visible: ko.unwrap(appSettings.useAltPdf) && (!canDrilldown() || hasPivotColumn() || ReportType() == 'Single')">
                                         <a href="#" class="dropdown-item" data-bind="click: appSettings.showPageSize
                                               ? function() { PdfPage.isExpanded = false; $('#pdfOptionsModal').modal('show'); }
                                               : function() { downloadPdfAlt(); }">

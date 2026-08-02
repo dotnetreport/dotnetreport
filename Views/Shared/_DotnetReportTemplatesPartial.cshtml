@@ -2935,7 +2935,7 @@
                     <i class="fa fa-folder-open"></i> Choose Folder
                 </label>
                 <div>
-                    <select class="form-select" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID, valueAllowUnset: true"></select>
+                    <select class="form-select" style="width: 100%;" data-bind="options: Folders, optionsText: function(f) { return f.FolderPath || f.FolderName; }, optionsValue: 'Id', value: FolderID, valueAllowUnset: true"></select>
                 </div>
             </div>
             <hr />
@@ -3230,7 +3230,7 @@
                                         <i class="fa fa-folder-open"></i> Choose Folder
                                     </label>
                                     <div>
-                                        <select class="form-select" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID, valueAllowUnset: true"></select>
+                                        <select class="form-select" style="width: 100%;" data-bind="options: Folders, optionsText: function(f) { return f.FolderPath || f.FolderName; }, optionsValue: 'Id', value: FolderID, valueAllowUnset: true"></select>
                                     </div>
                                 </div>
                             </div>
@@ -3371,7 +3371,7 @@
                                     <div class="form-group row mb-2" data-bind="visible: SaveReport">
                                         <label class="control-label"><i class="fa fa-folder-open"></i> Folder</label>
                                         <div>
-                                            <select class="form-select form-select-sm" style="width: 100%;" data-bind="options: Folders, optionsText: 'FolderName', optionsValue: 'Id', value: FolderID, valueAllowUnset: true"></select>
+                                            <select class="form-select form-select-sm" style="width: 100%;" data-bind="options: Folders, optionsText: function(f) { return f.FolderPath || f.FolderName; }, optionsValue: 'Id', value: FolderID, valueAllowUnset: true"></select>
                                         </div>
                                     </div>
                                     <hr class="my-1" />
