@@ -413,18 +413,23 @@ namespace ReportBuilder.Web.Controllers
                     {
                         sqlFields = DotNetReportHelper.SplitSqlColumns(sql, DotNetReportHelper.dbtype);
                         bool hasDistinct = Regex.IsMatch(sql, @"^\s*SELECT\s+(TOP\s+\d+\s+)?DISTINCT\b", RegexOptions.IgnoreCase);
+
+                        var countFields = new List<string>(sqlFields);
                         var aliasCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
                         bool anyDuped = false;
-                        for (int f = 0; f < sqlFields.Count; f++)
+                        for (int f = 0; f < countFields.Count; f++)
                         {
-                            var parts = sqlFields[f].Split(new[] { " AS " }, StringSplitOptions.None);
-                            if (parts.Length != 2) continue;
-                            var expr = parts[0];
-                            var alias = parts[1].Trim().Trim('[', ']');
+                            var aliasPos = countFields[f].LastIndexOf(" AS ", StringComparison.Ordinal);
+                            if (aliasPos < 0) continue;
+                            var expr = countFields[f].Substring(0, aliasPos);
+                            var aliasToken = countFields[f].Substring(aliasPos + 4).Trim();
+                            var alias = aliasToken.Trim('[', ']', '`', '"');
                             if (aliasCounts.TryGetValue(alias, out var count))
                             {
                                 aliasCounts[alias] = ++count;
-                                sqlFields[f] = $"{expr} AS [{alias}_{count}]";
+                                var open = aliasToken.StartsWith("`") ? "`" : aliasToken.StartsWith("\"") ? "\"" : "[";
+                                var close = open == "[" ? "]" : open;
+                                countFields[f] = $"{expr} AS {open}{alias}_{count}{close}";
                                 anyDuped = true;
                             }
                             else
@@ -432,14 +437,18 @@ namespace ReportBuilder.Web.Controllers
                                 aliasCounts[alias] = 1;
                             }
                         }
+                        var countSource = sql;
                         if (anyDuped)
                         {
                             var selectEnd = sql.IndexOf("{FROM}", StringComparison.OrdinalIgnoreCase);
-                            var selectPrefix = Regex.Match(sql, @"^\s*SELECT\s+(TOP\s+\d+\s+)?(DISTINCT\s+)?",
-                                                            RegexOptions.IgnoreCase).Value;
-                            sql = selectPrefix + string.Join(", ", sqlFields) + sql.Substring(selectEnd);
+                            if (selectEnd >= 0) // custom SQL has no {FROM} placeholder — leave it untouched
+                            {
+                                var selectPrefix = Regex.Match(sql, @"^\s*SELECT\s+(TOP\s+\d+\s+)?(DISTINCT\s+)?",
+                                                                RegexOptions.IgnoreCase).Value;
+                                countSource = selectPrefix + string.Join(", ", countFields) + sql.Substring(selectEnd);
+                            }
                         }
-                        var countInner = sql.Replace("{FROM}", "FROM");
+                        var countInner = countSource.Replace("{FROM}", "FROM");
                         int countOrderByIndex = countInner.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
                         if (countOrderByIndex > -1)
                         {
