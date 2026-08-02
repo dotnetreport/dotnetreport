@@ -847,6 +847,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                     <span class="fa fa-hourglass"></span> Schedule Report
                                                                 </a>
                                                             </li>
+                                                            <li data-bind="visible: $root.adminMode">
+                                                                <a class="dropdown-item" href="#" data-bind="click: function() { $root.openAccessModal($data); }">
+                                                                    <span class="fa fa-key"></span> Manage Access
+                                                                </a>
+                                                            </li>
                                                         </ul>
                                                     </div>
                                                 </div>
@@ -1177,6 +1182,24 @@ Its Recommended you use it as is, and only change styling as needed to match you
 </div>
 
 <!-- Folder Edit Modal -->
+<div class="modal" id="manage-access-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa fa-key"></i> Manage Access <span class="text-muted ms-1" data-bind="text: accessModalReport() ? accessModalReport().reportName : ''"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div data-bind="template: { name: 'manage-access-template', data: manageAccess }"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" data-bind="click: saveAccessModal"><i class="fa fa-save"></i> Save Access</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal" id="folderModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" data-bind="css: {'modal-lg': adminMode}">
         <div class="modal-content" data-bind="with: ManageFolder">

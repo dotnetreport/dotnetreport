@@ -161,7 +161,7 @@
             </li>
             <li role="presentation" class="nav-item">
                 <a class="nav-link" href="#connection" aria-controls="home" role="tab" data-bs-toggle="tab">
-                    <i class="fa fa-plug"></i> Data Settings
+                    <i class="fa fa-plug"></i> App Settings
                 </a>
             </li>
         </ul>
@@ -820,10 +820,11 @@
                                 <div>
                                     <input type="checkbox" class="form-check-input"
                                            data-bind="checked: allReportsSelected">
-                                    <label>
+                                    <label data-bind="style: { paddingLeft: (depth * 20) + 'px' }">
                                         <a data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
                                             <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
                                         </a>
+                                    <span class="text-muted small ms-2" data-bind="visible: depth > 0, text: folderPath"></span>
                                     </label>
                                 </div>
                             </div>
@@ -834,45 +835,29 @@
                                 <ul class="list-group" data-bind="foreach: reports">
                                     <li class="list-group-item">
                                         <div class="row">
-                                            <div class="col-md-3 border-end">
+                                            <div class="col-md-6">
                                                 <div class="form-check">
                                                     <input class="form-check-input" type="checkbox" data-bind="checked: isSelected" />
                                                     <label class="list-group-item-heading">
-                                                        <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></span>
+                                                        <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="color: #808080"></span>
                                                         <span data-bind="text: reportName"></span>
                                                     </label>
                                                 </div>
-                                                <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
-                                                <div class="small" style="padding-top: 10px;">
-                                                    <b>Current Report Access</b><br />
-                                                    Manage by User <span class="badge text-bg-info text-white" data-bind="text: userId() ? userId() : 'Any User'"></span><br />
-                                                    View only by User <span class="badge text-bg-info text-white" data-bind="text: (viewOnlyUserId() ? viewOnlyUserId() : (userId() ? userId() : 'Any User'))"></span><br />
-                                                    <div data-bind="if: deleteOnlyUserId()">
-                                                        Delete only by User <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserId()"></span><br />
-                                                    </div>
-                                                    <div data-bind="if: userRole()">
-                                                        Manage by Role <span class="badge text-bg-info text-white" data-bind="text: userRole() ? userRole() : 'Any Role'"></span><br />
-                                                    </div>
-                                                    <div data-bind="if: viewOnlyUserRole()">
-                                                        View only by Role <span class="badge text-bg-info text-white" data-bind="text: viewOnlyUserRole() ? viewOnlyUserRole() : 'Any Role'"></span><br />
-                                                    </div>
-                                                    <div data-bind="if: deleteOnlyUserRole()">
-                                                        Delete only by Role <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserRole() ? deleteOnlyUserRole() : 'Same as Manage'"></span><br />
-                                                    </div>
-                                                    <div>
-                                                        For Client <span class="badge text-bg-info text-white" data-bind="text: clientId() ? clientId() : 'All Clients'"></span><br />
-                                                    </div>
-                                                </div>
-                                                <br /><br />
-                                                <button class="btn btn-sm btn-primary" data-bind="click: function() { changeAccess(!changeAccess())}, text: !changeAccess() ? 'Change Access': 'Cancel Changing Access', hidden: changeAccess">Change Access</button>
+                                                <div class="small text-muted" data-bind="text: reportDescription"></div>
                                             </div>
-                                            <div data-bind="if: changeAccess" class="col-md-9">
-                                                <div style="padding-left: 10px;">
-                                                    <div data-bind="template: {name: 'manage-access-template', data: $root.manageAccess }"></div>
-                                                    <br /><br />
-                                                    <button class="btn btn-sm btn-primary" data-bind="click: saveAccessChanges">Save Access Changes</button>
-                                                    <button class="btn btn-sm btn-primary" data-bind="click: function() { changeAccess(!changeAccess())}, text: !changeAccess() ? 'Change Access': 'Cancel Changing Access'">Change Access</button>
+                                            <div class="col-md-5">
+                                                <div class="d-flex flex-wrap gap-1 align-items-center small">
+                                                    <span class="badge bg-info text-white" title="Manage by User" data-bind="text: '👤 ' + (userId() ? userId() : 'Any User')"></span>
+                                                    <span class="badge bg-info text-white border" title="View only by User" data-bind="visible: viewOnlyUserId">👁 <span data-bind="text: viewOnlyUserId"></span></span>
+                                                    <span class="badge bg-info text-white border" title="Delete only by User" data-bind="visible: deleteOnlyUserId">🗑 <span data-bind="text: deleteOnlyUserId"></span></span>
+                                                    <span class="badge bg-info text-white" title="Manage by Role" data-bind="text: '🔑 ' + (userRole() ? userRole() : 'Any Role')"></span>
+                                                    <span class="badge bg-info text-white border" title="View only by Role" data-bind="visible: viewOnlyUserRole">👁 <span data-bind="text: viewOnlyUserRole"></span></span>
+                                                    <span class="badge bg-info text-white border" title="Delete only by Role" data-bind="visible: deleteOnlyUserRole">🗑 <span data-bind="text: deleteOnlyUserRole"></span></span>
+                                                    <span class="badge bg-info text-white" title="Client" data-bind="visible: clientId">🏢 <span data-bind="text: clientId"></span></span>
                                                 </div>
+                                            </div>
+                                            <div class="col-md-1 text-end">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" title="Manage Access" data-bind="click: function() { $root.openAccessModal($data, false); }"><i class="fa fa-key"></i></button>
                                             </div>
                                         </div>
                                     </li>
@@ -889,47 +874,50 @@
                         <div class="list-group-item">
                             <div class="d-flex justify-content-between">
                                 <div>
-                                    <a data-bs-toggle="collapse" data-bind="attr: {href: '#folderAccess-' + Id }">
+                                    <a data-bs-toggle="collapse" data-bind="attr: {href: '#folderAccess-' + Id }, style: { paddingLeft: ((Depth || 0) * 20) + 'px' }">
                                         <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: FolderName"></span>
                                     </a>
+                                    <span class="text-muted small ms-2" data-bind="visible: (Depth || 0) > 0, text: FolderPath"></span>
                                 </div>
                             </div>
                             <div class="collapse" data-bind="attr: {id: 'folderAccess-' + Id }">
-                                <div class="row">
-                                    <div class="col-md-3 border-end">
-                                        <div class="small" style="padding-top: 10px;">
-                                            <b>Current Folder Access</b><br />
-                                            Manage by User <span class="badge text-bg-info text-white" data-bind="text: UserId()? UserId() : 'Any User'"></span><br />
-                                            View only by User <span class="badge text-bg-info text-white" data-bind="text: (ViewOnlyUserId() ? ViewOnlyUserId() : (UserId() ? UserId() : 'Any User'))"></span><br />
-                                            <div data-bind="if: DeleteOnlyUserId()">
-                                                Delete only by User <span class="badge text-bg-info text-white" data-bind="text: DeleteOnlyUserId()"></span><br />
-                                            </div>
-                                            <div data-bind="if: UserRoles()">
-                                                Manage by Role <span class="badge text-bg-info text-white" data-bind="text: UserRoles() ? UserRoles() : 'Any Role'"></span><br />
-                                            </div>
-                                            <div data-bind="if: ViewOnlyUserRoles()">
-                                                View only by Role <span class="badge text-bg-info text-white" data-bind="text: ViewOnlyUserRoles() ? ViewOnlyUserRoles() : 'Any Role'"></span><br />
-                                            </div>
-                                            <div data-bind="if: DeleteOnlyUserRoles()">
-                                                Delete only by Role <span class="badge text-bg-info text-white" data-bind="text: DeleteOnlyUserRoles() ? DeleteOnlyUserRoles() : 'Same as Manage'"></span><br />
-                                            </div>
-                                            <div>
-                                                For Client <span class="badge text-bg-info text-white" data-bind="text: ClientId() ? ClientId() : 'All Clients'"></span><br />
-                                            </div>
+                                <div class="row align-items-center py-2">
+                                    <div class="col-md-10">
+                                        <div class="d-flex flex-wrap gap-1 align-items-center small">
+                                            <span class="badge bg-info text-white" title="Manage by User" data-bind="text: '👤 ' + (UserId() ? UserId() : 'Any User')"></span>
+                                            <span class="badge bg-info text-white border" title="View only by User" data-bind="visible: ViewOnlyUserId">👁 <span data-bind="text: ViewOnlyUserId"></span></span>
+                                            <span class="badge bg-info text-white border" title="Delete only by User" data-bind="visible: DeleteOnlyUserId">🗑 <span data-bind="text: DeleteOnlyUserId"></span></span>
+                                            <span class="badge bg-info text-white" title="Manage by Role" data-bind="text: '🔑 ' + (UserRoles() ? UserRoles() : 'Any Role')"></span>
+                                            <span class="badge bg-info text-white border" title="View only by Role" data-bind="visible: ViewOnlyUserRoles">👁 <span data-bind="text: ViewOnlyUserRoles"></span></span>
+                                            <span class="badge bg-info text-white border" title="Delete only by Role" data-bind="visible: DeleteOnlyUserRoles">🗑 <span data-bind="text: DeleteOnlyUserRoles"></span></span>
+                                            <span class="badge bg-info text-white" title="Client" data-bind="visible: ClientId">🏢 <span data-bind="text: ClientId"></span></span>
                                         </div>
-                                        <br /><br />
-                                        <button class="btn btn-sm btn-primary" data-bind="click: function() { changeFolderAccess(!changeFolderAccess())}, text: !changeFolderAccess() ? 'Change Access': 'Cancel Changing Access', hidden: changeFolderAccess">Change Access</button>
                                     </div>
-                                    <div data-bind="if: changeFolderAccess" class="col-md-9">
-                                        <div style="padding-left: 10px;">
-                                            <div data-bind="template: {name: 'manage-access-template', data: $root.manageAccess }"></div>
-                                            <br /><br />
-                                            <button class="btn btn-sm btn-primary" data-bind="click: saveFolderAccessChanges">Save Access Changes</button>
-                                            <button class="btn btn-sm btn-primary" data-bind="click: function() { changeFolderAccess(!changeFolderAccess())}, text: !changeFolderAccess() ? 'Change Access': 'Cancel Changing Access'">Change Access</button>
-                                        </div>
+                                    <div class="col-md-2 text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Manage Access" data-bind="click: function() { $root.openAccessModal($data, true); }"><i class="fa fa-key"></i> Manage Access</button>
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal" id="setup-access-modal" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog modal-lg" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title"><i class="fa fa-key"></i> Manage Access <span class="text-muted ms-1" data-bind="text: accessTargetName"></span></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <!-- ko if: accessTarget() -->
+                            <div data-bind="template: {name: 'manage-access-template', data: $root.manageAccess }"></div>
+                            <!-- /ko -->
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" data-bind="click: saveAccessModal"><i class="fa fa-save"></i> Save Access</button>
                         </div>
                     </div>
                 </div>

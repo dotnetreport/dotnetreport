@@ -202,6 +202,12 @@
                                     <i class="fa fa-hourglass"></i>
                                     <span>Schedule</span>
                                 </button>
+                            </li>                            
+                            <li data-bind="visible: hasDashboard() && adminMode()">
+                                <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
+                                    <i class="fa fa-key"></i>
+                                    <span>Manage Access</span>
+                                </button>
                             </li>
                         </ul>
                     </div>
@@ -323,9 +329,10 @@
                         <div data-bind="foreach: $parent.reportsAndFolders">
                             <div class="list-group-item">
                                 <a role="button" class="d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }" style="text-decoration: none; font-weight: normal;">
-                                    <div class="d-flex align-items-center">
+                                    <div class="d-flex align-items-center" data-bind="style: { paddingLeft: (depth * 20) + 'px' }">
                                         <i class="fa fa-folder me-2 text-secondary"></i>
                                         <span data-bind="text: folder"></span>
+                                        <span class="text-muted small ms-2" data-bind="visible: depth > 0, text: folderPath"></span>
                                     </div>
                                     <i class="fa fa-chevron-down"></i>
                                 </a>

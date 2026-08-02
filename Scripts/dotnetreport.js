@@ -3761,6 +3761,53 @@ var reportViewModel = function (options) {
 	self.manageAccess = manageAccess(options);
 	self.manageFolderAccess = manageAccess(options);
 
+	self.accessModalReport = ko.observable(null);
+	self.openAccessModal = function (report) {
+		self.accessModalReport(report);
+		self.manageAccess.clientId(report.clientId || '');
+		self.manageAccess.setupList(self.manageAccess.users, report.userId || '');
+		self.manageAccess.setupList(self.manageAccess.userRoles, report.userRole || '');
+		self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, report.viewOnlyUserId || '');
+		self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, report.viewOnlyUserRole || '');
+		self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, report.deleteOnlyUserId || '');
+		self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, report.deleteOnlyUserRole || '');
+		$('#manage-access-modal').modal('show');
+	};
+	self.saveAccessModal = function () {
+		var report = self.accessModalReport();
+		if (!report) return;
+		return ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/SaveReportAccess",
+				model: JSON.stringify({
+					reportJson: JSON.stringify({
+						Id: report.reportId,
+						ClientId: self.manageAccess.clientId() || '',
+						UserId: self.manageAccess.getAsList(self.manageAccess.users),
+						ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
+						DeleteOnlyUserId: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers),
+						UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
+						ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
+						DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles)
+					})
+				})
+			}
+		}).done(function () {
+			toastr.success('Access changes saved');
+			// Reflect the change on the list item so admin badges update without a reload.
+			report.clientId = self.manageAccess.clientId() || '';
+			report.userId = self.manageAccess.getAsList(self.manageAccess.users);
+			report.userRole = self.manageAccess.getAsList(self.manageAccess.userRoles);
+			report.viewOnlyUserId = self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers);
+			report.viewOnlyUserRole = self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles);
+			report.deleteOnlyUserId = self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers);
+			report.deleteOnlyUserRole = self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles);
+			$('#manage-access-modal').modal('hide');
+			self.LoadAllSavedReports(true);
+		}).fail(function () { toastr.error('Failed to save access changes'); });
+	};
+
 	self.pager.currentPage.subscribe(function () {
 		self.ExecuteReportQuery(self.currentSql(), self.currentConnectKey(), self.ReportSeries, true);
 	});
@@ -13851,11 +13898,27 @@ var dashboardViewModel = function (options) {
 			if (allFolders[0].result) { allFolders[0] = allFolders[0].result; }
 			if (allReports[0].result) { allReports[0] = allReports[0].result; }
 
+				// Show the full path so sub folders are nested and same named folders under
+				// different parents stay distinguishable.
+				var folderMap = {};
+				_.forEach(allFolders[0], function (f) { folderMap[f.Id] = f; });
+				var pathNames = function (f) {
+					var names = [], cur = f, guard = 0;
+					while (cur && guard++ < 20) {
+						names.unshift(cur.FolderName);
+						cur = cur.ParentFolderId ? folderMap[cur.ParentFolderId] : null;
+					}
+					return names;
+				};
+
 				_.forEach(allFolders[0], function (x) {
 					var folderReports = _.filter(allReports[0], { folderId: x.Id });
+					var names = pathNames(x);
 					setup.push({
 						folderId: x.Id,
-						folder: x.FolderName,
+						folder: names[names.length - 1],
+						folderPath: names.join(' › '),
+						depth: names.length - 1,
 						reports: _.map(folderReports, function (r) {
 							return {
 								reportId: r.reportId,
@@ -13867,7 +13930,7 @@ var dashboardViewModel = function (options) {
 						})
 					});
 				});
-				self.reportsAndFolders(setup);
+				self.reportsAndFolders(_.sortBy(setup, 'folderPath'));
 				self.savedReports = allReports[0];
 			});
 		});

@@ -26,6 +26,28 @@ var manageViewModel = function (options) {
 	self.activeProcedure = ko.observable();
 	self.schedules = ko.observableArray([]);
 	self.settings = new settingPageViewModel(options);
+	// Access editing opens in a modal (same template the report page uses).
+	self.accessTarget = ko.observable(null);
+	self.accessTargetName = ko.observable('');
+	self.openAccessModal = function (item, isFolder) {
+		if (!self.manageAccess) { toastr.error('Users and roles are still loading, please try again'); return; }
+		if (isFolder) { item.changeFolderAccess(true); } else { item.changeAccess(true); }
+		item._isFolder = isFolder;
+		self.accessTarget(item);
+		self.accessTargetName(isFolder ? item.FolderName : item.reportName);
+		$('#setup-access-modal').modal('show');
+	};
+	self.saveAccessModal = function () {
+		var t = self.accessTarget();
+		if (!t) return;
+		var done = function () {
+			$('#setup-access-modal').modal('hide');
+			if (t._isFolder) { t.changeFolderAccess(false); } else { t.changeAccess(false); }
+		};
+		var promise = t._isFolder ? t.saveFolderAccessChanges() : t.saveAccessChanges();
+		if (promise && promise.done) { promise.done(done); } else { done(); }
+	};
+
 	self.ReportResult = ko.observable({
 		ReportSql: ko.observable()
 	});
@@ -1776,6 +1798,18 @@ var manageViewModel = function (options) {
 			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
 			if (allReports[0].d) { allReports[0] = allReports[0].d; }
 
+			// Full folder path so sub folders nest and same named folders stay distinguishable.
+			var folderMap = {};
+			_.forEach(allFolders[0], function (f) { folderMap[f.Id] = f; });
+			var pathNames = function (f) {
+				var names = [], cur = f, guard = 0;
+				while (cur && guard++ < 20) {
+					names.unshift(cur.FolderName);
+					cur = cur.ParentFolderId ? folderMap[cur.ParentFolderId] : null;
+				}
+				return names;
+			};
+
 			_.forEach(allFolders[0], function (x) {
 				var folderReports = _.filter(allReports[0], { folderId: x.Id });
 				_.forEach(folderReports, function (r) {
@@ -1842,9 +1876,12 @@ var manageViewModel = function (options) {
 					}
 					r.isSelected = ko.observable(false);
 				});
+				var names = pathNames(x);
 				var folderVm = {
 					folderId: x.Id,
-					folder: x.FolderName,
+					folder: names[names.length - 1],
+					folderPath: names.join(' › '),
+					depth: names.length - 1,
 					reports: folderReports,
 					allReportsSelected: ko.observable(),
 					selectAllReports: function () {
@@ -1868,8 +1905,13 @@ var manageViewModel = function (options) {
 				setup.push(folderVm);
 			});
 
-			self.reportsAndFolders(setup);
-			var folders = allFolders[0];
+			self.reportsAndFolders(_.sortBy(setup, 'folderPath'));
+			var folders = _.sortBy(allFolders[0], function (f) { return pathNames(f).join(' › '); });
+			_.forEach(folders, function (f) {
+				var n = pathNames(f);
+				f.FolderPath = n.join(' › ');
+				f.Depth = n.length - 1;
+			});
 			_.forEach(folders, function (r) {
 				r.UserId = ko.observable(r.UserId);
 				r.ViewOnlyUserId = ko.observable(r.ViewOnlyUserId);
