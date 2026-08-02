@@ -12460,6 +12460,8 @@ var dashboardViewModel = function (options) {
 		? (_.find(self.dashboards(), { id: options.dashboardId }) || { name: '', description: '', canManage: true })
 		: (self.dashboards().length > 0 ? self.dashboards()[0] : { name: '', description: '', canManage: true });
 
+	self.CanSaveReports = ko.observable(true);
+	self.CanCreateDashboards = ko.observable(true);
 	self.appSettings = {
 		allowUsersToCreateReports: true,
 		allowUsersToCreateDashboards: true,
@@ -12501,7 +12503,10 @@ var dashboardViewModel = function (options) {
 				allowUsersToManageFolders: true
 			};
 			self.appSettings.useClientIdInAdmin = x.useClientIdInAdmin;
-			self.appSettings.allowUsersToCreateDashboards = x.allowUsersToCreateDashboards;
+			self.appSettings.allowUsersToCreateReports = x.allowUsersToCreateReports !== false;
+			self.appSettings.allowUsersToCreateDashboards = x.allowUsersToCreateDashboards !== false;
+			self.CanSaveReports(x.allowUsersToCreateReports !== false);
+			self.CanCreateDashboards(x.allowUsersToCreateDashboards !== false);
 			self.appSettings.useSqlBuilderInAdminMode = x.useSqlBuilderInAdminMode;
 			self.appSettings.useSqlCustomField = x.useSqlCustomField;
 			self.appSettings.noFolders = x.noFolders;

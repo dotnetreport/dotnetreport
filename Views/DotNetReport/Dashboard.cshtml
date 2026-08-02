@@ -161,7 +161,7 @@
                             <span>Manage</span>
                         </button>
                         <ul class="dropdown-menu small">
-                            <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
+                            <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode()) && (CanSaveReports() || adminMode())">
                                 <a href="#" class="dropdown-item" data-bind="click: function() { newReport() }" title="Create a new report and add it to the Dashboard">
                                     <span class="fa fa-plus"></span> Add New Report
                                 </a>
@@ -172,7 +172,7 @@
                                     <span>Edit Dashboard</span>
                                 </button>
                             </li>
-                            <li data-bind="visible: appSettings.allowUsersToCreateDashboards || adminMode()">
+                            <li data-bind="visible: CanCreateDashboards() || adminMode()">
                                 <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
                                     <i class="fa fa-dashboard"></i>
                                     <span>Create a New Dashboard</span>
@@ -261,7 +261,7 @@
     </div>
 </div>
 
-<div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 && (appSettings.allowUsersToCreateDashboards || adminMode())">
+<div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 && (CanCreateDashboards() || adminMode())">
     No Dashboards yet. Click below to Start<br />
     <button class="btn btn-lg btn-primary" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
 </div>
