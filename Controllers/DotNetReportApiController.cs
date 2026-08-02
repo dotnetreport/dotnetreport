@@ -408,7 +408,32 @@ namespace ReportBuilder.Web.Controllers
                     {
                         sqlFields = DotNetReportHelper.SplitSqlColumns(sql, DotNetReportHelper.dbtype);
                         bool hasDistinct = Regex.IsMatch(sql, @"^\s*SELECT\s+(TOP\s+\d+\s+)?DISTINCT\b", RegexOptions.IgnoreCase);
-
+                        var aliasCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                        bool anyDuped = false;
+                        for (int f = 0; f < sqlFields.Count; f++)
+                        {
+                            var parts = sqlFields[f].Split(new[] { " AS " }, StringSplitOptions.None);
+                            if (parts.Length != 2) continue;
+                            var expr = parts[0];
+                            var alias = parts[1].Trim().Trim('[', ']');
+                            if (aliasCounts.TryGetValue(alias, out var count))
+                            {
+                                aliasCounts[alias] = ++count;
+                                sqlFields[f] = $"{expr} AS [{alias}_{count}]";
+                                anyDuped = true;
+                            }
+                            else
+                            {
+                                aliasCounts[alias] = 1;
+                            }
+                        }
+                        if (anyDuped)
+                        {
+                            var selectEnd = sql.IndexOf("{FROM}", StringComparison.OrdinalIgnoreCase);
+                            var selectPrefix = Regex.Match(sql, @"^\s*SELECT\s+(TOP\s+\d+\s+)?(DISTINCT\s+)?",
+                                                            RegexOptions.IgnoreCase).Value;
+                            sql = selectPrefix + string.Join(", ", sqlFields) + sql.Substring(selectEnd);
+                        }
                         var countInner = sql.Replace("{FROM}", "FROM");
                         int countOrderByIndex = countInner.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
                         if (countOrderByIndex > -1)
