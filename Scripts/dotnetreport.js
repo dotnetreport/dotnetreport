@@ -4548,7 +4548,7 @@ var reportViewModel = function (options) {
 				}
 				return allDescendantIds.indexOf(r.folderId) >= 0;
 			}).length;
-			// Warning message build karo
+			// Warning message 
 			var msg = '<div style="font-size: 14px;">';
 			msg += '<p><strong>Folder:</strong> <span class="text-muted">' + breadcrumb + '</span></p>';
 			msg += '<hr/>';
@@ -4559,7 +4559,7 @@ var reportViewModel = function (options) {
 				msg += '<li><strong>' + subFolderCount + '</strong> sub-folder' + (subFolderCount > 1 ? 's' : '') + ' inside this folder</li>';
 			}
 			if (reportCount > 0) {
-				msg += '<li><strong>' + reportCount + '</strong> report' + (reportCount > 1 ? 's' : '') + ' across all folders</li>';
+				msg += '<li><strong>' + reportCount + '</strong> report' + (reportCount > 1 ? 's' : '') + ' in this folder</li>';
 			}
 			if (subFolderCount === 0 && reportCount === 0) {
 				msg += '<li>No sub-folders or reports (folder is empty)</li>';
@@ -4991,6 +4991,13 @@ var reportViewModel = function (options) {
 			var m = self.scheduleReportModal;
 			if (!m.filterEditingSchedule) { m.loadSchedules(); return; }
 			m.filterEditingSchedule.Filters = JSON.stringify(self.BuildFilterData(self.scheduleFilterGroups()));
+			m.persistSchedule(m.filterEditingSchedule);
+		},
+
+		resetScheduleFilter: function () {
+			var m = self.scheduleReportModal;
+			if (!m.filterEditingSchedule) { m.loadSchedules(); return; }
+			m.filterEditingSchedule.Filters = '';
 			m.persistSchedule(m.filterEditingSchedule);
 		},
 

@@ -1318,7 +1318,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <th>When</th>
                                 <th>Email</th>
                                 <th>Format</th>
-                                <th data-bind="visible: $parent.adminMode()">Filter</th>
+                                <th>Filter</th>
                                 <th class="text-end"></th>
                             </tr>
                         </thead>
@@ -1327,10 +1327,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <td data-bind="text: $parent.scheduleSummary($data)"></td>
                                 <td data-bind="text: EmailTo"></td>
                                 <td data-bind="text: $parent.formatSummary($data)"></td>
-                                <td class="small text-muted" data-bind="visible: $parents[1].adminMode(), text: $parent.filterSummary($data)"></td>
+                                <td class="small text-muted" data-bind="text: $parent.filterSummary($data)"></td>
                                 <td class="text-end text-nowrap">
                                     <button type="button" class="btn btn-sm btn-link p-0 me-2" data-bind="click: function() { $parent.editSchedule($data); }">Edit</button>
-                                    <button type="button" class="btn btn-sm btn-link p-0 me-2" data-bind="visible: $parents[1].adminMode(), click: function() { $parent.changeFilter($data); }">Change Filter</button>
+                                    <button type="button" class="btn btn-sm btn-link p-0 me-2" data-bind="click: function() { $parent.changeFilter($data); }">Change Filter</button>
                                     <button type="button" class="btn btn-sm btn-link p-0 text-danger" data-bind="click: function() { $parent.deleteSchedule($data); }">Delete</button>
                                 </td>
                             </tr>
@@ -1342,7 +1342,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 </div>
                 <div data-bind="visible: viewMode() === 'filter'">
                     <strong>Filter for this schedule</strong>
-                    <div class="small text-muted mb-2">Applied when this schedule runs, overriding the report's saved filters.</div>
+                    <div class="small text-muted mb-2">
+                        When set, this schedule runs with <b>exactly these filters</b> instead of the report's saved filters and
+                        any filter changes made later on the report won't affect this schedule. Use <b>Report's Filters</b> to remove the
+                        override and follow the report's current filters again.
+                    </div>
                     <div data-bind="template: { name: 'filter-group', data: $parent.scheduleFilterHost }"></div>
                 </div>
             </div>
@@ -1351,6 +1355,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 <button type="button" class="btn btn-secondary" data-bind="visible: viewMode() === 'edit', click: backToList">Back</button>
                 <button type="button" class="btn btn-primary" data-bind="visible: viewMode() === 'edit', click: saveSchedule">Save Schedule</button>
                 <button type="button" class="btn btn-secondary" data-bind="visible: viewMode() === 'filter', click: backToList">Back</button>
+                <button type="button" class="btn btn-outline-secondary" data-bind="visible: viewMode() === 'filter', click: resetScheduleFilter" title="Remove this schedule's filter override and follow the report's saved filters">Use Report's Filters</button>
                 <button type="button" class="btn btn-primary" data-bind="visible: viewMode() === 'filter', click: applyScheduleFilter">Apply Filter</button>
             </div>
         </div>
