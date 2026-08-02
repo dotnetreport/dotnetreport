@@ -59,6 +59,49 @@
     font-size: 14px;
 }
 
+/* Quick actions that reveal on list-row hover (list view) */
+.row-hover-actions {
+    visibility: hidden;
+    white-space: nowrap;
+}
+
+.row-hover:hover .row-hover-actions {
+    visibility: visible;
+}
+
+.row-hover-actions.favorited {
+    visibility: visible;
+}
+
+.row-hover-actions a {
+    color: #adb5bd;
+    text-decoration: none;
+}
+
+    .row-hover-actions a:hover {
+        color: #495057;
+    }
+
+/* The "..." actions menu reveals on row hover; stays visible while the dropdown is open */
+.row-hover .hover-ellipsis {
+    visibility: hidden;
+}
+
+.row-hover:hover .hover-ellipsis,
+.row-hover .hover-ellipsis.show {
+    visibility: visible;
+}
+
+/* Touch devices have no hover — keep all hover-revealed actions always visible there */
+@media (hover: none) {
+    .row-hover .hover-ellipsis,
+    .row-hover-actions,
+    .favorite-hover-star {
+        visibility: visible;
+        opacity: 1;
+    }
+}
+
 /* Favorite star that reveals on card hover (icon view) */
 .favorite-hover-star {
     cursor: pointer;
@@ -77,20 +120,30 @@
     opacity: 1;
 }
 
+    /* Clear the floated tiles so following content (reports list) starts on its own line */
+    .folder-list::after {
+        content: "";
+        display: table;
+        clear: both;
+    }
+
     .folder-list li {
         float: left;
-        width: 100px;
-        height: 100px;
+        width: 120px;
+        min-height: 104px;
+        height: auto;
         padding: 10px;
         font-size: 12px;
         line-height: 1.4;
         text-align: center;
         border: 1px solid #fff;
+        border-radius: 6px;
         cursor: pointer;
     }
 
         .folder-list li:hover {
-            background-color: #ddd;
+            background-color: #eee;
+            border-color: #ddd;
         }
 
     .folder-list .glyphicon {
