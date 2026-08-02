@@ -1,6 +1,8 @@
 ﻿using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
+using HtmlAgilityPack;
+using Microsoft.CodeAnalysis;
 using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -8,8 +10,10 @@ using OfficeOpenXml;
 using PdfSharp.Drawing;
 using PdfSharp.Drawing.Layout;
 using PdfSharp.Pdf;
+using PdfSharp.Pdf.IO;
 using PuppeteerSharp;
 using PuppeteerSharp.Media;
+using System.Collections.Concurrent;
 using System.Data;
 using System.Drawing;
 using System.Net;
@@ -17,12 +21,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
-using Microsoft.CodeAnalysis;
-using System.Collections.Concurrent;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using PIC = DocumentFormat.OpenXml.Drawing.Pictures;
-using PdfSharp.Pdf.IO;
 
 namespace ReportBuilder.Web.Models
 {
@@ -53,7 +54,11 @@ namespace ReportBuilder.Web.Models
     public class DotNetReportScheduleModel : DotNetReportModel
     {
         public List<ReportHeaderColumn> Columns { get; set; } = new List<ReportHeaderColumn>();
-    } 
+        // Per-report header selection (ReportSettings carries ReportHeaderId / UseCustomReportHeader /
+        // CustomReportHeaderHtml); HideReportHeader means "don't use a header for this report".
+        public string ReportSettings { get; set; }
+        public bool HideReportHeader { get; set; }
+    }
 
     public class DotNetReportPrintModel : DotNetReportModel
     {
@@ -479,6 +484,7 @@ namespace ReportBuilder.Web.Models
         public bool includeSubTotal { get; set; }
         public bool includeColumnTotal { get; set; }
         public bool pivot { get; set; }
+        public string reportType { get; set; }
     }
     public interface IDnrDataConnection
     {
@@ -550,6 +556,7 @@ namespace ReportBuilder.Web.Models
             ("SaveReportHeader",      "headerJson", null,         new (string, bool)[0]),
             ("SaveReportFooter",      "footerJson", null,         new (string, bool)[0]),
             ("RunReport",             "reportHtml", "SaveReport",  new[] { ("ReportJson", true), ("ReportSettings", true) }),
+            ("RunReport",             "CustomReportHeaderHtml", "SaveReport",  new[] { ("ReportJson", true), ("ReportSettings", true) }),
             ("AddDashboardWidget",    "text",       null,         new[] { ("widgetSettings", true), ("Widget", false) }),
             ("UpdateDashboardWidget", "text",       null,         new[] { ("widgetSettings", true), ("Widget", false) }),
         };
@@ -604,19 +611,19 @@ namespace ReportBuilder.Web.Models
         {
             if (string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model)) return model;
 
-            (string method, string leaf, string requireFlag, (string name, bool isJson)[] containers) field = default;
-            var matched = false;
-            foreach (var f in _reportHtmlFields)
-            {
-                if (method.EndsWith(f.method, StringComparison.OrdinalIgnoreCase)) { field = f; matched = true; break; }
-            }
-            if (!matched) return model;
+            var fields = _reportHtmlFields.Where(f => method.EndsWith(f.method, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (fields.Count == 0) return model;
 
             try
             {
                 var root = JObject.Parse(model);
-                if (field.requireFlag != null && !GetBoolCI(root, field.requireFlag)) return model;
-                return SanitizeHtmlField(root, field.containers, 0, field.leaf) ? root.ToString(Formatting.None) : model;
+                var changed = false;
+                foreach (var field in fields)
+                {
+                    if (field.requireFlag != null && !GetBoolCI(root, field.requireFlag)) continue;
+                    if (SanitizeHtmlField(root, field.containers, 0, field.leaf)) changed = true;
+                }
+                return changed ? root.ToString(Formatting.None) : model;
             }
             catch
             {
@@ -3363,12 +3370,99 @@ namespace ReportBuilder.Web.Models
                        .Replace("{report.name}", reportName ?? "");
             return text;
         }
+        private static byte[] BuildKpiPdfAlt(DataTable dt, List<ReportHeaderColumn> columns, string reportName, string pageSize, string pageOrientation, string reportDescription)
+        {
+            using (var ms = new MemoryStream())
+            {
+                var document = new PdfDocument();
+                var page = document.AddPage();
+                if (!string.IsNullOrEmpty(pageSize))
+                {
+                    switch (pageSize.ToUpper())
+                    {
+                        case "A4": page.Size = PdfSharp.PageSize.A4; break;
+                        case "LEGAL": page.Size = PdfSharp.PageSize.Legal; break;
+                        case "A1": page.Size = PdfSharp.PageSize.A1; break;
+                        case "A2": page.Size = PdfSharp.PageSize.A2; break;
+                        case "A3": page.Size = PdfSharp.PageSize.A3; break;
+                        case "TABLOID": page.Size = PdfSharp.PageSize.Tabloid; break;
+                        case "LETTER": default: page.Size = PdfSharp.PageSize.Letter; break;
+                    }
+                }
+                if (!string.IsNullOrEmpty(pageOrientation) && pageOrientation.ToUpper() == "LANDSCAPE")
+                    page.Orientation = PdfSharp.PageOrientation.Landscape;
+
+                var gfx = XGraphics.FromPdfPage(page);
+                double y = 40;
+
+                gfx.DrawString(reportName ?? "", new XFont("Arial", 16, XFontStyleEx.Bold), XBrushes.Black,
+                    new XRect(0, y, page.Width, 30), XStringFormats.Center);
+                y += 40;
+
+                if (!string.IsNullOrEmpty(reportDescription))
+                {
+                    gfx.DrawString(reportDescription, new XFont("Arial", 10, XFontStyleEx.Italic),
+                        new XSolidBrush(XColor.FromArgb(102, 112, 133)),
+                        new XRect(40, y, page.Width - 80, 30), XStringFormats.Center);
+                    y += 30;
+                }
+
+                y += 20;
+
+                if (dt == null || dt.Rows.Count == 0)
+                {
+                    gfx.DrawString("No data found", new XFont("Arial", 14, XFontStyleEx.Regular),
+                        new XSolidBrush(XColor.FromArgb(102, 112, 133)),
+                        new XRect(0, y, page.Width, 30), XStringFormats.Center);
+                    gfx.Dispose();
+                    document.Save(ms);
+                    return ms.ToArray();
+                }
+
+                var row = dt.Rows[0];
+                double cardWidth = Math.Min(320, page.Width.Point - 80);
+                double cardHeight = 120;
+                double cardX = (page.Width - cardWidth) / 2;
+                var borderPen = new XPen(XColor.FromArgb(222, 226, 230), 1);
+                var labelBrush = new XSolidBrush(XColor.FromArgb(71, 84, 103));
+
+                for (int c = 0; c < dt.Columns.Count; c++)
+                {
+                    var col = columns != null && columns.Count > c ? columns[c] : null;
+                    string label = col != null && !string.IsNullOrEmpty(col.fieldLabel)
+                        ? col.fieldLabel
+                        : (col != null && !string.IsNullOrEmpty(col.fieldName) ? col.fieldName : dt.Columns[c].ColumnName);
+
+                    string value = row[c]?.ToString() ?? "";
+                    try { GetColumnFormatting(dt.Columns[c], columns, ref value); } catch { }
+
+                    var cardRect = new XRect(cardX, y, cardWidth, cardHeight);
+                    gfx.DrawRectangle(borderPen, new XSolidBrush(XColor.FromArgb(249, 250, 251)), cardRect);
+
+                    gfx.DrawString(label, new XFont("Arial", 11, XFontStyleEx.Bold), labelBrush,
+                        new XRect(cardX, y + 14, cardWidth, 20), XStringFormats.TopCenter);
+                    gfx.DrawString(value, new XFont("Arial", 34, XFontStyleEx.Bold), XBrushes.Black,
+                        new XRect(cardX, y + 44, cardWidth, 60), XStringFormats.TopCenter);
+
+                    y += cardHeight + 20;
+                }
+
+                gfx.Dispose();
+                document.Save(ms);
+                return ms.ToArray();
+            }
+        }
+
         public async static Task<byte[]> GetPdfFileAlt(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
     string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null,
     string pageSize = "", string pageOrientation = "", bool subTotalPerGroup = false, string filterDetailsText = null, string reportDescription = null,
-    List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null)
+    List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null, string reportType = null)
         {
             var dt = await BuildExportData(reportSql, connectKey, expandSqls, columns, pivot, pivotColumn, pivotFunction);
+
+            if (reportType == "Single")
+                return BuildKpiPdfAlt(dt, columns, reportName, pageSize, pageOrientation, reportDescription);
+
             var allRowsList = new List<DataRow>();
             var currentGroupRowsList = new List<DataRow>();
 
@@ -3393,6 +3487,8 @@ namespace ReportBuilder.Web.Models
                 {
                     if (fi >= sqlFields.Count) break;
                     var col = sqlFields[fi++];
+                    var asIdx = col.LastIndexOf(" AS ");
+                    var sqlFieldName = asIdx >= 0 ? col.Substring(0, asIdx) : col;
                     drilldownRow.Add($@"
                 {{
                     ""Value"":""{dr[dc]}"",
@@ -3400,7 +3496,7 @@ namespace ReportBuilder.Web.Models
                     ""LabelValue"":""'{dr[dc]}'"",
                     ""NumericValue"":null,
                     ""Column"":{{
-                        ""SqlField"":""{col.Substring(0, col.LastIndexOf(" AS "))}"",
+                        ""SqlField"":""{sqlFieldName}"",
                         ""ColumnName"":""{dc.ColumnName}"",
                         ""DataType"":""{dc.DataType}"",
                         ""IsNumeric"":{(dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal" ? "true" : "false")},
@@ -3632,34 +3728,41 @@ namespace ReportBuilder.Web.Models
 
                         if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
                         {
-                            byte[] sPDFDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
-                            var imageStream = new MemoryStream(sPDFDecoded, 0, sPDFDecoded.Length, false, true);
-                            var image = XImage.FromStream(imageStream);
-                            var maxWidth = page.Width - 100;
-                            var maxHeight = page.Height - currentYPosition - 20;
-
-                            if (image.PixelWidth > maxWidth || image.PixelHeight > maxHeight)
+                            try
                             {
-                                var aspectRatio = (double)image.PixelWidth / image.PixelHeight;
-                                var width = maxWidth;
-                                var height = maxWidth / aspectRatio;
+                                byte[] sPDFDecoded = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
+                                var imageStream = new MemoryStream(sPDFDecoded, 0, sPDFDecoded.Length, false, true);
+                                var image = XImage.FromStream(imageStream);
+                                var maxWidth = page.Width - 100;
+                                var maxHeight = page.Height - currentYPosition - 20;
 
-                                if (height > maxHeight)
+                                if (image.PixelWidth > maxWidth || image.PixelHeight > maxHeight)
                                 {
-                                    height = maxHeight;
-                                    width = maxHeight * aspectRatio;
+                                    var aspectRatio = (double)image.PixelWidth / image.PixelHeight;
+                                    var width = maxWidth;
+                                    var height = maxWidth / aspectRatio;
+
+                                    if (height > maxHeight)
+                                    {
+                                        height = maxHeight;
+                                        width = maxHeight * aspectRatio;
+                                    }
+
+                                    rect = new XRect(50, currentYPosition, width, height);
+                                    gfx.DrawImage(image, rect);
+                                }
+                                else
+                                {
+                                    rect = new XRect(50, currentYPosition, image.PixelWidth, image.PixelHeight);
+                                    gfx.DrawImage(image, rect);
                                 }
 
-                                rect = new XRect(50, currentYPosition, width, height);
-                                gfx.DrawImage(image, rect);
+                                currentYPosition += (int)rect.Height + 20;
                             }
-                            else
+                            catch
                             {
-                                rect = new XRect(50, currentYPosition, image.PixelWidth, image.PixelHeight);
-                                gfx.DrawImage(image, rect);
+                                // Malformed/unsupported chart image: skip it rather than failing the whole PDF.
                             }
-
-                            currentYPosition += (int)rect.Height + 20;
                         }
                     }
 
@@ -3959,20 +4062,31 @@ namespace ReportBuilder.Web.Models
         private static string GetWordReportCss()
         {
             if (_wordReportCss != null) return _wordReportCss;
-
-            var css = "";
+            var css = new StringBuilder();
             try
             {
-                var path = new[]
+                var searchDirs = new[]
+                {
+                    Path.Combine(AppContext.BaseDirectory, "wwwroot", "css"),
+                    Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "css")
+                };
+                var cssDir = searchDirs.FirstOrDefault(Directory.Exists);
+                if (cssDir != null)
+                {
+                    var matchingFiles = Directory.GetFiles(cssDir, "dotnetreport*.css")
+                        .OrderBy(f => f);
+                    foreach (var file in matchingFiles)
                     {
-                        Path.Combine(AppContext.BaseDirectory, "wwwroot", "css", "dotnetreport.css"),
-                        Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "css", "dotnetreport.css")
-                    }.FirstOrDefault(File.Exists);
-
-                if (path != null) css = File.ReadAllText(path);
+                        try
+                        {
+                            css.AppendLine(File.ReadAllText(file));
+                        }
+                        catch {}
+                    }
+                }
             }
             catch { }
-            return _wordReportCss = css;
+            return _wordReportCss = css.ToString();
         }
 
         private static string WrapHtmlForWord(string innerHtml)
@@ -4029,7 +4143,9 @@ namespace ReportBuilder.Web.Models
                         var processedHeader = SubstituteHtmlPlaceholders(headerHtml, currentUserName, currentUserRoles, 1, 1, useWordFields: true, reportName: reportName);
                         var headerPart = mainPart.AddNewPart<HeaderPart>();
                         headerRelId = mainPart.GetIdOfPart(headerPart);
-
+                        processedHeader = ConvertBootstrapGridToTable(processedHeader);
+                        processedHeader = ConvertFlexToTable(processedHeader);
+                        processedHeader = ConvertGridToTable(processedHeader);
                         var altHdrPart = headerPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
                         var altHdrRelId = headerPart.GetIdOfPart(altHdrPart);
                         var fullHdrHtml = WrapHtmlForWord(processedHeader);
@@ -4062,7 +4178,9 @@ namespace ReportBuilder.Web.Models
                     {
                         var footerPart = mainPart.AddNewPart<FooterPart>();
                         footerRelId = mainPart.GetIdOfPart(footerPart);
-
+                        processedFooterHtml = ConvertBootstrapGridToTable(processedFooterHtml);
+                        processedFooterHtml = ConvertFlexToTable(processedFooterHtml);
+                        processedFooterHtml = ConvertGridToTable(processedFooterHtml);
                         var altFtrPart = footerPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
                         var altFtrRelId = footerPart.GetIdOfPart(altFtrPart);
                         var fullFtrHtml = WrapHtmlForWord(processedFooterHtml);
@@ -4126,6 +4244,9 @@ namespace ReportBuilder.Web.Models
                     }
                     if (hasCustomHtml)
                     {
+                        customHtml = ConvertBootstrapGridToTable(customHtml);
+                        customHtml = ConvertFlexToTable(customHtml);
+                        customHtml = ConvertGridToTable(customHtml);
                         var altBodyPart = mainPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
                         var altBodyRelId = mainPart.GetIdOfPart(altBodyPart);
                         var fullBodyHtml = WrapHtmlForWord(customHtml);
@@ -4458,7 +4579,322 @@ namespace ReportBuilder.Web.Models
                 return memStream.ToArray();
             }
         }
-        
+        private static string ConvertGridToTable(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            bool convertedAny;
+            do
+            {
+                convertedAny = false;
+
+                var gridNodes = doc.DocumentNode
+                    .SelectNodes("//*[contains(translate(@style,' ',''),'display:grid')]");
+
+                if (gridNodes == null) break;
+
+                var deepestFirst = gridNodes.OrderByDescending(GetDepth).ToList();
+
+                foreach (var gridNode in deepestFirst)
+                {
+                    ConvertSingleGridNode(doc, gridNode);
+                    convertedAny = true;
+                    break; // ek convert karke dobara fetch karo, DOM change ho chuka hy
+                }
+
+            } while (convertedAny);
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        private static void ConvertSingleGridNode(HtmlAgilityPack.HtmlDocument doc, HtmlNode gridNode)
+        {
+            var style = gridNode.GetAttributeValue("style", "");
+
+            var children = gridNode.ChildNodes
+                .Where(n => n.NodeType == HtmlNodeType.Element)
+                .ToList();
+            if (children.Count == 0) return;
+
+            // grid-template-columns se column count nikalo
+            string templateCols = ExtractStyleValue(style, "grid-template-columns");
+            int colCount = GetColumnCount(templateCols, children.Count);
+
+            string columnGap = ExtractStyleValue(style, "column-gap") ?? ExtractStyleValue(style, "gap") ?? "0px";
+            string containerBg = ExtractStyleValue(style, "background-color");
+
+            var wrapper = doc.CreateElement("div");
+            if (!string.IsNullOrEmpty(containerBg))
+                wrapper.SetAttributeValue("style", $"background-color:{containerBg};");
+
+            var table = doc.CreateElement("table");
+            table.SetAttributeValue("width", "100%");
+            table.SetAttributeValue("style", $"border-collapse:collapse; width:100%;{(string.IsNullOrEmpty(containerBg) ? "" : $" background-color:{containerBg};")}");
+            table.SetAttributeValue("cellspacing", "0");
+
+            // Children ko rows mein group karo (colCount ke hisaab se wrap)
+            for (int i = 0; i < children.Count; i += colCount)
+            {
+                var tr = doc.CreateElement("tr");
+                var rowChildren = children.Skip(i).Take(colCount).ToList();
+
+                foreach (var child in rowChildren)
+                {
+                    var td = doc.CreateElement("td");
+
+                    // *** Yahi missing piece tha: child ka apna background-color nikal ke td pe daalo ***
+                    var childStyle = child.GetAttributeValue("style", "");
+                    string childBg = ExtractStyleValue(childStyle, "background-color");
+                    string childPadding = ExtractStyleValue(childStyle, "padding") ?? "10px";
+
+                    var tdStyleParts = new List<string>
+            {
+                "vertical-align:top",
+                $"padding:{childPadding}"
+            };
+                    if (!string.IsNullOrEmpty(childBg))
+                        tdStyleParts.Add($"background-color:{childBg}");
+                    if (columnGap != "0px" && rowChildren.IndexOf(child) < rowChildren.Count - 1)
+                        tdStyleParts.Add($"padding-right:{columnGap}");
+
+                    td.SetAttributeValue("style", string.Join("; ", tdStyleParts) + ";");
+                    td.SetAttributeValue("width", $"{100 / colCount}%");
+
+                    // child ka background-color style se hata do (ab td pe hy), baaki styles rehne do
+                    if (!string.IsNullOrEmpty(childBg))
+                    {
+                        var cleanedStyle = System.Text.RegularExpressions.Regex.Replace(
+                            childStyle, @"background-color\s*:\s*[^;]+;?", "",
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        child.SetAttributeValue("style", cleanedStyle);
+                    }
+
+                    td.InnerHtml = child.OuterHtml;
+                    tr.AppendChild(td);
+                }
+                table.AppendChild(tr);
+            }
+
+            wrapper.AppendChild(table);
+            gridNode.ParentNode.ReplaceChild(wrapper, gridNode);
+        }
+
+        private static int GetColumnCount(string templateCols, int fallbackChildCount)
+        {
+            if (string.IsNullOrEmpty(templateCols))
+                return fallbackChildCount;
+
+            // Pattern: repeat(3, 1fr)
+            var repeatMatch = System.Text.RegularExpressions.Regex.Match(
+                templateCols, @"repeat\(\s*(\d+)\s*,");
+            if (repeatMatch.Success)
+                return int.Parse(repeatMatch.Groups[1].Value);
+
+            // Pattern: 1fr 1fr 1fr  ya  200px 1fr auto
+            var parts = templateCols.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length > 0 ? parts.Length : fallbackChildCount;
+        }
+        private static string ConvertBootstrapGridToTable(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            var rows = doc.DocumentNode.SelectNodes("//div[contains(concat(' ', normalize-space(@class), ' '), ' row ')]");
+            if (rows == null) return customHtml;
+
+            foreach (var row in rows.ToList())
+            {
+                var cols = row.SelectNodes("./div[contains(@class,'col-')]");
+                if (cols == null) continue;
+
+                string rowStyle = row.GetAttributeValue("style", "");
+                string rowBg = ExtractStyleValue(rowStyle, "background-color");
+
+                var table = doc.CreateElement("table");
+                table.SetAttributeValue("width", "100%");
+                var tableStyle = "border-collapse:collapse; margin-bottom:10px;";
+                if (!string.IsNullOrEmpty(rowBg))
+                    tableStyle += $" background-color:{rowBg};";
+                table.SetAttributeValue("style", tableStyle);
+
+                var tr = doc.CreateElement("tr");
+
+                foreach (var col in cols)
+                {
+                    var td = doc.CreateElement("td");
+
+                    int colSpan = GetBootstrapColSpan(col.GetAttributeValue("class", ""));
+                    double widthPercent = Math.Round(colSpan / 12.0 * 100, 2);
+                    td.SetAttributeValue("width", $"{widthPercent}%");
+
+                    string colStyle = col.GetAttributeValue("style", "");
+                    string colBg = ExtractStyleValue(colStyle, "background-color");
+                    string colPadding = ExtractStyleValue(colStyle, "padding");
+
+                    // *** Fix: text-align aur vertical-align bhi nikalo ***
+                    string colTextAlign = ExtractStyleValue(colStyle, "text-align");
+                    string colVertAlign = ExtractStyleValue(colStyle, "vertical-align");
+
+                    var tdStyleParts = new List<string>();
+                    tdStyleParts.Add($"vertical-align:{(string.IsNullOrEmpty(colVertAlign) ? "top" : colVertAlign)}");
+                    tdStyleParts.Add($"padding:{(string.IsNullOrEmpty(colPadding) ? "8px" : colPadding)}");
+                    if (!string.IsNullOrEmpty(colBg))
+                        tdStyleParts.Add($"background-color:{colBg}");
+                    if (!string.IsNullOrEmpty(colTextAlign))
+                        tdStyleParts.Add($"text-align:{colTextAlign}");
+
+                    td.SetAttributeValue("style", string.Join("; ", tdStyleParts) + ";");
+
+                    // col ke baaki inline styles (jo td pe copy kar diye) uske apne style se hata do
+                    if (!string.IsNullOrEmpty(colStyle))
+                    {
+                        var cleanedStyle = System.Text.RegularExpressions.Regex.Replace(
+                            colStyle, @"(background-color|padding|text-align|vertical-align)\s*:\s*[^;]+;?", "",
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        col.SetAttributeValue("style", cleanedStyle);
+                    }
+
+                    td.InnerHtml = col.InnerHtml;
+                    tr.AppendChild(td);
+                }
+                table.AppendChild(tr);
+                row.ParentNode.ReplaceChild(table, row);
+            }
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        private static int GetBootstrapColSpan(string classAttr)
+        {
+            if (string.IsNullOrEmpty(classAttr)) return 12;
+
+            var match = System.Text.RegularExpressions.Regex.Match(
+                classAttr, @"col-(?:xs-|sm-|md-|lg-|xl-)?(\d+)");
+            if (match.Success) return int.Parse(match.Groups[1].Value);
+
+            return 12;
+        }
+        private static string ConvertFlexToTable(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            bool convertedAny;
+            do
+            {
+                convertedAny = false;
+
+                // Kisi bhi tag pe display:flex dhoondo (div, span, section, header, footer, etc.)
+                var flexNodes = doc.DocumentNode
+                    .SelectNodes("//*[contains(translate(@style,' ',''),'display:flex')]");
+
+                if (flexNodes == null) break;
+
+                // Sabse deep-nested wala pehle convert karo (bottom-up),
+                // warna outer conversion nested flex ko tor dega
+                var deepestFirst = flexNodes.OrderByDescending(GetDepth).ToList();
+
+                foreach (var flexNode in deepestFirst)
+                {
+                    ConvertSingleFlexNode(doc, flexNode);
+                    convertedAny = true;
+                    break; // ek convert karke list dobara fetch karo (DOM change ho chuka)
+                }
+
+            } while (convertedAny);
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        private static void ConvertSingleFlexNode(HtmlAgilityPack.HtmlDocument doc, HtmlNode flexNode)
+        {
+            var style = flexNode.GetAttributeValue("style", "");
+
+            var children = flexNode.ChildNodes
+                .Where(n => n.NodeType == HtmlNodeType.Element)
+                .ToList();
+            if (children.Count == 0) return;
+
+            bool isColumn = ExtractStyleValue(style, "flex-direction")?.Trim() == "column";
+            string justify = ExtractStyleValue(style, "justify-content")?.Trim();
+            string align = ExtractStyleValue(style, "align-items")?.Trim();
+            string bg = ExtractStyleValue(style, "background-color");
+            string padding = ExtractStyleValue(style, "padding");
+
+            string hAlign = justify switch
+            {
+                "center" => "center",
+                "flex-end" => "right",
+                _ => "left"
+            };
+            string vAlign = align switch
+            {
+                "flex-start" => "top",
+                "flex-end" => "bottom",
+                _ => "middle"
+            };
+
+            string bgStyle = string.IsNullOrEmpty(bg) ? "" : $"background-color:{bg};";
+
+            var wrapper = doc.CreateElement("div");
+            if (!string.IsNullOrEmpty(bgStyle))
+                wrapper.SetAttributeValue("style", bgStyle);
+
+            var table = doc.CreateElement("table");
+            // Table pe bhi bg set karo, warna Word default white fill de dega
+            table.SetAttributeValue("style", $"border-collapse:collapse; width:100%; {bgStyle}");
+            table.SetAttributeValue("width", "100%");
+
+            if (isColumn)
+            {
+                foreach (var child in children)
+                {
+                    var tr = doc.CreateElement("tr");
+                    var td = doc.CreateElement("td");
+                    // Har td pe bhi bg zaroori hy
+                    td.SetAttributeValue("style",
+                        $"vertical-align:{vAlign}; text-align:{hAlign}; padding:{(string.IsNullOrEmpty(padding) ? "6px" : padding)}; {bgStyle}");
+                    td.InnerHtml = child.OuterHtml;
+                    tr.AppendChild(td);
+                    table.AppendChild(tr);
+                }
+            }
+            else
+            {
+                var tr = doc.CreateElement("tr");
+                for (int i = 0; i < children.Count; i++)
+                {
+                    var td = doc.CreateElement("td");
+                    string cellAlign = (justify == "space-between" && i == children.Count - 1) ? "right" : hAlign;
+                    td.SetAttributeValue("style",
+                        $"vertical-align:{vAlign}; text-align:{cellAlign}; padding:{(string.IsNullOrEmpty(padding) ? "6px" : padding)}; {bgStyle}");
+                    td.InnerHtml = children[i].OuterHtml;
+                    tr.AppendChild(td);
+                }
+                table.AppendChild(tr);
+            }
+
+            wrapper.AppendChild(table);
+            flexNode.ParentNode.ReplaceChild(wrapper, flexNode);
+        }
+
+        private static int GetDepth(HtmlNode node)
+        {
+            int depth = 0;
+            while (node.ParentNode != null)
+            {
+                depth++;
+                node = node.ParentNode;
+            }
+            return depth;
+        }
+
+        private static string ExtractStyleValue(string styleAttr, string property)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(
+                styleAttr, $@"{property}\s*:\s*([^;]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            return match.Success ? match.Groups[1].Value.Trim() : null;
+        }
         static void AddImageToBody(WordprocessingDocument wordDoc, string relationshipId, long cx, long cy)
         {
             // Define the reference of the image.

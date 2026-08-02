@@ -172,7 +172,7 @@
                                     <span>Edit Dashboard</span>
                                 </button>
                             </li>
-                            <li>
+                            <li data-bind="visible: appSettings.allowUsersToCreateDashboards || adminMode()">
                                 <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
                                     <i class="fa fa-dashboard"></i>
                                     <span>Create a New Dashboard</span>
@@ -261,7 +261,7 @@
     </div>
 </div>
 
-<div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 ">
+<div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 && (appSettings.allowUsersToCreateDashboards || adminMode())">
     No Dashboards yet. Click below to Start<br />
     <button class="btn btn-lg btn-primary" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
 </div>
@@ -407,8 +407,8 @@
                                         <span class="fa fa-file-pdf-o"></span> PDF
                                     </a>
                                 </li>
-                                <li data-bind="visible: canDrilldown && appSettings.useAltPdf">
-                                    <a href="#" class="dropdown-item" data-bind="click: $parent.appSettings.showPageSize ? function() { loadPdfModel() } : function() { $parent.appSettings.useAltPdf ? downloadPdfAlt(true,'','') : downloadPdf(false,'','') }">
+                                <li data-bind="visible: canDrilldown && appSettings.useAltPdf && !hasPivotColumn() && ReportType() != 'Single'">
+                                    <a href="#" class="dropdown-item" data-bind="click: $parent.appSettings.showPageSize ? function() { loadPdfModel() } : function() { $parent.appSettings.useAltPdf ? downloadPdfAlt('','',true) : downloadPdf(false,'','') }">
                                         <i class="fa fa-file-pdf-o"></i> Pdf (Expanded)
                                     </a>
                                 </li>
@@ -481,7 +481,7 @@
                     <div data-bind="template: 'report-template', data: $data"></div>
                 </div>
             </div>
-            <div class="form-inline" data-bind="visible: !noDashboardBorders()">
+            <div class="form-inline report-total" data-bind="visible: !noDashboardBorders()">
                 <div class="small" data-bind="with: pager">
                     <div class="form-group pull-left total-records" data-bind="visible: totalRecords()>1 && $parent.ReportType() != 'Single'">
                         <span data-bind="text: 'Total Records: ' + totalRecords()"></span>

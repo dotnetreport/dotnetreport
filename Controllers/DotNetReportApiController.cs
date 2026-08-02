@@ -126,6 +126,9 @@ namespace ReportBuilder.Web.Controllers
             public string? headerJson { get; set; } = "";
             public bool useReportHeader { get; set; }
             public string? headerClientId { get; set; } = "";
+            public int id { get; set; }
+            public string? name { get; set; } = "";
+            public bool isDefault { get; set; }
             public string? footerJson { get; set; } = "";
             public bool useReportFooter { get; set; }
             public string? footerClientId { get; set; } = "";
@@ -406,11 +409,36 @@ namespace ReportBuilder.Web.Controllers
                         sql = qry.sql;
                         if (!string.IsNullOrEmpty(qry.dbType)) DotNetReportHelper.dbtype = qry.dbType;
                     }
-                    if (!sql.StartsWith("EXEC"))
+                    if (!sql.StartsWith("EXEC") && !sql.StartsWith("CALL"))
                     {
                         sqlFields = DotNetReportHelper.SplitSqlColumns(sql, DotNetReportHelper.dbtype);
                         bool hasDistinct = Regex.IsMatch(sql, @"^\s*SELECT\s+(TOP\s+\d+\s+)?DISTINCT\b", RegexOptions.IgnoreCase);
-
+                        var aliasCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                        bool anyDuped = false;
+                        for (int f = 0; f < sqlFields.Count; f++)
+                        {
+                            var parts = sqlFields[f].Split(new[] { " AS " }, StringSplitOptions.None);
+                            if (parts.Length != 2) continue;
+                            var expr = parts[0];
+                            var alias = parts[1].Trim().Trim('[', ']');
+                            if (aliasCounts.TryGetValue(alias, out var count))
+                            {
+                                aliasCounts[alias] = ++count;
+                                sqlFields[f] = $"{expr} AS [{alias}_{count}]";
+                                anyDuped = true;
+                            }
+                            else
+                            {
+                                aliasCounts[alias] = 1;
+                            }
+                        }
+                        if (anyDuped)
+                        {
+                            var selectEnd = sql.IndexOf("{FROM}", StringComparison.OrdinalIgnoreCase);
+                            var selectPrefix = Regex.Match(sql, @"^\s*SELECT\s+(TOP\s+\d+\s+)?(DISTINCT\s+)?",
+                                                            RegexOptions.IgnoreCase).Value;
+                            sql = selectPrefix + string.Join(", ", sqlFields) + sql.Substring(selectEnd);
+                        }
                         var countInner = sql.Replace("{FROM}", "FROM");
                         int countOrderByIndex = countInner.LastIndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
                         if (countOrderByIndex > -1)
@@ -503,7 +531,7 @@ namespace ReportBuilder.Web.Controllers
                     dtPagedRun = databaseConnection.ExecuteQuery(connectionString, sql, qry.parameters);
                     dtPagedRun = await DotNetReportHelper.ExecuteCustomFunction(dtPagedRun, sql);
 
-                    if (sql.StartsWith("EXEC"))
+                    if (sql.StartsWith("EXEC") || sql.StartsWith("CALL"))
                     {
                         totalRecords = dtPagedRun.Rows.Count;
                         if (dtPagedRun.Rows.Count > 0)
@@ -1296,7 +1324,7 @@ namespace ReportBuilder.Web.Controllers
            [FromForm] string reportName,
            [FromForm] bool allExpanded,
            [FromForm] string expandSqls,
-           [FromForm] string onlyAndGroupInColumnDetail,
+           [FromForm] string onlyAndGroupInColumnDetail = null,
            [FromForm] string chartData = null,
            [FromForm] string columnDetails = null,
            [FromForm] bool includeSubtotal = false,
@@ -1310,7 +1338,8 @@ namespace ReportBuilder.Web.Controllers
            [FromForm] bool subTotalPerGroup = false,
            [FromForm] string filterDetailsText = null,
            [FromForm] string reportDescription = null,
-           [FromForm] string defaultDateFormat = null)
+           [FromForm] string defaultDateFormat = null,
+           [FromForm] string reportType = null)
         {
             GetSettings(); // must be called directly here so CurrentDataFilters flows to RunReportApiCall
             reportSql = HttpUtility.HtmlDecode(reportSql);
@@ -1322,7 +1351,7 @@ namespace ReportBuilder.Web.Controllers
             var columns = columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(onlyAndGroupInColumnDetail));
 
-            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, subTotalPerGroup, HttpUtility.UrlDecode(filterDetailsText), HttpUtility.UrlDecode(reportDescription), onlyAndGroupInDetailColumns);
+            var pdf = await DotNetReportHelper.GetPdfFileAlt(reportSql, connectKey, reportName, chartData, allExpanded, expandSqls, columns, includeSubtotal, pivot, pivotColumn, pivotFunction, pageSize, pageOrientation, subTotalPerGroup, HttpUtility.UrlDecode(filterDetailsText), HttpUtility.UrlDecode(reportDescription), onlyAndGroupInDetailColumns, reportType);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
@@ -1457,7 +1486,7 @@ namespace ReportBuilder.Web.Controllers
                 await ValidateAccess(report.userId, report.reportSql);
                 var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
                 var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(report.onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.onlyAndGroupInColumnDetail));
-                var pdf = await DotNetReportHelper.GetPdfFileAlt(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, report.expandSqls, columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction, report.pageSize, report.pageOrientation, reportDescription: HttpUtility.UrlDecode(report.reportDescription),onlyAndGroupInDetailColumns:onlyAndGroupInDetailColumns);
+                var pdf = await DotNetReportHelper.GetPdfFileAlt(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, report.expandSqls, columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction, report.pageSize, report.pageOrientation, reportDescription: HttpUtility.UrlDecode(report.reportDescription), onlyAndGroupInDetailColumns: onlyAndGroupInDetailColumns, reportType: report.reportType);
                 pdfBytesList.Add(pdf);
             }
             var combinedPdf = DotNetReportHelper.GetCombinePdfFile(pdfBytesList);

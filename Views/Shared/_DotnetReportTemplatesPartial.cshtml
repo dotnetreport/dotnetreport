@@ -2267,6 +2267,24 @@
      </div>
 </script>
 
+<script type="text/html" id="designer-header-footer">
+    <div class="form-group mb-2">
+        <label class="control-label small text-muted"><i class="fa fa-window-maximize"></i> Report Header</label>
+        <select class="form-select form-select-sm" style="width: 100%;"
+                data-bind="options: reportHeadersList, optionsText: 'label', optionsValue: 'id', value: ReportHeaderId"></select>
+    </div>
+    <hr class="my-1" />
+    <div class="form-group">
+        <label class="control-label small text-muted"><i class="fa fa-window-minimize"></i> Report Footer</label>
+        <div class="form-check">
+            <label class="form-check-label small">
+                <input class="form-check-input" type="checkbox" data-bind="checked: UseReportFooterInReport" />
+                Include the report footer in this report
+            </label>
+        </div>
+    </div>
+</script>
+
 <script type="text/html" id="designer-options">
     <div class="row">
         <div class="col-md-5">
@@ -3363,6 +3381,17 @@
                                 </div>
                             </div>
 
+                            <!-- Header & Footer -->
+                            <div class="card mb-1 designer-panel" data-bind="visible: SaveReport">
+                                <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-headerFooterPanel')}" style="cursor:pointer;">
+                                    <i class="fa fa-window-maximize"></i> Header &amp; Footer
+                                    <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-headerFooterPanel')}"></i>
+                                </div>
+                                <div class="card-body p-2" data-bind="visible: !panels.isCollapsed('lp-headerFooterPanel')">
+                                    <div data-bind="template: 'designer-header-footer'"></div>
+                                </div>
+                            </div>
+
                             <!-- Schedule -->
                             <div class="card mb-1 designer-panel" data-bind="visible: SaveReport() && !ko.unwrap(appSettings.showScheduling) && !isSubReportOnly()">
                                 <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-schedulePanel')}" style="cursor:pointer;">
@@ -3484,6 +3513,11 @@
                                 <div class="card card-body">
                                     <div data-bind="template: 'designer-options'"></div>
                                 </div>
+                            </div>
+                            <br />
+                            <div data-bind="visible: SaveReport" class="card card-body">
+                                <h5><span class="fa fa-window-maximize"></span>&nbsp;Header &amp; Footer</h5>
+                                <div data-bind="template: 'designer-header-footer'"></div>
                             </div>
                             <br />
                             <div data-bind="visible: adminMode" class="card card-body">

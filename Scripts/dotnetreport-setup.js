@@ -785,7 +785,8 @@ var manageViewModel = function (options) {
 				method: options.getSchedulesUrl,
 				model: JSON.stringify({
 					account: self.keys.AccountApiKey,
-					dataConnect: self.keys.DatabaseApiKey
+					dataConnect: self.keys.DatabaseApiKey,
+					bypassThrottle: true
 				})
 			})
 		}).done(function (result) {
@@ -794,6 +795,20 @@ var manageViewModel = function (options) {
 			self.schedules(result);
 		});
 	}
+
+	// Clean display of a schedule's export format (stored as JSON: {exportFormat, size, orientation}).
+	self.formatDisplay = function (fmt) {
+		if (!fmt) return '';
+		try {
+			if (typeof fmt === 'string' && fmt.trim().charAt(0) === '{') {
+				var o = JSON.parse(fmt);
+				var s = o.exportFormat || '';
+				if (o.size) s += ' (' + o.size + (o.orientation ? ', ' + o.orientation : '') + ')';
+				return s;
+			}
+			return fmt;
+		} catch (e) { return fmt; }
+	};
 
 	self.sentHistory = ko.observableArray([]);
 	self.sentHistoryPage = ko.observable(1);
@@ -3157,6 +3172,7 @@ var settingPageViewModel = function (options) {
 	self.showEmptyFolders = ko.observable(false);
 	self.allowUsersToManageFolders = ko.observable(true);
 	self.allowUsersToCreateReports = ko.observable(true);
+	self.allowUsersToCreateDashboards = ko.observable(true);
 	self.useAltPdf = ko.observable(false);
 	self.useAltPivot = ko.observable(false);
 	self.dontXmlExport = ko.observable(false);
@@ -3257,6 +3273,7 @@ var settingPageViewModel = function (options) {
 							showEmptyFolders: self.showEmptyFolders(),
 							allowUsersToManageFolders: self.allowUsersToManageFolders(),
 							allowUsersToCreateReports: self.allowUsersToCreateReports(),
+							allowUsersToCreateDashboards: self.allowUsersToCreateDashboards(),
 							useAltPdf: self.useAltPdf(),
 							useAltPivot: self.useAltPivot(),
 							dontXmlExport: self.dontXmlExport(),
@@ -3325,6 +3342,7 @@ var settingPageViewModel = function (options) {
 				self.showEmptyFolders(settings.showEmptyFolders);
 				self.allowUsersToManageFolders(settings.allowUsersToManageFolders === false ? false : true);
 				self.allowUsersToCreateReports(settings.allowUsersToCreateReports === false ? false : true);
+				self.allowUsersToCreateDashboards(settings.allowUsersToCreateDashboards === false ? false : true);
 				self.useAltPdf(settings.useAltPdf);
 				self.useAltPivot(settings.useAltPivot);
 				self.dontXmlExport(settings.dontXmlExport);
