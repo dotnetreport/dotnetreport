@@ -1340,7 +1340,7 @@ var manageViewModel = function (options) {
 			return;
 		}
 
-		bootbox.confirm("Are you sure you would like to continue with saving all Tables?<br><b>Note: </b>This will make changes to your account that cannot be undone.", function (r) {
+		bootbox.confirm("Are you sure you would like to save the " + tablesToSave.length + " selected Table(s)?<br><b>Note: </b>This will make changes to your account that cannot be undone.", function (r) {
 			if (r) {
 				var savedNames = [];
 				_.forEach(tablesToSave, function (e) {
@@ -2803,6 +2803,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 
 	_.forEach(self.model(), function (t) {
 		self.processTable(t);
+		t.Selected(false);
 	});
 
 	self.refresh = function (result) {
@@ -2811,6 +2812,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 		
 		_.forEach(mdl, function (t) {
 			self.processTable(t);
+			t.Selected(false);
 		});
 
 		self.model(mdl);
@@ -2886,6 +2888,17 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 			}
 		});
 	}	
+
+	self.allSelected = function (customOnly) {
+		var list = _.filter(self.model(), function (e) {
+			return customOnly ? e.CustomTable() === true : e.CustomTable() === false;
+		});
+		return list.length > 0 && _.every(list, function (e) { return e.Selected(); });
+	}
+
+	self.toggleSelectAll = function (customOnly) {
+		if (self.allSelected(customOnly)) { self.unselectAll(customOnly); } else { self.selectAll(customOnly); }
+	}
 
 	self.usedOnly = ko.observable(false);
 	self.toggleShowAll = function () {

@@ -373,36 +373,35 @@
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.loadFromDatabase, hidden: $root.customTableMode() || !$root.onlyApi()">
                     <span class="fa fa-database"></span> Load all Database Tables
                 </button>
-                <button class="btn btn-sm btn-primary" data-bind="click: $root.visualizeJoins"><span class="fa fa-arrows-h"></span> Visualize Joins</button>&nbsp;
-                <button class="btn btn-sm btn-primary"
-                        data-bind="click: function() { exportTablesJson(true) }, visible: $root.customTableMode">
-                    <span class="fa fa-download"></span> Export Custom Tables
-                </button>
-                <button class="btn btn-sm btn-primary"
-                        data-bind="click: function() { exportTablesJson(false) }, visible: !$root.customTableMode()">
-                    <span class="fa fa-download"></span> Export Tables/Views
-                </button>
-
-                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
-                    <span class="fa fa-file"></span> Import Tables/Views
-                </button>
+                <button class="btn btn-sm btn-primary" data-bind="click: $root.visualizeJoins"><span class="fa fa-arrows-h"></span> Visualize Joins</button>
                 <button class="btn btn-sm btn-primary" title="Manage Categories" data-bs-toggle="modal" data-bs-target="#category-modal">
                     <span class="fa fa-server"></span> Manage Categories
                 </button>
-                <button class="btn btn-sm btn-primary" data-bind="click: function() { selectAll(false)},visible: !$root.customTableMode()">
-                     Select All Tables
-                </button>
-                <button class="btn btn-sm btn-primary" data-bind="click: function() { selectAll(true)}, visible: $root.customTableMode">
-                     Select All Custom Tables
-                </button>
-                <button class="btn btn-sm btn-primary" data-bind="click: function() { unselectAll(false)},visible: !$root.customTableMode()">
-                     UnSelect All Tables
-                </button>
-                <button class="btn btn-sm btn-primary" data-bind="click: function() { unselectAll(true)}, visible: $root.customTableMode">
-                     UnSelect All Custom Tables  
-                </button>
-                <button class="btn btn-sm btn-primary" data-bind="click: function() { $root.saveChanges($root.customTableMode()) }">
-                    <span class="fa fa-floppy-o"></span> Save All Tables
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="fa fa-exchange"></span> Import / Export
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="#" data-bind="click: function() { exportTablesJson(true) }, visible: $root.customTableMode">
+                                <span class="fa fa-download"></span> Export Custom Tables
+                            </a>
+                            <a class="dropdown-item" href="#" data-bind="click: function() { exportTablesJson(false) }, visible: !$root.customTableMode()">
+                                <span class="fa fa-download"></span> Export Tables/Views
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal">
+                                <span class="fa fa-upload"></span> Import Tables/Views
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                        data-bind="click: function() { toggleSelectAll($root.customTableMode()) },
+                            text: allSelected($root.customTableMode()) ? 'UnSelect All' : 'Select All'">Select All</button>
+                <button class="btn btn-sm btn-primary" title="Saves the tables that are checked" data-bind="click: function() { $root.saveChanges($root.customTableMode()) }">
+                    <span class="fa fa-floppy-o"></span> Save Selected Tables
                 </button>
             </div>
             <div class="clearfix"></div>
@@ -561,12 +560,12 @@
             <p>
                 Setup your Database Relations for Dotnet Report to produce dynamic queries
             </p>
-            <button class="btn btn-sm btn-primary" data-bind="click: AddAllRelations">Auto Add Joins</button>
-            <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: visualizeJoins">Visualize Joins</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: DeleteVisibleJoins" title="Delete filtered Joins">Delete Joins</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins" title="Export filtered Joins">Export Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: AddAllRelations"><span class="fa fa-magic"></span> Auto Add Joins</button>
+            <button class="btn btn-sm btn-primary" data-bind="click: AddJoin"><span class="fa fa-plus"></span> Add new Join</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins"><span class="fa fa-floppy-o"></span> Save Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: visualizeJoins"><span class="fa fa-arrows-h"></span> Visualize Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: DeleteVisibleJoins" title="Delete filtered Joins"><span class="fa fa-trash"></span> Delete Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins" title="Export filtered Joins"><span class="fa fa-download"></span> Export Joins</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadJoinsFileModal" aria-haspopup="true" aria-expanded="false">
                 <span class="fa fa-upload"></span> Import Joins
             </button>
