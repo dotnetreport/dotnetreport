@@ -910,9 +910,9 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <!-- ko if: accessTarget() -->
-                            <div data-bind="template: {name: 'manage-access-template', data: $root.manageAccess }"></div>
-                            <!-- /ko -->
+                            <div data-bind="if: accessTarget()">
+                                <div data-bind="template: { name: 'manage-access-template', data: $root.manageAccess }"></div>
+                            </div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
