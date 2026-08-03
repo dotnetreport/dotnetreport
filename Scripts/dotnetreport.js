@@ -5190,6 +5190,36 @@ var reportViewModel = function (options) {
 		}
 		return trail;
 	});
+	self.breadcrumbItems = ko.computed(function () {
+		var items = [];
+		items.push({
+			FolderName: 'All Folders',
+			isActive: false,
+			isStatic: true,
+			onClick: function () {
+				self.SelectedFolder(null);
+				self.searchReports('');
+			}
+		});
+		var trail = self.folderBreadcrumb();
+		_.each(trail, function (folder, index) {
+			items.push({
+				FolderName: folder.FolderName,
+				isActive: index === trail.length - 1 && !self.searchReports(),
+				isStatic: false,
+				onClick: function () { self.SelectedFolder(folder); }
+			});
+		});
+		if (self.searchReports()) {
+			items.push({
+				FolderName: 'Search Results',
+				isActive: true,
+				isStatic: true,
+				onClick: function () { }
+			});
+		}
+		return items;
+	});
 	self.subFoldersInFolder = ko.computed(function () {
 		if (!self.SelectedFolder()) return [];
 		return self.SelectedFolder().children();
