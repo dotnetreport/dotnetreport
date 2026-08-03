@@ -462,14 +462,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <div class="col-sm-5 right-align">
                                                 <div class="d-none d-md-block">
                                                     <br />
-                                                    <span data-bind="if: $root.CanSaveReports() || $root.adminMode() ">
-                                                        <button class="btn btn-sm btn-outline-secondary" data-bind="visible: canEdit, click: openReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
-                                                            <span class="fa fa-edit" aria-hidden="true"></span> Edit
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: copyReport, visible:canEdit || $parent.appSettings.canCopyReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
-                                                            <span class="fa fa-copy" aria-hidden="true"></span> Copy
-                                                        </button>
-                                                    </span>
+                                                    <button class="btn btn-sm btn-outline-secondary" data-bind="visible: canEdit, click: openReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                        <span class="fa fa-edit" aria-hidden="true"></span> Edit
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-secondary" data-bind="click: copyReport, visible: (canEdit || $parent.appSettings.canCopyReport) && ($root.CanSaveReports() || $root.adminMode())" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                        <span class="fa fa-copy" aria-hidden="true"></span> Copy
+                                                    </button>
                                                     <div class="btn-group">
                                                         <button type="button" class="btn btn-sm btn-outline-secondary" data-bind="click: runReport">
                                                             <span class="fa fa-gears" aria-hidden="true"></span> Run
@@ -505,14 +503,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 </div>
 
                                                 <div class="d-block d-md-none">
-                                                    <span data-bind="if: $root.CanSaveReports() || $root.adminMode()">
-                                                        <button class="btn btn-sm btn-outline-secondary" title="Edit" data-bind="visible: canEdit, click: openReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
-                                                            <span class="fa fa-edit" aria-hidden="true"></span>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-light" data-bind="click: copyReport, visible:canEdit || $parent.appSettings.canCopyReport" title="Copy Report" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
-                                                            <span class="fa fa-copy" aria-hidden="true"></span>
-                                                        </button>
-                                                    </span>
+                                                    <button class="btn btn-sm btn-outline-secondary" title="Edit" data-bind="visible: canEdit, click: openReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                        <span class="fa fa-edit" aria-hidden="true"></span>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-light" data-bind="click: copyReport, visible: (canEdit || $parent.appSettings.canCopyReport) && ($root.CanSaveReports() || $root.adminMode())" title="Copy Report" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                        <span class="fa fa-copy" aria-hidden="true"></span>
+                                                    </button>
 
                                                     <div class="btn-group">
                                                         <button class="btn btn-sm btn-outline-secondary" data-bind="click: runReport" title="Run Report">

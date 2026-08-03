@@ -2912,7 +2912,7 @@
                     <textarea class="form-control" style="width: 100%;" rows="3" placeholder="Additional details (optional)" data-bind="value: ReportDescription"></textarea>
                 </div>
             </div>
-            <div class="checkbox" data-bind="visible: CanSaveReports()">
+            <div class="checkbox" data-bind="visible: canSaveCurrentReport()">
                 <label>
                     <input type="checkbox" data-bind="checked: SaveReport">
                     Save Report
@@ -3207,7 +3207,7 @@
                                         <textarea class="form-control" style="width: 100%;" rows="3" placeholder="Additional details (optional)" data-bind="value: ReportDescription"></textarea>
                                     </div>
                                 </div>
-                                <div class="checkbox" data-bind="visible: CanSaveReports()">
+                                <div class="checkbox" data-bind="visible: canSaveCurrentReport()">
                                     <label>
                                         <input type="checkbox" data-bind="checked: SaveReport">
                                         Save Report
@@ -3358,7 +3358,7 @@
                                             <textarea class="form-control form-control-sm" rows="2" placeholder="Optional" data-bind="value: ReportDescription"></textarea>
                                         </div>
                                     </div>
-                                    <div class="checkbox" data-bind="visible: CanSaveReports()">
+                                    <div class="checkbox" data-bind="visible: canSaveCurrentReport()">
                                         <label><input type="checkbox" data-bind="checked: SaveReport"> Save Report</label>
                                     </div>
                                     <div class="checkbox" data-bind="visible: adminMode() && ReportID()">
@@ -3587,13 +3587,13 @@
                     <i class="fa fa-refresh"></i> Start Over
                 </button>
                 <a href="#" class="btn btn-danger" data-bind="click: cancelCreateReport">Cancel editing Report</a>
-                <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && CanSaveReports(), click: SaveWithoutRun, disable: savingReport() || savingAndRunning()" style="padding-right: 10px;">
+                <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && canSaveCurrentReport(), click: SaveWithoutRun, disable: savingReport() || savingAndRunning()" style="padding-right: 10px;">
                     <!-- ko if: savingReport() --><span class="fa fa-spinner fa-spin me-1"></span>Saving...<!-- /ko -->
                     <!-- ko ifnot: savingReport() -->Save Report<!-- /ko -->
                 </button>
                 <button class="btn btn-primary" type="button" data-bind="click: SaveAndRunReport, visible: !editingSubReportParentId(), disable: savingReport() || savingAndRunning()">
                     <!-- ko if: savingAndRunning() --><span class="fa fa-spinner fa-spin me-1"></span>Saving...<!-- /ko -->
-                    <!-- ko ifnot: savingAndRunning() --><!-- ko text: SaveReport() && CanSaveReports()? 'Save & Run Report': 'Run Report' --><!-- /ko --><!-- /ko -->
+                    <!-- ko ifnot: savingAndRunning() --><!-- ko text: SaveReport() && canSaveCurrentReport()? 'Save & Run Report': 'Run Report' --><!-- /ko --><!-- /ko -->
                 </button>
             </div>
 

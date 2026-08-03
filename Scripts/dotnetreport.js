@@ -1952,8 +1952,13 @@ var reportViewModel = function (options) {
 	self.SavedReports = ko.observableArray(options.savedReports || []);
 	self.SelectedFolder = ko.observable(null); // Folder selected in start
 	self.CanSaveReports = ko.observable(true);
+	self._cansavereports = true;
 	self.CanManageFolders = ko.observable(true);
 	self.CanEdit = ko.observable(true);
+	self.canSaveCurrentReport = ko.computed(function () {
+		if (self.CanSaveReports()) return true;
+		return (self.ReportID() || 0) > 0 && self.CanEdit();
+	});
 	self.useReportHeader = ko.observable(false);
 	self.useReportFooter = ko.observable(false);
 	self.searchReports = ko.observable();
@@ -6879,7 +6884,7 @@ var reportViewModel = function (options) {
 				var isExecuteReportQuery = false;
 				var _result = null;
 				var isAutoRun = (self.activeDesign() && skipValidation) || dashboardRun;
-				var _saveReport = self.CanSaveReports() && !isComparison && previewOnly !== true && (saveOnly || !isAutoRun) ? (saveOnly || self.SaveReport()) : false;
+				var _saveReport = self.canSaveCurrentReport() && !isComparison && previewOnly !== true && (saveOnly || !isAutoRun) ? (saveOnly || self.SaveReport()) : false;
 				var seriesCount = self.AdditionalSeries().length;
 				self.allSqlQueries('');
 				var promises = [];
@@ -11667,7 +11672,8 @@ var reportViewModel = function (options) {
 				allowUsersToCreateReports: true,
 				allowUsersToManageFolders: true
 			};
-			self.CanSaveReports(x.allowUsersToCreateReports !== false ? true : false);
+			self._cansavereports = x.allowUsersToCreateReports !== false;
+			self.CanSaveReports(self.adminMode() ? true : self._cansavereports);
 			self.CanManageFolders(x.allowUsersToManageFolders !== false ? true : false);
 			self.appSettings.useClientIdInAdmin = x.useClientIdInAdmin;
 			self.appSettings.allowUsersToCreateDashboards = x.allowUsersToCreateDashboards;
@@ -12573,7 +12579,8 @@ var dashboardViewModel = function (options) {
 			self.appSettings.useClientIdInAdmin = x.useClientIdInAdmin;
 			self.appSettings.allowUsersToCreateReports = x.allowUsersToCreateReports !== false;
 			self.appSettings.allowUsersToCreateDashboards = x.allowUsersToCreateDashboards !== false;
-			self.CanSaveReports(x.allowUsersToCreateReports !== false);
+			self._cansavereports = x.allowUsersToCreateReports !== false;
+			self.CanSaveReports(self.adminMode() ? true : self._cansavereports);
 			self.CanCreateDashboards(x.allowUsersToCreateDashboards !== false);
 			self.appSettings.useSqlBuilderInAdminMode = x.useSqlBuilderInAdminMode;
 			self.appSettings.useSqlCustomField = x.useSqlCustomField;
