@@ -79,6 +79,7 @@
                     reportsApiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
                     runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
                     getUsersAndRoles: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
+                    sendPasswordSetupUrl: '@Url.Action("SendUserPasswordSetup", "DotNetReportApi")',
                     searchProcUrl: '@Url.Action("SearchProcedure", "DotNetReportApi")',
                     getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
                     apiUrl: '@Url.Action("CallPostReportApi", "DotNetReportApi")',
@@ -160,6 +161,11 @@
                 </a>
             </li>
             <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#usersroles" aria-controls="usersroles" role="tab" data-bs-toggle="tab" data-bind="click: function() { usersRoles.onTabOpen(); }">
+                    <i class="fa fa-users"></i> Users &amp; Roles
+                </a>
+            </li>
+            <li role="presentation" class="nav-item">
                 <a class="nav-link" href="#connection" aria-controls="home" role="tab" data-bs-toggle="tab">
                     <i class="fa fa-plug"></i> App Settings
                 </a>
@@ -172,6 +178,243 @@
 <!-- Tab panes -->
 <div class="fix-content" style="display: none;" data-bind="visible: true">
     <div class="tab-content">
+        <div role="tabpanel" class="tab-pane" id="usersroles" data-bind="with: usersRoles">
+            <b>Users, Roles &amp; Tenants</b>
+            <p>
+                Choose where Dotnet Report gets the Users, Roles and Client Ids used to control access to Reports, Folders and Dashboards.
+            </p>
+            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                <label class="control-label mb-0">Source</label>
+                <select class="form-select form-select-sm" style="width: 240px;" data-bind="value: userSource">
+                    <option value="code">Application Code</option>
+                    <option value="portal">Dotnet Report Managed</option>
+                </select>
+                <button class="btn btn-primary btn-sm" data-bind="visible: userSource() === 'portal', click: loadPortal"><i class="fa fa-refresh"></i> Reload</button>
+                <button class="btn btn-primary btn-sm" data-bind="click: saveSourceSettings"><i class="fa fa-save"></i> Save</button>
+                <span class="text-warning" title="You have unsaved changes" data-bind="visible: settingsDirty"><i class="fa fa-exclamation-triangle"></i></span>
+            </div>
+            <hr />
+
+            <div class="alert alert-info py-2 small mb-3" data-bind="visible: userSource() === 'code'">
+                <b><i class="fa fa-code"></i> Application Code</b> - Your app supplies these in <code>GetSettings()</code>, settings are displayed here but can only be managed directly in code.
+            </div>
+            <div class="alert alert-info py-2 small mb-3" data-bind="visible: userSource() === 'portal'">
+                <b><i class="fa fa-cloud"></i> Dotnet Report Managed</b> - Setup users and roles in your Dotnet Report Account. You can manage users here or on our 
+                <a href="https://dotnetreport.com/portal/Account/UsersAndRoles" target="_blank" rel="noopener">portal <i class="fa fa-external-link"></i></a>. Set current logged in user's info in <code>GetSettings</code> method.
+            </div>
+
+            <ul class="nav nav-tabs" id="usersRolesTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#ur-users" type="button" role="tab"><i class="fa fa-user"></i> Users</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#ur-roles" type="button" role="tab"><i class="fa fa-shield"></i> Roles</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#ur-clients" type="button" role="tab"><i class="fa fa-building-o"></i> <span data-bind="text: clientIdLabel() || 'Client Ids'"></span></button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#ur-code" type="button" role="tab"><i class="fa fa-code"></i> Setup Code</button>
+                </li>
+            </ul>
+            <div class="tab-content pt-3">
+                <!-- USERS -->
+                <div class="tab-pane active" id="ur-users" role="tabpanel">
+                    <p class="text-muted small">Set Current user id or email in <code>settings.UserId</code>.</p>
+                    <div class="alert alert-light border py-2 small" data-bind="visible: userSource() === 'portal'">
+                        <i class="fa fa-info-circle"></i> Users are created here without a password, set one via <b>Forgot Password</b> email.
+                    </div>
+                    <div data-bind="visible: userSource() === 'portal'">
+                        <button class="btn btn-primary btn-sm mb-2" data-bind="click: newUser"><i class="fa fa-plus"></i> Add User</button>
+                        <div class="card card-body mb-3" data-bind="visible: editingUser() !== null, with: editingUser">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="small fw-bold">Name</label>
+                                    <input class="form-control form-control-sm" placeholder="Name" data-bind="value: name">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="small fw-bold">Email</label>
+                                    <input class="form-control form-control-sm" placeholder="Email" data-bind="value: email, enable: !id()">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="small fw-bold">Roles</label>
+                                    <div data-bind="foreach: roles">
+                                        <label class="d-block small"><input type="checkbox" data-bind="checked: isSelected"> <span data-bind="text: text"></span></label>
+                                    </div>
+                                    <div class="small text-muted" data-bind="visible: roles.length === 0">No roles defined yet</div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="small fw-bold" data-bind="text: $parent.clientIdLabel() || 'Client Ids'"></label>
+                                    <div data-bind="foreach: clients">
+                                        <label class="d-block small"><input type="checkbox" data-bind="checked: isSelected"> <span data-bind="text: text"></span></label>
+                                    </div>
+                                    <div class="small text-muted" data-bind="visible: clients.length === 0">None defined yet</div>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-sm btn-primary me-2" data-bind="click: $parent.saveUser">Save User</button>
+                                <button class="btn btn-sm btn-secondary" data-bind="click: function() { $parent.editingUser(null); }">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center py-3" data-bind="visible: loadingUsers"><span class="fa fa-spinner fa-spin fa-2x text-muted"></span></div>
+                    <table class="table table-sm align-middle" data-bind="visible: !loadingUsers()">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Email / Id</th>
+                                <th>Name</th>
+                                <th>Roles</th>
+                                <th data-bind="text: clientIdLabel() || 'Client Ids'"></th>
+                                <th style="width: 130px;"></th>
+                            </tr>
+                        </thead>
+                        <!-- ko if: userSource() === 'portal' -->
+                        <tbody data-bind="foreach: portalUsers">
+                            <tr>
+                                <td data-bind="text: email"></td>
+                                <td data-bind="text: name"></td>
+                                <td class="small" data-bind="text: (roles || []).join(', ')"></td>
+                                <td class="small" data-bind="text: $parent.clientNames(clientIds)"></td>
+                                <td class="text-end text-nowrap" style="width: 130px;">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" title="Edit User" data-bind="click: $parent.editUser"><i class="fa fa-pencil"></i></button>
+                                        <button type="button" class="btn btn-outline-secondary" title="Email a link to set their portal password" data-bind="click: $parent.sendPasswordSetup"><i class="fa fa-envelope-o"></i></button>
+                                        <button type="button" class="btn btn-outline-danger" data-bind="click: $parent.deleteUser, disable: isPrimary, attr: { title: isPrimary ? 'The primary account user cannot be deleted' : 'Delete User' }"><i class="fa fa-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <!-- /ko -->
+                        <!-- ko if: userSource() === 'code' -->
+                        <tbody data-bind="foreach: codeUsers">
+                            <tr>
+                                <td data-bind="text: (typeof $data === 'object') ? ($data.id || '') : $data"></td>
+                                <td data-bind="text: (typeof $data === 'object') ? ($data.text || '') : ''"></td>
+                                <td class="small text-muted"></td>
+                                <td class="small text-muted"></td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                        <!-- /ko -->
+                    </table>
+                    <div class="text-muted" data-bind="visible: !loadingUsers() && userSource() === 'portal' && portalUsers().length === 0">
+                        <i class="fa fa-exclamation-circle"></i> No Users found, click <b>Add User</b> to create one.
+                    </div>
+                    <div class="text-muted" data-bind="visible: !loadingUsers() && userSource() === 'code' && codeUsers().length === 0">
+                        <i class="fa fa-exclamation-circle"></i> No Users found, populate <code>settings.Users</code> in your code.
+                    </div>
+                </div>
+                <!-- ROLES -->
+                <div class="tab-pane" id="ur-roles" role="tabpanel">
+                    <p class="text-muted small">Set current user role in <code>settings.CurrentUserRole</code>.</p>
+                    <!-- ko if: userSource() === 'portal' -->
+                    <div class="input-group input-group-sm mb-3" style="max-width: 320px;">
+                        <input class="form-control" placeholder="New role name" data-bind="value: newRoleName">
+                        <button class="btn btn-primary btn-sm" data-bind="click: addRole"><i class="fa fa-plus"></i> Add Role</button>
+                    </div>
+                    <!-- /ko -->
+                    <!-- ko if: userSource() === 'portal' -->
+                    <div class="d-flex flex-wrap gap-2">
+                        <!-- ko foreach: portalRoles -->
+                        <span class="badge bg-light text-dark border py-2 d-inline-flex align-items-center">
+                            <span data-bind="text: text"></span>
+                            <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2 lh-1" title="Delete Role" data-bind="click: $parent.deleteRole"><i class="fa fa-times"></i></button>
+                        </span>
+                        <!-- /ko -->
+                    </div>
+                    <div class="text-muted" data-bind="visible: portalRoles().length === 0"><i class="fa fa-exclamation-circle"></i> No Roles found, add one above.</div>
+                    <!-- /ko -->
+                    <!-- ko if: userSource() === 'code' -->
+                    <div class="d-flex flex-wrap gap-2">
+                        <!-- ko foreach: codeRoles -->
+                        <span class="badge bg-light text-dark border py-2" data-bind="text: $data"></span>
+                        <!-- /ko -->
+                    </div>
+                    <div class="text-muted" data-bind="visible: codeRoles().length === 0"><i class="fa fa-exclamation-circle"></i> No Roles found, populate <code>settings.UserRoles</code> in your code.</div>
+                    <!-- /ko -->
+                </div>
+
+                <!-- CLIENT IDS -->
+                <div class="tab-pane" id="ur-clients" role="tabpanel">
+                    <p class="text-muted small">Restrict Reports, Folders and Dashboards by your clients, set current one in <code>settings.ClientId</code>.</p>
+                    <div class="mb-3 d-flex align-items-center gap-2 small">
+                        <!-- ko ifnot: editingLabel -->
+                        <span class="text-muted">Called</span>
+                        <b data-bind="text: clientIdLabel() || 'Client Id'"></b>
+                        <span class="text-muted">across the app.</span>
+                        <button type="button" class="btn btn-sm btn-link p-0" title="Change this wording" data-bind="click: startEditLabel"><i class="fa fa-pencil"></i> Change</button>
+                        <!-- /ko -->
+                        <!-- ko if: editingLabel -->
+                        <input class="form-control form-control-sm" style="width: 200px;" placeholder="Client Id / Tenant" data-bind="value: labelDraft, hasFocus: true">
+                        <button type="button" class="btn btn-sm btn-primary" data-bind="click: applyLabel">Save</button>
+                        <button type="button" class="btn btn-sm btn-secondary" data-bind="click: cancelLabel">Cancel</button>
+                        <!-- /ko -->
+                    </div>
+
+                    <!-- ko if: userSource() === 'portal' -->
+                    <button class="btn btn-primary btn-sm mb-2" data-bind="click: newClient"><i class="fa fa-plus"></i> Add <span data-bind="text: clientIdLabel() || 'Client Id'"></span></button>
+                    <div class="card card-body mb-3" style="max-width: 520px;" data-bind="visible: editingClient() !== null, with: editingClient">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="small fw-bold">Id</label>
+                                <input class="form-control form-control-sm" placeholder="ACME" data-bind="value: id, enable: !original">
+                                <div class="form-text">The value your app passes as <code>settings.ClientId</code>.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="small fw-bold">Display Name</label>
+                                <input class="form-control form-control-sm" placeholder="Acme Corporation" data-bind="value: text">
+                                <div class="form-text">Optional, defaults to the Id.</div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-primary me-2" data-bind="click: $parent.saveClient, text: original ? 'Save' : 'Add'">Add</button>
+                            <button class="btn btn-sm btn-secondary" data-bind="click: $parent.cancelClient">Cancel</button>
+                        </div>
+                    </div>
+                    <label class="form-label mb-1"></label>
+                    <table class="table table-sm align-middle" style="max-width: 520px;" data-bind="visible: clientIds().length > 0">
+                        <thead class="table-light"><tr><th>Id</th><th>Display Name</th><th></th></tr></thead>
+                        <tbody data-bind="foreach: clientIds">
+                            <tr>
+                                <td data-bind="text: $parent.clientKey($data)"></td>
+                                <td data-bind="text: $parent.clientText($data)"></td>
+                                <td class="text-end text-nowrap" style="width: 90px;">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" title="Edit" data-bind="click: function() { $parent.editClient($data); }"><i class="fa fa-pencil"></i></button>
+                                        <button type="button" class="btn btn-outline-danger" title="Remove" data-bind="click: function() { $parent.removeClientId($data); }"><i class="fa fa-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="text-muted mb-3" data-bind="visible: clientIds().length === 0"><i class="fa fa-exclamation-circle"></i> None added yet.</div>
+
+                    <!-- /ko -->
+
+                    <!-- ko if: userSource() === 'code' -->
+                    <label class="form-label mb-1">Current <span data-bind="text: clientIdLabel() || 'Client Ids'"></span> <span class="text-muted fw-normal small">from your code</span></label>
+                    <div class="d-flex flex-wrap gap-2">
+                        <!-- ko foreach: codeClientIds -->
+                        <span class="badge bg-light text-dark border py-2" data-bind="text: (typeof $data === 'object') ? ($data.text || $data.id) : $data"></span>
+                        <!-- /ko -->
+                    </div>
+                    <div class="text-muted" data-bind="visible: codeClientIds().length === 0"><i class="fa fa-exclamation-circle"></i> No <span data-bind="text: clientIdLabel() || 'Client Ids'"></span> found, populate <code>settings.ClientIds</code> in your code.</div>
+                    <!-- /ko -->
+                </div>
+                <!-- SETUP CODE -->
+                <div class="tab-pane" id="ur-code" role="tabpanel">
+                    <p class="text-muted small">Populate these in <code>GetSettings()</code> in <code>Controllers/DotNetReportApiController.cs</code>:</p>
+                    <pre class="bg-light border rounded p-3 small mb-0">
+settings.UserId          = User.Identity.Name;                          // current user
+settings.CurrentUserRole = new List&lt;string&gt; { "Admin" };                // current user's roles
+settings.ClientId        = "ACME";                                      // current tenant<!-- ko if: userSource() === 'code' -->
+
+settings.Users     = new List&lt;dynamic&gt; { "jane@co.com", "joe@co.com" }; // all users
+settings.UserRoles = new List&lt;string&gt; { "Admin", "Viewer" };            // all roles
+settings.ClientIds = new List&lt;string&gt; { "ACME", "CONTOSO" };            // all tenants<!-- /ko --></pre>
+                </div>
+            </div>
+        </div>
         <div role="tabpanel" class="tab-pane" id="connection">
             <b>Manage Data Connection</b>
             <p>

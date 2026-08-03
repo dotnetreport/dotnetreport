@@ -45,7 +45,8 @@ namespace ReportBuilder.Web.Controllers
             settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
 
             settings.Users = new List<dynamic>() { }; // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
-            settings.UserRoles = new List<string>() { }; // Populate all your application's user roles, ex  { "Admin", "Normal" }       
+            settings.UserRoles = new List<string>() { }; // Populate all your application's user roles, ex  { "Admin", "Normal" }
+            settings.ClientIds = new List<string>() { }; // Populate all your application's client/tenant ids, ex  { "ACME", "CONTOSO" }
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports, dashboard and schema
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/kb/docs/advance-topics/global-filters/
             DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters);
@@ -863,6 +864,109 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
+        public class AccountUsersResult
+        {
+            public string userSource { get; set; } = "code";
+            public string clientIdLabel { get; set; }
+            public List<AccountUserItem> users { get; set; } = new List<AccountUserItem>();
+            public List<AccountListItem> roles { get; set; } = new List<AccountListItem>();
+            public List<AccountListItem> clientIds { get; set; } = new List<AccountListItem>();
+        }
+
+        public class AccountListItem
+        {
+            public string id { get; set; }
+            public string text { get; set; }
+        }
+
+        public class AccountUserItem : AccountListItem
+        {
+            public string email { get; set; }
+            public string name { get; set; }
+            public bool isPrimary { get; set; }
+            public List<string> roles { get; set; } = new List<string>();
+            public List<string> clientIds { get; set; } = new List<string>();
+        }
+
+        private AccountUsersResult GetManagedUsersAndRoles(DotNetReportSettings settings)
+        {
+            if (string.IsNullOrEmpty(settings.AccountApiToken)) return null;
+
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    var content = new FormUrlEncodedContent(new[]
+                    {
+                        new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                        new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken)
+                    });
+                    var response = client.PostAsync(new Uri(settings.ApiUrl + "/ReportApi/GetAccountUsersAndRoles"), content).Result;
+                    if (!response.IsSuccessStatusCode) return null;
+
+                    var json = response.Content.ReadAsStringAsync().Result;
+                    return JsonConvert.DeserializeObject<AccountUsersResult>(json);
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Asks the Dotnet Report portal to email a user a link to set their portal password.
+        /// </summary>
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<IActionResult> SendUserPasswordSetup([FromBody] SendPasswordSetupCall data)
+        {
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode) return Unauthorized();
+            if (string.IsNullOrEmpty(data?.email)) return BadRequest(new { Message = "Email is required" });
+
+            var portalUrl = _configuration.GetValue<string>("dotNetReport:portalUrl")
+                            ?? DotNetReportHelper.StaticConfig?.GetValue<string>("dotNetReport:portalUrl")
+                            ?? "https://dotnetreport.com/portal";
+            var forgotUrl = portalUrl.TrimEnd('/') + "/Account/ForgotPassword";
+
+            using (var handler = new HttpClientHandler { CookieContainer = new CookieContainer(), AllowAutoRedirect = false })
+            using (var client = new HttpClient(handler))
+            {
+                var page = await client.GetAsync(forgotUrl);
+                if (!page.IsSuccessStatusCode)
+                    return BadRequest(new { Message = "Could not reach the Dotnet Report portal" });
+
+                var html = await page.Content.ReadAsStringAsync();
+                var token = Regex.Match(html, @"name=""__RequestVerificationToken""[^>]*value=""([^""]+)""").Groups[1].Value;
+                if (string.IsNullOrEmpty(token))
+                    token = Regex.Match(html, @"value=""([^""]+)""[^>]*name=""__RequestVerificationToken""").Groups[1].Value;
+                if (string.IsNullOrEmpty(token))
+                    return BadRequest(new { Message = "Could not read the portal request token" });
+
+                var form = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("__RequestVerificationToken", token),
+                    new KeyValuePair<string, string>("Email", data.email)
+                });
+
+                var response = await client.PostAsync(forgotUrl, form);
+
+                // Success redirects to ForgotPasswordConfirmation; a failure re-renders the form.
+                var redirected = (int)response.StatusCode == 302
+                                 && (response.Headers.Location?.ToString() ?? "").IndexOf("ForgotPasswordConfirmation", StringComparison.OrdinalIgnoreCase) >= 0;
+                if (!redirected)
+                    return BadRequest(new { Message = "Could not send the password setup email, check the user has a valid email on the portal" });
+
+                return Ok(new { success = true });
+            }
+        }
+
+        public class SendPasswordSetupCall
+        {
+            public string email { get; set; }
+        }
+
         [HttpGet]
         public IActionResult GetUsersAndRoles()
         {
@@ -874,11 +978,32 @@ namespace ReportBuilder.Web.Controllers
             var newReportViewUserRoles = ""; // comma separated user roles for report view permission when new report is created
 
             var settings = GetSettings();
+
+            // When the account manages Users/Roles/Client ids, use those instead of the lists set in code. 
+            var managed = GetManagedUsersAndRoles(settings);
+            var usingManaged = managed != null && managed.userSource == "portal";
+            // Access is granted by email, so it matches the settings.UserId an application passes in.
+            var users = usingManaged
+                ? managed.users.Select(u => (object)new AccountListItem { id = u.email, text = u.email }).ToList()
+                : settings.Users.Cast<object>().ToList();
+            var userRoles = usingManaged
+                ? managed.roles.Select(r => r.text).ToList()
+                : settings.UserRoles;
+            var clientIds = (managed != null && managed.clientIds != null && managed.clientIds.Any())
+                ? managed.clientIds.Cast<object>().ToList()
+                : settings.ClientIds.Select(c => (object)new AccountListItem { id = c, text = c }).ToList();
+
             return Ok(new
             {
                 noAccount = string.IsNullOrEmpty(settings.AccountApiToken) || settings.AccountApiToken == "Your Public Account Api Token",
-                users = settings.Users,
-                userRoles = settings.UserRoles,
+                users,
+                userRoles,
+                clientIds,
+                clientIdLabel = managed?.clientIdLabel,
+                userSource = managed?.userSource ?? "code",
+                codeUsers = settings.Users,
+                codeUserRoles = settings.UserRoles,
+                codeClientIds = settings.ClientIds,
                 currentUserId = settings.UserId,
                 currentUserRoles = settings.CurrentUserRole,
                 currentUserName = settings.UserName,

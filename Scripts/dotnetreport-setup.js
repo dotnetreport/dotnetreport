@@ -26,6 +26,7 @@ var manageViewModel = function (options) {
 	self.activeProcedure = ko.observable();
 	self.schedules = ko.observableArray([]);
 	self.settings = new settingPageViewModel(options);
+	self.usersRoles = new usersRolesViewModel(options, self.settings);
 	// Access editing opens in a modal (same template the report page uses).
 	self.accessTarget = ko.observable(null);
 	self.accessTargetName = ko.observable('');
@@ -48,6 +49,12 @@ var manageViewModel = function (options) {
 		if (promise && promise.done) { promise.done(done); } else { done(); }
 	};
 
+	self.clientIdLabelText = self.settings.clientIdLabel;
+	self.clientIdOptions = ko.computed(function () {
+		return _.map(self.settings.clientIds() || [], function (c) {
+			return (c && typeof c === 'object') ? { id: c.id || '', text: c.text || c.id || '' } : { id: c, text: c };
+		});
+	});
 	self.ReportResult = ko.observable({
 		ReportSql: ko.observable()
 	});
@@ -3203,6 +3210,244 @@ var customSqlModel = function (options, keys, tables, activeTable) {
     }
 }
 
+var usersRolesViewModel = function (options, settings) {
+	var self = this;
+
+	self.userSource = settings.userSource;
+	self.clientIdLabel = settings.clientIdLabel;
+	self.clientIds = settings.clientIds;   // catalog of { id, text }
+	self.editingClient = ko.observable(null);
+	self.editingLabel = ko.observable(false);
+	self.labelDraft = ko.observable('');
+
+	self.codeUsers = ko.observableArray([]);
+	self.codeRoles = ko.observableArray([]);
+	self.codeClientIds = ko.observableArray([]);
+
+	self.portalUsers = ko.observableArray([]);
+	self.portalRoles = ko.observableArray([]);
+	self.loadingUsers = ko.observable(false);
+	self.editingUser = ko.observable(null);
+	self.newRoleName = ko.observable('');
+
+	self.clientIdChoices = ko.computed(function () {
+		return _.map(self.clientIds() || [], function (c) {
+			return (c && typeof c === 'object') ? { id: c.id || '', text: c.text || c.id || '' } : { id: c, text: c };
+		});
+	});
+
+	self.clientNames = function (ids) {
+		var choices = self.clientIdChoices();
+		return _.map(ids || [], function (id) {
+			var match = _.find(choices, function (c) { return c.id === id; });
+			return match ? match.text : id;
+		}).join(', ');
+	};
+
+	var api = function (method, model) {
+		model = model || {};
+		model.adminMode = true;
+		return ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({ method: '/ReportApi/' + method, model: JSON.stringify(model) })
+		});
+	};
+
+	self.loadPortal = function () {
+		self.loadingUsers(true);
+		api('GetAccountUsersAndRoles').done(function (r) {
+			if (r && r.d) r = r.d;
+			self.portalUsers((r && r.users) || []);
+			self.portalRoles((r && r.roles) || []);
+		}).fail(function () {
+			toastr.error('Could not load Users and Roles from your Dotnet Report account');
+		}).always(function () { self.loadingUsers(false); });
+	};
+
+	self.settingsDirty = ko.observable(false);
+	self.markDirty = function () { self.settingsDirty(true); };
+
+	self.onTabOpen = function () {
+		// codeUsers/codeRoles/codeClientIds are what the application supplies in code, whichever
+		// source is currently saved.
+		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {
+			self.codeUsers(data.codeUsers || []);
+			self.codeRoles(data.codeUserRoles || []);
+			self.codeClientIds(data.codeClientIds || []);
+		});
+		if (self.userSource() === 'portal') self.loadPortal();
+		self.settingsDirty(false);
+	};
+
+	self.userSource.subscribe(self.markDirty);
+	self.clientIdLabel.subscribe(self.markDirty);
+	self.clientIds.subscribe(self.markDirty);
+
+	self.userSource.subscribe(function (v) {
+		if (v === 'portal') {
+			self.loadPortal();
+		} else {
+			self.portalUsers([]);
+			self.portalRoles([]);
+			self.editingUser(null);
+			self.loadingUsers(false);
+		}
+	});
+
+	var buildEditor = function (u) {
+		u = u || {};
+		var assignedRoles = u.roles || [];
+		var assignedClients = u.clientIds || [];
+		return {
+			id: ko.observable(u.id || ''),
+			name: ko.observable(u.name || ''),
+			email: ko.observable(u.email || ''),
+			roles: _.map(self.portalRoles(), function (r) {
+				return { id: r.id, text: r.text, isSelected: ko.observable(assignedRoles.indexOf(r.text) >= 0) };
+			}),
+			clients: _.map(self.clientIdChoices(), function (c) {
+				return { id: c.id, text: c.text, isSelected: ko.observable(assignedClients.indexOf(c.id) >= 0) };
+			})
+		};
+	};
+
+	self.newUser = function () { self.editingUser(buildEditor(null)); };
+	self.editUser = function (u) { self.editingUser(buildEditor(u)); };
+
+	self.saveUser = function () {
+		var e = self.editingUser();
+		if (!e) return;
+		if (!e.email()) { toastr.error('Please enter an email'); return; }
+		var model = {
+			userJson: JSON.stringify({
+				Id: e.id() || '',
+				Name: e.name() || '',
+				Email: e.email(),
+				Roles: _.map(_.filter(e.roles, function (r) { return r.isSelected(); }), function (r) { return r.text; }),
+				ClientIds: _.map(_.filter(e.clients, function (c) { return c.isSelected(); }), function (c) { return c.id; })
+			})
+		};
+		api('SaveAccountUser', model).done(function () {
+			toastr.success('User saved');
+			self.editingUser(null);
+			self.loadPortal();
+		}).fail(function () { toastr.error('Could not save user'); });
+	};
+
+	self.sendPasswordSetup = function (u) {
+		if (!u || !u.email) { toastr.error('This user has no email address'); return; }
+		ajaxcall({
+			url: options.sendPasswordSetupUrl,
+			type: 'POST',
+			data: JSON.stringify({ email: u.email })
+		}).done(function (r) {
+			if (r && r.Success === false) { toastr.error(r.Message || 'Could not send the email'); return; }
+			toastr.success('Password setup email sent to ' + u.email);
+		}).fail(function () { toastr.error('Could not send the password setup email'); });
+	};
+
+	self.deleteUser = function (u) {
+		bootbox.confirm('Delete user ' + (u.email || u.text) + '?', function (ok) {
+			if (!ok) return;
+			api('DeleteAccountUser', { id: u.id }).done(function () {
+				toastr.success('User deleted');
+				self.loadPortal();
+			}).fail(function () { toastr.error('Could not delete user'); });
+		});
+	};
+
+	self.addRole = function () {
+		var name = (self.newRoleName() || '').trim();
+		if (!name) return;
+		if (_.filter(self.portalRoles(), function (r) { return (r.text || '').toLowerCase() === name.toLowerCase(); }).length) {
+			toastr.warning('Role already exists'); return;
+		}
+		api('SaveAccountRole', { roleJson: JSON.stringify({ Name: name }) }).done(function () {
+			toastr.success('Role added');
+			self.newRoleName('');
+			self.loadPortal();
+		}).fail(function () { toastr.error('Could not add role'); });
+	};
+
+	self.deleteRole = function (r) {
+		bootbox.confirm('Delete role ' + r.text + '? Users assigned to it will lose it.', function (ok) {
+			if (!ok) return;
+			api('DeleteAccountRole', { id: r.id }).done(function () {
+				toastr.success('Role deleted');
+				self.loadPortal();
+			}).fail(function () { toastr.error('Could not delete role'); });
+		});
+	};
+
+	self.newClient = function () {
+		self.editingClient({ id: ko.observable(''), text: ko.observable(''), original: null });
+	};
+
+	self.editClient = function (c) {
+		self.editingClient({ id: ko.observable(self.clientKey(c)), text: ko.observable(self.clientText(c)), original: c });
+	};
+
+	self.cancelClient = function () { self.editingClient(null); };
+
+	self.saveClient = function () {
+		var e = self.editingClient();
+		if (!e) return;
+		var id = (e.id() || '').trim();
+		if (!id) { toastr.warning('Id is required'); return; }
+		if (_.filter(self.clientIds(), function (c) { return c !== e.original && self.clientKey(c) === id; }).length) {
+			toastr.warning('Already added'); return;
+		}
+		var item = { id: id, text: (e.text() || '').trim() || id };
+		if (e.original) { self.clientIds.replace(e.original, item); } else { self.clientIds.push(item); }
+		self.editingClient(null);
+		self.persistSettings();
+	};
+
+	self.removeClientId = function (c) {
+		var label = self.clientIdLabel() || 'Client Id';
+		bootbox.confirm({
+			title: 'Delete ' + label,
+			message: 'Delete <b>' + self.clientText(c) + '</b>? Reports, Folders and Dashboards restricted to this ' + label + ' will no longer match it.',
+			buttons: { cancel: { label: 'Cancel', className: 'btn-secondary' }, confirm: { label: 'Delete', className: 'btn-danger' } },
+			callback: function (ok) {
+				if (!ok) return;
+				self.clientIds.remove(c);
+				self.persistSettings();
+			}
+		});
+	};
+
+	self.clientText = function (c) { return (c && typeof c === 'object') ? (c.text || c.id) : c; };
+	self.clientKey = function (c) { return (c && typeof c === 'object') ? c.id : c; };
+
+	self.persistSettings = function () {
+		if (typeof settings.saveAppSettings !== 'function') {
+			toastr.error('Settings are not available, check your account connection');
+			return;
+		}
+		var p = settings.saveAppSettings();
+		if (p && p.done) { p.done(function () { self.settingsDirty(false); }); } else { self.settingsDirty(false); }
+	};
+
+	self.startEditLabel = function () {
+		self.labelDraft(self.clientIdLabel() || '');
+		self.editingLabel(true);
+	};
+
+	self.cancelLabel = function () { self.editingLabel(false); };
+
+	self.applyLabel = function () {
+		var v = (self.labelDraft() || '').trim();
+		if (!v) { toastr.warning('Label is required'); return; }
+		self.editingLabel(false);
+		if (v === self.clientIdLabel()) return;
+		self.clientIdLabel(v);
+		self.persistSettings();
+	};
+
+	self.saveSourceSettings = function () { self.persistSettings(); };
+};
 var settingPageViewModel = function (options) {
 	var self = this;
 	var dbConfig = options.model.DbConfig || {};
@@ -3248,6 +3493,10 @@ var settingPageViewModel = function (options) {
 	self.aiApiKeyChanged = false;
 	self.aiModel = ko.observable('');
 	self.aiEnabled = ko.observable(false);
+	// Users & Roles source ('code' | 'portal') + client/tenant catalog and its display label
+	self.userSource = ko.observable('code');
+	self.clientIdLabel = ko.observable('Client Id');
+	self.clientIds = ko.observableArray([]);
 	// Sync aiEnabled with aiProvider for backward compatibility
 	self.aiEnabled.subscribe(function (enabled) {
 		if (enabled && !self.aiProvider()) {
@@ -3304,7 +3553,7 @@ var settingPageViewModel = function (options) {
 	self.saveAppSettings = function () {
 
 		if (this.isValidforAppSetting()) {
-			ajaxcall({
+			return ajaxcall({
 				url: options.apiUrl,
 				type: 'POST',
 				data: JSON.stringify({
@@ -3344,7 +3593,10 @@ var settingPageViewModel = function (options) {
 								aiProvider: self.aiProvider(),
 								aiApiKey: self.aiApiKeyChanged ? self.aiApiKey() : undefined,
 								aiModel: self.aiModel(),
-								aiEnabled: self.aiEnabled()
+								aiEnabled: self.aiEnabled(),
+								userSource: self.userSource(),
+								clientIdLabel: self.clientIdLabel() || 'Client Id',
+								clientIds: self.clientIds()
 						})
 					})
 				})
@@ -3421,6 +3673,9 @@ var settingPageViewModel = function (options) {
 				self.aiApiKeyChanged = false;
 				self.aiModel(settings.aiModel || '');
 				self.aiEnabled(settings.aiEnabled === true || (settings.aiProvider && settings.aiProvider !== ''));
+				self.userSource(settings.userSource || 'code');
+				self.clientIdLabel(settings.clientIdLabel || 'Client Id');
+				self.clientIds(_.isArray(settings.clientIds) ? settings.clientIds : []);
 				//// Optionally, you can manually trigger change event for select elements
 				$('#themeSelect').trigger('change');
 				$('#timezoneSelect').trigger('change');

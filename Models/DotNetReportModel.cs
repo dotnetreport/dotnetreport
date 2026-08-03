@@ -413,6 +413,12 @@ namespace ReportBuilder.Web.Models
         public List<string> UserRoles { get; set; } = new List<string>();
 
         /// <summary>
+        /// List of all Client (Tenant) Ids in your Application, used to pick from when restricting
+        /// access to Reports, Folders and Dashboards
+        /// </summary>
+        public List<string> ClientIds { get; set; } = new List<string>();
+
+        /// <summary>
         /// A list of Global Data filters using format { Column1: 'val1, val2, ...', Column2: '1,2,3,...', ...}
         /// </summary>
         public dynamic DataFilters { get; set; }

@@ -231,12 +231,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <button type="button" class="btn btn-sm btn-link text-decoration-none px-0" data-bind="visible: !showClientScope(), click: function() { showClientScope(true); }">
                                     <i class="fa fa-user"></i> <span data-bind="text: headerClientId() ? 'Change client (' + headerClientId() + ')' : 'Restrict to a Client Id'"></span>
                                 </button>
-                                <div class="input-group input-group-sm" style="max-width: 400px;" data-bind="visible: showClientScope">
+                                <!-- ko if: showClientScope --><div class="input-group input-group-sm" style="max-width: 400px;">
                                     <span class="input-group-text">Client Id</span>
                                     <input class="form-control" type="text" placeholder="Blank = Global" data-bind="value: headerClientId, event: { change: function () { applyHeaderScope(); } }">
                                     <button class="btn btn-outline-secondary" type="button" data-bind="click: cancelHeaderScope" title="Cancel"><i class="fa fa-times"></i></button>
                                     <span class="input-group-text bg-white" data-bs-toggle="tooltip" data-placement="top" title="Leave blank for a Global header. Changing this switches to that client's headers."><i class="fa fa-question-circle helptip"></i></span>
-                                </div>
+                                </div><!-- /ko -->
                                 <button class="btn btn-primary btn-sm ms-auto" data-bind="click: saveHtmlHeader">
                                     <i class="fa fa-save"></i> Save Header
                                 </button>
@@ -269,7 +269,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <!-- Designer (hidden when report footers are turned off) -->
                         <div data-bind="visible: UseReportFooter">
                         <!-- Selection toolbar (footer has one per scope, so just the client scope) -->
-                        <div class="d-flex flex-wrap align-items-end gap-2 mb-3" data-bind="visible: clientListIds().length > 0">
+                        <!-- ko if: clientListIds().length > 0 --><div class="d-flex flex-wrap align-items-end gap-2 mb-3">
                             <div>
                                 <label class="form-label small text-muted mb-1">Client scope</label>
                                 <select class="form-select form-select-sm" style="min-width: 200px;"
@@ -279,7 +279,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             event: { change: function () { loadHtmlFooter(false); } }">
                                 </select>
                             </div>
-                        </div>
+                        </div><!-- /ko -->
 
                         <!-- Editor card -->
                         <div class="card shadow-sm">
@@ -309,12 +309,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <button type="button" class="btn btn-sm btn-link text-decoration-none px-0" data-bind="visible: !showClientScope(), click: function() { showClientScope(true); }">
                                     <i class="fa fa-user"></i> <span data-bind="text: footerClientId() ? 'Change client (' + footerClientId() + ')' : 'Restrict to a Client Id'"></span>
                                 </button>
-                                <div class="input-group input-group-sm" style="max-width: 400px;" data-bind="visible: showClientScope">
+                                <!-- ko if: showClientScope --><div class="input-group input-group-sm" style="max-width: 400px;">
                                     <span class="input-group-text">Client Id</span>
                                     <input class="form-control" type="text" placeholder="Blank = Global" data-bind="value: footerClientId, event: { change: function () { applyFooterScope(); } }">
                                     <button class="btn btn-outline-secondary" type="button" data-bind="click: cancelFooterScope" title="Cancel"><i class="fa fa-times"></i></button>
                                     <span class="input-group-text bg-white" data-bs-toggle="tooltip" data-placement="top" title="Leave blank for a Global footer. Changing this switches to that client's footer."><i class="fa fa-question-circle helptip"></i></span>
-                                </div>
+                                </div><!-- /ko -->
                                 <button class="btn btn-primary btn-sm ms-auto" data-bind="click: saveHtmlFooter">
                                     <i class="fa fa-save"></i> Save Footer
                                 </button>

@@ -1505,6 +1505,8 @@ var reportViewModel = function (options) {
 	self.userIdForFilter = options.userSettings.userIdForFilter || '';
 
 	self.clientId = options.userSettings.clientId;
+	self.clientIdLabelText = ko.observable('Client Id');
+	self.clientIdOptions = ko.observableArray([]);
 	self.onlyFavorites = ko.observable(false);
 	self.ChartData = ko.observable();
 	self.ReportName = ko.observable();
@@ -4454,7 +4456,7 @@ var reportViewModel = function (options) {
 			self.clearManageFolderAccess();
 			$("#folderModal").modal("show");
 		},
-		editFolder: function () {
+		editFolder: function (skipShow) {
 			if (self.SelectedFolder() == null) {
 				toastr.error("Please choose a folder first");
 				return;
@@ -4483,7 +4485,7 @@ var reportViewModel = function (options) {
 			self.manageFolderAccess.setupList(self.manageFolderAccess.viewOnlyUsers, fldr.ViewOnlyUserId || '');
 			self.manageFolderAccess.setupList(self.manageFolderAccess.deleteOnlyUserRoles, fldr.DeleteOnlyUserRoles || '');
 			self.manageFolderAccess.setupList(self.manageFolderAccess.deleteOnlyUsers, fldr.DeleteOnlyUserId || '');
-			$("#folderModal").modal("show");
+			if (skipShow !== true) $("#folderModal").modal("show");
 		},
 		saveFolder: function () {
 			if (self.ManageFolder.FolderName() == "") {
@@ -11671,6 +11673,13 @@ var reportViewModel = function (options) {
 			self.CanManageFolders(x.allowUsersToManageFolders !== false ? true : false);
 			self.appSettings.useClientIdInAdmin = x.useClientIdInAdmin;
 			self.appSettings.allowUsersToCreateDashboards = x.allowUsersToCreateDashboards;
+			self.clientIdLabelText(x.clientIdLabel || 'Client Id');
+			// Normalize entries (plain ids or { id, text }) for the client id dropdown.
+			var _clients = (options.userSettings && Array.isArray(options.userSettings.clientIds)) ? options.userSettings.clientIds : [];
+			self.clientIdOptions(_.map(_clients, function (c) {
+				return (c && typeof c === 'object') ? { id: c.id || c.Id || '', text: c.text || c.Text || c.id || c.Id || '' } : { id: c, text: c };
+			}));
+			if (options.userSettings && options.userSettings.clientIdLabel) self.clientIdLabelText(options.userSettings.clientIdLabel);
 			self.appSettings.useSqlBuilderInAdminMode = x.useSqlBuilderInAdminMode;
 			self.appSettings.useSqlCustomField(x.useSqlCustomField);
 			self.appSettings.noFolders = x.noFolders;
@@ -12487,6 +12496,8 @@ var dashboardViewModel = function (options) {
 	self.currentUserRole = (options.userSettings.currentUserRoles || options.currentUserRole || []).join();
 	self.currentUserName = options.userSettings.currentUserName;
 	self.clientId = options.userSettings.clientId;
+	self.clientIdLabelText = ko.observable('Client Id');
+	self.clientIdOptions = ko.observableArray([]);
 	self.reportsAndFolders = ko.observableArray([]);
 	self.allowAdmin = ko.observable(options.allowAdmin);
 	self.FlyFilters = ko.observableArray([]);
@@ -12573,6 +12584,13 @@ var dashboardViewModel = function (options) {
 			self.appSettings.useClientIdInAdmin = x.useClientIdInAdmin;
 			self.appSettings.allowUsersToCreateReports = x.allowUsersToCreateReports !== false;
 			self.appSettings.allowUsersToCreateDashboards = x.allowUsersToCreateDashboards !== false;
+			self.clientIdLabelText(x.clientIdLabel || 'Client Id');
+			// Normalize entries (plain ids or { id, text }) for the client id dropdown.
+			var _clients = (options.userSettings && Array.isArray(options.userSettings.clientIds)) ? options.userSettings.clientIds : [];
+			self.clientIdOptions(_.map(_clients, function (c) {
+				return (c && typeof c === 'object') ? { id: c.id || c.Id || '', text: c.text || c.Text || c.id || c.Id || '' } : { id: c, text: c };
+			}));
+			if (options.userSettings && options.userSettings.clientIdLabel) self.clientIdLabelText(options.userSettings.clientIdLabel);
 			self.CanSaveReports(x.allowUsersToCreateReports !== false);
 			self.CanCreateDashboards(x.allowUsersToCreateDashboards !== false);
 			self.appSettings.useSqlBuilderInAdminMode = x.useSqlBuilderInAdminMode;

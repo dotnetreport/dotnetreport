@@ -797,12 +797,31 @@
     <div class="panel panel-default panel-body" style="margin-left: 20px;">
 
         <div class="form-group row">
-            <label class="col-md-3 col-sm-3 control-label">Client Id to Restrict Access</label>
-            <div class="col-md-3 col-sm-3">
+            <label class="col-md-3 col-sm-3 control-label" data-bind="text: ($root.clientIdLabelText ? $root.clientIdLabelText() : 'Client Id') + ' to Restrict Access'"></label>
+            <div class="col-md-6 col-sm-6">
+                <!-- ko if: $root.clientIdOptions && $root.clientIdOptions().length > 0 -->
+                <select class="form-select form-select-sm"
+                        data-bind="options: $root.clientIdOptions().filter(function(c){ return selectedClientIds().indexOf(c.id) < 0; }),
+                            optionsText: 'text', optionsValue: 'id', optionsCaption: 'Add to restrict access',
+                            value: clientIdToAdd, event: { change: function(){ addClientId(clientIdToAdd()); } }"></select>
+                <!-- ko if: selectedClientIds().length > 0 -->
+                <div class="d-flex flex-wrap gap-1 mt-2">
+                    <!-- ko foreach: selectedClientIds() -->
+                    <span class="badge bg-secondary d-inline-flex align-items-center">
+                        <span data-bind="text: (function(){ var m = _.find($root.clientIdOptions(), function(c){ return c.id == $data; }); return m ? m.text : $data; })()"></span>
+                        <button type="button" class="btn btn-sm btn-link text-white p-0 ms-2 lh-1" title="Remove" data-bind="click: function(){ $parent.removeClientId($data); }"><i class="fa fa-times"></i></button>
+                    </span>
+                    <!-- /ko -->
+                </div>
+                <!-- /ko -->
+                <div class="form-text" data-bind="visible: selectedClientIds().length === 0">Not restricted, available to all.</div>
+                <!-- /ko -->
+                <!-- ko ifnot: $root.clientIdOptions && $root.clientIdOptions().length > 0 -->
                 <input class="form-control text-box single-line" type="text" data-bind="value: clientId">
+                <!-- /ko -->
             </div>
             <div class="col-md-1 col-sm-1">
-                <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give all clients access (Global Reports)"></span>
+                <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give Global access"></span>
             </div>
         </div>
         <div class="alert alert-info">

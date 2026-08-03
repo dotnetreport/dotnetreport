@@ -870,6 +870,7 @@ var manageAccess = function (options) {
     var buildList = function (array) { return _.map(array || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x, category: x.category || null }; }) };
     var access = {
         clientId: ko.observable(),
+        clientIdToAdd: ko.observable(''),
         users: ko.observableArray(buildList(options.users)),
         userRoles: ko.observableArray(buildList(options.userRoles)),
         viewOnlyUsers: ko.observableArray(buildList(options.users)),
@@ -888,6 +889,19 @@ var manageAccess = function (options) {
         toggleManageRoles: function () { this.showManageRoles(!this.showManageRoles()); },
         toggleViewRoles: function () { this.showViewRoles(!this.showViewRoles()); },
         toggleDeleteRoles: function () { this.showDeleteRoles(!this.showDeleteRoles()); },
+        selectedClientIds: function () {
+            var v = access.clientId();
+            return v ? String(v).split(',').map(function (x) { return x.trim(); }).filter(function (x) { return x.length; }) : [];
+        },
+        addClientId: function (id) {
+            if (!id) return;
+            var list = access.selectedClientIds();
+            if (list.indexOf(id) < 0) { list.push(id); access.clientId(list.join(',')); }
+            access.clientIdToAdd('');
+        },
+        removeClientId: function (id) {
+            access.clientId(access.selectedClientIds().filter(function (x) { return x !== id; }).join(','));
+        },
         getAsList: function (x) {
             var list = '';
             _.forEach(x(), function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
