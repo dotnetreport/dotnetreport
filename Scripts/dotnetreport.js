@@ -4305,6 +4305,7 @@ var reportViewModel = function (options) {
 							data: {
 								method: "/ReportApi/DeleteReportSchedule",
 								model: JSON.stringify({
+									adminMode: self.adminMode(),
 									reportId: self.scheduleReportModal.reportId()								
 								})
 							}
@@ -4352,6 +4353,7 @@ var reportViewModel = function (options) {
 				data: {
 					method: "/ReportApi/SaveReportSchedule",
 					model: JSON.stringify({
+						adminMode: self.adminMode(),
 						reportId: self.scheduleReportModal.reportId(),
 						scheduleData: JSON.stringify(scheduleData)
 					})
@@ -4375,6 +4377,7 @@ var reportViewModel = function (options) {
 			data: {
 				method: "/ReportApi/GetReportSchedule",
 				model: JSON.stringify({
+					adminMode: self.adminMode(),
 					reportId: report.reportId
 				})
 			},
@@ -11911,6 +11914,7 @@ var dashboardViewModel = function (options) {
 							data: {
 								method: "/ReportApi/DeleteDashboardSchedule",
 								model: JSON.stringify({
+									adminMode: self.adminMode(),
 									dashboardId: self.scheduleDashboardModal.dashboardId()
 								})
 							}
@@ -11958,6 +11962,7 @@ var dashboardViewModel = function (options) {
 				data: {
 					method: "/ReportApi/SaveDashboardSchedule",
 					model: JSON.stringify({
+						adminMode: self.adminMode(),
 						dashboardId: self.scheduleDashboardModal.dashboardId(),
 						scheduleData: JSON.stringify(scheduleData)
 					})
@@ -11983,6 +11988,7 @@ var dashboardViewModel = function (options) {
 			data: {
 				method: "/ReportApi/GetDashboardSchedule",
 				model: JSON.stringify({
+					adminMode: self.adminMode(),
 					dashboardId: dashId
 				})
 			},
