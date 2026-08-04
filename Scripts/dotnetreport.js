@@ -5073,7 +5073,11 @@ var reportViewModel = function (options) {
 					url: options.apiUrl,
 					data: {
 						method: "/ReportApi/DeleteReportSchedule",
-						model: JSON.stringify({ reportId: m.reportId(), scheduleId: s.Id })
+						model: JSON.stringify({
+							adminMode: self.adminMode(),
+							reportId: m.reportId(),
+							scheduleId: s.Id
+						})
 					}
 				}).done(function () {
 					toastr.success('Schedule deleted');
@@ -5092,7 +5096,11 @@ var reportViewModel = function (options) {
 				url: options.apiUrl,
 				data: {
 					method: "/ReportApi/SaveReportSchedule",
-					model: JSON.stringify({ reportId: m.reportId(), scheduleData: JSON.stringify(self.cleanScheduleForSave(scheduleData)) })
+					model: JSON.stringify({
+						adminMode: self.adminMode(),
+						reportId: m.reportId(),
+						scheduleData: JSON.stringify(self.cleanScheduleForSave(scheduleData))
+					})
 				}
 			}).done(function () {
 				toastr.success('Schedule saved');
@@ -12922,6 +12930,7 @@ var dashboardViewModel = function (options) {
 							data: {
 								method: "/ReportApi/DeleteDashboardSchedule",
 								model: JSON.stringify({
+									adminMode: self.adminMode(),
 									dashboardId: self.scheduleDashboardModal.dashboardId()
 								})
 							}
@@ -12969,6 +12978,7 @@ var dashboardViewModel = function (options) {
 				data: {
 					method: "/ReportApi/SaveDashboardSchedule",
 					model: JSON.stringify({
+						adminMode: self.adminMode(),
 						dashboardId: self.scheduleDashboardModal.dashboardId(),
 						scheduleData: JSON.stringify(scheduleData)
 					})
@@ -12994,6 +13004,7 @@ var dashboardViewModel = function (options) {
 			data: {
 				method: "/ReportApi/GetDashboardSchedule",
 				model: JSON.stringify({
+					adminMode: self.adminMode(),
 					dashboardId: dashId
 				})
 			},
