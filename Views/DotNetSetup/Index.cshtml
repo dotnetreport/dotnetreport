@@ -910,9 +910,9 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <!-- ko if: accessTarget() -->
-                            <div data-bind="template: {name: 'manage-access-template', data: $root.manageAccess }"></div>
-                            <!-- /ko -->
+                            <div data-bind="if: accessTarget()">
+                                <div data-bind="template: { name: 'manage-access-template', data: $root.manageAccess }"></div>
+                            </div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -1058,16 +1058,12 @@
                                     <th><i class="fa fa-cogs"></i> Actions</th>
                                 </tr>
                             </thead>
-                            <!-- ko foreach: schedules -->
-                            <tbody class="border-top">
-                                <!-- ko foreach: { data: Schedules, as: 'item' } -->
-                                <tr>
-                                    <!-- ko if: $index() === 0 -->
-                                    <td class="align-middle border-end bg-light" data-bind="attr: { rowspan: $parent.Schedules.length }">
+                            <tbody class="border-top" data-bind="foreach: schedules">
+                                <tr data-bind="foreach: { data: Schedules, as: 'item' }">
+                                    <td class="align-middle border-end bg-light" data-bind="if: $index() === 0, attr: { rowspan: $parent.Schedules.length }">
                                         <span class="fw-bold" data-bind="text: $parent.Name"></span>
                                         <span class="badge" data-bind="css: $parent.DashboardId === 0 ? 'bg-secondary' : 'bg-info', text: $parent.DashboardId === 0 ? 'Report' : 'Dashboard'"></span>
                                     </td>
-                                    <!-- /ko -->
                                     <td data-bind="text: item.ScheduleDisplay"></td>
                                     <td class="text-break" data-bind="text: item.EmailTo"></td>
                                     <td data-bind="text: $root.formatDisplay(item.Format)"></td>
@@ -1081,9 +1077,7 @@
                                         </button>
                                     </td>
                                 </tr>
-                                <!-- /ko -->
                             </tbody>
-                            <!-- /ko -->
                         </table>
                     </div>
                 </div>

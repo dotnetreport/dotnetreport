@@ -552,25 +552,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
                             <!-- BREADCRUMB -->
                             <nav aria-label="breadcrumb">
-                                <ol class="breadcrumb">
-                                    <li class="breadcrumb-item">
-                                        <a href="#" data-bind="click: function(){ SelectedFolder(null); searchReports(''); }">
-                                            All Folders
-                                        </a>
-                                    </li>
-                                    <!-- ko foreach: folderBreadcrumb() -->
-                                    <li class="breadcrumb-item"
-                                        data-bind="css: { 'active': $index() === $parent.folderBreadcrumb().length - 1 }">
-                                        <!-- ko if: $index() < $parent.folderBreadcrumb().length - 1 -->
-                                        <a href="#" data-bind="text: FolderName, click: function(){ $root.SelectedFolder($data); }"></a>
-                                        <!-- /ko -->
-                                        <!-- ko if: $index() === $parent.folderBreadcrumb().length - 1 -->
-                                        <span data-bind="text: FolderName"></span>
-                                        <!-- /ko -->
-                                    </li>
-                                    <!-- /ko -->
-                                    <li class="breadcrumb-item active" data-bind="visible: searchReports()">
-                                        Search Results
+                                <ol class="breadcrumb" data-bind="foreach: breadcrumbItems">
+                                    <li class="breadcrumb-item" data-bind="css: { 'active': isActive }">
+                                        <a href="#" data-bind="text: FolderName, click: onClick, visible: !isActive"></a>
+                                        <span data-bind="text: FolderName, visible: isActive"></span>
                                     </li>
                                 </ol>
                             </nav>
@@ -586,7 +571,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <div class="row py-2 border-bottom align-items-center w-100 row-hover">
                                             <div class="col-md-3 d-flex align-items-center clickable" data-bind="click: function(){ $parent.SelectedFolder($data); }">
                                                 <span data-bind="visible: $root.selectMode, click: function(d,e){ isSelected(!isSelected()); e.stopPropagation(); },
-                                                    css: isSelected() ? 'fa fa-check-square text-primary me-2' : 'fa fa-square-o me-2'"></span>
+                                                css: isSelected() ? 'fa fa-check-square text-primary me-2' : 'fa fa-square-o me-2'"></span>
                                                 <span class="fa fa-folder text-secondary me-2"></span>
                                                 <span data-bind="text: FolderName"></span>
                                             </div>
@@ -687,8 +672,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         </div>
 
                                         <!-- Sub folder rows (same column grid as report rows) -->
-                                        <!-- ko if: !searchReports() -->
-                                        <div data-bind="foreach: subFoldersInFolder">
+                                        <div data-bind="foreach: !searchReports() ? subFoldersInFolder() : []">
                                             <div class="row border-bottom py-2 align-items-center w-100 row-hover">
                                                 <div class="col-md-3 d-flex align-items-center clickable"
                                                      data-bind="click: function(){ $root.SelectedFolder($data); }">
@@ -750,7 +734,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <div class="col-md-1" data-bind="visible: $root.adminMode"></div>
                                             </div>
                                         </div>
-                                        <!-- /ko -->
 
                                         <div class="report-list" data-bind="foreach: searchReports() ? reportsInSearch() : reportsInFolder()">
                                             <div class="row border-bottom py-2 align-items-center w-100 row-hover">

@@ -2803,7 +2803,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 
 	_.forEach(self.model(), function (t) {
 		self.processTable(t);
-		t.Selected(false);
+		// t.Selected(false);
 	});
 
 	self.refresh = function (result) {
@@ -2812,7 +2812,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 		
 		_.forEach(mdl, function (t) {
 			self.processTable(t);
-			t.Selected(false);
+			// t.Selected(false);
 		});
 
 		self.model(mdl);
