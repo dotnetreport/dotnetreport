@@ -5357,19 +5357,34 @@ namespace ReportBuilder.Web.Models
                     }
                 };
 
+                // Identity and the report query use trusted server-side session here
+                var exportSession = new ExportSession
+                {
+                    ReportId = reportId,
+                    ReportSql = reportSql,
+                    ConnectKey = connectKey,
+                    Settings = new DotNetReportSettings
+                    {
+                        UserId = userId,
+                        ClientId = clientId,
+                        CurrentUserRole = (currentUserRole ?? "")
+                            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                            .ToList(),
+                        DataFilters = string.IsNullOrEmpty(dataFilters)
+                            ? new { }
+                            : System.Text.Json.JsonSerializer.Deserialize<object>(dataFilters) ?? new { }
+                        
+                    }
+                };
+                var exportId = ExportSessionStore.Save(exportSession);
+
                 var formData = new StringBuilder();
                 formData.AppendLine("<html><body>");
                 formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
-                formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
-                formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
-                formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
+                formData.AppendLine($"<input name=\"exportId\" value=\"{HttpUtility.HtmlEncode(exportId)}\" />");
                 formData.AppendLine($"<input name=\"pageNumber\" value=\"{pageNumber}\" />");
                 formData.AppendLine($"<input name=\"pageSize\" value=\"{(isSubreport ? currentPageSize : 99999)}\" />");
-                formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
-                formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
-                formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
                 formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
-                formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(string.IsNullOrEmpty(dataFilters) ? "{}" : dataFilters)}\" />");
                 formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
                 formData.AppendLine($"</form>");
                 formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
@@ -6751,14 +6766,22 @@ namespace ReportBuilder.Web.Models
 
     }
 
+    public class ExportSession
+    {
+        public DotNetReportSettings Settings { get; set; }
+        public int ReportId { get; set; }
+        public string ReportSql { get; set; }
+        public string ConnectKey { get; set; }
+    }
+
     public static class ExportSessionStore
     {
-        private static readonly ConcurrentDictionary<string, DotNetReportSettings> _sessions = new();
+        private static readonly ConcurrentDictionary<string, ExportSession> _sessions = new();
 
-        public static string Save(DotNetReportSettings settings)
+        public static string Save(ExportSession session)
         {
             var id = Guid.NewGuid().ToString("N");
-            _sessions[id] = settings;
+            _sessions[id] = session;
 
             // Auto-expire after 10 minutes
             Task.Run(async () =>
@@ -6770,10 +6793,11 @@ namespace ReportBuilder.Web.Models
             return id;
         }
 
-        public static DotNetReportSettings Get(string id)
+        public static ExportSession Get(string id)
         {
-            _sessions.TryGetValue(id, out var settings);
-            return settings;
+            if (string.IsNullOrWhiteSpace(id)) return null;
+            _sessions.TryGetValue(id, out var session);
+            return session;
         }
     }
 }

@@ -18,7 +18,6 @@
     <link href="~/lib/select2/css/select2.min.css" rel="stylesheet" />
     <link href="~/lib/leaflet/leaflet.css" rel="stylesheet" />
     <link href="~/css/dotnetreport.css?v=6.0.0" rel="stylesheet" />
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <style type="text/css">
         .report-view {
             margin: 0 0px 0 0px;
@@ -431,15 +430,17 @@
         }
 
         var exportId = '@ViewBag.ExportId';
-        ajaxcall({
-            url: '@Url.Action("SaveExportSession", "DotNetReportApi")',
-            type: 'POST',
-            async: false,
-            noBlocking: true,
-            data: JSON.stringify(data)
-        }).done(function (result) {
-            if (result && result.exportId) exportId = result.exportId;
-        });
+        if (!exportId) {
+            ajaxcall({
+               url: '@Url.Action("SaveExportSession", "DotNetReportApi")',
+               type: 'POST',
+               async: false,
+               noBlocking: true,
+               data: JSON.stringify(data)
+            }).done(function (result) {
+               if (result && result.exportId) exportId = result.exportId;
+            });
+        }
         $('#exportId').val(exportId);
 
         var vm = new reportViewModel({

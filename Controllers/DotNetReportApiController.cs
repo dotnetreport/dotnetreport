@@ -146,34 +146,65 @@ namespace ReportBuilder.Web.Controllers
             public string? userId { get; set; }
             public string? currentUserRole { get; set; } // comma separated
             public string? dataFilters { get; set; } // json string
+            public int reportId { get; set; }
+            public string? reportSql { get; set; }
+            public string? connectKey { get; set; }
         }
 
+        // Allow Anonymous by design for hosts serving views from a separate project. Caller must be authenticated,
+        // or send dotNetReport:exportSessionKey server-to-server. 
         [HttpPost]
         [AllowAnonymous]
         public async Task<IActionResult> SaveExportSession([FromBody] SaveExportSessionRequest data)
         {
-            var settings = new DotNetReportSettings
-            {
-                ClientId = HttpUtility.HtmlDecode(data?.clientId ?? ""),
-                UserId = HttpUtility.HtmlDecode(data?.userId ?? ""),
-                CurrentUserRole = HttpUtility.HtmlDecode(data?.currentUserRole ?? "")
-                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .ToList(),
-                DataFilters = string.IsNullOrEmpty(data?.dataFilters)
-                    ? new { }
-                    : JsonSerializer.Deserialize<object>(HttpUtility.HtmlDecode(data.dataFilters)) ?? new { }
-            };
+            DotNetReportSettings settings;
 
-            var exportId = ExportSessionStore.Save(settings);
+            if (User?.Identity?.IsAuthenticated == true)
+            {
+                settings = GetSettings();
+            }
+            else
+            {
+                var exportKey = _configuration.GetValue<string>("dotNetReport:exportSessionKey");
+                Request.Headers.TryGetValue("X-DotNetReport-Export-Key", out var providedKey);
+
+                if (string.IsNullOrEmpty(exportKey) || !System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+                        Encoding.UTF8.GetBytes(exportKey), Encoding.UTF8.GetBytes(providedKey.ToString() ?? "")))
+                {
+                    return Unauthorized(new { Message = "Export sessions can only be created by an authenticated user or a host supplying dotNetReport:exportSessionKey" });
+                }
+
+                settings = new DotNetReportSettings
+                {
+                    ClientId = HttpUtility.HtmlDecode(data?.clientId ?? ""),
+                    UserId = HttpUtility.HtmlDecode(data?.userId ?? ""),
+                    CurrentUserRole = HttpUtility.HtmlDecode(data?.currentUserRole ?? "")
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .ToList(),
+                    DataFilters = string.IsNullOrEmpty(data?.dataFilters)
+                        ? new { }
+                        : JsonSerializer.Deserialize<object>(HttpUtility.HtmlDecode(data.dataFilters)) ?? new { }
+                };
+            }
+
+            var exportId = ExportSessionStore.Save(new ExportSession
+            {
+                Settings = settings,
+                ReportId = data?.reportId ?? 0,
+                ReportSql = data?.reportSql,
+                ConnectKey = data?.connectKey
+            });
+
             return Ok(new { exportId });
         }
 
         [AllowAnonymous]
         public async Task<IActionResult> CallReportApiUnAuth(string method, string model, string exportId)
         {
-            var settings = ExportSessionStore.Get(exportId);
-            if (settings == null)
+            var session = ExportSessionStore.Get(exportId);
+            if (session == null)
                 return Unauthorized();
+            var settings = session.Settings;
 
             settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
@@ -339,7 +370,7 @@ namespace ReportBuilder.Web.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> RunReportUnAuth([FromQuery] string exportId, [FromBody] RunReportParameters data)
         {
-            var sessionSettings = ExportSessionStore.Get(exportId);
+            var sessionSettings = ExportSessionStore.Get(exportId)?.Settings;
             if (sessionSettings == null)
                 return Unauthorized();
             DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(sessionSettings.DataFilters ?? new { });
@@ -350,9 +381,10 @@ namespace ReportBuilder.Web.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> RunReportApiUnAuth([FromQuery] string exportId, [FromBody] DotNetReportApiCall data)
         {
-            var settings = ExportSessionStore.Get(exportId);
-            if (settings == null)
+            var session = ExportSessionStore.Get(exportId);
+            if (session == null)
                 return Unauthorized();
+            var settings = session.Settings;
 
             settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
@@ -721,9 +753,10 @@ namespace ReportBuilder.Web.Controllers
         public async Task<IActionResult> RunReportLinkUnAuth(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false, string exportId = "")
         {
             var model = new DotNetReportModel();
-            var settings = ExportSessionStore.Get(exportId);
-            if (settings == null)
+            var session = ExportSessionStore.Get(exportId);
+            if (session == null)
                 return Unauthorized();
+            var settings = session.Settings;
 
             settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
