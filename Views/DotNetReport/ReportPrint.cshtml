@@ -510,15 +510,15 @@
                 }
             }
         }
-
+        // FIX: load appSettings FIRST, then LoadReport
+        vm.loadAppSettings().always(function () {
         vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
             // Resolve the per-report header (chosen named header / custom / don't-use) not just the default.
             var headerLoaded = vm.initReportHeaderForRun ? vm.initReportHeaderForRun() : (vm.useReportHeader() ? vm.headerDesigner.init(true) : null);
             var footerLoaded = vm.useReportFooter() ? vm.footerDesigner.init(true) : null;
-            var settingsLoaded = vm.loadAppSettings ? vm.loadAppSettings() : null;
 
             // The header/footer html is fetched over ajax, so wait for it
-            $.when(headerLoaded, footerLoaded, settingsLoaded).always(function () {
+            $.when(headerLoaded, footerLoaded).always(function () {
                 try {
                     var userName = vm.currentUserName || vm.currentUserId || '';
                     var userRoles = vm.currentUserRole || '';
@@ -601,7 +601,7 @@
                 }
             }, 15000);
         });
-
+        });
         $(window).resize(function(){
             vm.DrawChart();
         });
