@@ -4289,7 +4289,12 @@ var reportViewModel = function (options) {
 		_.forEach(self.FilterGroups(), function (e) {
 			_.forEach(e.Filters(), function (x) { if (x.Field()?.filterOnFly()) flyfilters.push(x); });
 		});
-
+		// ── NEW ──
+		if (self.useStoredProc()) {
+			_.forEach(self.Parameters(), function (p) {
+				if (p.filterOnFly && p.filterOnFly()) flyfilters.push(p);
+			});
+		}
 		self.FlyFilters(flyfilters);
 	}
 
@@ -5556,6 +5561,12 @@ var reportViewModel = function (options) {
 				fieldFormat: ko.observable(),
 				uiId: generateUniqueId(),
 			}
+			e.Field.fieldFilter = e.operators;
+			e.Field.selectedFilterName = e.DisplayName;
+			e.Field.forced = false;
+			e.filterOnFly = ko.observable(match && match.FilterOnFly === true);
+			e.Field.filterOnFly = e.filterOnFly;
+			e.Apply = ko.observable(true);
 			e.LookupList = ko.observableArray([]);
 			if (e.Value()) {
 				e.LookupList.push({ id: e.Value(), text: e.Value() });
@@ -6771,12 +6782,14 @@ var reportViewModel = function (options) {
 			DataFilters: options.dataFilters,
 			DrillDownRowUsePlaceholders: false,
 			SelectedParameters: self.useStoredProc() ? _.map(self.Parameters(), function (x) {
+				var flyNotApplied = x.filterOnFly && x.filterOnFly() && x.Apply && !x.Apply();
 				return {
-					UseDefault: x.Operator() == 'is default',
+					UseDefault: flyNotApplied ? true : x.Operator() == 'is default',
 					ParameterId: x.Id,
 					ParameterName: x.ParameterName,
-					Value: x.Operator() == 'in' ? (Array.isArray(x.ValueIn) ? x.ValueIn: [x.Value()]).join(",") : x.Value(),
-					Operator: x.Operator()
+					Value: flyNotApplied ? x.ParameterValue : (x.Operator() == 'in' ? (Array.isArray(x.ValueIn) ? x.ValueIn : [x.Value()]).join(",") : x.Value()),
+					Operator: flyNotApplied ? 'is default' : x.Operator(),
+					FilterOnFly: x.filterOnFly ? x.filterOnFly() : false   // ← persist for reload
 				}
 			}) : []
 		};

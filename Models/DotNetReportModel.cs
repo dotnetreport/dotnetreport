@@ -545,6 +545,16 @@ namespace ReportBuilder.Web.Models
             get => string.IsNullOrEmpty(_dataFilters.Value) || _dataFilters.Value == "null" ? "{}" : _dataFilters.Value;
             set => _dataFilters.Value = value;
         }
+        private static readonly Regex CssRuleRegex = new Regex(
+            @"([^\{\}]+)\{([^\{\}]+)\}", RegexOptions.Compiled | RegexOptions.Singleline);
+
+        private class CssRule
+        {
+            public string Tag;
+            public string Id;
+            public List<string> Classes = new List<string>();
+            public Dictionary<string, (string Value, bool Important)> Declarations;
+        }
 
         #region Report HTML sanitization (server-side XSS guard)
 
@@ -4143,9 +4153,7 @@ namespace ReportBuilder.Web.Models
                         var processedHeader = SubstituteHtmlPlaceholders(headerHtml, currentUserName, currentUserRoles, 1, 1, useWordFields: true, reportName: reportName);
                         var headerPart = mainPart.AddNewPart<HeaderPart>();
                         headerRelId = mainPart.GetIdOfPart(headerPart);
-                        processedHeader = ConvertBootstrapGridToTable(processedHeader);
-                        processedHeader = ConvertFlexToTable(processedHeader);
-                        processedHeader = ConvertGridToTable(processedHeader);
+                        processedHeader = ConvertLayoutsForWord(processedHeader);
                         var altHdrPart = headerPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
                         var altHdrRelId = headerPart.GetIdOfPart(altHdrPart);
                         var fullHdrHtml = WrapHtmlForWord(processedHeader);
@@ -4178,9 +4186,7 @@ namespace ReportBuilder.Web.Models
                     {
                         var footerPart = mainPart.AddNewPart<FooterPart>();
                         footerRelId = mainPart.GetIdOfPart(footerPart);
-                        processedFooterHtml = ConvertBootstrapGridToTable(processedFooterHtml);
-                        processedFooterHtml = ConvertFlexToTable(processedFooterHtml);
-                        processedFooterHtml = ConvertGridToTable(processedFooterHtml);
+                        processedFooterHtml = ConvertLayoutsForWord(processedFooterHtml);
                         var altFtrPart = footerPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
                         var altFtrRelId = footerPart.GetIdOfPart(altFtrPart);
                         var fullFtrHtml = WrapHtmlForWord(processedFooterHtml);
@@ -4244,9 +4250,7 @@ namespace ReportBuilder.Web.Models
                     }
                     if (hasCustomHtml)
                     {
-                        customHtml = ConvertBootstrapGridToTable(customHtml);
-                        customHtml = ConvertFlexToTable(customHtml);
-                        customHtml = ConvertGridToTable(customHtml);
+                        customHtml = ConvertLayoutsForWord(customHtml);
                         var altBodyPart = mainPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
                         var altBodyRelId = mainPart.GetIdOfPart(altBodyPart);
                         var fullBodyHtml = WrapHtmlForWord(customHtml);
@@ -4579,121 +4583,152 @@ namespace ReportBuilder.Web.Models
                 return memStream.ToArray();
             }
         }
-        private static string ConvertGridToTable(string customHtml)
+        private static CssRule ParseSimpleSelector(string selector)
+        {
+            if (string.IsNullOrEmpty(selector)) return null;
+            if (Regex.IsMatch(selector, @"[\s>+~:\[\]]")) return null;
+
+            var match = Regex.Match(selector, @"^([a-zA-Z][a-zA-Z0-9]*)?((?:#[a-zA-Z0-9_-]+)?)((?:\.[a-zA-Z0-9_-]+)*)$");
+            if (!match.Success) return null;
+
+            var rule = new CssRule();
+            if (match.Groups[1].Success && match.Groups[1].Value.Length > 0)
+                rule.Tag = match.Groups[1].Value.ToLowerInvariant();
+            if (match.Groups[2].Success && match.Groups[2].Value.Length > 0)
+                rule.Id = match.Groups[2].Value.Substring(1);
+            if (match.Groups[3].Success && match.Groups[3].Value.Length > 0)
+                rule.Classes = match.Groups[3].Value.Split('.', StringSplitOptions.RemoveEmptyEntries).ToList();
+
+            if (rule.Tag == null && rule.Id == null && rule.Classes.Count == 0) return null;
+            return rule;
+        }
+
+        private static Dictionary<string, (string Value, bool Important)> ParseDeclarationsWithImportant(string declText)
+        {
+            var result = new Dictionary<string, (string, bool)>();
+            if (string.IsNullOrWhiteSpace(declText)) return result;
+
+            foreach (var part in declText.Split(';'))
+            {
+                int idx = part.IndexOf(':');
+                if (idx <= 0) continue;
+
+                string prop = part.Substring(0, idx).Trim().ToLowerInvariant();
+                string rawVal = part.Substring(idx + 1).Trim();
+                bool important = Regex.IsMatch(rawVal, "!important", RegexOptions.IgnoreCase);
+                string val = Regex.Replace(rawVal, "!important", "", RegexOptions.IgnoreCase).Trim().TrimEnd(';').Trim();
+
+                if (!string.IsNullOrEmpty(val))
+                    result[prop] = (val, important);
+            }
+            return result;
+        }
+        private static string StripCssComments(string css)
+        {
+            if (string.IsNullOrEmpty(css)) return css;
+            return Regex.Replace(css, @"/\*.*?\*/", "", RegexOptions.Singleline);
+        }
+        private static List<CssRule> ParseAllCssRules(string css)
+        {
+            var rules = new List<CssRule>();
+            if (string.IsNullOrWhiteSpace(css)) return rules;
+
+            css = StripCssComments(css);
+
+            foreach (Match ruleMatch in CssRuleRegex.Matches(css))
+            {
+                string selectorPart = ruleMatch.Groups[1].Value.Trim();
+                string declPart = ruleMatch.Groups[2].Value.Trim();
+
+                var declarations = ParseDeclarationsWithImportant(declPart);
+                if (declarations.Count == 0) continue;
+
+                foreach (var rawSelector in selectorPart.Split(','))
+                {
+                    var parsed = ParseSimpleSelector(rawSelector.Trim());
+                    if (parsed == null) continue;
+
+                    parsed.Declarations = declarations;
+                    rules.Add(parsed);
+                }
+            }
+            return rules;
+        }
+        private static string ApplyExternalCssInline(string customHtml, params string[] cssSources)
         {
             var doc = new HtmlAgilityPack.HtmlDocument();
             doc.LoadHtml(customHtml);
 
-            bool convertedAny;
-            do
+            var allRules = new List<CssRule>();
+            foreach (var css in cssSources)
+                allRules.AddRange(ParseAllCssRules(css));
+
+            if (allRules.Count == 0) return customHtml;
+
+            var allElements = doc.DocumentNode.SelectNodes("//*[@class or @id]");
+            if (allElements == null) return customHtml;
+
+            foreach (var el in allElements)
             {
-                convertedAny = false;
+                var elClasses = el.GetAttributeValue("class", "")
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+                string elId = el.GetAttributeValue("id", "");
+                string elTag = el.Name.ToLowerInvariant();
 
-                var gridNodes = doc.DocumentNode
-                    .SelectNodes("//*[contains(translate(@style,' ',''),'display:grid')]");
+                var normal = new Dictionary<string, string>();
+                var important = new Dictionary<string, string>();
 
-                if (gridNodes == null) break;
-
-                var deepestFirst = gridNodes.OrderByDescending(GetDepth).ToList();
-
-                foreach (var gridNode in deepestFirst)
+                foreach (var rule in allRules)
                 {
-                    ConvertSingleGridNode(doc, gridNode);
-                    convertedAny = true;
-                    break; // ek convert karke dobara fetch karo, DOM change ho chuka hy
+                    if (rule.Tag != null && rule.Tag != elTag) continue;
+                    if (rule.Id != null && rule.Id != elId) continue;
+                    if (rule.Classes.Count > 0 && !rule.Classes.All(c => elClasses.Contains(c))) continue;
+
+                    foreach (var kv in rule.Declarations)
+                    {
+                        if (kv.Value.Important) important[kv.Key] = kv.Value.Value;
+                        else normal[kv.Key] = kv.Value.Value;
+                    }
                 }
 
-            } while (convertedAny);
+                if (normal.Count == 0 && important.Count == 0) continue;
+
+                var finalDecls = new Dictionary<string, string>(normal);
+                foreach (var kv in important) finalDecls[kv.Key] = kv.Value;
+
+                string existingStyle = el.GetAttributeValue("style", "");
+                var existingProps = ParseDeclarations(existingStyle);
+
+                var sb = new StringBuilder();
+                foreach (var kv in finalDecls)
+                    if (!existingProps.ContainsKey(kv.Key)) 
+                        sb.Append($"{kv.Key}:{kv.Value}; ");
+
+                sb.Append(existingStyle);
+                el.SetAttributeValue("style", sb.ToString().Trim());
+            }
 
             return doc.DocumentNode.OuterHtml;
         }
 
-        private static void ConvertSingleGridNode(HtmlAgilityPack.HtmlDocument doc, HtmlNode gridNode)
+        private static Dictionary<string, string> ParseDeclarations(string declText)
         {
-            var style = gridNode.GetAttributeValue("style", "");
+            var result = new Dictionary<string, string>();
+            if (string.IsNullOrWhiteSpace(declText)) return result;
 
-            var children = gridNode.ChildNodes
-                .Where(n => n.NodeType == HtmlNodeType.Element)
-                .ToList();
-            if (children.Count == 0) return;
-
-            // grid-template-columns se column count nikalo
-            string templateCols = ExtractStyleValue(style, "grid-template-columns");
-            int colCount = GetColumnCount(templateCols, children.Count);
-
-            string columnGap = ExtractStyleValue(style, "column-gap") ?? ExtractStyleValue(style, "gap") ?? "0px";
-            string containerBg = ExtractStyleValue(style, "background-color");
-
-            var wrapper = doc.CreateElement("div");
-            if (!string.IsNullOrEmpty(containerBg))
-                wrapper.SetAttributeValue("style", $"background-color:{containerBg};");
-
-            var table = doc.CreateElement("table");
-            table.SetAttributeValue("width", "100%");
-            table.SetAttributeValue("style", $"border-collapse:collapse; width:100%;{(string.IsNullOrEmpty(containerBg) ? "" : $" background-color:{containerBg};")}");
-            table.SetAttributeValue("cellspacing", "0");
-
-            // Children ko rows mein group karo (colCount ke hisaab se wrap)
-            for (int i = 0; i < children.Count; i += colCount)
+            foreach (var part in declText.Split(';'))
             {
-                var tr = doc.CreateElement("tr");
-                var rowChildren = children.Skip(i).Take(colCount).ToList();
+                int idx = part.IndexOf(':');
+                if (idx <= 0) continue;
 
-                foreach (var child in rowChildren)
-                {
-                    var td = doc.CreateElement("td");
+                string prop = part.Substring(0, idx).Trim().ToLowerInvariant();
+                string val = Regex.Replace(part.Substring(idx + 1), "!important", "", RegexOptions.IgnoreCase)
+                                   .Trim().TrimEnd(';').Trim();
 
-                    // *** Yahi missing piece tha: child ka apna background-color nikal ke td pe daalo ***
-                    var childStyle = child.GetAttributeValue("style", "");
-                    string childBg = ExtractStyleValue(childStyle, "background-color");
-                    string childPadding = ExtractStyleValue(childStyle, "padding") ?? "10px";
-
-                    var tdStyleParts = new List<string>
-            {
-                "vertical-align:top",
-                $"padding:{childPadding}"
-            };
-                    if (!string.IsNullOrEmpty(childBg))
-                        tdStyleParts.Add($"background-color:{childBg}");
-                    if (columnGap != "0px" && rowChildren.IndexOf(child) < rowChildren.Count - 1)
-                        tdStyleParts.Add($"padding-right:{columnGap}");
-
-                    td.SetAttributeValue("style", string.Join("; ", tdStyleParts) + ";");
-                    td.SetAttributeValue("width", $"{100 / colCount}%");
-
-                    // child ka background-color style se hata do (ab td pe hy), baaki styles rehne do
-                    if (!string.IsNullOrEmpty(childBg))
-                    {
-                        var cleanedStyle = System.Text.RegularExpressions.Regex.Replace(
-                            childStyle, @"background-color\s*:\s*[^;]+;?", "",
-                            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                        child.SetAttributeValue("style", cleanedStyle);
-                    }
-
-                    td.InnerHtml = child.OuterHtml;
-                    tr.AppendChild(td);
-                }
-                table.AppendChild(tr);
+                if (!string.IsNullOrEmpty(val))
+                    result[prop] = val;
             }
-
-            wrapper.AppendChild(table);
-            gridNode.ParentNode.ReplaceChild(wrapper, gridNode);
-        }
-
-        private static int GetColumnCount(string templateCols, int fallbackChildCount)
-        {
-            if (string.IsNullOrEmpty(templateCols))
-                return fallbackChildCount;
-
-            // Pattern: repeat(3, 1fr)
-            var repeatMatch = System.Text.RegularExpressions.Regex.Match(
-                templateCols, @"repeat\(\s*(\d+)\s*,");
-            if (repeatMatch.Success)
-                return int.Parse(repeatMatch.Groups[1].Value);
-
-            // Pattern: 1fr 1fr 1fr  ya  200px 1fr auto
-            var parts = templateCols.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            return parts.Length > 0 ? parts.Length : fallbackChildCount;
+            return result;
         }
         private static string ConvertBootstrapGridToTable(string customHtml)
         {
@@ -4731,8 +4766,6 @@ namespace ReportBuilder.Web.Models
                     string colStyle = col.GetAttributeValue("style", "");
                     string colBg = ExtractStyleValue(colStyle, "background-color");
                     string colPadding = ExtractStyleValue(colStyle, "padding");
-
-                    // *** Fix: text-align aur vertical-align bhi nikalo ***
                     string colTextAlign = ExtractStyleValue(colStyle, "text-align");
                     string colVertAlign = ExtractStyleValue(colStyle, "vertical-align");
 
@@ -4746,12 +4779,11 @@ namespace ReportBuilder.Web.Models
 
                     td.SetAttributeValue("style", string.Join("; ", tdStyleParts) + ";");
 
-                    // col ke baaki inline styles (jo td pe copy kar diye) uske apne style se hata do
                     if (!string.IsNullOrEmpty(colStyle))
                     {
-                        var cleanedStyle = System.Text.RegularExpressions.Regex.Replace(
+                        var cleanedStyle = Regex.Replace(
                             colStyle, @"(background-color|padding|text-align|vertical-align)\s*:\s*[^;]+;?", "",
-                            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                            RegexOptions.IgnoreCase);
                         col.SetAttributeValue("style", cleanedStyle);
                     }
 
@@ -4768,12 +4800,12 @@ namespace ReportBuilder.Web.Models
         {
             if (string.IsNullOrEmpty(classAttr)) return 12;
 
-            var match = System.Text.RegularExpressions.Regex.Match(
-                classAttr, @"col-(?:xs-|sm-|md-|lg-|xl-)?(\d+)");
+            var match = Regex.Match(classAttr, @"col-(?:xs-|sm-|md-|lg-|xl-)?(\d+)");
             if (match.Success) return int.Parse(match.Groups[1].Value);
 
             return 12;
         }
+
         private static string ConvertFlexToTable(string customHtml)
         {
             var doc = new HtmlAgilityPack.HtmlDocument();
@@ -4784,35 +4816,91 @@ namespace ReportBuilder.Web.Models
             {
                 convertedAny = false;
 
-                // Kisi bhi tag pe display:flex dhoondo (div, span, section, header, footer, etc.)
                 var flexNodes = doc.DocumentNode
                     .SelectNodes("//*[contains(translate(@style,' ',''),'display:flex')]");
 
                 if (flexNodes == null) break;
 
-                // Sabse deep-nested wala pehle convert karo (bottom-up),
-                // warna outer conversion nested flex ko tor dega
                 var deepestFirst = flexNodes.OrderByDescending(GetDepth).ToList();
 
                 foreach (var flexNode in deepestFirst)
                 {
                     ConvertSingleFlexNode(doc, flexNode);
                     convertedAny = true;
-                    break; // ek convert karke list dobara fetch karo (DOM change ho chuka)
+                    break;
                 }
 
             } while (convertedAny);
 
             return doc.DocumentNode.OuterHtml;
         }
+        private static string WrapPlainBackgroundDivsInTable(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+            bool convertedAny;
+            do
+            {
+                convertedAny = false;
+                var candidates = doc.DocumentNode.SelectNodes(
+                    "//*[contains(translate(@style,' ',''),'background-color:') and not(self::table) and not(self::td) and not(self::tr) and not(self::th)]");
 
+                if (candidates == null) break;
+                var shallowestFirst = candidates.OrderBy(GetDepth).ToList();
+
+                foreach (var node in shallowestFirst)
+                {
+                    if (node.Ancestors("table").Any()) continue;
+                    WrapSingleBackgroundDiv(doc, node);
+                    convertedAny = true;
+                    break; 
+                }
+            } while (convertedAny);
+            return doc.DocumentNode.OuterHtml;
+        }
+        public static string ConvertLayoutsForWord(string customHtml)
+        {
+            customHtml = ApplyExternalCssInline(customHtml, GetWordReportCss());
+
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+            string result = doc.DocumentNode.OuterHtml;
+
+            result = ConvertBootstrapGridToTable(result);
+            result = ConvertFlexToTable(result);
+            result = ConvertGridToTable(result);
+            result = WrapPlainBackgroundDivsInTable(result); // *** naya step ***
+            result = EnsureTableBackgroundCompat(result);
+            result = FixImageSizingForWord(result);
+
+            return result;
+        }
+        private static void WrapSingleBackgroundDiv(HtmlAgilityPack.HtmlDocument doc, HtmlNode node)
+        {
+            string style = node.GetAttributeValue("style", "");
+            string bg = ExtractStyleValue(style, "background-color");
+            if (string.IsNullOrEmpty(bg)) return;
+
+            string remainingStyle = Regex.Replace(style, @"background-color\s*:\s*[^;]+;?", "", RegexOptions.IgnoreCase).Trim();
+
+            var table = doc.CreateElement("table");
+            table.SetAttributeValue("width", "100%");
+            table.SetAttributeValue("style", $"border-collapse:collapse; width:100%; background-color:{bg};");
+
+            var tr = doc.CreateElement("tr");
+            var td = doc.CreateElement("td");
+            td.SetAttributeValue("style", $"background-color:{bg}; {remainingStyle}");
+            td.InnerHtml = node.InnerHtml; // andar ka poora content copy karo
+
+            tr.AppendChild(td);
+            table.AppendChild(tr);
+
+            node.ParentNode.ReplaceChild(table, node);
+        }
         private static void ConvertSingleFlexNode(HtmlAgilityPack.HtmlDocument doc, HtmlNode flexNode)
         {
             var style = flexNode.GetAttributeValue("style", "");
-
-            var children = flexNode.ChildNodes
-                .Where(n => n.NodeType == HtmlNodeType.Element)
-                .ToList();
+            var children = flexNode.ChildNodes.Where(n => n.NodeType == HtmlNodeType.Element).ToList();
             if (children.Count == 0) return;
 
             bool isColumn = ExtractStyleValue(style, "flex-direction")?.Trim() == "column";
@@ -4821,27 +4909,25 @@ namespace ReportBuilder.Web.Models
             string bg = ExtractStyleValue(style, "background-color");
             string padding = ExtractStyleValue(style, "padding");
 
-            string hAlign = justify switch
+            string hAlign, vAlign;
+
+            if (isColumn)
             {
-                "center" => "center",
-                "flex-end" => "right",
-                _ => "left"
-            };
-            string vAlign = align switch
+                hAlign = align switch { "center" => "center", "flex-end" => "right", _ => "left" };
+                vAlign = justify switch { "flex-start" => "top", "flex-end" => "bottom", "center" => "middle", _ => "top" };
+            }
+            else
             {
-                "flex-start" => "top",
-                "flex-end" => "bottom",
-                _ => "middle"
-            };
+                hAlign = justify switch { "center" => "center", "flex-end" => "right", "space-between" => "left", _ => "left" };
+                vAlign = align switch { "flex-start" => "top", "flex-end" => "bottom", _ => "middle" };
+            }
 
             string bgStyle = string.IsNullOrEmpty(bg) ? "" : $"background-color:{bg};";
 
             var wrapper = doc.CreateElement("div");
-            if (!string.IsNullOrEmpty(bgStyle))
-                wrapper.SetAttributeValue("style", bgStyle);
+            if (!string.IsNullOrEmpty(bgStyle)) wrapper.SetAttributeValue("style", bgStyle);
 
             var table = doc.CreateElement("table");
-            // Table pe bhi bg set karo, warna Word default white fill de dega
             table.SetAttributeValue("style", $"border-collapse:collapse; width:100%; {bgStyle}");
             table.SetAttributeValue("width", "100%");
 
@@ -4851,7 +4937,6 @@ namespace ReportBuilder.Web.Models
                 {
                     var tr = doc.CreateElement("tr");
                     var td = doc.CreateElement("td");
-                    // Har td pe bhi bg zaroori hy
                     td.SetAttributeValue("style",
                         $"vertical-align:{vAlign}; text-align:{hAlign}; padding:{(string.IsNullOrEmpty(padding) ? "6px" : padding)}; {bgStyle}");
                     td.InnerHtml = child.OuterHtml;
@@ -4878,21 +4963,229 @@ namespace ReportBuilder.Web.Models
             flexNode.ParentNode.ReplaceChild(wrapper, flexNode);
         }
 
+        private static string ConvertGridToTable(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            bool convertedAny;
+            do
+            {
+                convertedAny = false;
+
+                var gridNodes = doc.DocumentNode
+                    .SelectNodes("//*[contains(translate(@style,' ',''),'display:grid')]");
+
+                if (gridNodes == null) break;
+
+                var deepestFirst = gridNodes.OrderByDescending(GetDepth).ToList();
+
+                foreach (var gridNode in deepestFirst)
+                {
+                    ConvertSingleGridNode(doc, gridNode);
+                    convertedAny = true;
+                    break;
+                }
+
+            } while (convertedAny);
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        private static void ConvertSingleGridNode(HtmlAgilityPack.HtmlDocument doc, HtmlNode gridNode)
+        {
+            var style = gridNode.GetAttributeValue("style", "");
+            var children = gridNode.ChildNodes.Where(n => n.NodeType == HtmlNodeType.Element).ToList();
+            if (children.Count == 0) return;
+
+            string templateCols = ExtractStyleValue(style, "grid-template-columns");
+            int colCount = GetColumnCount(templateCols, children.Count);
+
+            string columnGap = ExtractStyleValue(style, "column-gap") ?? ExtractStyleValue(style, "gap") ?? "0px";
+            string containerBg = ExtractStyleValue(style, "background-color");
+
+            var wrapper = doc.CreateElement("div");
+            if (!string.IsNullOrEmpty(containerBg))
+                wrapper.SetAttributeValue("style", $"background-color:{containerBg};");
+
+            var table = doc.CreateElement("table");
+            table.SetAttributeValue("width", "100%");
+            table.SetAttributeValue("style",
+                $"border-collapse:collapse; width:100%;{(string.IsNullOrEmpty(containerBg) ? "" : $" background-color:{containerBg};")}");
+            table.SetAttributeValue("cellspacing", "0");
+
+            for (int i = 0; i < children.Count; i += colCount)
+            {
+                var tr = doc.CreateElement("tr");
+                var rowChildren = children.Skip(i).Take(colCount).ToList();
+
+                foreach (var child in rowChildren)
+                {
+                    var td = doc.CreateElement("td");
+                    var childStyle = child.GetAttributeValue("style", "");
+                    string childBg = ExtractStyleValue(childStyle, "background-color");
+                    string childPadding = ExtractStyleValue(childStyle, "padding") ?? "10px";
+
+                    var tdStyleParts = new List<string> { "vertical-align:top", $"padding:{childPadding}" };
+                    if (!string.IsNullOrEmpty(childBg)) tdStyleParts.Add($"background-color:{childBg}");
+                    if (columnGap != "0px" && rowChildren.IndexOf(child) < rowChildren.Count - 1)
+                        tdStyleParts.Add($"padding-right:{columnGap}");
+
+                    td.SetAttributeValue("style", string.Join("; ", tdStyleParts) + ";");
+                    td.SetAttributeValue("width", $"{100 / colCount}%");
+
+                    if (!string.IsNullOrEmpty(childBg))
+                    {
+                        var cleanedStyle = Regex.Replace(childStyle, @"background-color\s*:\s*[^;]+;?", "", RegexOptions.IgnoreCase);
+                        child.SetAttributeValue("style", cleanedStyle);
+                    }
+
+                    td.InnerHtml = child.OuterHtml;
+                    tr.AppendChild(td);
+                }
+                table.AppendChild(tr);
+            }
+
+            wrapper.AppendChild(table);
+            gridNode.ParentNode.ReplaceChild(wrapper, gridNode);
+        }
+
+        private static int GetColumnCount(string templateCols, int fallbackChildCount)
+        {
+            if (string.IsNullOrEmpty(templateCols)) return fallbackChildCount;
+
+            var repeatMatch = Regex.Match(templateCols, @"repeat\(\s*(\d+)\s*,");
+            if (repeatMatch.Success) return int.Parse(repeatMatch.Groups[1].Value);
+
+            var parts = templateCols.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length > 0 ? parts.Length : fallbackChildCount;
+        }
+
+        // =========================================================================
+        // WORD-COMPATIBILITY FIXUPS
+        // =========================================================================
+
+        private static string EnsureTableBackgroundCompat(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            var elements = doc.DocumentNode.SelectNodes("//table | //td | //tr");
+            if (elements == null) return customHtml;
+
+            foreach (var el in elements)
+            {
+                string style = el.GetAttributeValue("style", "");
+                string bg = ExtractStyleValue(style, "background-color");
+
+                if (string.IsNullOrEmpty(bg)) continue;
+
+                string bgColor = NormalizeColorForAttribute(bg);
+                if (string.IsNullOrEmpty(bgColor)) continue;
+
+                el.SetAttributeValue("bgcolor", bgColor);
+            }
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        private static string NormalizeColorForAttribute(string cssColor)
+        {
+            cssColor = cssColor.Trim();
+
+            if (Regex.IsMatch(cssColor, @"^#[0-9a-fA-F]{3,6}$"))
+                return cssColor;
+
+            var rgbMatch = Regex.Match(cssColor, @"rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)");
+            if (rgbMatch.Success)
+            {
+                int r = int.Parse(rgbMatch.Groups[1].Value);
+                int g = int.Parse(rgbMatch.Groups[2].Value);
+                int b = int.Parse(rgbMatch.Groups[3].Value);
+                return $"#{r:X2}{g:X2}{b:X2}";
+            }
+
+            if (Regex.IsMatch(cssColor, @"^[a-zA-Z]+$"))
+                return cssColor;
+
+            return null;
+        }
+
+        private static string FixImageSizingForWord(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            var images = doc.DocumentNode.SelectNodes("//img");
+            if (images == null) return customHtml;
+
+            foreach (var img in images)
+            {
+                string style = img.GetAttributeValue("style", "");
+                string widthStyle = ExtractStyleValue(style, "width");
+
+                if (string.IsNullOrEmpty(widthStyle)) continue;
+
+                var pxMatch = Regex.Match(widthStyle, @"(\d+(\.\d+)?)px");
+                if (!pxMatch.Success) continue;
+
+                int targetWidth = (int)Math.Round(double.Parse(pxMatch.Groups[1].Value));
+
+                if (img.Attributes.Contains("width") && img.Attributes.Contains("height")) continue;
+
+                int targetHeight = 0;
+
+                string src = img.GetAttributeValue("src", "");
+                if (src.StartsWith("data:image"))
+                {
+                    try
+                    {
+                        var base64Data = src.Substring(src.IndexOf(",") + 1);
+                        var bytes = Convert.FromBase64String(base64Data);
+                        using (var ms = new MemoryStream(bytes))
+                        using (var image = Image.FromStream(ms))
+                        {
+                            double ratio = (double)image.Height / image.Width;
+                            targetHeight = (int)Math.Round(targetWidth * ratio);
+                        }
+                    }
+                    catch
+                    {
+                        targetHeight = 0;
+                    }
+                }
+
+                img.SetAttributeValue("width", targetWidth.ToString());
+                if (targetHeight > 0)
+                    img.SetAttributeValue("height", targetHeight.ToString());
+
+                string cleanedStyle = Regex.Replace(style, @"width\s*:\s*[^;]+;?", "", RegexOptions.IgnoreCase);
+                img.SetAttributeValue("style", cleanedStyle.Trim());
+            }
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        // =========================================================================
+        // SHARED HELPERS
+        // =========================================================================
+
         private static int GetDepth(HtmlNode node)
         {
             int depth = 0;
-            while (node.ParentNode != null)
-            {
-                depth++;
-                node = node.ParentNode;
-            }
+            while (node.ParentNode != null) { depth++; node = node.ParentNode; }
             return depth;
         }
 
         private static string ExtractStyleValue(string styleAttr, string property)
         {
-            var match = System.Text.RegularExpressions.Regex.Match(
-                styleAttr, $@"{property}\s*:\s*([^;]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (string.IsNullOrEmpty(styleAttr)) return null;
+
+            var match = Regex.Match(
+                styleAttr,
+                $@"(?<![\w-]){Regex.Escape(property)}(?![\w-])\s*:\s*([^;]+)",
+                RegexOptions.IgnoreCase);
+
             return match.Success ? match.Groups[1].Value.Trim() : null;
         }
         static void AddImageToBody(WordprocessingDocument wordDoc, string relationshipId, long cx, long cy)

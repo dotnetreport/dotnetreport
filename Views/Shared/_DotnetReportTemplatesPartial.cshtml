@@ -1164,37 +1164,43 @@
 
 </script>
 
-<script type="text/html" id="filter-parameters">
-    <div class="table-responsive">
-        <span data-bind="hidden: showParameters">No filters available to choose</span>
-        <table class="table table-striped table-hover table-borderless" data-bind="visible: showParameters">
-            <thead>
-                <tr>
-                    <th style="width: 30%">Filter</th>
-                    <th style="width: 20%"></th>
-                    <th style="width: 30%">Value</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody data-bind="foreach: Parameters">
-                <tr data-bind="ifnot: Hidden">
-                    <td data-bind="text: DisplayName">
-                    </td>
-                    <td>
-                        <div class="form-group">
-                            <select class="form-select" style="width: 100%;" data-bind="options: operators, value: Operator" required></select>
-                        </div>
-                    </td>
-                    <td data-bind="with: Field" data-parentprefix="P">
-                        <div data-bind="template: 'report-filter', data: $data"></div>
-                    </td>
-                    <td></td>
-                </tr>
+            <script type="text/html" id="filter-parameters">
+                <div class="table-responsive">
+                        <span data-bind="hidden: showParameters">No filters available to choose</span>
+                        <table class="table table-striped table-hover table-borderless" data-bind="visible: showParameters">
+                                <thead>
+                                        <tr>
+                                                <th style="width: 30%">Filter</th>
+                                                <th style="width: 20%"></th>
+                                                <th style="width: 30%">Value</th>
+                                                <th style="width: 10%">Fly</th>  <!-- CHANGED: added label -->
+                                        </tr>
+                                </thead>
+                                <tbody data-bind="foreach: Parameters">
+                                        <tr data-bind="ifnot: Hidden">
+                                                <td data-bind="text: DisplayName"></td>
+                                                <td>
+                                                        <div class="form-group">
+                                                                <select class="form-select" style="width: 100%;" data-bind="options: operators, value: Operator" required></select>
+                                                        </div>
+                                                </td>
+                                                <td data-bind="with: Field" data-parentprefix="P">
+                                                        <div data-bind="template: 'report-filter', data: $data"></div>
+                                                </td>
+                                                <!-- CHANGED: was empty <td></td>, now has the fly-filter toggle -->
+                                                <td class="text-center">
+                                                        <span class="btn btn-sm" tabindex="0"
+                                                            data-bind="click: function(){ filterOnFly(!filterOnFly()); },
+                                                                             css: {'btn-success': filterOnFly()==true, 'btn-secondary': !filterOnFly()}">
+                                                                <span class="fa fa-filter" aria-hidden="true" title="Filter on Report"></span>
+                                                        </span>
+                                                </td>
+                                        </tr>
 
-            </tbody>
-        </table>
-    </div>
-</script>
+                                </tbody>
+                        </table>
+                </div>
+            </script>
 
 <script type="text/html" id="report-schedule">
     <div data-bind="with: scheduleBuilder" id="schedule-builder-div">
