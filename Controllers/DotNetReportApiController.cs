@@ -209,7 +209,6 @@ namespace ReportBuilder.Web.Controllers
             settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
             settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
-            settings.CanUseAdminMode = true;
             DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters ?? new { });
             return await ExecuteCallReportApi(method, model, null, settings);
         }
@@ -389,7 +388,6 @@ namespace ReportBuilder.Web.Controllers
             settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
             settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
-            settings.CanUseAdminMode = true;
             DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters ?? new { });
             return await ExecuteCallReportApi(data.Method, JsonSerializer.Serialize(data), data.userId, settings);
         }
@@ -761,7 +759,6 @@ namespace ReportBuilder.Web.Controllers
             settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
             settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
-            settings.CanUseAdminMode = true;
             DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters ?? new { });
 
             using (var client = new HttpClient())
@@ -1350,7 +1347,7 @@ namespace ReportBuilder.Web.Controllers
                 await ValidateAccess(userId, reportSql, adminMode: adminMode);
             }
             var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
-                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation,includeSubTotal,includeColumnTotal,isSubreport,pageNumber,currentPageSize);
+                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation,includeSubTotal,includeColumnTotal,isSubreport,pageNumber,currentPageSize, canUseAdminMode: settings.CanUseAdminMode);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }

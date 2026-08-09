@@ -5289,7 +5289,7 @@ namespace ReportBuilder.Web.Models
             string userId, string clientId, string currentUserRole, string dataFilters,
             bool expandAll, string expandSqls, string pivotColumn, string pivotFunction,
             bool subTotalMode, bool includeColumnTotal, bool isSubreport,
-            int pageNumber, int currentPageSize, bool debug)
+            int pageNumber, int currentPageSize, bool debug, bool canUseAdminMode = false)
         {
             var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
             await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
@@ -5372,8 +5372,8 @@ namespace ReportBuilder.Web.Models
                             .ToList(),
                         DataFilters = string.IsNullOrEmpty(dataFilters)
                             ? new { }
-                            : System.Text.Json.JsonSerializer.Deserialize<object>(dataFilters) ?? new { }
-                        
+                            : System.Text.Json.JsonSerializer.Deserialize<object>(dataFilters) ?? new { },
+                        CanUseAdminMode = canUseAdminMode
                     }
                 };
                 var exportId = ExportSessionStore.Save(exportSession);
@@ -5430,7 +5430,7 @@ namespace ReportBuilder.Web.Models
                       string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
                       string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false,string pageSize="",string pageOrientation="",bool subTotalMode=false,bool includeColumnTotal=false, bool isSubreport = false,
         int pageNumber = 1,
-        int currentPageSize = 1)
+        int currentPageSize = 1, bool canUseAdminMode = false)
         {
             IBrowser browser = null;
             IPage page = null;
@@ -5442,7 +5442,7 @@ namespace ReportBuilder.Web.Models
                     userId, clientId, currentUserRole, dataFilters,
                     expandAll, expandSqls, pivotColumn, pivotFunction,
                     subTotalMode, includeColumnTotal, isSubreport,
-                    pageNumber, currentPageSize, debug);
+                    pageNumber, currentPageSize, debug, canUseAdminMode);
 
                 if (imageOnly)
                 {
@@ -5644,7 +5644,7 @@ namespace ReportBuilder.Web.Models
 
         public async static Task<string> GetReportRenderedHtml(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
             string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
-            string pivotColumn = null, string pivotFunction = null)
+            string pivotColumn = null, string pivotFunction = null, bool canUseAdminMode = false)
         {
             IBrowser browser = null;
             IPage page = null;
@@ -5655,7 +5655,7 @@ namespace ReportBuilder.Web.Models
                     userId, clientId, currentUserRole, dataFilters,
                     expandAll, expandSqls, pivotColumn, pivotFunction,
                     subTotalMode: false, includeColumnTotal: false, isSubreport: false,
-                    pageNumber: 1, currentPageSize: 99999, debug: false);
+                    pageNumber: 1, currentPageSize: 99999, debug: false, canUseAdminMode: canUseAdminMode);
 
                 await Task.Delay(750);
 
