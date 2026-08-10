@@ -5285,6 +5285,29 @@ namespace ReportBuilder.Web.Models
             }
         }
 
+        private async static Task<LaunchOptions> GetBrowserLaunchOptions(bool debug)
+        {
+            var executablePath = DotNetReportHelper.StaticConfig?.GetValue<string>("dotNetReport:chromiumPath");
+
+            if (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath))
+            {
+                var installPath = Path.Combine(AppContext.BaseDirectory, "App_Data", "local-chromium");
+                var fetcher = new BrowserFetcher(new BrowserFetcherOptions { Path = installPath });
+                var installed = await fetcher.DownloadAsync();
+                executablePath = installed.GetExecutablePath();
+            }
+
+            var options = new LaunchOptions { Headless = !debug, ExecutablePath = executablePath };
+
+            var extraArgs = DotNetReportHelper.StaticConfig?.GetValue<string>("dotNetReport:chromiumArgs");
+            if (!string.IsNullOrWhiteSpace(extraArgs))
+            {
+                options.Args = extraArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            }
+
+            return options;
+        }
+
         private async static Task<(IBrowser browser, IPage page)> LaunchAndLoadReportPrintPageAsync(
             string printUrl, int reportId, string reportSql, string connectKey,
             string userId, string clientId, string currentUserRole, string dataFilters,
@@ -5292,16 +5315,7 @@ namespace ReportBuilder.Web.Models
             bool subTotalMode, bool includeColumnTotal, bool isSubreport,
             int pageNumber, int currentPageSize, bool debug, bool canUseAdminMode = false)
         {
-            var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
-            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
-            var executablePath = "";
-            foreach (var d in Directory.GetDirectories($"{installPath}\\chrome"))
-            {
-                executablePath = $"{d}\\chrome-win64\\chrome.exe";
-                if (File.Exists(executablePath)) break;
-            }
-
-            var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = !debug, ExecutablePath = executablePath });
+            var browser = await Puppeteer.LaunchAsync(await GetBrowserLaunchOptions(debug));
             IPage page = null;
             try
             {
