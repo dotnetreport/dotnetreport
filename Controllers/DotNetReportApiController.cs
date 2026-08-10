@@ -21,6 +21,7 @@ namespace ReportBuilder.Web.Controllers
         public DotNetReportApiController(IConfiguration configuration)
         {
             _configuration = configuration;
+            DotNetReportHelper.UseConfiguration(configuration);
         }
 
         private DotNetReportSettings GetSettings()

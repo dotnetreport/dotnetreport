@@ -497,20 +497,11 @@ namespace ReportBuilder.Web.Models
 
     public class MsSqlDnrDataConnection : IDnrDataConnection
     {
-        private readonly IConfigurationRoot _configuration;
         public string DbConnection { get; set; }
         public string ConnectKey { get; set; }
 
         public MsSqlDnrDataConnection(string connectKey)
         {
-            // Load appsettings.json
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-
-            _configuration = builder.Build();
-
-            //DbConnection = dbConnection;
             ConnectKey = connectKey;
         }
 
@@ -534,7 +525,7 @@ namespace ReportBuilder.Web.Models
 
     public static class DotNetReportHelper
     {
-        private static readonly IConfigurationRoot _configuration;
+        private static IConfiguration _configuration;
         private readonly static string _configFileName = "appsettings.dotnetreport.json";
         public static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
         public static bool useAltPivot = false;
@@ -800,16 +791,25 @@ namespace ReportBuilder.Web.Models
         }
 
 
-        static DotNetReportHelper()
-        {
-            var builder = new ConfigurationBuilder()
-                           .SetBasePath(Directory.GetCurrentDirectory())
-                           .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+        // Only built when the host never calls UseConfiguration
+        private static readonly Lazy<IConfiguration> _fallbackConfiguration = new Lazy<IConfiguration>(() =>
+            new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables()
+                .Build());
 
-            _configuration = builder.Build();
+        /// <summary>
+        /// Call at startup to hand Dotnet Report the host's own configuration, so tokens and connection
+        /// strings can come from any provider instead of appsettings.json on disk.
+        /// </summary>
+        public static void UseConfiguration(IConfiguration configuration)
+        {
+            if (configuration != null) _configuration = configuration;
         }
 
-        public static IConfigurationRoot StaticConfig => _configuration;
+        public static IConfiguration StaticConfig => _configuration ?? _fallbackConfiguration.Value;
 
         public static string GetConnectionString(string key, bool addOledbProvider = false)
         {
@@ -1361,7 +1361,7 @@ namespace ReportBuilder.Web.Models
         {
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetCustomFunctions?account={1}&dataConnect={2}&clientId=", _configuration.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey));
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetCustomFunctions?account={1}&dataConnect={2}&clientId=", StaticConfig.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey));
                 response.EnsureSuccessStatusCode();
                 var content = await response.Content.ReadAsStringAsync();
                 var functions = JsonConvert.DeserializeObject<List<CustomFunctionModel>>(content);

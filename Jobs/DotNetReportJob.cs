@@ -89,7 +89,7 @@ namespace ReportBuilder.Web.Jobs
     [DisallowConcurrentExecution]
     public class DotNetReportJob : IJob
     {
-        private readonly IConfigurationRoot _configuration;
+        private readonly IConfiguration _configuration;
         public readonly static string _configFileName = "appsettings.dotnetreport.json";
 
         public DotNetReportJob()
