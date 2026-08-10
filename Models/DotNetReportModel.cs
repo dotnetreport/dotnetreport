@@ -3,6 +3,7 @@ using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using HtmlAgilityPack;
 using Microsoft.CodeAnalysis;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -6776,28 +6777,19 @@ namespace ReportBuilder.Web.Models
 
     public static class ExportSessionStore
     {
-        private static readonly ConcurrentDictionary<string, ExportSession> _sessions = new();
+        private static readonly MemoryCache _sessions = new MemoryCache(new MemoryCacheOptions());
 
         public static string Save(ExportSession session)
         {
             var id = Guid.NewGuid().ToString("N");
-            _sessions[id] = session;
-
-            // Auto-expire after 10 minutes
-            Task.Run(async () =>
-            {
-                await Task.Delay(TimeSpan.FromMinutes(10));
-                _sessions.TryRemove(id, out _);
-            });
-
+            _sessions.Set(id, session, TimeSpan.FromMinutes(5));
             return id;
         }
 
         public static ExportSession Get(string id)
         {
             if (string.IsNullOrWhiteSpace(id)) return null;
-            _sessions.TryGetValue(id, out var session);
-            return session;
+            return _sessions.Get<ExportSession>(id);
         }
     }
 }
