@@ -1063,7 +1063,7 @@ namespace ReportBuilder.Web.Controllers
         {
             var timeZones = TimeZoneInfo.GetSystemTimeZones();
             SortedList<string, string> timeZoneList = new SortedList<string, string>();
-            timeZoneList.Add("", "");
+            timeZoneList[""] = "";
 
             foreach (TimeZoneInfo timezone in timeZones)
             {
@@ -1082,7 +1082,7 @@ namespace ReportBuilder.Web.Controllers
                     display = $"{display} (active daylight savings)";
                 }
 
-                timeZoneList.Add(display, timezone.Id); // Use timezone Id as value
+                timeZoneList[display] = timezone.Id;
             }
 
             return timeZoneList;
