@@ -11060,6 +11060,14 @@ var reportViewModel = function (options) {
 			self.clearTableSettings();
 			if (report.d) { report = report.d; }
 			if (report.result) { report = report.result; }
+
+			self.manageAccess.clientId(report.ClientId || '');
+			self.manageAccess.setupList(self.manageAccess.users, report.UserId || '');
+			self.manageAccess.setupList(self.manageAccess.userRoles, report.UserRoles || '');
+			self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, report.ViewOnlyUserId || '');
+			self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, report.ViewOnlyUserRoles || '');
+			self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, report.DeleteOnlyUserId || '');
+			self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, report.DeleteOnlyUserRoles || '');
 			self.useStoredProc(report.UseStoredProc);
 			self.ReportType(report.ReportType.indexOf('Map') == 0 ? 'Map' : report.ReportType);
 			if (buildSql === true) options.reportSql = report.ReportSql;
@@ -11153,12 +11161,12 @@ var reportViewModel = function (options) {
 						self.CanEdit(true);
 						self.SaveReport(true);
 
-						_.forEach(self.manageAccess.users, function (x) { x.selected(false); });
-						_.forEach(self.manageAccess.viewOnlyUsers, function (x) { x.selected(false); });
-						_.forEach(self.manageAccess.deleteOnlyUsers, function (x) { x.selected(false); });
-						_.forEach(self.manageAccess.userRoles, function (x) { x.selected(false); });
-						_.forEach(self.manageAccess.viewOnlyUserRoles, function (x) { x.selected(false); });
-						_.forEach(self.manageAccess.deleteOnlyUserRoles, function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.users(), function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.viewOnlyUsers(), function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.deleteOnlyUsers(), function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.userRoles(), function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.viewOnlyUserRoles(), function (x) { x.selected(false); });
+						_.forEach(self.manageAccess.deleteOnlyUserRoles(), function (x) { x.selected(false); });
 
 						self.manageAccess.applyDefaultSettings();
 
