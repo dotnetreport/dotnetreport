@@ -1,4 +1,5 @@
 ﻿@model ReportBuilder.Web.Models.DotNetReportPrintModel
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Env
 @{
     Layout = "";
 }
@@ -17,8 +18,14 @@
     <link href="~/lib/summernote/summernote-bs5.min.css" rel="stylesheet" />
     <link href="~/lib/select2/css/select2.min.css" rel="stylesheet" />
     <link href="~/lib/leaflet/leaflet.css" rel="stylesheet" />
-    <link href="~/css/dotnetreport.css?v=6.0.0" rel="stylesheet" />
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    @{
+        var dotnetcssFiles = System.IO.Directory.GetFiles(System.IO.Path.Combine(Env.WebRootPath, "css"), "dotnetreport*.css")
+                                 .Select(f => System.IO.Path.GetFileName(f));
+    }
+    @foreach (var file in dotnetcssFiles)
+    {
+        <link href="~/css/@file?v=6.0.0" rel="stylesheet" />
+    }
     <style type="text/css">
         .report-view {
             margin: 0 0px 0 0px;
