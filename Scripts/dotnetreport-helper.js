@@ -1256,6 +1256,13 @@ var textQuery = function (options) {
         }
     }
 
+    self.removeQueryItem = function (item) {
+        if (!item) return;
+        var i = self.queryItems.indexOf(item);
+        if (i < 0) i = _.findIndex(self.queryItems, { 'value': item.value });
+        if (i >= 0) self.queryItems.splice(i, 1);
+    }
+
     self.addQueryItem = function (newItem, skipFilter) {
         var match = _.find(self.queryItems, { 'value': newItem.value });
         if (!match) {
@@ -1418,7 +1425,7 @@ var textQuery = function (options) {
                 });
 
                 inputElement.addEventListener("menuItemRemoved", function (e) {
-                    self.queryItems.remove(e.detail.item.original);
+                    self.removeQueryItem(e.detail.item.original);
                 });
 
                 inputElement.addEventListener('keydown', function (e) {
@@ -1456,7 +1463,7 @@ var textQuery = function (options) {
         });
 
         inputEl.addEventListener("menuItemRemoved", function (e) {
-            self.queryItems.remove(e.detail.item.original);
+            self.removeQueryItem(e.detail.item.original);
         });
     };
 
@@ -1474,7 +1481,7 @@ var textQuery = function (options) {
                 });
 
             searchInput.addEventListener("menuItemRemoved", function (e) {
-                    self.queryItems.remove(e.detail.item.original);
+                    self.removeQueryItem(e.detail.item.original);
                 });
 
             searchInput.addEventListener('blur', function () {
@@ -1527,6 +1534,7 @@ var textQuery = function (options) {
     }
 
     self._lookupTributes = self._lookupTributes || {};
+    self._lookupOperatorSubs = self._lookupOperatorSubs || {};
 
     self.setupLookup = function (field, filter) {
         var uiId = field.uiId;
@@ -1559,6 +1567,25 @@ var textQuery = function (options) {
             // initLookupQuery is per-field, not per-element — call it once.
             self.initLookupQuery(field);
 
+            // Switching between a single value and a list operator must not carry the old picks over.
+            if (self._lookupOperatorSubs[uiId]) {
+                self._lookupOperatorSubs[uiId].dispose();
+                delete self._lookupOperatorSubs[uiId];
+            }
+            if (filter && ko.isObservable(filter.Operator)) {
+                var isMultiValue = function (op) { return op === 'in' || op === 'not in'; };
+                var previousOperator = filter.Operator();
+                self._lookupOperatorSubs[uiId] = filter.Operator.subscribe(function (newOperator) {
+                    var wasMulti = isMultiValue(previousOperator);
+                    previousOperator = newOperator;
+                    if (wasMulti === isMultiValue(newOperator)) return;
+                    self.queryItems = [];
+                    filterInputs.forEach(function (el) { el.value = ''; });
+                    if (ko.isObservable(filter.Value)) filter.Value('');
+                    if (ko.isObservable(filter.ValueIn)) filter.ValueIn([]);
+                });
+            }
+
             filterInputs.forEach(function (filterInput) {
                 // Always keep current references on the element so the single set of listeners
                 // (added only once via _tributeEventsAdded) uses up-to-date instances when
@@ -1583,7 +1610,7 @@ var textQuery = function (options) {
                     });
 
                     filterInput.addEventListener("menuItemRemoved", function (e) {
-                        filterInput._currentQuery.queryItems.remove(e.detail.item.original);
+                        filterInput._currentQuery.removeQueryItem(e.detail.item.original);
                     });
 
                     filterInput.addEventListener('blur', function () {
