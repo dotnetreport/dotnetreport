@@ -945,7 +945,7 @@ var manageAccess = function (options) {
     access.applyDefaultSettings = function () {
         var userSettings = options.userSettings;
         if (userSettings) {
-            access.clientId(options.userSettings.newReportClientId);
+            access.clientId(options.userSettings.newReportClientId || options.userSettings.clientId);
             var editUserIds = userSettings.newReportEditUserId ? userSettings.newReportEditUserId.split(',') : [];
             var viewUserIds = userSettings.newReportViewUserId ? userSettings.newReportViewUserId.split(',') : [];
             var editUserRoles = userSettings.newReportEditUserRoles ? userSettings.newReportEditUserRoles.split(',') : [];

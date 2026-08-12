@@ -1158,11 +1158,32 @@ var headerDesigner = function (options) {
 
 	self.insertPlaceholder = function (placeholder) {
 		try {
-			$('#report-header-editor').summernote('focus');
-			$('#report-header-editor').summernote('pasteHTML', placeholder);
+			var $editor = $('#report-header-editor');
+			$editor.summernote('editor.focus');
+			$editor.summernote('editor.insertText', placeholder);
+			var cleaned = sanitizeSummernoteHtml($editor.summernote('code'));
+			if (cleaned !== $editor.summernote('code')) {
+				$editor.summernote('code', cleaned);
+			}
 		} catch (e) { }
 	};
-
+	function sanitizeSummernoteHtml(html) {
+		if (!html) return html;
+		var $tmp = $('<div>').html(html);
+		$tmp.find('.resize-row, .resize-col, .note-control-selection, .note-table-resize-handle').remove();
+		var $paragraphs = $tmp.find('p');
+		$paragraphs.each(function (i) {
+			var $p = $(this);
+			var isEmpty = $p.text().replace(/\u00A0/g, '').trim() === '' && $p.children().not('br').length === 0;
+			if (isEmpty) {
+				$p.remove();
+			} else {
+				var isLast = (i === $paragraphs.length - 1);
+				$p.replaceWith($p.html() + (isLast ? '' : '<br>'));
+			}
+		});
+		return $tmp.html();
+	}
 	// Builds the "Name (Default)" label shown in the header picker.
 	var headerLabel = function (h) {
 		return (h.name || 'Untitled') + (h.isDefault ? ' (Default)' : '');
@@ -1407,11 +1428,32 @@ var footerDesigner = function (options) {
 
 	self.insertPlaceholder = function (placeholder) {
 		try {
-			$('#report-footer-editor').summernote('focus');
-			$('#report-footer-editor').summernote('pasteHTML', placeholder);
+			var $editor = $('#report-footer-editor');
+			$editor.summernote('editor.focus');
+			$editor.summernote('editor.insertText', placeholder);
+			var cleaned = sanitizeSummernoteHtml($editor.summernote('code'));
+			if (cleaned !== $editor.summernote('code')) {
+				$editor.summernote('code', cleaned);
+			}
 		} catch (e) { }
 	};
-
+	function sanitizeSummernoteHtml(html) {
+		if (!html) return html;
+		var $tmp = $('<div>').html(html);
+		$tmp.find('.resize-row, .resize-col, .note-control-selection, .note-table-resize-handle').remove();
+		var $paragraphs = $tmp.find('p');
+		$paragraphs.each(function (i) {
+			var $p = $(this);
+			var isEmpty = $p.text().replace(/\u00A0/g, '').trim() === '' && $p.children().not('br').length === 0;
+			if (isEmpty) {
+				$p.remove();
+			} else {
+				var isLast = (i === $paragraphs.length - 1);
+				$p.replaceWith($p.html() + (isLast ? '' : '<br>'));
+			}
+		});
+		return $tmp.html();
+	}
 	self.saveHtmlFooter = function () {
 		var htmlContent = $('#report-footer-editor').summernote('code');
 		var data = encodeURIComponent(htmlContent);
