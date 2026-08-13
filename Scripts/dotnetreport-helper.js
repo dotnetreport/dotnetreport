@@ -341,6 +341,22 @@ ko.bindingHandlers.select2 = {
             s2opts.dropdownParent = $(el).closest('.modal');
         }
         $(el).select2(s2opts);
+
+        var lookupSearch = allBindings.lookupSearch;
+        if (typeof lookupSearch === 'function') {
+            var searchTimer;
+            $(el).on('select2:open.lookupsearch', function () {
+                var $search = $('.select2-container--open .select2-search__field');
+                $search.off('input.lookupsearch').on('input.lookupsearch', function () {
+                    var term = this.value;
+                    clearTimeout(searchTimer);
+                    searchTimer = setTimeout(function () {
+                        var p = lookupSearch(term);
+                        if (p && p.done) p.done(function () { $(el).trigger('change.select2'); });
+                    }, 350);
+                });
+            });
+        }
         // Sync user selection back to KO value observable (Select2 v4)
         $(el).on('change.select2binding', function () {
             if (allBindings.value && ko.isObservable(allBindings.value)) {
@@ -350,6 +366,7 @@ ko.bindingHandlers.select2 = {
         });
         ko.utils.domNodeDisposal.addDisposeCallback(el, function () {
             $(el).off('change.select2binding');
+            $(el).off('select2:open.lookupsearch');
             if (el && $(el).length && $(el).data('select2')) {
                 $(el).select2('destroy');
             }
@@ -1538,6 +1555,7 @@ var textQuery = function (options) {
 
     self.setupLookup = function (field, filter) {
         var uiId = field.uiId;
+        var isMultiValue = function (op) { return op === 'in' || op === 'not in'; };
         var prefixes = ['C', 'F', 'M', 'P'];
         var filterInputs = [];
         prefixes.forEach(function (p) {
@@ -1573,7 +1591,6 @@ var textQuery = function (options) {
                 delete self._lookupOperatorSubs[uiId];
             }
             if (filter && ko.isObservable(filter.Operator)) {
-                var isMultiValue = function (op) { return op === 'in' || op === 'not in'; };
                 var previousOperator = filter.Operator();
                 self._lookupOperatorSubs[uiId] = filter.Operator.subscribe(function (newOperator) {
                     var wasMulti = isMultiValue(previousOperator);
@@ -1606,6 +1623,10 @@ var textQuery = function (options) {
 
                     filterInput.addEventListener("tribute-replaced", function (e) {
                         if (filterInput._currentTribute) filterInput._currentTribute._noMatch = false;
+                        var f = filterInput._lookupFilter;
+                        if (f && ko.isObservable(f.Operator) && !isMultiValue(f.Operator())) {
+                            filterInput._currentQuery.queryItems = [];
+                        }
                         filterInput._currentQuery.addQueryItem(e.detail.item.original);
                     });
 
@@ -1618,8 +1639,12 @@ var textQuery = function (options) {
                         var q = filterInput._currentQuery;
                         if (f && q.queryItems.length > 0) {
                             var items = q.queryItems.map(x => x.text);
-                            f.Value(items.join(', '));
-                            if (f.Operator() === 'in' || f.Operator() === 'not in') f.ValueIn(items);
+                            if (isMultiValue(f.Operator())) {
+                                f.Value(items.join(', '));
+                                f.ValueIn(items);
+                            } else {
+                                f.Value(items[items.length - 1]);
+                            }
                         }
                     });
 

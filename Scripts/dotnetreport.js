@@ -729,6 +729,8 @@ function filterGroupViewModel(args) {
 		var datePart1, timePart1, datePart2, timePart2;
 		var lookupList = ko.observableArray([]);
 		var parentList = ko.observableArray([]);
+		var lookupSqlInfo = null;
+		var parentSqlInfo = null;
 
 		var url = new URL(window.location.href);
 		var filterId = url.searchParams.get("filterId");
@@ -789,6 +791,12 @@ function filterGroupViewModel(args) {
 			ValueIn: ko.observableArray(valueIn.slice()),
 			LookupList: lookupList,
 			ParentList: parentList,
+			SearchLookupList: function (token) {
+				var op = filter.Operator();
+				var keep = (op === 'in' || op === 'not in') ? filter.ValueIn() : (filter.Value() ? [filter.Value()] : []);
+				return runLookupSearch(lookupSqlInfo, lookupList, token, keep);
+			},
+			SearchParentList: function (token) { return runLookupSearch(parentSqlInfo, parentList, token, filter.ParentIn()); },
 			ParentIn: ko.observableArray(parentIn),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			IsFilterOnFly: isFilterOnFly === true ? true : false,
@@ -820,18 +828,44 @@ function filterGroupViewModel(args) {
 		filter.Value2.subscribe(function (value) {
 			filter.fmtValue2(value)
 		})
+		function runLookupSearch(sqlInfo, targetList, token, keepValues) {
+			if (!sqlInfo || !sqlInfo.sql) return;
+			var previous = targetList().slice();
+			return ajaxcall({
+				type: 'POST',
+				url: args.options.lookupListUrl,
+				data: JSON.stringify({ lookupSql: sqlInfo.sql, connectKey: sqlInfo.connectKey, token: token || '' }),
+				noBlocking: true
+			}).done(function (list) {
+				if (list.d) { list = list.d; }
+				if (list.result) { list = list.result; }
+				var merged = _.sortBy(list, 'text');
+				// Anything already chosen has to stay in the list, otherwise removing its option
+				// drops the selection.
+				_.forEach(keepValues || [], function (v) {
+					if (v === null || v === undefined || v === '') return;
+					var key = String(v);
+					if (_.some(merged, function (x) { return String(x.id) === key; })) return;
+					var kept = _.find(previous, function (x) { return String(x.id) === key; });
+					if (kept) merged.push(kept);
+				});
+				targetList(merged);
+			});
+		}
+
 		function loadLookupList(fieldId, dataFilters) {
 			if (printMode === true) return;
 			ajaxcall({
 				url: args.options.apiUrl,
 				data: {
 					method: "/ReportApi/GetLookupList",
-					model: JSON.stringify({ fieldId: fieldId, dataFilters: dataFilters })
+					model: JSON.stringify({ fieldId: fieldId, dataFilters: dataFilters, addToken: true })
 				},
 				noBlocking: args.parent.ReportMode()=='dashboard'
 			}).done(function (result) {
 				if (result.d) { result = result.d; }
 				if (result.result) { result = result.result; }
+				lookupSqlInfo = { sql: result.sql, connectKey: result.connectKey };
 				ajaxcall({
 					type: 'POST',
 					url: args.options.lookupListUrl,
@@ -895,12 +929,13 @@ function filterGroupViewModel(args) {
 							url: args.options.apiUrl,
 							data: {
 								method: "/ReportApi/GetLookupList",
-								model: JSON.stringify({ fieldId: newField.fieldId, dataFilters: args.options.dataFilters, parentLookup: true })
+								model: JSON.stringify({ fieldId: newField.fieldId, dataFilters: args.options.dataFilters, parentLookup: true, addToken: true })
 							},
 							noBlocking: args.parent.ReportMode() == 'dashboard'
 						}).done(function (result) {
 							if (result.d) { result = result.d; }
 							if (result.result) { result = result.result; }
+							parentSqlInfo = { sql: result.sql, connectKey: result.connectKey };
 							ajaxcall({
 								type: 'POST',
 								url: args.options.lookupListUrl,
