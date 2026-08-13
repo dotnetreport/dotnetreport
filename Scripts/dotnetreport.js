@@ -13282,6 +13282,9 @@ var dashboardViewModel = function (options) {
 		report.panelStyle = 'panel-' + (i == 0 ? 'default' : (i == 1 ? 'info' : (i == 2 ? 'warning' : 'danger')));
 		
 		report.adminMode(self.adminMode());
+		var accessMatch = _.find(self.savedReports || [], { reportId: x.reportId || x.ReportID }) || { canEdit: false };
+		report.canEdit = accessMatch.canEdit === true;
+		report.CanEdit(report.canEdit || self.adminMode());
 		report.showFlyFilters = ko.observable(false);
 		report.toggleFlyFilters = function () {
 			report.showFlyFilters(!report.showFlyFilters());
@@ -13333,6 +13336,10 @@ var dashboardViewModel = function (options) {
 		}
 
 		report.openReport = function () {
+			if (!report.CanEdit()) {
+				toastr.error('No access to edit report');
+				return;
+			}
 			report.ensureReportData().done(function () {
 				report.Tables(self.tables);
 				report.Procs(self.procs);
