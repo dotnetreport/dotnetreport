@@ -249,6 +249,10 @@ namespace ReportBuilder.Web.Models
         Informix,
         OleDb
     }
+    public static class ReportConstants
+    {
+        public const string SubReportValueToken = "@@SUBVAL@@";
+    }
     public static class DbTypesExtensions
     {
         public static string ToDbString(this DbTypes db)
@@ -468,6 +472,7 @@ namespace ReportBuilder.Web.Models
         public string reportName { get; set; }
         public string reportDescription { get; set; }
         public bool expandAll { get; set; }
+        public bool hasSubreports { get; set; }
         public string printUrl { get; set; }
         public string clientId { get; set; }
         public string userId { get; set; }
@@ -1410,7 +1415,6 @@ namespace ReportBuilder.Web.Models
                 return sql;
             }
         }
-
         public static int FindFromIndex(string sql)
         {
             if (sql.Contains("{FROM} "))
@@ -2923,8 +2927,9 @@ namespace ReportBuilder.Web.Models
             ApplyColumnWidths(ws, colstart, dt.Columns.Count, columns);
         }
 
-        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null, bool isSubReport = false, bool subTotalPerGroup = false, string totalRowFormat = "row", string filterDetailsText = null)
+        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,bool hasSubreports =false,
+                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null, bool isSubReport = false, bool subTotalPerGroup = false, string totalRowFormat = "row", string filterDetailsText = null,
+                Func<int, int, bool, Task<string>> linkedReportResolver = null)
         {
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
@@ -2992,7 +2997,88 @@ namespace ReportBuilder.Web.Models
                 bool isTableMode = includeSubtotal && totalRowFormat == "table";
                 bool includeGrandTotal = includeSubtotal && !isTableMode;
                 WriteGroupedExcel(dt, ws, rowstart, colstart, columns, includeSubtotal, includeGrandTotal, true, chartData, isSubReport, subTotalPerGroup);
-
+                // ---- NEW: embed linked sub-reports directly under each parent row, drilldown-style ----
+                if (hasSubreports && linkedReportResolver != null && dt.Rows.Count > 0 && columns?.Count > 0)
+                {
+                    var linkedCols = columns.Where(c => c.LinkFieldItem?.LinksToReport == true 
+                                                      && c.LinkFieldItem.LinkedToReportId.HasValue
+                                                      && c.LinkFieldItem.SelectedFilterId.HasValue).ToList();
+                    if (linkedCols.Count > 0)
+                    {
+                        var perRowBlocks = new List<(int rowDataIndex, List<(ReportHeaderColumn col, string filterValue, DataTable subDt)> blocks)>();
+                        var blockLock = new object();
+                        foreach (var linkCol in linkedCols)
+                        {
+                            if (!dt.Columns.Contains(linkCol.fieldName)) continue;
+                            // Resolve the SQL template ONCE per linked column, not per row.
+                            var sqlTemplate = await linkedReportResolver(
+                                linkCol.LinkFieldItem.LinkedToReportId.Value,
+                                linkCol.LinkFieldItem.SelectedFilterId.Value,
+                                true); // resolver now returns a template with a token, see below
+                            if (string.IsNullOrEmpty(sqlTemplate)) continue;
+                            var subConnectionString = DotNetReportHelper.GetConnectionString(connectKey);
+                            IDatabaseConnection subDbConn = DatabaseConnectionFactory.GetConnection(dbtype);
+                            // De-dupe: many rows may share the same filter value — only query each distinct value once.
+                            var valueCache = new ConcurrentDictionary<string, DataTable>();
+                            var rowValues = new List<(int rowIndex, string value)>();
+                            for (int rowIdx = 0; rowIdx < dt.Rows.Count; rowIdx++)
+                            {
+                                var val = dt.Rows[rowIdx][linkCol.fieldName]?.ToString();
+                                if (!string.IsNullOrEmpty(val)) rowValues.Add((rowIdx, val));
+                            }
+                            var distinctValues = rowValues.Select(r => r.value).Distinct().ToList();
+                            // Run distinct queries with limited parallelism instead of one-at-a-time.
+                            var throttler = new SemaphoreSlim(5); // tune based on DB connection pool size
+                            var queryTasks = distinctValues.Select(async val =>
+                            {
+                                await throttler.WaitAsync();
+                                try
+                                {
+                                    var filteredSql = sqlTemplate.Replace(ReportConstants.SubReportValueToken, val.Replace("'", "''"));
+                                    DataTable subDt;
+                                    try { subDt = subDbConn.ExecuteQuery(subConnectionString, filteredSql); }
+                                    catch { subDt = null; }
+                                    valueCache[val] = subDt;
+                                }
+                                finally { throttler.Release(); }
+                            });
+                            await Task.WhenAll(queryTasks);
+                            foreach (var (rowIndex, value) in rowValues)
+                            {
+                                if (!valueCache.TryGetValue(value, out var subDt) || subDt == null || subDt.Rows.Count == 0) continue;
+                                lock (blockLock)
+                                {
+                                    var existing = perRowBlocks.FirstOrDefault(x => x.rowDataIndex == rowIndex);
+                                    if (existing.blocks == null)
+                                    {
+                                        perRowBlocks.Add((rowIndex, new List<(ReportHeaderColumn, string, DataTable)> { (linkCol, value, subDt) }));
+                                    }
+                                    else
+                                    {
+                                        existing.blocks.Add((linkCol, value, subDt));
+                                    }
+                                }
+                            }
+                        }
+                        // ---- insertion logic below is unchanged from before ----
+                        int dataRowStart = rowstart + 1;
+                        var ordered = perRowBlocks.OrderByDescending(x => x.rowDataIndex).ToList();
+                        foreach (var (rowIdx, blocks) in ordered)
+                        {
+                            int parentRow = dataRowStart + rowIdx;
+                            int insertAt = parentRow + 1;
+                            for (int b = blocks.Count - 1; b >= 0; b--)
+                            {
+                                var (linkCol, filterValue, subDt) = blocks[b];
+                                ws.InsertRow(insertAt, subDt.Rows.Count + 2);
+                                ws.Cells[insertAt, colstart + 1].Value = (linkCol.fieldLabel ?? linkCol.fieldName) + ": " + filterValue;
+                                ws.Cells[insertAt, colstart + 1].Style.Font.Bold = true;
+                                ws.Cells[insertAt, colstart + 1].Style.Font.Italic = true;
+                                FormatExcelSheet(subDt, ws, insertAt + 1, colstart + 1, columns, false, true, null, false, true);
+                            }
+                        }
+                    }
+                }
                 // "As Total Table" mode: write a separate 2-column summary table below the main data
                 if (isTableMode && !pivot)
                 {

@@ -17,7 +17,6 @@ namespace ReportBuilder.Web.Controllers
     {
         private readonly IConfiguration _configuration;
         public readonly static string _configFileName = "appsettings.dotnetreport.json";
-
         public DotNetReportApiController(IConfiguration configuration)
         {
             _configuration = configuration;
@@ -791,8 +790,32 @@ namespace ReportBuilder.Web.Controllers
 
             return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
         }
-
-
+        private async Task<string> ResolveLinkedReportTemplate(int reportId, int filterId, bool adminMode = false)
+        {
+            var settings = GetSettings();
+            using (var client = new HttpClient())
+            {
+                var content = new FormUrlEncodedContent(new[]
+                {
+            new KeyValuePair<string, string>("account", settings.AccountApiToken),
+            new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+            new KeyValuePair<string, string>("clientId", settings.ClientId),
+            new KeyValuePair<string, string>("userId", settings.UserId),
+            new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+            new KeyValuePair<string, string>("reportId", reportId.ToString()),
+            new KeyValuePair<string, string>("filterId", filterId.ToString()),
+            new KeyValuePair<string, string>("filterValue", ReportConstants.SubReportValueToken), // placeholder, not a real value
+            new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+            new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters)),
+            new KeyValuePair<string, string>("useParameters", DotNetReportHelper.dbtype == "MS SQL" ? "true" : "false")
+        });
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + "/ReportApi/RunLinkedReport"), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+                var model = JsonSerializer.Deserialize<DotNetReportModel>(stringContent);
+                model.ReportSql = DotNetReportHelper.Decrypt(model.ReportSql.ToString());
+                return (model?.ReportSql);
+            }
+        }
         [HttpGet]
         public async Task<IActionResult> GetDashboards(bool adminMode = false)
         {
@@ -1253,6 +1276,7 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string connectKey,
             [FromForm] string reportName,
             [FromForm] bool allExpanded,
+            [FromForm] bool hasSubreports,
             [FromForm] string expandSqls,
             [FromForm] string chartData = null,
             [FromForm] string columnDetails = null,
@@ -1277,8 +1301,8 @@ namespace ReportBuilder.Web.Controllers
             DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(onlyAndGroupInColumnDetail));
-
-            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport, subTotalPerGroup, totalRowFormat, HttpUtility.UrlDecode(filterDetailsText));
+            Func<int, int, bool, Task<string>> linkedReportResolver = hasSubreports ? (reportId, filterId, filterValue) => ResolveLinkedReportTemplate(reportId, filterId, adminMode) : null;
+            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, hasSubreports, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport, subTotalPerGroup, totalRowFormat, HttpUtility.UrlDecode(filterDetailsText), linkedReportResolver);
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".xlsx");
             Response.ContentType = "application/vnd.ms-excel";
 
@@ -1515,7 +1539,7 @@ namespace ReportBuilder.Web.Controllers
                 await ValidateAccess(report.userId, report.reportSql);
                 var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
                 var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(report.onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.onlyAndGroupInColumnDetail));
-                var excelreport = await DotNetReportHelper.GetExcelFile(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, HttpUtility.UrlDecode(report.expandSqls), columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction, onlyAndGroupInDetailColumns);
+                var excelreport = await DotNetReportHelper.GetExcelFile(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll,report.hasSubreports, HttpUtility.UrlDecode(report.expandSqls), columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction, onlyAndGroupInDetailColumns);
                 excelbyteList.Add(excelreport);
             }
             // Combine all Excel files into one workbook

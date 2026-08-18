@@ -4252,7 +4252,9 @@ var reportViewModel = function (options) {
 		self.subReports.remove(r => !validKeys.includes(`${r.fieldId || 0}_${r.reportId}`));
 	});
 
-
+	self.hasSubReports = ko.computed(function () {
+		return self.linkedReportFields().length > 0 || self.subReports().length > 0;
+	});
 	self.selectedLinkedField = ko.observable();
 
 	self.getReportHtml = function () {
@@ -12064,7 +12066,7 @@ var reportViewModel = function (options) {
 		}, 'pdf');
 	}
 	self.PdfPage = new PdfPageViewModel(self.appSettings, self.downloadPdf, self.downloadPdfAlt);
-	self.runExcelDownload = function (expand) {
+	self.runExcelDownload = function (expand, hasSubreports) {
 		var hasOnlyAndGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'}) != null;
 		var onlyAndGroupInDetailColumnDetails = _.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() === 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'; });
 		var reportData = self.BuildReportData();
@@ -12076,6 +12078,7 @@ var reportViewModel = function (options) {
 			connectKey: self.currentConnectKey(),
 			reportName: self.ReportName(),
 			allExpanded: expand === true ? true : false,
+			hasSubreports: hasSubreports === true ? true : false,
 			expandSqls: JSON.stringify(reportData),
 			chartData: self.ChartData() || '',
 			columnDetails: self.getColumnDetails(),
@@ -12100,7 +12103,9 @@ var reportViewModel = function (options) {
 	self.downloadExcelWithDrilldown = function () {
 		self.runExcelDownload(true);
 	}
-
+	self.downloadExcelWithSubreport = function () {
+		self.runExcelDownload(false, true);
+	}
 	self.downloadCsv = function () {
 		var data = self.getExportJson();
 		self.downloadExport("DownloadCsv", data, 'csv');

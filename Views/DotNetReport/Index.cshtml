@@ -953,12 +953,18 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <ul class="dropdown-menu">
                                             <li><a href="#" class="dropdown-item" data-bind="click: downloadExcel">Standard</a></li>
                                             <li><a href="#" class="dropdown-item" data-bind="click: downloadExcelWithDrilldown">Expanded</a></li>
+                                            <li data-bind="visible: hasSubReports()"><a href="#" class="dropdown-item" data-bind="click: downloadExcelWithSubreport">Excel with Subreport</a></li>
                                         </ul>
                                     </li>
                                     <!-- Excel, no drilldown -> flat -->
                                     <li data-bind="visible: !canDrilldown()">
                                         <a href="#" class="dropdown-item" data-bind="click: downloadExcel">
                                             <i class="fa fa-file-excel-o"></i> Excel
+                                        </a>
+                                    </li>
+                                    <li data-bind="visible:!canDrilldown() && hasSubReports()">
+                                        <a href="#" class="dropdown-item" data-bind="click: downloadExcelWithSubreport">
+                                            <i class="fa fa-file-excel-o"></i> Excel with Subreport
                                         </a>
                                     </li>
                                     <li data-bind="hidden: appSettings.dontWordExport">
