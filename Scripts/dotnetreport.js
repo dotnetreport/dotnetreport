@@ -11040,7 +11040,7 @@ var reportViewModel = function (options) {
 					if (linkedReport.result) { linkedReport = linkedReport.result; }
 					if (!override && queryParams.noparent == 'true') self.ReportMode('execute');
 
-					return self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, reportSeries);
+					return self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, reportSeries, true);
 				});
 			}
 			else {
