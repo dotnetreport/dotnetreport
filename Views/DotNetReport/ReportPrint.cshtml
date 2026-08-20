@@ -19,8 +19,11 @@
     <link href="~/lib/select2/css/select2.min.css" rel="stylesheet" />
     <link href="~/lib/leaflet/leaflet.css" rel="stylesheet" />
     @{
-        var dotnetcssFiles = System.IO.Directory.GetFiles(System.IO.Path.Combine(Env.WebRootPath, "css"), "dotnetreport*.css")
-                                 .Select(f => System.IO.Path.GetFileName(f));
+        var dotnetCssDir = System.IO.Path.Combine(Env.WebRootPath ?? "", "css");
+        var dotnetcssFiles = System.IO.Directory.Exists(dotnetCssDir)
+            ? System.IO.Directory.GetFiles(dotnetCssDir, "dotnetreport*.css").Select(f => System.IO.Path.GetFileName(f)).ToList()
+            : new List<string> { "dotnetreport.css" };
+        if (!dotnetcssFiles.Any()) { dotnetcssFiles = new List<string> { "dotnetreport.css" }; }
     }
     @foreach (var file in dotnetcssFiles)
     {
