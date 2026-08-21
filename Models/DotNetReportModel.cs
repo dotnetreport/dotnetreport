@@ -2619,6 +2619,8 @@ namespace ReportBuilder.Web.Models
             foreach (DataRow row in dt.Rows)
             {
                 int rowIndex = dt.Rows.IndexOf(row);
+                // One result set is expected, otherwise skip row 
+                if (rowIndex >= dts.Tables.Count) continue;
                 DataTable dtsTable = dts.Tables[rowIndex];
                 var distinctValues = new Dictionary<string, HashSet<object>>();
                 var maxValues = new Dictionary<string, object>();
