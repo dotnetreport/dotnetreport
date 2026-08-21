@@ -558,6 +558,9 @@ namespace ReportBuilder.Web.Models
             public string Tag;
             public string Id;
             public List<string> Classes = new List<string>();
+            public List<CssRule> Ancestors = new List<CssRule>();
+            public int Specificity;
+            public int Order;
             public Dictionary<string, (string Value, bool Important)> Declarations;
         }
 
@@ -4192,6 +4195,8 @@ namespace ReportBuilder.Web.Models
                    "<style>" +
                    GetWordReportCss() +
                    "body, p, div, span, td, th, li { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; font-size: 11pt; }" +
+                   "p, div, li { margin: 0; mso-margin-top-alt: 0; margin-bottom: 0; line-height: normal; }" +
+                   "table { mso-table-lspace: 0; mso-table-rspace: 0; }" +
                    "</style></head><body>" + (innerHtml ?? "") + "</body></html>";
         }
 
@@ -4336,7 +4341,7 @@ namespace ReportBuilder.Web.Models
                     }
                     if (hasCustomHtml)
                     {
-                        customHtml = ConvertLayoutsForWord(customHtml);
+                        customHtml = ConvertLayoutsForWord(customHtml, addTableBorders: true);
                         var altBodyPart = mainPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
                         var altBodyRelId = mainPart.GetIdOfPart(altBodyPart);
                         var fullBodyHtml = WrapHtmlForWord(customHtml);
@@ -4353,7 +4358,7 @@ namespace ReportBuilder.Web.Models
                         // Create table
                         Table table = new Table();
                         TableProperties props = new TableProperties(new Justification() { Val = JustificationValues.Center },
-                         new TableLayout() { Type = TableLayoutValues.Autofit },
+                         new TableLayout() { Type = TableLayoutValues.Fixed },
                          new TableBorders(
                          new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
                          new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
@@ -4389,6 +4394,34 @@ namespace ReportBuilder.Web.Models
                             TableCell cell = new TableCell(paragraph);
                             headerRow.AppendChild(cell);
                         }
+                        // Header text alone underestimates a column, so sample the data too.
+                        var sampleRows = Math.Min(dt.Rows.Count, 200);
+                        for (var sr = 0; sr < sampleRows; sr++)
+                        {
+                            foreach (DataColumn column in dt.Columns)
+                            {
+                                var cellText = dt.Rows[sr][column.ColumnName]?.ToString() ?? "";
+                                if (cellText.Length > 40) cellText = cellText.Substring(0, 40);
+                                var w = EstimateTextWidth(cellText);
+                                if (w > maxColumnWidths[column.Ordinal]) maxColumnWidths[column.Ordinal] = w;
+                            }
+                        }
+
+                        // Word autofits an unsized table by splitting the page evenly between columns, so a
+                        // wide report ends up one character per line. Give it an explicit grid instead.
+                        for (var ci = 0; ci < maxColumnWidths.Length; ci++)
+                            maxColumnWidths[ci] = Math.Min(Math.Max(maxColumnWidths[ci] + 120, 700), 4320);
+
+                        // A fixed layout no longer shrinks to fit, so the grid has to stay inside the
+                        // printable area or the table bleeds off both edges.
+                        FitColumnWidthsToPage(maxColumnWidths, pageSize, pageOrientation);
+
+                        var tableGrid = new TableGrid();
+                        foreach (var gw in maxColumnWidths)
+                            tableGrid.Append(new GridColumn() { Width = gw.ToString() });
+                        table.InsertAfter(tableGrid, props);
+
+                        ApplyCellWidths(headerRow, maxColumnWidths);
                         table.AppendChild(headerRow);
                         // WORD Export page size setup
                         if (!String.IsNullOrEmpty(pageSize))
@@ -4512,6 +4545,7 @@ namespace ReportBuilder.Web.Models
                                 dataRow.AppendChild(cell);
                                 i++;
                             }
+                            ApplyCellWidths(dataRow, maxColumnWidths);
                             table.AppendChild(dataRow);
                         }
                         if (includeSubtotal)
@@ -4538,6 +4572,7 @@ namespace ReportBuilder.Web.Models
                                 dataRow.AppendChild(cell);
                             }
 
+                            ApplyCellWidths(dataRow, maxColumnWidths);
                             table.AppendChild(dataRow);
                         }
 
@@ -4557,8 +4592,11 @@ namespace ReportBuilder.Web.Models
                     // Ensure cells do not wrap their text; also tighten cell padding
                     foreach (TableCell cell in body.Descendants<TableCell>())
                     {
-                        cell.TableCellProperties = new TableCellProperties();
-                        cell.TableCellProperties.Append(new NoWrap());
+                        cell.TableCellProperties ??= new TableCellProperties();
+                        if (!cell.TableCellProperties.Elements<NoWrap>().Any())
+                            cell.TableCellProperties.Append(new NoWrap());
+                        foreach (var existingMargin in cell.TableCellProperties.Elements<TableCellMargin>().ToList())
+                            existingMargin.Remove();
                         cell.TableCellProperties.Append(new TableCellMargin(
                             new TopMargin() { Width = "20", Type = TableWidthUnitValues.Dxa },
                             new BottomMargin() { Width = "20", Type = TableWidthUnitValues.Dxa },
@@ -4574,6 +4612,8 @@ namespace ReportBuilder.Web.Models
 
                         var finalSectionProps = new SectionProperties();
 
+                        bool useTitlePage = headerFirstPageOnly || footerFirstPageOnly;
+
                         if (!string.IsNullOrEmpty(headerRelId))
                         {
                             if (headerFirstPageOnly)
@@ -4585,6 +4625,8 @@ namespace ReportBuilder.Web.Models
                             else
                             {
                                 finalSectionProps.Append(new HeaderReference() { Type = HeaderFooterValues.Default, Id = headerRelId });
+                                if (useTitlePage)
+                                    finalSectionProps.Append(new HeaderReference() { Type = HeaderFooterValues.First, Id = headerRelId });
                             }
                         }
                         if (!string.IsNullOrEmpty(footerRelId))
@@ -4598,11 +4640,13 @@ namespace ReportBuilder.Web.Models
                             else
                             {
                                 finalSectionProps.Append(new FooterReference() { Type = HeaderFooterValues.Default, Id = footerRelId });
+                                if (useTitlePage)
+                                    finalSectionProps.Append(new FooterReference() { Type = HeaderFooterValues.First, Id = footerRelId });
                             }
                         }
 
                         // Enable "different first page" so Word honors the "first" header/footer refs
-                        if (headerFirstPageOnly || footerFirstPageOnly)
+                        if (useTitlePage)
                         {
                             finalSectionProps.Append(new TitlePage());
                         }
@@ -4669,6 +4713,62 @@ namespace ReportBuilder.Web.Models
                 return memStream.ToArray();
             }
         }
+        /// <summary>
+        /// Parses a descendant selector such as "#report-footer .footer-row a" into a target rule plus
+        /// its ancestor parts. 
+        /// </summary>
+        private static CssRule ParseSelectorChain(string selector)
+        {
+            if (string.IsNullOrEmpty(selector)) return null;
+            if (Regex.IsMatch(selector, @"[+~:\[\]]")) return null;
+
+            var parts = Regex.Split(selector.Replace(">", " ").Trim(), @"\s+")
+                            .Where(x => x.Length > 0).ToArray();
+            if (parts.Length == 0) return null;
+
+            var parsed = new List<CssRule>();
+            foreach (var part in parts)
+            {
+                var simple = ParseSimpleSelector(part);
+                if (simple == null) return null;
+                parsed.Add(simple);
+            }
+
+            var target = parsed[parsed.Count - 1];
+            target.Ancestors = parsed.Take(parsed.Count - 1).ToList();
+            target.Specificity = parsed.Sum(p => (p.Id != null ? 100 : 0) + (p.Classes.Count * 10) + (p.Tag != null ? 1 : 0));
+            return target;
+        }
+
+        private static bool MatchesSimple(CssRule rule, HtmlNode el)
+        {
+            if (el == null || el.NodeType != HtmlNodeType.Element) return false;
+            if (rule.Tag != null && rule.Tag != el.Name.ToLowerInvariant()) return false;
+            if (rule.Id != null && rule.Id != el.GetAttributeValue("id", "")) return false;
+            if (rule.Classes.Count > 0)
+            {
+                var classes = el.GetAttributeValue("class", "")
+                    .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+                if (!rule.Classes.All(c => classes.Contains(c))) return false;
+            }
+            return true;
+        }
+
+        private static bool RuleMatches(CssRule rule, HtmlNode el)
+        {
+            if (!MatchesSimple(rule, el)) return false;
+            if (rule.Ancestors.Count == 0) return true;
+
+            var remaining = new Stack<CssRule>(rule.Ancestors);   // innermost ancestor on top
+            var parent = el.ParentNode;
+            while (parent != null && remaining.Count > 0)
+            {
+                if (MatchesSimple(remaining.Peek(), parent)) remaining.Pop();
+                parent = parent.ParentNode;
+            }
+            return remaining.Count == 0;
+        }
+
         private static CssRule ParseSimpleSelector(string selector)
         {
             if (string.IsNullOrEmpty(selector)) return null;
@@ -4731,10 +4831,11 @@ namespace ReportBuilder.Web.Models
 
                 foreach (var rawSelector in selectorPart.Split(','))
                 {
-                    var parsed = ParseSimpleSelector(rawSelector.Trim());
+                    var parsed = ParseSelectorChain(rawSelector.Trim());
                     if (parsed == null) continue;
 
                     parsed.Declarations = declarations;
+                    parsed.Order = rules.Count;
                     rules.Add(parsed);
                 }
             }
@@ -4754,21 +4855,16 @@ namespace ReportBuilder.Web.Models
             var allElements = doc.DocumentNode.SelectNodes("//*[@class or @id]");
             if (allElements == null) return customHtml;
 
+            var orderedRules = allRules.OrderBy(r => r.Specificity).ThenBy(r => r.Order).ToList();
+
             foreach (var el in allElements)
             {
-                var elClasses = el.GetAttributeValue("class", "")
-                    .Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
-                string elId = el.GetAttributeValue("id", "");
-                string elTag = el.Name.ToLowerInvariant();
-
                 var normal = new Dictionary<string, string>();
                 var important = new Dictionary<string, string>();
 
-                foreach (var rule in allRules)
+                foreach (var rule in orderedRules)
                 {
-                    if (rule.Tag != null && rule.Tag != elTag) continue;
-                    if (rule.Id != null && rule.Id != elId) continue;
-                    if (rule.Classes.Count > 0 && !rule.Classes.All(c => elClasses.Contains(c))) continue;
+                    if (!RuleMatches(rule, el)) continue;
 
                     foreach (var kv in rule.Declarations)
                     {
@@ -4944,7 +5040,58 @@ namespace ReportBuilder.Web.Models
             } while (convertedAny);
             return doc.DocumentNode.OuterHtml;
         }
-        public static string ConvertLayoutsForWord(string customHtml)
+        /// <summary>
+        /// Header and footer fragments often right align an element with margin-left:auto, which only works
+        /// inside a flex container. Word has no flex, so split the top level into a two column table.
+        /// </summary>
+        private static string ConvertAutoMarginToTable(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            var topLevel = doc.DocumentNode.ChildNodes
+                .Where(n => n.NodeType == HtmlNodeType.Element)
+                .ToList();
+            if (topLevel.Count < 2) return customHtml;
+
+            var rightStart = topLevel.FindIndex(n =>
+                n.GetAttributeValue("style", "").Replace(" ", "").IndexOf("margin-left:auto", StringComparison.OrdinalIgnoreCase) >= 0);
+            if (rightStart <= 0) return customHtml;
+
+            var table = doc.CreateElement("table");
+            table.SetAttributeValue("width", "100%");
+            table.SetAttributeValue("style", "border-collapse:collapse; width:100%;");
+            var tr = doc.CreateElement("tr");
+
+            var leftTd = doc.CreateElement("td");
+            leftTd.SetAttributeValue("style", "vertical-align:middle; text-align:left;");
+            var rightTd = doc.CreateElement("td");
+            rightTd.SetAttributeValue("style", "vertical-align:middle; text-align:right;");
+
+            for (var i = 0; i < topLevel.Count; i++)
+            {
+                var cell = i < rightStart ? leftTd : rightTd;
+                // margin-left:auto has no meaning once the cell handles alignment
+                var style = topLevel[i].GetAttributeValue("style", "");
+                if (!string.IsNullOrEmpty(style))
+                {
+                    topLevel[i].SetAttributeValue("style",
+                        Regex.Replace(style, @"margin-left\s*:\s*auto\s*;?", "", RegexOptions.IgnoreCase).Trim());
+                }
+                cell.AppendChild(topLevel[i].CloneNode(true));
+            }
+
+            tr.AppendChild(leftTd);
+            tr.AppendChild(rightTd);
+            table.AppendChild(tr);
+
+            foreach (var n in topLevel) n.Remove();
+            doc.DocumentNode.AppendChild(table);
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        public static string ConvertLayoutsForWord(string customHtml, bool addTableBorders = false)
         {
             customHtml = ApplyExternalCssInline(customHtml, GetWordReportCss());
 
@@ -4955,6 +5102,9 @@ namespace ReportBuilder.Web.Models
             result = ConvertBootstrapGridToTable(result);
             result = ConvertFlexToTable(result);
             result = ConvertGridToTable(result);
+            result = ConvertAutoMarginToTable(result);
+            result = TightenTableCellsForWord(result);
+            if (addTableBorders) result = EnsureTableBordersForWord(result);
             result = WrapPlainBackgroundDivsInTable(result); // *** naya step ***
             result = EnsureTableBackgroundCompat(result);
             result = FixImageSizingForWord(result);
@@ -5024,7 +5174,7 @@ namespace ReportBuilder.Web.Models
                     var tr = doc.CreateElement("tr");
                     var td = doc.CreateElement("td");
                     td.SetAttributeValue("style",
-                        $"vertical-align:{vAlign}; text-align:{hAlign}; padding:{(string.IsNullOrEmpty(padding) ? "6px" : padding)}; {bgStyle}");
+                        $"vertical-align:{vAlign}; text-align:{hAlign}; padding:{(string.IsNullOrEmpty(padding) ? "0" : padding)}; {bgStyle}");
                     td.InnerHtml = child.OuterHtml;
                     tr.AppendChild(td);
                     table.AppendChild(tr);
@@ -5038,7 +5188,7 @@ namespace ReportBuilder.Web.Models
                     var td = doc.CreateElement("td");
                     string cellAlign = (justify == "space-between" && i == children.Count - 1) ? "right" : hAlign;
                     td.SetAttributeValue("style",
-                        $"vertical-align:{vAlign}; text-align:{cellAlign}; padding:{(string.IsNullOrEmpty(padding) ? "6px" : padding)}; {bgStyle}");
+                        $"vertical-align:{vAlign}; text-align:{cellAlign}; padding:{(string.IsNullOrEmpty(padding) ? "0" : padding)}; {bgStyle}");
                     td.InnerHtml = children[i].OuterHtml;
                     tr.AppendChild(td);
                 }
@@ -5348,6 +5498,170 @@ namespace ReportBuilder.Web.Models
             paragraph.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
             wordDoc.MainDocumentPart.Document.Body.AppendChild(paragraph);
         }
+        /// <summary>
+        /// Printable width in twips for the page the export is about to use, page margins removed.
+        /// </summary>
+        private static int GetPrintableWidthTwips(string pageSize, string pageOrientation)
+        {
+            const int margins = 2880; // 1in each side
+
+            // No page size means the export picks a landscape default further down.
+            if (string.IsNullOrEmpty(pageSize)) return 16838 - margins;
+
+            int width, height;
+            switch (pageSize.ToUpper())
+            {
+                case "A4": width = (int)(210 * 56.7); height = (int)(297 * 56.7); break;
+                case "LEGAL": width = (int)(8.5 * 1440); height = 14 * 1440; break;
+                case "A3": width = (int)(297 * 56.7); height = (int)(420 * 56.7); break;
+                case "TABLOID": width = 11 * 1440; height = 17 * 1440; break;
+                default: width = (int)(8.5 * 1440); height = 11 * 1440; break;
+            }
+
+            var landscape = !string.IsNullOrEmpty(pageOrientation) && pageOrientation.ToUpper() == "LANDSCAPE";
+            return (landscape ? height : width) - margins;
+        }
+
+        /// <summary>
+        /// Scales the grid down proportionally so the table fits the page. Columns are not taken below a
+        /// readable minimum; if even that does not fit, the widest columns give up the remainder.
+        /// </summary>
+        private static void FitColumnWidthsToPage(int[] widths, string pageSize, string pageOrientation)
+        {
+            if (widths == null || widths.Length == 0) return;
+
+            var available = GetPrintableWidthTwips(pageSize, pageOrientation);
+            var total = widths.Sum();
+            if (total <= available) return;
+
+            const int floorWidth = 500;
+            var scale = (double)available / total;
+            for (var i = 0; i < widths.Length; i++)
+                widths[i] = Math.Max((int)Math.Floor(widths[i] * scale), floorWidth);
+
+            // Flooring narrow columns can push the total back over, so trim the widest ones.
+            var over = widths.Sum() - available;
+            while (over > 0)
+            {
+                var widest = Array.IndexOf(widths, widths.Max());
+                if (widths[widest] <= floorWidth) break;
+                var take = Math.Min(over, widths[widest] - floorWidth);
+                widths[widest] -= take;
+                over -= take;
+            }
+        }
+
+        /// <summary>
+        /// Report tables read as loose text in Word without cell borders. Only applied to the report body,
+        /// never to the header or footer, where the layout tables must stay invisible.
+        /// </summary>
+        private static string EnsureTableBordersForWord(string customHtml)
+        {
+            if (string.IsNullOrWhiteSpace(customHtml)) return customHtml;
+
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            var tables = doc.DocumentNode.SelectNodes("//table");
+            if (tables == null) return customHtml;
+
+            const string defaultBorder = "1px solid #dee2e6";
+
+            foreach (var table in tables)
+            {
+                var tableStyle = table.GetAttributeValue("style", "");
+                if (tableStyle.IndexOf("border-collapse", StringComparison.OrdinalIgnoreCase) < 0)
+                    tableStyle = (tableStyle + " border-collapse:collapse;").Trim();
+                table.SetAttributeValue("style", tableStyle);
+
+                foreach (var cell in table.Descendants().Where(n => n.Name == "td" || n.Name == "th"))
+                {
+                    var style = cell.GetAttributeValue("style", "");
+                    // Respect a border the stylesheet already supplied, whatever form it took.
+                    if (Regex.IsMatch(style, @"(^|;)\s*border(-(top|right|bottom|left))?\s*:", RegexOptions.IgnoreCase)) continue;
+                    cell.SetAttributeValue("style", $"{style} border:{defaultBorder};".Trim());
+                }
+            }
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        /// <summary>
+        /// Word turns each block child of a cell into its own paragraph and adds cell padding on top of the
+        /// css padding, so header rows gain blank lines. Drop the children that render nothing and cap the
+        /// vertical padding, leaving the horizontal padding alone.
+        /// </summary>
+        private static string TightenTableCellsForWord(string customHtml)
+        {
+            if (string.IsNullOrWhiteSpace(customHtml)) return customHtml;
+
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            var cells = doc.DocumentNode.SelectNodes("//td | //th");
+            if (cells == null) return customHtml;
+
+            const int maxVerticalPaddingPx = 4;
+
+            foreach (var cell in cells)
+            {
+                // Icon spans and placeholder divs carry no text, but Word still gives them a line.
+                foreach (var child in cell.Descendants().Where(n => n.NodeType == HtmlNodeType.Element).ToList())
+                {
+                    if (child.Name == "img" || child.Name == "br") continue;
+                    if (child.Descendants("img").Any()) continue;
+                    if (!string.IsNullOrWhiteSpace(HtmlAgilityPack.HtmlEntity.DeEntitize(child.InnerText))) continue;
+                    child.Remove();
+                }
+
+                var style = cell.GetAttributeValue("style", "");
+                if (string.IsNullOrEmpty(style)) continue;
+
+                var padding = ExtractStyleValue(style, "padding");
+                if (string.IsNullOrEmpty(padding)) continue;
+
+                var parts = padding.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                var vertical = parts[0];
+                var horizontal = parts.Length > 1 ? parts[1] : parts[0];
+
+                if (ToPixels(vertical) <= maxVerticalPaddingPx) continue;
+
+                var tightened = Regex.Replace(style, @"padding\s*:[^;]+;?", "", RegexOptions.IgnoreCase).Trim();
+                cell.SetAttributeValue("style", $"{tightened} padding:{maxVerticalPaddingPx}px {horizontal};".Trim());
+            }
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        private static double ToPixels(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return 0;
+            var m = Regex.Match(value.Trim(), @"^(-?\d+(\.\d+)?)\s*(px|pt|mm|cm|in)?$", RegexOptions.IgnoreCase);
+            if (!m.Success) return 0;
+            var n = double.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+            switch ((m.Groups[3].Value ?? "").ToLowerInvariant())
+            {
+                case "pt": return n * 96.0 / 72.0;
+                case "mm": return n * 96.0 / 25.4;
+                case "cm": return n * 96.0 / 2.54;
+                case "in": return n * 96.0;
+                default: return n;
+            }
+        }
+
+        private static void ApplyCellWidths(TableRow row, int[] widths)
+        {
+            var i = 0;
+            foreach (var cell in row.Elements<TableCell>())
+            {
+                if (i >= widths.Length) break;
+                var tcPr = cell.GetFirstChild<TableCellProperties>();
+                if (tcPr == null) { tcPr = new TableCellProperties(); cell.InsertAt(tcPr, 0); }
+                tcPr.Append(new TableCellWidth() { Width = widths[i].ToString(), Type = TableWidthUnitValues.Dxa });
+                i++;
+            }
+        }
+
         static private int EstimateTextWidth(string text)
         {
             // Simple estimation: number of characters * average width of a character in twips
@@ -5576,8 +5890,10 @@ namespace ReportBuilder.Web.Models
                     if (string.IsNullOrEmpty(html)) return "";
                     html = html.Replace("{page.number}", "<span class=\"pageNumber\"></span>")
                                .Replace("{page.total}", "<span class=\"totalPages\"></span>");
+                    // Rebuild the ancestor chain the html had in the document, otherwise rules scoped
+                    // under .report-view cannot match inside the isolated header/footer template.
                     return "<style>" + pageStyles + " * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }</style>"
-                         + "<div style=\"font-size:10px; width:100%; padding: 0 0.4in; -webkit-print-color-adjust: exact; print-color-adjust: exact;\">" + html + "</div>";
+                         + "<div class=\"report-view\" style=\"font-size:10px; width:100%; padding: 0 0.4in; -webkit-print-color-adjust: exact; print-color-adjust: exact;\">" + html + "</div>";
                 }
 
                 if (headerEveryPage || footerEveryPage)
