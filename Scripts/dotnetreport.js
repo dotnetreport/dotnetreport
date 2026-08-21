@@ -789,6 +789,7 @@ function filterGroupViewModel(args) {
 			Value: ko.observable((e.Operator == 'in' || e.Operator == 'not in') ? valueIn.join(', ') : e.Value1),
 			Value2: ko.observable(e.Value2),
 			ValueIn: ko.observableArray(valueIn.slice()),
+			uiId: generateUniqueId(),
 			LookupList: lookupList,
 			ParentList: parentList,
 			SearchLookupList: function (token) {
@@ -973,24 +974,7 @@ function filterGroupViewModel(args) {
 
 			}
 
-			if (newField && newField.fieldId && !newField.hasForeignKey && newField.fieldType == 'Varchar') {
-				(function (lookupField, lookupFilter) {
-					var attempts = 0;
-					var trySetupLookup = function () {
-						attempts++;
-						var hasInputs = ['C', 'F', 'M', 'P'].some(function (p) {
-							return document.querySelector('[id="ctl-' + p + '-' + lookupField.uiId + '"]');
-						});
-						if (hasInputs) {
-							var txtqry = new textQuery(args.options);
-							txtqry.setupLookup(lookupField, lookupFilter);
-						} else if (attempts < 15) {
-							setTimeout(trySetupLookup, 500);
-						}
-					};
-					setTimeout(trySetupLookup, 100);
-				})(newField, filter);
-			}
+			attachFilterLookup(args.options, newField, filter);
 			if (newField && !newField.fieldId && newField.tableName === "Custom" && !newField.dynamicTableId) {
 				if (newField.fieldFormat()) newField.fieldType = '';
 				if (['Percentage', 'Number', 'Decimal', 'Currency', 'Days', 'Hours', 'Minutes', 'Seconds'].indexOf(newField.fieldFormat()) >= 0 || ['Int', 'Decimal'].indexOf(newField.fieldType) >= 0) {
@@ -1545,6 +1529,26 @@ var footerDesigner = function (options) {
 			$('#report-footer-editor').summernote('code', decodeURIComponent(result.footerJson || '') || '');
 		});
 	}
+}
+
+// Attaches the text autocomplete to a filter's inputs. Re-runnable, because the run view renders
+// its own copy of the inputs after the designer has already wired up its own.
+function attachFilterLookup(options, field, filter) {
+	if (!field || !field.fieldId || field.hasForeignKey || field.fieldType != 'Varchar') return;
+	var attempts = 0;
+	var trySetupLookup = function () {
+		attempts++;
+		var hasInputs = ['C', 'F', 'M', 'P'].some(function (p) {
+			return document.querySelector('[id="ctl-' + p + '-' + filter.uiId + '"]')
+				|| document.querySelector('[id="ctl-' + p + '-' + field.uiId + '"]');
+		});
+		if (hasInputs) {
+			new textQuery(options).setupLookup(field, filter);
+		} else if (attempts < 15) {
+			setTimeout(trySetupLookup, 500);
+		}
+	};
+	setTimeout(trySetupLookup, 100);
 }
 
 var reportViewModel = function (options) {
@@ -4359,6 +4363,9 @@ var reportViewModel = function (options) {
 			});
 		}
 		self.FlyFilters(flyfilters);
+		_.forEach(flyfilters, function (f) {
+			if (f.Field && f.Field()) attachFilterLookup(options, f.Field(), f);
+		});
 	}
 
 	self.buildFilterDetailsText = function (filterGroups, isNested) {

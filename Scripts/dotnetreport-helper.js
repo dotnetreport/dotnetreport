@@ -1554,25 +1554,28 @@ var textQuery = function (options) {
     self._lookupOperatorSubs = self._lookupOperatorSubs || {};
 
     self.setupLookup = function (field, filter) {
-        var uiId = field.uiId;
+        var candidateIds = [filter && filter.uiId, field && field.uiId].filter(function (x) { return !!x; });
+        var uiId = candidateIds[0];
         var isMultiValue = function (op) { return op === 'in' || op === 'not in'; };
         var prefixes = ['C', 'F', 'M', 'P'];
         var filterInputs = [];
-        prefixes.forEach(function (p) {
-            document.querySelectorAll('[id="ctl-' + p + '-' + uiId + '"]').forEach(function (el) {
-                filterInputs.push(el);
+        candidateIds.forEach(function (id) {
+            prefixes.forEach(function (p) {
+                document.querySelectorAll('[id="ctl-' + p + '-' + id + '"]').forEach(function (el) {
+                    if (filterInputs.indexOf(el) < 0) filterInputs.push(el);
+                });
             });
         });
 
-        // Detach the previous tribute for this field so its keyboard/input handlers are removed
-        // before we create a fresh instance (e.g. when the data operation changes).
-        if (self._lookupTributes[uiId]) {
-            filterInputs.forEach(function (el) {
-                try { self._lookupTributes[uiId].detach(el); } catch (e) {}
+        filterInputs.forEach(function (el) {
+            var existing = el._currentTribute || self._lookupTributes[uiId];
+            if (existing) {
+                try { existing.detach(el); } catch (e) { }
                 el.removeAttribute('data-tribute');
-            });
-            delete self._lookupTributes[uiId];
-        }
+                el._currentTribute = null;
+            }
+        });
+        delete self._lookupTributes[uiId];
 
         if (filterInputs.length > 0) {
             var tributeAttributes = self.getTributeAttributes({ searchLookupFilter: true });
@@ -1624,10 +1627,17 @@ var textQuery = function (options) {
                     filterInput.addEventListener("tribute-replaced", function (e) {
                         if (filterInput._currentTribute) filterInput._currentTribute._noMatch = false;
                         var f = filterInput._lookupFilter;
-                        if (f && ko.isObservable(f.Operator) && !isMultiValue(f.Operator())) {
+                        var multi = f && ko.isObservable(f.Operator) && isMultiValue(f.Operator());
+                        if (f && ko.isObservable(f.Operator) && !multi) {
                             filterInput._currentQuery.queryItems = [];
                         }
                         filterInput._currentQuery.addQueryItem(e.detail.item.original);
+                        if (multi) {
+                            var items = filterInput._currentQuery.queryItems.map(function (x) { return x.text; });
+                            f.Value(items.join(', '));
+                            f.ValueIn(items);
+                            filterInput.value = items.join(', ') + ', ';
+                        }
                     });
 
                     filterInput.addEventListener("menuItemRemoved", function (e) {
