@@ -5643,7 +5643,7 @@ var reportViewModel = function (options) {
 			e.Field.fieldFilter = e.operators;
 			e.Field.selectedFilterName = e.DisplayName;
 			e.Field.forced = false;
-			e.filterOnFly = ko.observable(match && match.FilterOnFly === true);
+			e.filterOnFly = ko.observable(match ? match.FilterOnFly === true : false);
 			e.Field.filterOnFly = e.filterOnFly;
 			e.Apply = ko.observable(true);
 			e.LookupList = ko.observableArray([]);
@@ -6868,7 +6868,7 @@ var reportViewModel = function (options) {
 					ParameterName: x.ParameterName,
 					Value: flyNotApplied ? x.ParameterValue : (x.Operator() == 'in' ? (Array.isArray(x.ValueIn) ? x.ValueIn : [x.Value()]).join(",") : x.Value()),
 					Operator: flyNotApplied ? 'is default' : x.Operator(),
-					FilterOnFly: x.filterOnFly ? x.filterOnFly() : false   // ← persist for reload
+					FilterOnFly: x.filterOnFly ? x.filterOnFly() === true : false
 				}
 			}) : []
 		};
