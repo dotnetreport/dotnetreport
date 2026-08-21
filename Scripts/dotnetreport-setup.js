@@ -25,6 +25,21 @@ var manageViewModel = function (options) {
 	self.ChartDrillDownData = null;
 	self.activeProcedure = ko.observable();
 	self.schedules = ko.observableArray([]);
+	// Flattened one row per schedule so the table needs no nested foreach in the markup.
+	self.scheduleRows = ko.computed(function () {
+		var rows = [];
+		_.forEach(self.schedules(), function (r) {
+			_.forEach(r.Schedules || [], function (item, i) {
+				rows.push({
+					name: r.Name,
+					isDashboard: r.DashboardId !== 0,
+					isFirst: i === 0,
+					item: item
+				});
+			});
+		});
+		return rows;
+	});
 	self.settings = new settingPageViewModel(options);
 	// Access editing opens in a modal (same template the report page uses).
 	self.accessTarget = ko.observable(null);
