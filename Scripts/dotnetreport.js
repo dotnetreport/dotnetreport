@@ -1124,6 +1124,24 @@ function filterGroupViewModel(args) {
 	}
 }
 
+function sanitizeSummernoteHtml(html) {
+	if (!html) return html;
+	var $tmp = $('<div>').html(html);
+	$tmp.find('.resize-row, .resize-col, .note-control-selection, .note-table-resize-handle').remove();
+	var $paragraphs = $tmp.find('p');
+	$paragraphs.each(function (i) {
+		var $p = $(this);
+		var isEmpty = $p.text().replace(/\u00A0/g, '').trim() === '' && $p.children().not('br').length === 0;
+		if (isEmpty) {
+			$p.remove();
+		} else {
+			var isLast = (i === $paragraphs.length - 1);
+			$p.replaceWith($p.html() + (isLast ? '' : '<br>'));
+		}
+	});
+	return $tmp.html();
+}
+
 var headerDesigner = function (options) {
 	var self = this;
 	self.UseReportHeader = ko.observable(options.useReportHeader === true ? true : false);
@@ -1202,23 +1220,6 @@ var headerDesigner = function (options) {
 			}
 		} catch (e) { }
 	};
-	function sanitizeSummernoteHtml(html) {
-		if (!html) return html;
-		var $tmp = $('<div>').html(html);
-		$tmp.find('.resize-row, .resize-col, .note-control-selection, .note-table-resize-handle').remove();
-		var $paragraphs = $tmp.find('p');
-		$paragraphs.each(function (i) {
-			var $p = $(this);
-			var isEmpty = $p.text().replace(/\u00A0/g, '').trim() === '' && $p.children().not('br').length === 0;
-			if (isEmpty) {
-				$p.remove();
-			} else {
-				var isLast = (i === $paragraphs.length - 1);
-				$p.replaceWith($p.html() + (isLast ? '' : '<br>'));
-			}
-		});
-		return $tmp.html();
-	}
 	// Builds the "Name (Default)" label shown in the header picker.
 	var headerLabel = function (h) {
 		return (h.name || 'Untitled') + (h.isDefault ? ' (Default)' : '');
@@ -1472,23 +1473,6 @@ var footerDesigner = function (options) {
 			}
 		} catch (e) { }
 	};
-	function sanitizeSummernoteHtml(html) {
-		if (!html) return html;
-		var $tmp = $('<div>').html(html);
-		$tmp.find('.resize-row, .resize-col, .note-control-selection, .note-table-resize-handle').remove();
-		var $paragraphs = $tmp.find('p');
-		$paragraphs.each(function (i) {
-			var $p = $(this);
-			var isEmpty = $p.text().replace(/\u00A0/g, '').trim() === '' && $p.children().not('br').length === 0;
-			if (isEmpty) {
-				$p.remove();
-			} else {
-				var isLast = (i === $paragraphs.length - 1);
-				$p.replaceWith($p.html() + (isLast ? '' : '<br>'));
-			}
-		});
-		return $tmp.html();
-	}
 	self.saveHtmlFooter = function () {
 		var htmlContent = $('#report-footer-editor').summernote('code');
 		var data = encodeURIComponent(htmlContent);
@@ -1573,7 +1557,7 @@ var reportViewModel = function (options) {
 	options.userRoles = options.userSettings.userRoles;
 
 	self.currentUserId = options.userSettings.currentUserId;
-	window.currentUserId = options.userSettings.currentUserId;
+	window.currentUserId = options.userSettings.currentUserId || window.currentUserId;
 
 	self.currentUserRole = (options.userSettings.currentUserRoles || []).join();
 	self.currentUserName = options.userSettings.currentUserName;
@@ -12630,7 +12614,7 @@ var dashboardViewModel = function (options) {
 	self.dashboards = ko.observableArray(options.dashboards || []);
 	self.adminMode = ko.observable(false);
 	self.currentUserId = options.userSettings.currentUserId || options.currentUserId;
-	window.currentUserId = options.userSettings.currentUserId;
+	window.currentUserId = self.currentUserId || window.currentUserId;
 	self.currentUserRole = (options.userSettings.currentUserRoles || options.currentUserRole || []).join();
 	self.currentUserName = options.userSettings.currentUserName;
 	self.clientId = options.userSettings.clientId;
