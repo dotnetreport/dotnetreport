@@ -558,7 +558,6 @@ namespace ReportBuilder.Web.Models
             public string Tag;
             public string Id;
             public List<string> Classes = new List<string>();
-            // Outermost first. Empty for a plain selector like ".footer".
             public List<CssRule> Ancestors = new List<CssRule>();
             public int Specificity;
             public int Order;
@@ -2620,6 +2619,8 @@ namespace ReportBuilder.Web.Models
             foreach (DataRow row in dt.Rows)
             {
                 int rowIndex = dt.Rows.IndexOf(row);
+                // One result set is expected, otherwise skip row 
+                if (rowIndex >= dts.Tables.Count) continue;
                 DataTable dtsTable = dts.Tables[rowIndex];
                 var distinctValues = new Dictionary<string, HashSet<object>>();
                 var maxValues = new Dictionary<string, object>();
@@ -4740,6 +4741,32 @@ namespace ReportBuilder.Web.Models
             target.Specificity = parsed.Sum(p => (p.Id != null ? 100 : 0) + (p.Classes.Count * 10) + (p.Tag != null ? 1 : 0));
             return target;
         }
+        /// <summary>
+        /// Parses a descendant selector such as "#report-footer .footer-row a" into a target rule plus
+        /// its ancestor parts. 
+        /// </summary>
+        private static CssRule ParseSelectorChain(string selector)
+        {
+            if (string.IsNullOrEmpty(selector)) return null;
+            if (Regex.IsMatch(selector, @"[+~:\[\]]")) return null;
+
+            var parts = Regex.Split(selector.Replace(">", " ").Trim(), @"\s+")
+                            .Where(x => x.Length > 0).ToArray();
+            if (parts.Length == 0) return null;
+
+            var parsed = new List<CssRule>();
+            foreach (var part in parts)
+            {
+                var simple = ParseSimpleSelector(part);
+                if (simple == null) return null;
+                parsed.Add(simple);
+            }
+
+            var target = parsed[parsed.Count - 1];
+            target.Ancestors = parsed.Take(parsed.Count - 1).ToList();
+            target.Specificity = parsed.Sum(p => (p.Id != null ? 100 : 0) + (p.Classes.Count * 10) + (p.Tag != null ? 1 : 0));
+            return target;
+        }
 
         private static bool MatchesSimple(CssRule rule, HtmlNode el)
         {
@@ -5891,8 +5918,10 @@ namespace ReportBuilder.Web.Models
                     if (string.IsNullOrEmpty(html)) return "";
                     html = html.Replace("{page.number}", "<span class=\"pageNumber\"></span>")
                                .Replace("{page.total}", "<span class=\"totalPages\"></span>");
+                    // Rebuild the ancestor chain the html had in the document, otherwise rules scoped
+                    // under .report-view cannot match inside the isolated header/footer template.
                     return "<style>" + pageStyles + " * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }</style>"
-                         + "<div style=\"font-size:10px; width:100%; padding: 0 0.4in; -webkit-print-color-adjust: exact; print-color-adjust: exact;\">" + html + "</div>";
+                         + "<div class=\"report-view\" style=\"font-size:10px; width:100%; padding: 0 0.4in; -webkit-print-color-adjust: exact; print-color-adjust: exact;\">" + html + "</div>";
                 }
 
                 if (headerEveryPage || footerEveryPage)

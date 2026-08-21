@@ -562,8 +562,14 @@
                     var $h = $('#report-header');
                     var $f = $('#report-footer');
 
-                    var rawHeaderHtml = $h.length ? substitutePlaceholders($h.html()) : '';
-                    var rawFooterHtml = $f.length ? substitutePlaceholders($f.html()) : '';
+                    function outerHtmlWithPlaceholders($el) {
+                        if (!$el.length) return '';
+                        var $clone = $el.clone();
+                        $clone.html(substitutePlaceholders($el.html()));
+                        return $clone.prop('outerHTML');
+                    }
+                    var rawHeaderHtml = outerHtmlWithPlaceholders($h);
+                    var rawFooterHtml = outerHtmlWithPlaceholders($f);
 
                     if ($h.length) { $h.html(substituteInDocPagePlaceholders(substitutePlaceholders($h.html()))); }
                     if ($f.length) { $f.html(substituteInDocPagePlaceholders(substitutePlaceholders($f.html()))); }
