@@ -11086,7 +11086,11 @@ var reportViewModel = function (options) {
 		self.LoadReport(prev.reportId, false, '').done(function () {
 			self._skipPopulateReportRun = false;
 			// Now run the parent report fresh — RunReport rebuilds SQL from current state and executes.
-			self.RunReport(false, true);
+			var wasSaveReport = self.SaveReport();
+			self.SaveReport(false);
+			var run = self.RunReport(false, true);
+			if (run && run.always) run.always(function () { self.SaveReport(wasSaveReport); });
+			else self.SaveReport(wasSaveReport);
 		}).fail(function () {
 			self._skipPopulateReportRun = false;
 		}).always(function () {
