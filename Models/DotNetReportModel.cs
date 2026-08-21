@@ -4741,32 +4741,6 @@ namespace ReportBuilder.Web.Models
             target.Specificity = parsed.Sum(p => (p.Id != null ? 100 : 0) + (p.Classes.Count * 10) + (p.Tag != null ? 1 : 0));
             return target;
         }
-        /// <summary>
-        /// Parses a descendant selector such as "#report-footer .footer-row a" into a target rule plus
-        /// its ancestor parts. 
-        /// </summary>
-        private static CssRule ParseSelectorChain(string selector)
-        {
-            if (string.IsNullOrEmpty(selector)) return null;
-            if (Regex.IsMatch(selector, @"[+~:\[\]]")) return null;
-
-            var parts = Regex.Split(selector.Replace(">", " ").Trim(), @"\s+")
-                            .Where(x => x.Length > 0).ToArray();
-            if (parts.Length == 0) return null;
-
-            var parsed = new List<CssRule>();
-            foreach (var part in parts)
-            {
-                var simple = ParseSimpleSelector(part);
-                if (simple == null) return null;
-                parsed.Add(simple);
-            }
-
-            var target = parsed[parsed.Count - 1];
-            target.Ancestors = parsed.Take(parsed.Count - 1).ToList();
-            target.Specificity = parsed.Sum(p => (p.Id != null ? 100 : 0) + (p.Classes.Count * 10) + (p.Tag != null ? 1 : 0));
-            return target;
-        }
 
         private static bool MatchesSimple(CssRule rule, HtmlNode el)
         {
