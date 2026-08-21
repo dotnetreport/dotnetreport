@@ -6944,6 +6944,24 @@ var reportViewModel = function (options) {
 		}
 		var _resetSaving = function () { self.savingReport(false); self.savingAndRunning(false); };
 		self.setFlyFilters();
+
+		var linkedOverride = self._linkedRunOverride && self._linkedRunOverride.reportId == self.ReportID()
+			? self._linkedRunOverride : null;
+		if (linkedOverride && !saveOnly && !previewOnly && !importJson) {
+			return ajaxcall({
+				url: options.runLinkReportUrl,
+				data: {
+					reportId: self.ReportID(),
+					adminMode: self.adminMode(),
+					filterId: linkedOverride.filterId,
+					filterValue: linkedOverride.filterValue
+				}
+			}).done(function (linkedReport) {
+				if (linkedReport.d) { linkedReport = linkedReport.d; }
+				if (linkedReport.result) { linkedReport = linkedReport.result; }
+				self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, '', true);
+			}).always(function () { _resetSaving(); });
+		}
 		var saveAlertFlag = false;
 		if (!importJson) {
 			self.TotalSeries(self.AdditionalSeries().length);
@@ -11006,10 +11024,13 @@ var reportViewModel = function (options) {
 		}
 		if (self.ReportMode() == "execute" || self.ReportMode() == "dashboard" || self.ReportMode() == "linked" || self.ReportMode() == 'design' || self.ReportMode() == 'subreport') {
 
-			if (self.ReportMode() == "linked") {
+			var linkedOverride = self._linkedRunOverride && self._linkedRunOverride.reportId == self.ReportID()
+				? self._linkedRunOverride : null;
+
+			if (self.ReportMode() == "linked" || linkedOverride) {
 
 				var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
-				var override = self._linkedRunOverride;
+				var override = linkedOverride;
 
 				return ajaxcall({
 					url: options.runLinkReportUrl,
@@ -11059,7 +11080,7 @@ var reportViewModel = function (options) {
 			reportMode: self.ReportMode(),
 			override: self._linkedRunOverride
 		});
-		self._linkedRunOverride = { filterId: filterId || 0, filterValue: filterValue || '0' };
+		self._linkedRunOverride = { reportId: linkedReportId, filterId: filterId || 0, filterValue: filterValue || '0' };
 		self.ReportMode('linked');
 		self._suppressLinkedNavRun = true;
 		self.LoadReport(linkedReportId, false, '').always(function () {
@@ -11183,6 +11204,9 @@ var reportViewModel = function (options) {
 				e.showAdminOnly = ko.observable(e.showAdminOnly || false);
 				e.isFavorite = ko.observable(e.isFavorite);
 				e.openReport = function () {
+					// Opening a report from the list is a fresh start, so drop any linked navigation state.
+					self._linkedRunOverride = null;
+					self.linkedReportStack([]);
 					if (!e.runMode && !e.canEdit && !self.appSettings.canCopyReport()) {
 						options.reportWizard.modal('hide');
 						toastr.error('No access to edit report');
