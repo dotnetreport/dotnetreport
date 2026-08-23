@@ -2967,7 +2967,7 @@ namespace ReportBuilder.Web.Models
                 }
                 else
                 {
-                    var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                    var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls, qry.parameters);
                     dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
                 }
             }
@@ -3436,7 +3436,7 @@ namespace ReportBuilder.Web.Models
                 }
                 else
                 {
-                    var ds = await GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                    var ds = await GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls, qry.parameters);
                     dt = PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
                 }
             }
@@ -5727,7 +5727,7 @@ namespace ReportBuilder.Web.Models
                     }
                     else
                     {
-                        var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                        var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls, qry.parameters);
                         dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
                     }
                     var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
@@ -6201,7 +6201,7 @@ namespace ReportBuilder.Web.Models
                 }
                 else
                 {
-                    var dds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                    var dds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls, qry.parameters);
                     dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, dds, pivotColumn, pivotFunction, expandSqls);
                 }
             }

@@ -593,7 +593,7 @@ namespace ReportBuilder.Web.Controllers
                             else
                             {
                                 reportData = reportData.Replace("\"DrillDownRowUsePlaceholders\":false", $"\"DrillDownRowUsePlaceholders\":true");
-                                var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
+                                var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData, qry.parameters);
                                 dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);
                                 if (subtotalMode)
                                 {
@@ -886,6 +886,8 @@ namespace ReportBuilder.Web.Controllers
         [HttpGet]
         public IActionResult GetUsersAndRoles()
         {
+            var settings = GetSettings();
+
             // These report permission settings will be applied by default to any new report user creates, leave black to allow access to all
             var newReportClientId = ""; // comma separated client ids to set report permission when new report is created
             var newReportEditUserId = ""; // comma separated user ids for report edit permission when new report is created
@@ -893,7 +895,6 @@ namespace ReportBuilder.Web.Controllers
             var newReportEditUserRoles = ""; // comma separated user roles for report edit permission when new report is created
             var newReportViewUserRoles = ""; // comma separated user roles for report view permission when new report is created
 
-            var settings = GetSettings();
             return Ok(new
             {
                 noAccount = string.IsNullOrEmpty(settings.AccountApiToken) || settings.AccountApiToken == "Your Public Account Api Token",
