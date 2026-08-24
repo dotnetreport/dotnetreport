@@ -98,6 +98,8 @@ namespace ReportBuilder.Web.Jobs
     [DisallowConcurrentExecution]
     public class DotNetReportJob : IJob
     {
+
+
         #region Schedule diagnostics
         private static readonly object _diagLock = new object();
         private static bool? _diagEnabled;
@@ -266,26 +268,10 @@ namespace ReportBuilder.Web.Jobs
                                 DiagLog($"[{report.Name}] dataFilters(schedule)={schedule.DataFilters ?? "(null)"}"
                                       + $"\n    CurrentDataFilters(after set)={DotNetReportHelper.CurrentDataFilters}");
 
-                                string hfHeaderHtml = null;
+                                // The header is resolved per-report just before the Word export (see
+                                // ResolveScheduledReportHeader); PDF/Html get it from the rendered ReportPrint page.
                                 string hfFooterHtml = null;
-                                bool hfHeaderEveryPage = false;
                                 bool hfFooterEveryPage = false;
-                                try
-                                {
-                                    var hdrResp = await client.GetAsync($"{apiUrl}/ReportApi/GetReportHeader?account={accountApiKey}&dataConnect={databaseApiKey}&clientId={clientId}&userId={schedule.UserId}");
-                                    if (hdrResp.IsSuccessStatusCode)
-                                    {
-                                        var hdrJson = await hdrResp.Content.ReadAsStringAsync();
-                                        var hdr = JsonConvert.DeserializeObject<dynamic>(hdrJson);
-                                        if (hdr != null && (bool?)hdr.useReportHeader == true)
-                                        {
-                                            string rawHeader = (string)hdr.headerJson ?? "";
-                                            hfHeaderHtml = System.Web.HttpUtility.UrlDecode(rawHeader);
-                                            hfHeaderEveryPage = (bool?)hdr.includeOnEveryPage == true;
-                                        }
-                                    }
-                                }
-                                catch (Exception ex) { DiagLog("GetReportHeader", ex); /* not critical */ }
                                 try
                                 {
                                     var ftrResp = await client.GetAsync($"{apiUrl}/ReportApi/GetReportFooter?account={accountApiKey}&dataConnect={databaseApiKey}&clientId={clientId}&userId={schedule.UserId}");
@@ -378,8 +364,9 @@ namespace ReportBuilder.Web.Jobs
                                                     }
                                                     catch (Exception ex) { customHtmlR = null; DiagLog("GetReportRenderedHtml(dashboard)", ex); }
                                                 }
+                                                var rHdr = await ResolveScheduledReportHeader(client, apiUrl, accountApiKey, databaseApiKey, clientId, schedule.UserId, r);
                                                 fileData = await DotNetReportHelper.GetWordFile(r.ReportSql, r.ConnectKey, r.ReportName, columns: r.Columns, includeSubtotal: r.IncludeSubTotals, pivot: r.ReportType == "Pivot", chartData: imageData, expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation,
-                                                    headerHtml: hfHeaderHtml, footerHtml: hfFooterHtml, headerEveryPage: hfHeaderEveryPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
+                                                    headerHtml: rHdr.html, footerHtml: hfFooterHtml, headerEveryPage: rHdr.everyPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
                                                     customHtml: customHtmlR);
                                                 files.Add(fileData);
                                             }
@@ -404,8 +391,9 @@ namespace ReportBuilder.Web.Jobs
                                                 }
                                                 catch (Exception ex) { customHtml = null; DiagLog("GetReportRenderedHtml", ex); }
                                             }
+                                            var singleHdr = await ResolveScheduledReportHeader(client, apiUrl, accountApiKey, databaseApiKey, clientId, schedule.UserId, reportToRun);
                                             fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData, expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation,
-                                                headerHtml: hfHeaderHtml, footerHtml: hfFooterHtml, headerEveryPage: hfHeaderEveryPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
+                                                headerHtml: singleHdr.html, footerHtml: hfFooterHtml, headerEveryPage: singleHdr.everyPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
                                                 customHtml: customHtml);
                                         }
                                         break;
@@ -529,6 +517,50 @@ namespace ReportBuilder.Web.Jobs
                  pivotColumn?.fieldName ?? string.Empty,
                  pivotColumn != null && !string.IsNullOrEmpty(pivotFunction) ? pivotFunction : string.Empty
              );
+        }
+
+        // Resolves the header html a scheduled report should use, honoring its per-report selection:
+        // "don't use" (HideReportHeader / ReportHeaderId == -1) -> none; a custom per-report header ->
+        // used verbatim; otherwise the chosen named header id is resolved server-side (chosen ->
+        // client default -> global default) via GetReportHeader.
+        private async Task<(string html, bool everyPage)> ResolveScheduledReportHeader(HttpClient client, string apiUrl, string accountApiKey, string databaseApiKey, string clientId, string userId, DotNetReportScheduleModel r)
+        {
+            try
+            {
+                if (r == null || r.HideReportHeader) return (null, false);
+
+                int reportHeaderId = 0;
+                bool useCustom = false;
+                string customHtml = null;
+                if (!string.IsNullOrEmpty(r.ReportSettings))
+                {
+                    try
+                    {
+                        var rs = JsonConvert.DeserializeObject<Dictionary<string, object>>(r.ReportSettings);
+                        if (rs != null)
+                        {
+                            if (rs.TryGetValue("ReportHeaderId", out var rid) && rid != null) int.TryParse(rid.ToString(), out reportHeaderId);
+                            if (rs.TryGetValue("UseCustomReportHeader", out var uc) && uc != null) bool.TryParse(uc.ToString(), out useCustom);
+                            if (rs.TryGetValue("CustomReportHeaderHtml", out var ch) && ch != null) customHtml = ch.ToString();
+                        }
+                    }
+                    catch { /* malformed ReportSettings -> fall back to default header */ }
+                }
+
+                if (reportHeaderId == -1) return (null, false); // don't use a header
+                if (useCustom) return (System.Web.HttpUtility.UrlDecode(customHtml ?? ""), false);
+
+                var resp = await client.GetAsync($"{apiUrl}/ReportApi/GetReportHeader?account={accountApiKey}&dataConnect={databaseApiKey}&clientId={clientId}&userId={userId}&reportHeaderId={reportHeaderId}");
+                if (resp.IsSuccessStatusCode)
+                {
+                    var j = await resp.Content.ReadAsStringAsync();
+                    var h = JsonConvert.DeserializeObject<dynamic>(j);
+                    if (h != null && (bool?)h.useReportHeader == true)
+                        return (System.Web.HttpUtility.UrlDecode((string)h.headerJson ?? ""), (bool?)h.includeOnEveryPage == true);
+                }
+            }
+            catch (Exception ex) { DiagLog("ResolveScheduledReportHeader", ex); }
+            return (null, false);
         }
     }
 }

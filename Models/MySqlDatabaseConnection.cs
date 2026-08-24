@@ -57,7 +57,7 @@ namespace ReportBuilder.Web.Models
 
                     using (MySqlCommand command = new MySqlCommand(sqlCount, conn))
                     {
-                        if (!sql.StartsWith("EXEC")) totalRecords = Math.Max(totalRecords, Convert.ToInt32(command.ExecuteScalar()));
+                        if (!sql.StartsWith("EXEC") && !sql.StartsWith("CALL")) totalRecords = Math.Max(totalRecords, Convert.ToInt32(command.ExecuteScalar()));
                     }
 
                     conn.Close();

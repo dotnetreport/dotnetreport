@@ -353,6 +353,22 @@ ko.bindingHandlers.select2 = {
             s2opts.dropdownParent = $(el).closest('.modal');
         }
         $(el).select2(s2opts);
+
+        var lookupSearch = allBindings.lookupSearch;
+        if (typeof lookupSearch === 'function') {
+            var searchTimer;
+            $(el).on('select2:open.lookupsearch', function () {
+                var $search = $('.select2-container--open .select2-search__field');
+                $search.off('input.lookupsearch').on('input.lookupsearch', function () {
+                    var term = this.value;
+                    clearTimeout(searchTimer);
+                    searchTimer = setTimeout(function () {
+                        var p = lookupSearch(term);
+                        if (p && p.done) p.done(function () { $(el).trigger('change.select2'); });
+                    }, 350);
+                });
+            });
+        }
         // Sync user selection back to KO value observable (Select2 v4)
         $(el).on('change.select2binding', function () {
             if (allBindings.value && ko.isObservable(allBindings.value)) {
@@ -362,6 +378,7 @@ ko.bindingHandlers.select2 = {
         });
         ko.utils.domNodeDisposal.addDisposeCallback(el, function () {
             $(el).off('change.select2binding');
+            $(el).off('select2:open.lookupsearch');
             if (el && $(el).length && $(el).data('select2')) {
                 $(el).select2('destroy');
             }
@@ -957,7 +974,7 @@ var manageAccess = function (options) {
     access.applyDefaultSettings = function () {
         var userSettings = options.userSettings;
         if (userSettings) {
-            access.clientId(options.userSettings.newReportClientId);
+            access.clientId(options.userSettings.newReportClientId || options.userSettings.clientId);
             var editUserIds = userSettings.newReportEditUserId ? userSettings.newReportEditUserId.split(',') : [];
             var viewUserIds = userSettings.newReportViewUserId ? userSettings.newReportViewUserId.split(',') : [];
             var editUserRoles = userSettings.newReportEditUserRoles ? userSettings.newReportEditUserRoles.split(',') : [];
@@ -1268,6 +1285,13 @@ var textQuery = function (options) {
         }
     }
 
+    self.removeQueryItem = function (item) {
+        if (!item) return;
+        var i = self.queryItems.indexOf(item);
+        if (i < 0) i = _.findIndex(self.queryItems, { 'value': item.value });
+        if (i >= 0) self.queryItems.splice(i, 1);
+    }
+
     self.addQueryItem = function (newItem, skipFilter) {
         var match = _.find(self.queryItems, { 'value': newItem.value });
         if (!match) {
@@ -1430,7 +1454,7 @@ var textQuery = function (options) {
                 });
 
                 inputElement.addEventListener("menuItemRemoved", function (e) {
-                    self.queryItems.remove(e.detail.item.original);
+                    self.removeQueryItem(e.detail.item.original);
                 });
 
                 inputElement.addEventListener('keydown', function (e) {
@@ -1468,7 +1492,7 @@ var textQuery = function (options) {
         });
 
         inputEl.addEventListener("menuItemRemoved", function (e) {
-            self.queryItems.remove(e.detail.item.original);
+            self.removeQueryItem(e.detail.item.original);
         });
     };
 
@@ -1486,8 +1510,8 @@ var textQuery = function (options) {
             });
 
             searchInput.addEventListener("menuItemRemoved", function (e) {
-                self.queryItems.remove(e.detail.item.original);
-            });
+                    self.removeQueryItem(e.detail.item.original);
+                });
 
             searchInput.addEventListener('blur', function () {
                 const vm = ko.dataFor(searchInput);
@@ -1539,26 +1563,31 @@ var textQuery = function (options) {
     }
 
     self._lookupTributes = self._lookupTributes || {};
+    self._lookupOperatorSubs = self._lookupOperatorSubs || {};
 
     self.setupLookup = function (field, filter) {
-        var uiId = field.uiId;
+        var candidateIds = [filter && filter.uiId, field && field.uiId].filter(function (x) { return !!x; });
+        var uiId = candidateIds[0];
+        var isMultiValue = function (op) { return op === 'in' || op === 'not in'; };
         var prefixes = ['C', 'F', 'M', 'P'];
         var filterInputs = [];
-        prefixes.forEach(function (p) {
-            document.querySelectorAll('[id="ctl-' + p + '-' + uiId + '"]').forEach(function (el) {
-                filterInputs.push(el);
+        candidateIds.forEach(function (id) {
+            prefixes.forEach(function (p) {
+                document.querySelectorAll('[id="ctl-' + p + '-' + id + '"]').forEach(function (el) {
+                    if (filterInputs.indexOf(el) < 0) filterInputs.push(el);
+                });
             });
         });
 
-        // Detach the previous tribute for this field so its keyboard/input handlers are removed
-        // before we create a fresh instance (e.g. when the data operation changes).
-        if (self._lookupTributes[uiId]) {
-            filterInputs.forEach(function (el) {
-                try { self._lookupTributes[uiId].detach(el); } catch (e) {}
+        filterInputs.forEach(function (el) {
+            var existing = el._currentTribute || self._lookupTributes[uiId];
+            if (existing) {
+                try { existing.detach(el); } catch (e) { }
                 el.removeAttribute('data-tribute');
-            });
-            delete self._lookupTributes[uiId];
-        }
+                el._currentTribute = null;
+            }
+        });
+        delete self._lookupTributes[uiId];
 
         if (filterInputs.length > 0) {
             var tributeAttributes = self.getTributeAttributes({ searchLookupFilter: true });
@@ -1570,6 +1599,24 @@ var textQuery = function (options) {
 
             // initLookupQuery is per-field, not per-element — call it once.
             self.initLookupQuery(field);
+
+            // Switching between a single value and a list operator must not carry the old picks over.
+            if (self._lookupOperatorSubs[uiId]) {
+                self._lookupOperatorSubs[uiId].dispose();
+                delete self._lookupOperatorSubs[uiId];
+            }
+            if (filter && ko.isObservable(filter.Operator)) {
+                var previousOperator = filter.Operator();
+                self._lookupOperatorSubs[uiId] = filter.Operator.subscribe(function (newOperator) {
+                    var wasMulti = isMultiValue(previousOperator);
+                    previousOperator = newOperator;
+                    if (wasMulti === isMultiValue(newOperator)) return;
+                    self.queryItems = [];
+                    filterInputs.forEach(function (el) { el.value = ''; });
+                    if (ko.isObservable(filter.Value)) filter.Value('');
+                    if (ko.isObservable(filter.ValueIn)) filter.ValueIn([]);
+                });
+            }
 
             filterInputs.forEach(function (filterInput) {
                 // Always keep current references on the element so the single set of listeners
@@ -1591,11 +1638,22 @@ var textQuery = function (options) {
 
                     filterInput.addEventListener("tribute-replaced", function (e) {
                         if (filterInput._currentTribute) filterInput._currentTribute._noMatch = false;
+                        var f = filterInput._lookupFilter;
+                        var multi = f && ko.isObservable(f.Operator) && isMultiValue(f.Operator());
+                        if (f && ko.isObservable(f.Operator) && !multi) {
+                            filterInput._currentQuery.queryItems = [];
+                        }
                         filterInput._currentQuery.addQueryItem(e.detail.item.original);
+                        if (multi) {
+                            var items = filterInput._currentQuery.queryItems.map(function (x) { return x.text; });
+                            f.Value(items.join(', '));
+                            f.ValueIn(items);
+                            filterInput.value = items.join(', ') + ', ';
+                        }
                     });
 
                     filterInput.addEventListener("menuItemRemoved", function (e) {
-                        filterInput._currentQuery.queryItems.remove(e.detail.item.original);
+                        filterInput._currentQuery.removeQueryItem(e.detail.item.original);
                     });
 
                     filterInput.addEventListener('blur', function () {
@@ -1603,8 +1661,12 @@ var textQuery = function (options) {
                         var q = filterInput._currentQuery;
                         if (f && q.queryItems.length > 0) {
                             var items = q.queryItems.map(x => x.text);
-                            f.Value(items.join(', '));
-                            if (f.Operator() === 'in' || f.Operator() === 'not in') f.ValueIn(items);
+                            if (isMultiValue(f.Operator())) {
+                                f.Value(items.join(', '));
+                                f.ValueIn(items);
+                            } else {
+                                f.Value(items[items.length - 1]);
+                            }
                         }
                     });
 
