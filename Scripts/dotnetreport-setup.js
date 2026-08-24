@@ -25,7 +25,44 @@ var manageViewModel = function (options) {
 	self.ChartDrillDownData = null;
 	self.activeProcedure = ko.observable();
 	self.schedules = ko.observableArray([]);
+	// Flattened one row per schedule so the table needs no nested foreach in the markup.
+	self.scheduleRows = ko.computed(function () {
+		var rows = [];
+		_.forEach(self.schedules(), function (r) {
+			_.forEach(r.Schedules || [], function (item, i) {
+				rows.push({
+					name: r.Name,
+					isDashboard: r.DashboardId !== 0,
+					isFirst: i === 0,
+					item: item
+				});
+			});
+		});
+		return rows;
+	});
 	self.settings = new settingPageViewModel(options);
+	// Access editing opens in a modal (same template the report page uses).
+	self.accessTarget = ko.observable(null);
+	self.accessTargetName = ko.observable('');
+	self.openAccessModal = function (item, isFolder) {
+		if (!self.manageAccess) { toastr.error('Users and roles are still loading, please try again'); return; }
+		if (isFolder) { item.changeFolderAccess(true); } else { item.changeAccess(true); }
+		item._isFolder = isFolder;
+		self.accessTarget(item);
+		self.accessTargetName(isFolder ? item.FolderName : item.reportName);
+		$('#setup-access-modal').modal('show');
+	};
+	self.saveAccessModal = function () {
+		var t = self.accessTarget();
+		if (!t) return;
+		var done = function () {
+			$('#setup-access-modal').modal('hide');
+			if (t._isFolder) { t.changeFolderAccess(false); } else { t.changeAccess(false); }
+		};
+		var promise = t._isFolder ? t.saveFolderAccessChanges() : t.saveAccessChanges();
+		if (promise && promise.done) { promise.done(done); } else { done(); }
+	};
+
 	self.ReportResult = ko.observable({
 		ReportSql: ko.observable()
 	});
@@ -807,7 +844,8 @@ var manageViewModel = function (options) {
 				method: options.getSchedulesUrl,
 				model: JSON.stringify({
 					account: self.keys.AccountApiKey,
-					dataConnect: self.keys.DatabaseApiKey
+					dataConnect: self.keys.DatabaseApiKey,
+					bypassThrottle: true
 				}),
 				userId: self.currentUserId || ' '
 			})
@@ -817,6 +855,20 @@ var manageViewModel = function (options) {
 			self.schedules(result);
 		});
 	}
+
+	// Clean display of a schedule's export format (stored as JSON: {exportFormat, size, orientation}).
+	self.formatDisplay = function (fmt) {
+		if (!fmt) return '';
+		try {
+			if (typeof fmt === 'string' && fmt.trim().charAt(0) === '{') {
+				var o = JSON.parse(fmt);
+				var s = o.exportFormat || '';
+				if (o.size) s += ' (' + o.size + (o.orientation ? ', ' + o.orientation : '') + ')';
+				return s;
+			}
+			return fmt;
+		} catch (e) { return fmt; }
+	};
 
 	self.sentHistory = ko.observableArray([]);
 	self.sentHistoryPage = ko.observable(1);
@@ -1351,7 +1403,7 @@ var manageViewModel = function (options) {
 			return;
 		}
 
-		bootbox.confirm("Are you sure you would like to continue with saving all Tables?<br><b>Note: </b>This will make changes to your account that cannot be undone.", function (r) {
+		bootbox.confirm("Are you sure you would like to save the " + tablesToSave.length + " selected Table(s)?<br><b>Note: </b>This will make changes to your account that cannot be undone.", function (r) {
 			if (r) {
 				var savedNames = [];
 				_.forEach(tablesToSave, function (e) {
@@ -1812,6 +1864,19 @@ var manageViewModel = function (options) {
 			if (allReports[0].d) { allReports[0] = allReports[0].d; }
 			if (allFolders[0].Result) { allFolders[0] = allFolders[0].Result; }
 			if (allReports[0].Result) { allReports[0] = allReports[0].Result; }
+
+			// Full folder path so sub folders nest and same named folders stay distinguishable.
+			var folderMap = {};
+			_.forEach(allFolders[0], function (f) { folderMap[f.Id] = f; });
+			var pathNames = function (f) {
+				var names = [], cur = f, guard = 0;
+				while (cur && guard++ < 20) {
+					names.unshift(cur.FolderName);
+					cur = cur.ParentFolderId ? folderMap[cur.ParentFolderId] : null;
+				}
+				return names;
+			};
+
 			_.forEach(allFolders[0], function (x) {
 				var folderReports = _.filter(allReports[0], { folderId: x.Id });
 				_.forEach(folderReports, function (r) {
@@ -1879,9 +1944,12 @@ var manageViewModel = function (options) {
 					}
 					r.isSelected = ko.observable(false);
 				});
+				var names = pathNames(x);
 				var folderVm = {
 					folderId: x.Id,
-					folder: x.FolderName,
+					folder: names[names.length - 1],
+					folderPath: names.join(' › '),
+					depth: names.length - 1,
 					reports: folderReports,
 					allReportsSelected: ko.observable(),
 					selectAllReports: function () {
@@ -1905,8 +1973,13 @@ var manageViewModel = function (options) {
 				setup.push(folderVm);
 			});
 
-			self.reportsAndFolders(setup);
-			var folders = allFolders[0];
+			self.reportsAndFolders(_.sortBy(setup, 'folderPath'));
+			var folders = _.sortBy(allFolders[0], function (f) { return pathNames(f).join(' › '); });
+			_.forEach(folders, function (f) {
+				var n = pathNames(f);
+				f.FolderPath = n.join(' › ');
+				f.Depth = n.length - 1;
+			});
 			_.forEach(folders, function (r) {
 				r.UserId = ko.observable(r.UserId);
 				r.ViewOnlyUserId = ko.observable(r.ViewOnlyUserId);
@@ -2806,6 +2879,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 
 	_.forEach(self.model(), function (t) {
 		self.processTable(t);
+		// t.Selected(false);
 	});
 
 	self.refresh = function (result) {
@@ -2814,6 +2888,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 		
 		_.forEach(mdl, function (t) {
 			self.processTable(t);
+			// t.Selected(false);
 		});
 
 		self.model(mdl);
@@ -2889,6 +2964,17 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 			}
 		});
 	}	
+
+	self.allSelected = function (customOnly) {
+		var list = _.filter(self.model(), function (e) {
+			return customOnly ? e.CustomTable() === true : e.CustomTable() === false;
+		});
+		return list.length > 0 && _.every(list, function (e) { return e.Selected(); });
+	}
+
+	self.toggleSelectAll = function (customOnly) {
+		if (self.allSelected(customOnly)) { self.unselectAll(customOnly); } else { self.selectAll(customOnly); }
+	}
 
 	self.usedOnly = ko.observable(false);
 	self.toggleShowAll = function () {
@@ -3070,7 +3156,8 @@ var customSqlModel = function (options, keys, tables, activeTable) {
 						query: queryText,
 						fieldIds: fieldIds.join(","),
 						dontEncrypt: true
-					})
+					}),
+					userId: self.currentUserId || ''
 				}
 			}).done(function (result) {
 				if (result.d) result = result.d;
@@ -3221,6 +3308,7 @@ var settingPageViewModel = function (options) {
 	self.showEmptyFolders = ko.observable(false);
 	self.allowUsersToManageFolders = ko.observable(true);
 	self.allowUsersToCreateReports = ko.observable(true);
+	self.allowUsersToCreateDashboards = ko.observable(true);
 	self.useAltPdf = ko.observable(false);
 	self.useAltPivot = ko.observable(false);
 	self.dontXmlExport = ko.observable(false);
@@ -3321,6 +3409,7 @@ var settingPageViewModel = function (options) {
 							showEmptyFolders: self.showEmptyFolders(),
 							allowUsersToManageFolders: self.allowUsersToManageFolders(),
 							allowUsersToCreateReports: self.allowUsersToCreateReports(),
+							allowUsersToCreateDashboards: self.allowUsersToCreateDashboards(),
 							useAltPdf: self.useAltPdf(),
 							useAltPivot: self.useAltPivot(),
 							dontXmlExport: self.dontXmlExport(),
@@ -3395,6 +3484,7 @@ var settingPageViewModel = function (options) {
 				self.showEmptyFolders(settings.showEmptyFolders);
 				self.allowUsersToManageFolders(settings.allowUsersToManageFolders === false ? false : true);
 				self.allowUsersToCreateReports(settings.allowUsersToCreateReports === false ? false : true);
+				self.allowUsersToCreateDashboards(settings.allowUsersToCreateDashboards === false ? false : true);
 				self.useAltPdf(settings.useAltPdf);
 				self.useAltPivot(settings.useAltPivot);
 				self.dontXmlExport(settings.dontXmlExport);

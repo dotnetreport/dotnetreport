@@ -73,313 +73,314 @@
 <body>
     <div data-bind="with: ReportResult">
 
-        <!-- ko ifnot: HasError -->
-        <div class="report-view" data-bind="with: $root">
-            <div style="margin-left: 25px;">
-                <div data-bind="visible: useReportHeader">
-                    <div id="report-header" width="900" height="120" data-bind="html: headerDesigner.headerHtml"></div>
+    <!-- ko ifnot: HasError -->
+    <div class="report-view" data-bind="with: $root">
+        <div style="margin-left: 25px;">
+            <div data-bind="visible: useReportHeader">
+                <div id="report-header" width="900" height="120" data-bind="html: headerDesigner.headerHtml"></div>
+            </div>
+            <h2 data-bind="text: ReportName"></h2>
+            <p data-bind="html: ReportDescription">
+            </p>
+            <div data-bind="template: 'filter-details-summary'"></div>
+        </div>
+
+        <div class="report-chart" data-bind="attr: {id: 'chart_div_' + ReportID()}, visible: isChart"></div>
+        <!--<div data-bind="with: $root">
+        <div class="" data-bind="ifnot: EditFiltersOnReport">
+            <div data-bind="template: {name: 'fly-filter-template'}"></div>
+            <div style="padding-bottom: 20px;"></div>
+        </div>
+    </div>-->
+
+        <div data-bind="with: ReportResult" class="report-inner" style="display: none;">
+            <div data-bind="template: 'report-template', data: $data"></div>
+        </div>
+        <div style="margin-left: 25px;" data-bind="visible: useReportFooter">
+            <div id="report-footer" width="900" data-bind="html: footerDesigner.footerHtml"></div>
+        </div>
+        <br />
+    </div>
+    <!-- /ko -->
+    <!-- ko if: HasError -->
+    <h2 data-bind="text: ReportName"></h2>
+    <p data-bind="html: ReportDescription"></p>
+
+    <h3>An unexpected error occured while running the Report</h3>
+    <hr />
+    <b>Error Details</b>
+    <p class="report-inner" style="display: none;">
+        <div data-bind="text: Exception"></div>
+    </p>
+
+    <!-- /ko -->
+
+</div>
+
+<script type="text/html" id="report-render">
+    <div data-bind="with: ReportData">
+          <div data-bind="foreach: Rows">
+      <div data-bind="html: renderedHtml, css: { 'card-view': $parents[$parents.length-1].cardView }"></div>
+
+      <div data-bind="foreach: subReportsRan">
+          <!-- ko if: !_isInline -->
+          <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
+          <!-- /ko -->
+          <!-- ko if: _isInline -->
+          <div style="display:none" data-bind="moveToInlineContainer: $data"></div>
+          <!-- /ko -->
+      </div>
+    </div>
+    </div>
+    <div class="clearfix"></div>
+</script>
+
+<script type="text/html" id="subreport-content">
+    <div class="" style="padding-bottom: 20px;">
+        <h2 data-bind="text: ReportName, visible: !_hideTitle"></h2>
+        <div class="clearfix"></div>
+        <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
+            <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+            <div data-bind="with: ReportResult" class="small">
+                <div data-bind="visible: !ReportData()">
+                    <div class="report-spinner"></div>
                 </div>
-                <h2 data-bind="text: ReportName"></h2>
-                <p data-bind="html: ReportDescription">
-                </p>
-                <div data-bind="template: 'filter-details-summary'"></div>
-            </div>
-
-            <div class="report-chart" data-bind="attr: {id: 'chart_div_' + ReportID()}, visible: isChart"></div>
-            <!--<div data-bind="with: $root">
-            <div class="" data-bind="ifnot: EditFiltersOnReport">
-                <div data-bind="template: {name: 'fly-filter-template'}"></div>
-                <div style="padding-bottom: 20px;"></div>
-            </div>
-        </div>-->
-
-            <div data-bind="with: ReportResult" class="report-inner" style="display: none;">
+                <!-- ko if: !$parent._isPlaceholder -->
                 <div data-bind="template: 'report-template', data: $data"></div>
+                <!-- /ko -->
             </div>
-            <div style="margin-left: 25px;" data-bind="visible: useReportFooter">
-                <div id="report-footer" width="900" data-bind="html: footerDesigner.footerHtml"></div>
+        </div>
+        <!-- ko if: !$data._isPlaceholder -->
+        <div class="form-inline" data-bind="visible: !_hidePager">
+            <div class="small" data-bind="with: pager">
+                <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
+                    <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
+                </div>
+                <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
+                    <div data-bind="template: 'pager-template', data: $data"></div>
+                </div>
             </div>
-            <br />
         </div>
         <!-- /ko -->
-        <!-- ko if: HasError -->
-        <h2 data-bind="text: ReportName"></h2>
-        <p data-bind="html: ReportDescription"></p>
+    </div>
+</script>
 
-        <h3>An unexpected error occured while running the Report</h3>
-        <hr />
-        <b>Error Details</b>
-        <p class="report-inner" style="display: none;">
-            <div data-bind="text: Exception"></div>
-        </p>
+<script type="text/html" id="report-template">
+    <!-- ko if: $parent.ReportType() == 'Pivot' -->
+    <div data-bind="template: {name: 'report-pivot', data: $data }"></div>
+    <!-- /ko -->
+    <!-- ko if: $parent.ReportType() == 'Html' -->
+    <div data-bind="template: {name: 'report-render', data: $data }"></div>
+    <!-- /ko -->
+    <!-- ko if: $parent.ReportType() != 'Pivot' && $parent.ReportType() != 'Html' && (!$parent.isChart() || $parent.ShowDataWithGraph()) -->
+    <div class="pull-right" data-bind="if: $parent.OuterGroupColumns().length > 0">
+        <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
+            Manage Groups <span class="fa fa-ellipsis-v"></span>
+        </a>
+        <ul class="dropdown-menu" style="z-index: 1001;" data-bind="foreach: $parent.OuterGroupColumns">
+            <li class="dropdown-item small">
+                <a href="#" data-bind="click: remove" title="Remove from Group">
+                    <span class="fa fa-close"></span> <span data-bind="text: fieldName"></span>
+                </a>
+            </li>
+        </ul>
+    </div>
+    <div class="clear-fix"></div>
 
+    <div data-bind="foreach: outerGroupData">
+        <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
+        <h6 data-bind="html: display"></h6>
+        <div class="" style="padding-top: 5px;"></div>
+
+        <!-- ko if: $parents[1].ReportType() != 'Single'-->
+        <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div>
         <!-- /ko -->
+        <!-- ko if: $parents[1].ReportType() == 'Single'-->
+        <div data-bind="template: {name: 'report-widget', data: $parent.ReportData }"></div>
+        <!-- /ko -->
+        <!-- /ko -->
+    </div>
+    <!-- /ko -->
+</script>
+
+
+<script type="text/html" id="report-column-header">
+    <!-- ko foreach: Columns -->
+    <th data-bind="attr: { id: !IsPivotField ? fieldId : 'pivot--' + fieldName }, style: {'text-align': fieldAlign() ? fieldAlign() : (IsNumeric ? 'right' : 'left'), 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
+        <div data-bind="style: {'width': fieldWidth}">
+            <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
+            <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
+            <!-- /ko -->
+            <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
+            <span data-bind="click: function(){ if (!IsPivotField) { $parents[pagerIndex($parents)].changeSort(SqlField); } }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
+                <span data-bind="text: $parent.IsDrillDown() && fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName)"></span>
+            </span>
+            <!-- /ko -->
+        </div>
+    </th>
+    <!-- /ko -->
+</script>
+
+<script type="text/html" id="report-widget">
+    <div style="text-align: center; width: 100%;font-size: 48px">
+        <span data-bind="visible: Rows.length < 1" title="No data found">/</span>
+
+        <div data-bind="if: Rows.length > 0">
+            <div data-bind="with: $parent.rows[0].Items[0]">
+                <span class="preserve-space" data-bind="html: formattedVal"></span>
+
+                <!-- ko if: $parent.Rows.length > 1 && $parents[$parents.length-2].showPriorInKpi() -->
+                <div data-bind="style: {'font-size': '20px'}" class="text-muted">
+                    <span data-bind="text: $parent.comparisonLabel"></span>: <span class="preserve-space"data-bind="html: $parent.formatKpiValue($parent.Rows[1].Items[0].Value, $parent.Rows[1].Items[0].formattedVal)"></span>
+                    <span data-bind="style: {'color': $parent.calculateRate() > 0 ? 'green' : 'red', 'font-size': '20px'}">
+                        <i data-bind="css: $parent.calculateRate() > 0 ? 'fa fa-arrow-up' : 'fa fa-arrow-down'"></i>
+                        <span data-bind="html: Math.abs($parent.calculateRate()) + '%'"></span>
+                    </span>
+
+                </div>
+                <!-- /ko -->
+
+            </div>
+        </div>
+    </div>
+
+</script>
+
+<script type="text/html" id="report-column">
+    <!-- ko foreach: Items -->
+    <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')}">
+        <div data-bind="style: {'width': fieldWidth }, css: { 'text-wrap': fieldWidth }">
+            <!-- ko if: LinkTo-->
+            <a data-bind="attr: {href: LinkTo}" target="_blank"><span class="preserve-space" data-bind="html: formattedVal"></span></a>
+            <!-- /ko-->
+            <!-- ko ifnot: LinkTo-->
+            <span class="preserve-space" data-bind="html: formattedVal"></span>
+            <!-- /ko-->
+        </div>
+    </td>
+</script>
+
+<script type="text/html" id="report-pivot">
+    <div class="table-responsive" data-bind="with: ReportData">
+        <table class="table table-striped table-hover table-condensed">
+            <thead style="position: sticky; top: -1px; z-index: 2;">
+                <tr>
+                    <th></th>
+                    <!-- ko foreach: Rows -->
+                    <th>
+                        <span class="preserve-space" data-bind="text: Items[0].FormattedValue"></span>
+                    </th>
+                    <!-- /ko -->
+                </tr>
+            </thead>
+            <tbody data-bind="foreach: Columns">
+                <tr>
+                    <!-- ko if: $index() > 0 -->
+                    <td>
+                        <span data-bind="text: fieldLabel || ColumnName"></span>
+                    </td>
+                    <!-- ko foreach: $parent.Rows -->
+                    <td data-bind="style: {'background-color': $parent.backColor, 'color': $parent.fontColor, 'font-weight': $parent.fontBold() ? 'bold' : 'normal', 'text-align': $parent.fieldAlign ? $parent.fieldAlign : ($parent.IsNumeric ? 'right' : 'left') }">
+                        <span class="preserve-space" data-bind="text: Items[$parentContext.$index()].FormattedValue"></span>
+                    </td>
+                    <!-- /ko -->
+                    <!-- /ko -->
+                </tr>
+            </tbody>
+        </table>
 
     </div>
 
-    <script type="text/html" id="report-render">
-        <div data-bind="with: ReportData">
-              <div data-bind="foreach: Rows">
-          <div data-bind="html: renderedHtml, css: { 'card-view': $parents[$parents.length-1].cardView }"></div>
+</script>
 
-          <div data-bind="foreach: subReportsRan">
-              <!-- ko if: !_isInline -->
-              <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
-              <!-- /ko -->
-              <!-- ko if: _isInline -->
-              <div style="display:none" data-bind="moveToInlineContainer: $data"></div>
-              <!-- /ko -->
-          </div>
-        </div>
-        </div>
-        <div class="clearfix"></div>
-    </script>
+<script type="text/html" id="report-table">
+    <div class="table-responsive">
+        <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">
+            <thead style="position: sticky; top: -1px; z-index: 2;" data-bind="if: !$parents[2].noHeaderRow(), attr: {id: 'report-table-head' + $parents[2].ReportID()}">
+                <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">                        
+                    <!-- ko template: 'report-column-header', data: $data -->
+                    <!-- /ko-->
+                </tr>
+            </thead>
+            <tbody data-bind="attr: {id: 'report-table-body' + $parents[2].ReportID()}">
+                <tr style="display: none;" data-bind="visible: Rows.length < 1">
+                    <td data-bind="attr:{colspan: Columns.length + 1}">
+                        No records found
+                    </td>
+                </tr>
 
-    <script type="text/html" id="subreport-content">
-        <div class="" style="padding-bottom: 20px;">
-            <h2 data-bind="text: ReportName, visible: !_hideTitle"></h2>
-            <div class="clearfix"></div>
-            <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
-                <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
-                <div data-bind="with: ReportResult" class="small">
-                    <div data-bind="visible: !ReportData()">
-                        <div class="report-spinner"></div>
-                    </div>
-                    <!-- ko if: !$parent._isPlaceholder -->
-                    <div data-bind="template: 'report-template', data: $data"></div>
-                    <!-- /ko -->
-                </div>
-            </div>
-            <!-- ko if: !$data._isPlaceholder -->
-            <div class="form-inline" data-bind="visible: !_hidePager">
-                <div class="small" data-bind="with: pager">
-                    <div class="form-group pull-left total-records" data-bind="if: totalRecords()>1 && $parent.ReportType() != 'Single'">
-                        <span data-bind="text: 'Total Records: ' + totalRecords()"></span><br />
-                    </div>
-                    <div class="form-group pull-right" data-bind="if: pages()>1 && $parent.ReportType() != 'Single'">
-                        <div data-bind="template: 'pager-template', data: $data"></div>
-                    </div>
-                </div>
-            </div>
-            <!-- /ko -->
-        </div>
-    </script>
-
-    <script type="text/html" id="report-template">
-        <!-- ko if: $parent.ReportType() == 'Pivot' -->
-        <div data-bind="template: {name: 'report-pivot', data: $data }"></div>
-        <!-- /ko -->
-        <!-- ko if: $parent.ReportType() == 'Html' -->
-        <div data-bind="template: {name: 'report-render', data: $data }"></div>
-        <!-- /ko -->
-        <!-- ko if: $parent.ReportType() != 'Pivot' && $parent.ReportType() != 'Html' && (!$parent.isChart() || $parent.ShowDataWithGraph()) -->
-        <div class="pull-right" data-bind="if: $parent.OuterGroupColumns().length > 0">
-            <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
-                Manage Groups <span class="fa fa-ellipsis-v"></span>
-            </a>
-            <ul class="dropdown-menu" style="z-index: 1001;" data-bind="foreach: $parent.OuterGroupColumns">
-                <li class="dropdown-item small">
-                    <a href="#" data-bind="click: remove" title="Remove from Group">
-                        <span class="fa fa-close"></span> <span data-bind="text: fieldName"></span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-        <div class="clear-fix"></div>
-
-        <div data-bind="foreach: outerGroupData">
-            <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
-            <h6 data-bind="html: display"></h6>
-            <div class="" style="padding-top: 5px;"></div>
-
-            <!-- ko if: $parents[1].ReportType() != 'Single'-->
-            <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div>
-            <!-- /ko -->
-            <!-- ko if: $parents[1].ReportType() == 'Single'-->
-            <div data-bind="template: {name: 'report-widget', data: $parent.ReportData }"></div>
-            <!-- /ko -->
-            <!-- /ko -->
-        </div>
-        <!-- /ko -->
-    </script>
-
-
-    <script type="text/html" id="report-column-header">
-        <!-- ko foreach: Columns -->
-        <th data-bind="attr: { id: !IsPivotField ? fieldId : 'pivot--' + fieldName }, style: {'text-align': fieldAlign() ? fieldAlign() : (IsNumeric ? 'right' : 'left'), 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
-            <div data-bind="style: {'width': fieldWidth}">
-                <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
-                <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
-                <!-- /ko -->
-                <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
-                <span data-bind="click: function(){ if (!IsPivotField) { $parents[pagerIndex($parents)].changeSort(SqlField); } }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
-                    <span data-bind="text: $parent.IsDrillDown() && fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName)"></span>
-                </span>
-                <!-- /ko -->
-            </div>
-        </th>
-        <!-- /ko -->
-    </script>
-
-    <script type="text/html" id="report-widget">
-        <div style="text-align: center; width: 100%;font-size: 48px">
-            <span data-bind="visible: Rows.length < 1" title="No data found">/</span>
-
-            <div data-bind="if: Rows.length > 0">
-                <div data-bind="with: $parent.rows[0].Items[0]">
-                    <span class="preserve-space" data-bind="html: formattedVal"></span>
-
-                    <!-- ko if: $parent.Rows.length > 1 && $parents[$parents.length-2].showPriorInKpi() -->
-                    <div data-bind="style: {'font-size': '20px'}" class="text-muted">
-                        <span data-bind="text: $parent.comparisonLabel"></span>: <span class="preserve-space"data-bind="html: $parent.formatKpiValue($parent.Rows[1].Items[0].Value, $parent.Rows[1].Items[0].formattedVal)"></span>
-                        <span data-bind="style: {'color': $parent.calculateRate() > 0 ? 'green' : 'red', 'font-size': '20px'}">
-                            <i data-bind="css: $parent.calculateRate() > 0 ? 'fa fa-arrow-up' : 'fa fa-arrow-down'"></i>
-                            <span data-bind="html: Math.abs($parent.calculateRate()) + '%'"></span>
-                        </span>
-
-                    </div>
-                    <!-- /ko -->
-
-                </div>
-            </div>
-        </div>
-
-    </script>
-
-    <script type="text/html" id="report-column">
-        <!-- ko foreach: Items -->
-        <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')}">
-            <div data-bind="style: {'width': fieldWidth }, css: { 'text-wrap': fieldWidth }">
-                <!-- ko if: LinkTo-->
-                <a data-bind="attr: {href: LinkTo}" target="_blank"><span class="preserve-space" data-bind="html: formattedVal"></span></a>
-                <!-- /ko-->
-                <!-- ko ifnot: LinkTo-->
-                <span class="preserve-space" data-bind="html: formattedVal"></span>
-                <!-- /ko-->
-            </div>
-        </td>
-    </script>
-
-    <script type="text/html" id="report-pivot">
-        <div class="table-responsive" data-bind="with: ReportData">
-            <table class="table table-striped table-hover table-condensed">
-                <thead style="position: sticky; top: -1px; z-index: 2;">
-                    <tr>
-                        <th></th>
-                        <!-- ko foreach: Rows -->
-                        <th>
-                            <span class="preserve-space" data-bind="text: Items[0].FormattedValue"></span>
-                        </th>
-                        <!-- /ko -->
-                    </tr>
-                </thead>
-                <tbody data-bind="foreach: Columns">
-                    <tr>
-                        <!-- ko if: $index() > 0 -->
-                        <td>
-                            <span data-bind="text: fieldLabel || ColumnName"></span>
-                        </td>
-                        <!-- ko foreach: $parent.Rows -->
-                        <td data-bind="style: {'background-color': $parent.backColor, 'color': $parent.fontColor, 'font-weight': $parent.fontBold() ? 'bold' : 'normal', 'text-align': $parent.fieldAlign ? $parent.fieldAlign : ($parent.IsNumeric ? 'right' : 'left') }">
-                            <span class="preserve-space" data-bind="text: Items[$parentContext.$index()].FormattedValue"></span>
-                        </td>
-                        <!-- /ko -->
-                        <!-- /ko -->
-                    </tr>
-                </tbody>
-            </table>
-
-        </div>
-
-    </script>
-
-    <script type="text/html" id="report-table">
-        <div class="table-responsive">
-            <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">
-                <thead style="position: sticky; top: -1px; z-index: 2;" data-bind="if: !$parents[2].noHeaderRow(), attr: {id: 'report-table-head' + $parents[2].ReportID()}">
-                    <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">                        
-                        <!-- ko template: 'report-column-header', data: $data -->
-                        <!-- /ko-->
-                    </tr>
-                </thead>
-                <tbody data-bind="attr: {id: 'report-table-body' + $parents[2].ReportID()}">
-                    <tr style="display: none;" data-bind="visible: Rows.length < 1">
-                        <td data-bind="attr:{colspan: Columns.length + 1}">
-                            No records found
-                        </td>
-                    </tr>
-
-                    <!-- ko if: !$parents[2].useRenderTable() -->
-                    <!-- ko foreach: $parent.rows  -->
-                    <tr>                        
-                        <!-- ko template: 'report-column', data: $data -->
-                        <!-- /ko-->
-                    </tr>
-                    <!-- ko if: isExpanded -->
-                    <tr>
-                        <td style="width: 30px;"></td>
-                        <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
-                            <div data-bind="visible: !DrillDownData()">
-                                <div class="report-spinner"></div>
-                            </div>
-                            <!-- ko if: DrillDownData -->
-                            <table class="table table-striped table-hover table-condensed" data-bind="with: DrillDownData">
-                                <thead>
-                                    <tr class="no-highlight">
-                                        <!-- ko template: 'report-column-header', data: $data -->
-                                        <!-- /ko-->
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr style="display: none;" data-bind="visible: Rows && Rows.length < 1">
-                                        <td data-bind="attr: {colspan: Columns.length}">
-                                            No records found
-                                        </td>
-                                    </tr>
-                                    <!-- ko foreach: Rows  -->
-                                    <tr>
-                                        <!-- ko template: 'report-column', data: $data -->
-                                        <!-- /ko-->
-                                    </tr>
-                                    <!-- /ko -->
-                                </tbody>
-                            </table>
-                            <!-- /ko -->
-                        </td>
-                    </tr>
-                    <!-- /ko -->
-                     <!-- ko if: nonInlineSubReports().length > 0 -->
+                <!-- ko if: !$parents[2].useRenderTable() -->
+                <!-- ko foreach: $parent.rows  -->
+                <tr>                        
+                    <!-- ko template: 'report-column', data: $data -->
+                    <!-- /ko-->
+                </tr>
+                <!-- ko if: isExpanded -->
                 <tr>
+                    <td style="width: 30px;"></td>
                     <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
-                        <div data-bind="foreach: nonInlineSubReports">
-                            <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
+                        <div data-bind="visible: !DrillDownData()">
+                            <div class="report-spinner"></div>
                         </div>
+                        <!-- ko if: DrillDownData -->
+                        <table class="table table-striped table-hover table-condensed" data-bind="with: DrillDownData">
+                            <thead>
+                                <tr class="no-highlight">
+                                    <!-- ko template: 'report-column-header', data: $data -->
+                                    <!-- /ko-->
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="display: none;" data-bind="visible: Rows && Rows.length < 1">
+                                    <td data-bind="attr: {colspan: Columns.length}">
+                                        No records found
+                                    </td>
+                                </tr>
+                                <!-- ko foreach: Rows  -->
+                                <tr>
+                                    <!-- ko template: 'report-column', data: $data -->
+                                    <!-- /ko-->
+                                </tr>
+                                <!-- /ko -->
+                            </tbody>
+                        </table>
+                        <!-- /ko -->
                     </td>
                 </tr>
                 <!-- /ko -->
-                    <!-- /ko -->
-                    <!-- /ko-->
-                </tbody>
-                <!-- ko if: $parentContext.$parent.SubTotals().length == 1 && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
-                <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
-                    <tr class="sub-total">
-                        <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() -->
-                            <td></td>
-                        <!-- /ko -->
-                        <!-- ko foreach: Items -->
-                        <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
-                        <td data-bind="style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : 'right'}">
-                            <div data-bind="style: {'width': fieldWidth }">
-                                <span class="preserve-space" data-bind="html: formattedVal"></span>
-                            </div>
-                        </td>
-                        <!-- /ko -->
-                        <!-- /ko -->
-                    </tr>
-                </tfoot>
+                 <!-- ko if: nonInlineSubReports().length > 0 -->
+            <tr>
+                <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
+                    <div data-bind="foreach: nonInlineSubReports">
+                        <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
+                    </div>
+                </td>
+            </tr>
+            <!-- /ko -->
                 <!-- /ko -->
-            </table>
-        </div></script>
+                <!-- /ko-->
+            </tbody>
+            <!-- ko if: $parentContext.$parent.SubTotals().length == 1 && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
+            <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
+                <tr class="sub-total">
+                    <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() -->
+                        <td></td>
+                    <!-- /ko -->
+                    <!-- ko foreach: Items -->
+                    <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
+                    <td data-bind="style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : 'right'}">
+                        <div data-bind="style: {'width': fieldWidth }">
+                            <span class="preserve-space" data-bind="html: formattedVal"></span>
+                        </div>
+                    </td>
+                    <!-- /ko -->
+                    <!-- /ko -->
+                </tr>
+            </tfoot>
+            <!-- /ko -->
+        </table>
+    </div>
+</script>
     <input type="hidden" id="exportId" value="<%= Session["ExportId"] %>" />
 
     <script src="../Scripts/jquery-3.7.1.min.js"></script>
@@ -459,240 +460,250 @@
                 getTimeZonesUrl: svc + "GetAllTimezones",
                 chartSize: { width: 800, height: 450 }
             });
-            vm.pager.pageSize(10000);
-            vm.adminMode(true);
-            ko.applyBindings(vm);
-            vm.headerDesigner.selectedHeaderClientId(data.clientId);
-            vm.footerDesigner.selectedFooterClientId(data.clientId);
-            function checkReportsLoaded() {
-                var allReportsLoaded = true;
+        vm.pager.pageSize(10000);
+        vm.adminMode(true);
+        ko.applyBindings(vm);
+        
+        vm.headerDesigner.selectedHeaderClientId(data.clientId);
+        vm.footerDesigner.selectedFooterClientId(data.clientId);
 
-                if (vm.ReportResult && vm.ReportResult() && vm.ReportResult().ReportData) {
-                    var reportData = vm.ReportResult().ReportData;
+        function checkReportsLoaded() {
+            var allReportsLoaded = true;
 
-                    if (reportData && reportData() && reportData().Rows) {
-                        var rows = ko.unwrap(reportData().Rows);
+            if (vm.ReportResult && vm.ReportResult() && vm.ReportResult().ReportData) {
+                var reportData = vm.ReportResult().ReportData;
 
-                        _.forEach(rows, function (row) {
-                            if (row.subReportsRan) {
-                                var subReports = ko.unwrap(row.subReportsRan);
-                                _.forEach(subReports, function (subReport) {
-                                    if (subReport.ReportResult && subReport.ReportResult()) {
-                                        if (!subReport.ReportResult().ReportData || !subReport.ReportResult().ReportData()) {
-                                            allReportsLoaded = false;
-                                        }
-                                    } else {
+                if (reportData && reportData() && reportData().Rows) {
+                    var rows = ko.unwrap(reportData().Rows);
+
+                    _.forEach(rows, function(row) {
+                        if (row.subReportsRan) {
+                            var subReports = ko.unwrap(row.subReportsRan);
+                            _.forEach(subReports, function(subReport) {
+                                if (subReport.ReportResult && subReport.ReportResult()) {
+                                    if (!subReport.ReportResult().ReportData || !subReport.ReportResult().ReportData()) {
                                         allReportsLoaded = false;
                                     }
-                                });
-                            }
-                        });
-                    }
-                }
-
-                return allReportsLoaded;
-            }
-
-            var checkInterval;
-            var placeholdersReady = false;
-            function showReportWhenReady() {
-                if (placeholdersReady && checkReportsLoaded()) {
-                    $('.report-inner').show();
-                    if (checkInterval) {
-                        clearInterval(checkInterval);
-                    }
-                }
-            }
-            vm.LoadReport(<%= Model.ReportId %>, true,'<%= Model.ReportSeries %>').done(function () {
-                    var headerLoaded = vm.useReportHeader() ? vm.headerDesigner.init(true) : null;
-                    var footerLoaded = vm.useReportFooter() ? vm.footerDesigner.init(true) : null;
-                    var settingsLoaded = vm.loadAppSettings ? vm.loadAppSettings() : null;
-
-                    // The header/footer html is fetched over ajax, so wait for it
-                    $.when(headerLoaded, footerLoaded, settingsLoaded).always(function () {
-                        try {
-                            var userName = vm.currentUserName || vm.currentUserId || '';
-                            var userRoles = vm.currentUserRole || '';
-                            var locale = vm.resolveDateLocale ? vm.resolveDateLocale() : 'en-US';
-                            var now = new Date();
-                            var dateStr = now.toLocaleDateString(locale);
-                            var timeStr = now.toLocaleTimeString(locale);
-                            var nowStr = dateStr + ' ' + timeStr;
-                            var reportName = (vm.ReportName && vm.ReportName()) ? vm.ReportName() : '';
-
-                            function substitutePlaceholders(html) {
-                                if (!html) return html;
-                                return html
-                                    .replace(/\{current\.user\}/g, userName)
-                                    .replace(/\{CURRENTUSER\}/g, userName)
-                                    .replace(/\{current\.user\.roles\}/g, userRoles)
-                                    .replace(/\{CURRENTUSERROLES\}/g, userRoles)
-                                    .replace(/\{current\.datetime\}/g, nowStr)
-                                    .replace(/\{CURRENTDATETIME\}/g, nowStr)
-                                    .replace(/\{current\.date\}/g, dateStr)
-                                    .replace(/\{current\.time\}/g, timeStr)
-                                    .replace(/\{report\.name\}/g, reportName);
-                            }
-                            function substituteInDocPagePlaceholders(html) {
-                                if (!html) return html;
-                                return html
-                                    .replace(/\{page\.number\}/g, '1')
-                                    .replace(/\{page\.total\}/g, '1');
-                            }
-
-                            var $h = $('#report-header');
-                            var $f = $('#report-footer');
-
-                            var rawHeaderHtml = $h.length ? substitutePlaceholders($h.html()) : '';
-                            var rawFooterHtml = $f.length ? substitutePlaceholders($f.html()) : '';
-
-                            if ($h.length) { $h.html(substituteInDocPagePlaceholders(substitutePlaceholders($h.html()))); }
-                            if ($f.length) { $f.html(substituteInDocPagePlaceholders(substitutePlaceholders($f.html()))); }
-
-                            window.reportHeaderHtml = rawHeaderHtml;
-                            window.reportFooterHtml = rawFooterHtml;
-                            window.reportHeaderIncludeOnEveryPage = vm.headerDesigner && vm.headerDesigner.IncludeOnEveryPage ? vm.headerDesigner.IncludeOnEveryPage() : false;
-                            window.reportFooterIncludeOnEveryPage = vm.footerDesigner && vm.footerDesigner.IncludeOnEveryPage ? vm.footerDesigner.IncludeOnEveryPage() : false;
-
-                            function measureHtmlHeightInches(html) {
-                                if (!html) return 0;
-                                var d = document.createElement('div');
-                                d.style.position = 'absolute';
-                                d.style.visibility = 'hidden';
-                                d.style.left = '-99999px';
-                                d.style.top = '0';
-                                d.style.width = '7.5in';
-                                d.innerHTML = html;
-                                document.body.appendChild(d);
-                                var px = d.offsetHeight;
-                                d.parentNode.removeChild(d);
-                                return px / 96.0;
-                            }
-                            window.reportHeaderHeightIn = $h.length ? measureHtmlHeightInches($h.html()) : 0;
-                            window.reportFooterHeightIn = $f.length ? measureHtmlHeightInches($f.html()) : 0;
-                        } catch (e) { console.log('placeholder substitution failed', e); }
-                        placeholdersReady = true;
-                    });
-
-                    if (vm.useStoredProc()) {
-                        setTimeout(function () {
-                            vm.printReport();
-                        }, 1000);
-                    } else {
-                        vm.printReport();
-                    }
-
-                    checkInterval = setInterval(showReportWhenReady, 500);
-
-                    // Safety net only. 
-                    setTimeout(function () {
-                        $('.report-inner').show();
-                        if (checkInterval) {
-                            clearInterval(checkInterval);
+                                } else {
+                                    allReportsLoaded = false;
+                                }
+                            });
                         }
-                    }, 15000);
-                });
+                    });
+                }
+            }
 
-                $(window).resize(function () {
-                    vm.DrawChart();
-                });
+            return allReportsLoaded;
+        }
 
+        var checkInterval;
+        var placeholdersReady = false;
+        function showReportWhenReady() {
+            if (placeholdersReady && checkReportsLoaded()) {
+                $('.report-inner').show();
+                if (checkInterval) {
+                    clearInterval(checkInterval);
+                }
+            }
+        }
+        // FIX: load appSettings FIRST, then LoadReport
+        vm.loadAppSettings().always(function () {
+        vm.LoadReport(<%= Model.ReportId %>, true,'<%= Model.ReportSeries %>').done(function () {
+            // Resolve the per-report header (chosen named header / custom / don't-use) not just the default.
+            var headerLoaded = vm.initReportHeaderForRun ? vm.initReportHeaderForRun() : (vm.useReportHeader() ? vm.headerDesigner.init(true) : null);
+            var footerLoaded = vm.useReportFooter() ? vm.footerDesigner.init(true) : null;
+
+            // The header/footer html is fetched over ajax, so wait for it
+            $.when(headerLoaded, footerLoaded).always(function () {
+                try {
+                    var userName = vm.currentUserName || vm.currentUserId || '';
+                    var userRoles = vm.currentUserRole || '';
+                    var locale = vm.resolveDateLocale ? vm.resolveDateLocale() : 'en-US';
+                    var now = new Date();
+                    var dateStr = now.toLocaleDateString(locale);
+                    var timeStr = now.toLocaleTimeString(locale);
+                    var nowStr = dateStr + ' ' + timeStr;
+                    var reportName = (vm.ReportName && vm.ReportName()) ? vm.ReportName() : '';
+
+                    function substitutePlaceholders(html) {
+                        if (!html) return html;
+                        return html
+                            .replace(/\{current\.user\}/g, userName)
+                            .replace(/\{CURRENTUSER\}/g, userName)
+                            .replace(/\{current\.user\.roles\}/g, userRoles)
+                            .replace(/\{CURRENTUSERROLES\}/g, userRoles)
+                            .replace(/\{current\.datetime\}/g, nowStr)
+                            .replace(/\{CURRENTDATETIME\}/g, nowStr)
+                            .replace(/\{current\.date\}/g, dateStr)
+                            .replace(/\{current\.time\}/g, timeStr)
+                            .replace(/\{report\.name\}/g, reportName);
+                    }
+                    function substituteInDocPagePlaceholders(html) {
+                        if (!html) return html;
+                        return html
+                            .replace(/\{page\.number\}/g, '1')
+                            .replace(/\{page\.total\}/g, '1');
+                    }
+
+                    var $h = $('#report-header');
+                    var $f = $('#report-footer');
+
+                    function outerHtmlWithPlaceholders($el) {
+                        if (!$el.length) return '';
+                        var $clone = $el.clone();
+                        $clone.html(substitutePlaceholders($el.html()));
+                        return $clone.prop('outerHTML');
+                    }
+                    var rawHeaderHtml = outerHtmlWithPlaceholders($h);
+                    var rawFooterHtml = outerHtmlWithPlaceholders($f);
+
+                    if ($h.length) { $h.html(substituteInDocPagePlaceholders(substitutePlaceholders($h.html()))); }
+                    if ($f.length) { $f.html(substituteInDocPagePlaceholders(substitutePlaceholders($f.html()))); }
+
+                    window.reportHeaderHtml = rawHeaderHtml;
+                    window.reportFooterHtml = rawFooterHtml;
+                    window.reportHeaderIncludeOnEveryPage = vm.headerDesigner && vm.headerDesigner.IncludeOnEveryPage ? vm.headerDesigner.IncludeOnEveryPage() : false;
+                    window.reportFooterIncludeOnEveryPage = vm.footerDesigner && vm.footerDesigner.IncludeOnEveryPage ? vm.footerDesigner.IncludeOnEveryPage() : false;
+
+                    function measureHtmlHeightInches(html) {
+                        if (!html) return 0;
+                        var d = document.createElement('div');
+                        d.style.position = 'absolute';
+                        d.style.visibility = 'hidden';
+                        d.style.left = '-99999px';
+                        d.style.top = '0';
+                        d.style.width = '7.5in';
+                        d.innerHTML = html;
+                        document.body.appendChild(d);
+                        var px = d.offsetHeight;
+                        d.parentNode.removeChild(d);
+                        return px / 96.0;
+                    }
+                    window.reportHeaderHeightIn = $h.length ? measureHtmlHeightInches($h.html()) : 0;
+                    window.reportFooterHeightIn = $f.length ? measureHtmlHeightInches($f.html()) : 0;
+                } catch (e) { console.log('placeholder substitution failed', e); }
+                placeholdersReady = true;
             });
+
+            if (vm.useStoredProc()) {
+                setTimeout(function(){
+                    vm.printReport();
+                }, 1000);
+            } else {
+                vm.printReport();
+            }
+
+            checkInterval = setInterval(showReportWhenReady, 500);
+
+            // Safety net only. 
+            setTimeout(function () {
+                $('.report-inner').show();
+                if (checkInterval) {
+                    clearInterval(checkInterval);
+                }
+            }, 15000);
+        });
+        });
+        $(window).resize(function(){
+            vm.DrawChart();
+        });
+
+        });
     </script>
 
- <script type="text/html" id="filter-details-summary">
-    <!-- ko if: typeof ShowFilterDetails === 'function' && ShowFilterDetails() && typeof filterDetailsSummary === 'function' && filterDetailsSummary() -->
-    <div style="border-left: 2px solid #adb5bd; padding-top: 4px; padding-left: 3px; padding-bottom: 4px; font-size: 0.8rem;">
-        <i class="fa fa-filter"></i>
-        <b>Filters:</b>
-        <span data-bind="html: filterDetailsSummary()"></span>
-    </div>
-    <!-- /ko -->
-</script>
+    <script type="text/html" id="filter-details-summary">
+        <!-- ko if: typeof ShowFilterDetails === 'function' && ShowFilterDetails() && typeof filterDetailsSummary === 'function' && filterDetailsSummary() -->
+        <div style="border-left: 2px solid #adb5bd; padding-top: 4px; padding-left: 3px; padding-bottom: 4px; font-size: 0.8rem;">
+            <i class="fa fa-filter"></i>
+            <b>Filters:</b>
+            <span data-bind="html: filterDetailsSummary()"></span>
+        </div>
+        <!-- /ko -->
+    </script>
 
-<script type="text/html" id="fly-filter-template">
-    <div data-bind="visible: FlyFilters().length>0" style="padding-left: 30px; padding-right: 30px; padding-top: 20px">
-        <b>Filters</b>
-        <div class="">
-            <!-- ko foreach: FlyFilters -->
-            <div class="row">
-                <div class="col-sm-5 col-xs-4">
-                    <div data-bind="with: Field">
+    <script type="text/html" id="fly-filter-template">
+        <div data-bind="visible: FlyFilters().length>0" style="padding-left: 30px; padding-right: 30px; padding-top: 20px">
+            <b>Filters</b>
+            <div class="">
+                <!-- ko foreach: FlyFilters -->
+                <div class="row">
+                    <div class="col-sm-5 col-xs-4">
+                        <div data-bind="with: Field">
+                            <div data-bind="if: $parent.Apply">
+                                <label>
+                                    <span data-bind="text: selectedFilterName"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div data-bind="with: Field" class="col-sm-2 col-xs-3">
+                        <div class="form-group" data-bind="if: $parent.Apply">
+                            <span data-bind="text: $parent.Operator"></span>
+                        </div>
+                    </div>
+                    <div data-bind="with: Field" class="col-sm-5 col-xs-5">
                         <div data-bind="if: $parent.Apply">
-                            <label>
-                                <span data-bind="text: selectedFilterName"></span>
-                            </label>
+                            <div data-bind="template: 'report-filter', data: $data"></div>
                         </div>
                     </div>
                 </div>
-                <div data-bind="with: Field" class="col-sm-2 col-xs-3">
-                    <div class="form-group" data-bind="if: $parent.Apply">
-                        <span data-bind="text: $parent.Operator"></span>
-                    </div>
-                </div>
-                <div data-bind="with: Field" class="col-sm-5 col-xs-5">
-                    <div data-bind="if: $parent.Apply">
-                        <div data-bind="template: 'report-filter', data: $data"></div>
-                    </div>
-                </div>
+                <!-- /ko -->
+            </div>
+        </div>
+    </script>
+
+
+    <script type="text/html" id="report-filter">
+        <div class="form-group">
+            <!-- ko if: !hasForeignKey-->
+            <!-- ko if: fieldType=='DateTime'-->
+            <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
+            <span data-bind="text: $parent.Value"></span>
+            <!-- /ko -->
+            <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
+            From &nbsp;
+            <span data-bind="text: $parent.Value"></span>
+            to &nbsp;
+            <span data-bind="text: $parent.Value2"></span>
+            <!-- /ko -->
+            <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
+            <span data-bind="text: $parent.Value"></span>
+            <div data-bind="if: $parent.Value().indexOf('Today +') >= 0 || $parent.Value().indexOf('Today -') >= 0">
+                <span type="number" style="width: 80px;" data-bind="text: $parent.Value2"></span><span> days</span>
             </div>
             <!-- /ko -->
+            <!-- /ko -->
+            <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
+            <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
+            <span type="number" data-bind="text: $parent.Value, disable: $parent.Operator() == 'is default'"></span>
+            <!-- /ko -->
+            <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
+            From &nbsp;
+            <span type="number" data-bind="text: $parent.Value"></span>
+            to &nbsp;
+            <span type="number" data-bind="text: $parent.Value2"></span>
+            <!-- /ko -->
+            <!-- /ko -->
+            <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
+            <span data-bind="text: $parent.Value== '0' ? 'No' : 'Yes'">
+            </span>
+            <!-- /ko -->
+            <!-- ko if: ['Int','Money','Float','Double','Date','DateTime','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
+            <span type="text" data-bind="text: $parent.Value, disable: $parent.Operator() == 'is default'"></span>
+            <!-- /ko -->
+            <!-- /ko -->
+            <!-- ko if: hasForeignKey && $parent.Operator() != 'all' -->
+            <!-- ko if: hasForeignParentKey && $parent.showParentFilter() -->
+            <span data-bind="text: $parent.ParentIn"></span>
+            <!-- /ko -->
+            <!-- ko if: $parent.Operator()=='='-->
+            <span data-bind="text: $parent.Value"></span>
+            <!-- /ko -->
+            <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
+            <span data-bind="text: $parent.ValueIn"></span>
+            <!-- /ko -->
+            <!-- /ko -->
         </div>
-    </div>
-</script>
-
-
-<script type="text/html" id="report-filter">
-    <div class="form-group">
-        <!-- ko if: !hasForeignKey-->
-        <!-- ko if: fieldType=='DateTime'-->
-        <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 -->
-        <span data-bind="text: $parent.Value"></span>
-        <!-- /ko -->
-        <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
-        From &nbsp;
-        <span data-bind="text: $parent.Value"></span>
-        to &nbsp;
-        <span data-bind="text: $parent.Value2"></span>
-        <!-- /ko -->
-        <!-- ko if: ['range'].indexOf($parent.Operator()) != -1 -->
-        <span data-bind="text: $parent.Value"></span>
-        <div data-bind="if: $parent.Value().indexOf('Today +') >= 0 || $parent.Value().indexOf('Today -') >= 0">
-            <span type="number" style="width: 80px;" data-bind="text: $parent.Value2"></span><span> days</span>
-        </div>
-        <!-- /ko -->
-        <!-- /ko -->
-        <!-- ko if: ['Int','Money','Float','Double'].indexOf(fieldType) != -1 -->
-        <!-- ko if: ['=','>','<','>=','<=', 'not equal'].indexOf($parent.Operator()) != -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-        <span type="number" data-bind="text: $parent.Value, disable: $parent.Operator() == 'is default'"></span>
-        <!-- /ko -->
-        <!-- ko if: ['between'].indexOf($parent.Operator()) != -1 -->
-        From &nbsp;
-        <span type="number" data-bind="text: $parent.Value"></span>
-        to &nbsp;
-        <span type="number" data-bind="text: $parent.Value2"></span>
-        <!-- /ko -->
-        <!-- /ko -->
-        <!-- ko if: fieldType=='Boolean' && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-        <span data-bind="text: $parent.Value== '0' ? 'No' : 'Yes'">
-        </span>
-        <!-- /ko -->
-        <!-- ko if: ['Int','Money','Float','Double','Date','DateTime','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-        <span type="text" data-bind="text: $parent.Value, disable: $parent.Operator() == 'is default'"></span>
-        <!-- /ko -->
-        <!-- /ko -->
-        <!-- ko if: hasForeignKey && $parent.Operator() != 'all' -->
-        <!-- ko if: hasForeignParentKey && $parent.showParentFilter() -->
-        <span data-bind="text: $parent.ParentIn"></span>
-        <!-- /ko -->
-        <!-- ko if: $parent.Operator()=='='-->
-        <span data-bind="text: $parent.Value"></span>
-        <!-- /ko -->
-        <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-        <span data-bind="text: $parent.ValueIn"></span>
-        <!-- /ko -->
-        <!-- /ko -->
-    </div>
-</script>
+    </script>
 </body>
 </html>

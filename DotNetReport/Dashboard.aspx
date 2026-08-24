@@ -169,7 +169,7 @@
                             <span>Manage</span>
                         </button>
                         <ul class="dropdown-menu small">
-                            <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
+                            <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode()) && (CanSaveReports() || adminMode())">
                                 <a href="#" class="dropdown-item" data-bind="click: function() { newReport() }" title="Create a new report and add it to the Dashboard">
                                     <span class="fa fa-plus"></span> Add New Report
                                 </a>
@@ -180,7 +180,7 @@
                                     <span>Edit Dashboard</span>
                                 </button>
                             </li>
-                            <li>
+                            <li data-bind="visible: CanCreateDashboards() || adminMode()">
                                 <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
                                     <i class="fa fa-dashboard"></i>
                                     <span>Create a New Dashboard</span>
@@ -209,6 +209,12 @@
                                 <button class="dropdown-item" data-bind="click: openDashboardScheduleModal">
                                     <i class="fa fa-hourglass"></i>
                                     <span>Schedule</span>
+                                </button>
+                            </li>                            
+                            <li data-bind="visible: hasDashboard() && adminMode()">
+                                <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
+                                    <i class="fa fa-key"></i>
+                                    <span>Manage Access</span>
                                 </button>
                             </li>
                         </ul>
@@ -269,9 +275,9 @@
     </div>
 </div>
 
-<div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 ">
+<div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 && (CanCreateDashboards() || adminMode())">
     No Dashboards yet. Click below to Start<br />
-    <button class="btn btn-lg btn-primary" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
+    <button class="btn btn-lg btn-primary" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
 </div>
 
 <div class="modal modal-fullscreen" id="add-dashboard-modal" tabindex="-1" aria-labelledby="add-dashboard-modal-label" aria-hidden="true">
@@ -331,9 +337,10 @@
                         <div data-bind="foreach: $parent.reportsAndFolders">
                             <div class="list-group-item">
                                 <a role="button" class="d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }" style="text-decoration: none; font-weight: normal;">
-                                    <div class="d-flex align-items-center">
+                                    <div class="d-flex align-items-center" data-bind="style: { paddingLeft: (depth * 20) + 'px' }">
                                         <i class="fa fa-folder me-2 text-secondary"></i>
                                         <span data-bind="text: folder"></span>
+                                        <span class="text-muted small ms-2" data-bind="visible: depth > 0, text: folderPath"></span>
                                     </div>
                                     <i class="fa fa-chevron-down"></i>
                                 </a>
@@ -390,7 +397,7 @@
                                 <span class="fa fa-filter"></span> Filter
                             </a>
                         </li>
-                        <li>
+                        <li data-bind="visible: CanEdit()">
                             <a href="#" class="dropdown-item" data-bind="click: openReport">
                                 <span class="fa fa-pencil"></span> Edit
                             </a>
@@ -489,7 +496,7 @@
                     <div data-bind="template: 'report-template', data: $data"></div>
                 </div>
             </div>
-            <div class="form-inline" data-bind="visible: !noDashboardBorders()">
+            <div class="form-inline report-total" data-bind="visible: !noDashboardBorders()">
                 <div class="small" data-bind="with: pager">
                     <div class="form-group pull-left total-records" data-bind="visible: totalRecords()>1 && $parent.ReportType() != 'Single'">
                         <span data-bind="text: 'Total Records: ' + totalRecords()"></span>

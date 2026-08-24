@@ -509,14 +509,15 @@
                 }
             }
         }
-
+        // FIX: load appSettings FIRST, then LoadReport
+        vm.loadAppSettings().always(function () {
         vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
-            var headerLoaded = vm.useReportHeader() ? vm.headerDesigner.init(true) : null;
+            // Resolve the per-report header (chosen named header / custom / don't-use) not just the default.
+            var headerLoaded = vm.initReportHeaderForRun ? vm.initReportHeaderForRun() : (vm.useReportHeader() ? vm.headerDesigner.init(true) : null);
             var footerLoaded = vm.useReportFooter() ? vm.footerDesigner.init(true) : null;
-            var settingsLoaded = vm.loadAppSettings ? vm.loadAppSettings() : null;
 
             // The header/footer html is fetched over ajax, so wait for it
-            $.when(headerLoaded, footerLoaded, settingsLoaded).always(function () {
+            $.when(headerLoaded, footerLoaded).always(function () {
                 try {
                     var userName = vm.currentUserName || vm.currentUserId || '';
                     var userRoles = vm.currentUserRole || '';
@@ -550,8 +551,14 @@
                     var $h = $('#report-header');
                     var $f = $('#report-footer');
 
-                    var rawHeaderHtml = $h.length ? substitutePlaceholders($h.html()) : '';
-                    var rawFooterHtml = $f.length ? substitutePlaceholders($f.html()) : '';
+                    function outerHtmlWithPlaceholders($el) {
+                        if (!$el.length) return '';
+                        var $clone = $el.clone();
+                        $clone.html(substitutePlaceholders($el.html()));
+                        return $clone.prop('outerHTML');
+                    }
+                    var rawHeaderHtml = outerHtmlWithPlaceholders($h);
+                    var rawFooterHtml = outerHtmlWithPlaceholders($f);
 
                     if ($h.length) { $h.html(substituteInDocPagePlaceholders(substitutePlaceholders($h.html()))); }
                     if ($f.length) { $f.html(substituteInDocPagePlaceholders(substitutePlaceholders($f.html()))); }
@@ -599,10 +606,10 @@
                 }
             }, 15000);
         });
-
-                $(window).resize(function () {
-                    vm.DrawChart();
-                });
+        });
+        $(window).resize(function(){
+            vm.DrawChart();
+        });
 
         });
     </script>
