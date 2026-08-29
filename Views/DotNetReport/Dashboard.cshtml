@@ -184,6 +184,12 @@
                                     <span>Refresh</span>
                                 </button>
                             </li>
+                            <li data-bind="visible: hasDashboard()">
+                                <button class="dropdown-item" data-bind="click: resetChartSizes" title="Reset any charts you resized so they fit their widget again">
+                                    <i class="fa fa-arrows-alt"></i>
+                                    <span>Autofit Chart Sizes</span>
+                                </button>
+                            </li>
                             <li><hr class="dropdown-divider"></li>
                             <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
                                 <button class="dropdown-item" data-bind="click: addLineSeparator">

@@ -9500,7 +9500,10 @@ var reportViewModel = function (options) {
 				var appliedWidth = savedWidth > 0 ? Math.min(savedWidth, containerWidth) + 'px' : '100%';
 				var appliedHeight;
 				if (options.arrangeDashboard && !self.isExpanded()) {
-					appliedHeight = dimensions.height || '450px';
+					var savedHeight = parseInt(dimensions.height || 0);
+					var maxHeight = parentElementHeight > 10 ? parentElementHeight - 10 : 0;
+					if (savedHeight > 0 && maxHeight > 0) savedHeight = Math.min(savedHeight, maxHeight);
+					appliedHeight = savedHeight > 0 ? savedHeight : '450px';
 				} else {
 					appliedWidth = dimensions.fullWidth ? (parseInt(dimensions.fullWidth) > 0 ? Math.min(parseInt(dimensions.fullWidth), containerWidth) + 'px' : '100%') : appliedWidth;
 					appliedHeight = dimensions.fullHeight || '450px';
@@ -13254,6 +13257,17 @@ var dashboardViewModel = function (options) {
 			});
 		});
 	};
+
+	self.resetChartSizes = function () {
+		_.forEach(self.reports(), function (x) {
+			var id = x.ReportID();
+			try { localStorage.removeItem('chart_dimensions_' + id); } catch (e) { }
+			var el = document.getElementById('chart_div_' + id);
+			if (el) { el.style.width = ''; el.style.height = ''; el.style.maxWidth = ''; }
+		});
+		self.drawChart();
+		toastr.success('Chart sizes reset to fit their widgets');
+	};
 	self.getCardBackground = function (item) {
 		if (!item) return "";
 		if (item.ReportResult()?.ReportData()?.BackColor) {
@@ -13710,11 +13724,15 @@ var dashboardViewModel = function (options) {
 			height: data.height || 1,
 			deleteText: function () {
 				const itemId = this.id;
-				self.deleteDashboardWidget(itemId).done(function () {
-					self.textWidgets.remove(function (s) {
-						return s.id === itemId;
+				bootbox.confirm("Are you sure you would like to delete this Text?", function (r) {
+					if (!r) return;
+					self.deleteDashboardWidget(itemId).done(function () {
+						self.textWidgets.remove(function (s) {
+							return s.id === itemId;
+						});
+						refreshGrid(self.reports(), false);
+						setTimeout(function () { self.drawChart(); }, 100);
 					});
-					refreshGrid(self.reports(), false);
 				});
 			}
 		}
