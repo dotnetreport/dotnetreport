@@ -148,7 +148,8 @@ namespace ReportBuilder.Web.Jobs
                     : TimeZoneInfo.Local;
 
             var chron = new CronExpression(cron);
-            var lastRun = !String.IsNullOrEmpty(lastRunFromDb) ? Convert.ToDateTime(lastRunFromDb) : DateTimeOffset.UtcNow.AddMinutes(-10);
+            var utcNow = currentTimeToTest.HasValue ? DateTime.SpecifyKind(currentTimeToTest.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+            var lastRun = !String.IsNullOrEmpty(lastRunFromDb) ? Convert.ToDateTime(lastRunFromDb) : new DateTimeOffset(utcNow).AddMinutes(-10);
             var nextRun = chron.GetTimeAfter(lastRun);
 
             if (!String.IsNullOrEmpty(timeZoneId))
@@ -160,9 +161,17 @@ namespace ReportBuilder.Web.Jobs
 
                 nextRun = chron.GetTimeAfter(lastRun);
             }
+
+            // A stale LastRun puts the next occurrence in the past, where it can never fire again.
+            var anchor = lastRun;
+            if (scheduleStart.HasValue && anchor < scheduleStart.Value) anchor = scheduleStart.Value;
+            var nowInTargetTz = TimeZoneInfo.ConvertTime(new DateTimeOffset(utcNow), targetTimeZone);
+            if (anchor < nowInTargetTz.AddMinutes(-10)) anchor = nowInTargetTz.AddMinutes(-10);
+            if (anchor != lastRun) nextRun = chron.GetTimeAfter(anchor);
+
             var _nextRun = (nextRun.HasValue ? nextRun.Value.ToLocalTime().DateTime : (DateTime?)null);
 
-            DateTime currentTimeInTargetTz = TimeZoneInfo.ConvertTime(DateTime.UtcNow, targetTimeZone);
+            DateTime currentTimeInTargetTz = TimeZoneInfo.ConvertTime(utcNow, targetTimeZone);
 
             bool shouldRun = false;
             if ((scheduleStart.HasValue && _nextRun.HasValue && _nextRun < scheduleStart.Value) ||
