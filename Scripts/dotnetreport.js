@@ -10959,7 +10959,9 @@ var reportViewModel = function (options) {
 		});
 		self.subReports(loadedSubReports);
 		self.customJoins(reportSettings.customJoins || []);
-		self.baseTableIdOverride(reportSettings.customJoinsBaseTableId || null);
+		var savedBaseTableId = reportSettings.customJoinsBaseTableId || null;
+		if (savedBaseTableId) self.joinBaseTables([{ id: parseInt(savedBaseTableId), name: '' }]);
+		self.baseTableIdOverride(savedBaseTableId ? parseInt(savedBaseTableId) : null);
 		if (self.subReports().length <= 0) {
 			self.DefaultPageSize(reportSettings.DefaultPageSize || 30);
 			self.changePageSize(self.DefaultPageSize() != '30');
