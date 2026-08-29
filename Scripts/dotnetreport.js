@@ -1549,6 +1549,13 @@ function attachFilterLookup(options, field, filter) {
 		}
 	};
 	setTimeout(trySetupLookup, 100);
+
+	if (ko.isObservable(filter.Operator) && !filter._lookupAttachSub) {
+		filter._lookupAttachSub = filter.Operator.subscribe(function () {
+			attempts = 0;
+			setTimeout(trySetupLookup, 100);
+		});
+	}
 }
 
 var reportViewModel = function (options) {
