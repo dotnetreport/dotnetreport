@@ -10939,14 +10939,14 @@ var reportViewModel = function (options) {
 		self.PivotColumns(reportSettings.PivotColumns || null);
 		self.PivotColumnsWidth(reportSettings.PivotColumnsWidth || null);
 		self.reportHtml(decodeURIComponent(reportSettings.reportHtml));
-		if (report.HideReportHeader || reportSettings.ReportHeaderId === -1) {
-			self.ReportHeaderId(-1);
-		} else {
-			self.ReportHeaderId(reportSettings.ReportHeaderId || 0);
-		}
+		var savedReportHeaderId = (report.HideReportHeader || reportSettings.ReportHeaderId === -1)
+			? -1 : (reportSettings.ReportHeaderId || 0);
+		self.ReportHeaderId(savedReportHeaderId);
 		self.UseCustomReportHeader(reportSettings.UseCustomReportHeader === true);
 		self.customReportHeaderHtml(decodeURIComponent(reportSettings.CustomReportHeaderHtml || ''));
-		self.loadReportHeadersList();
+		self.loadReportHeadersList().always(function () {
+			if (self.ReportHeaderId() !== savedReportHeaderId) self.ReportHeaderId(savedReportHeaderId);
+		});
 		if (self.UseCustomReportHeader()) { setTimeout(self.toggleCustomReportHeader, 0); }
 		self.cardView(reportSettings.cardView === true ? true : false);
 		self.dontGroupCustom(reportSettings.dontGroupCustom === true ? true : false);
