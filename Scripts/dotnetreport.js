@@ -13244,7 +13244,13 @@ var dashboardViewModel = function (options) {
 	self.drawChart = function () {
 		_.forEach(self.reports(), function (x) {
 			x.skipDraw = false;
-			x.DrawChart();
+			var data = null;
+			try { data = x.ReportResult().ReportData(); } catch (e) { }
+			if (data) { x.DrawChart(); return; }
+			if (x._drawOnDataSub || !x.ReportResult()) return;
+			x._drawOnDataSub = x.ReportResult().ReportData.subscribe(function (newData) {
+				if (newData) x.DrawChart();
+			});
 		});
 	};
 	self.getCardBackground = function (item) {
