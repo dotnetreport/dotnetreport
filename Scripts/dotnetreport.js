@@ -4371,7 +4371,8 @@ var reportViewModel = function (options) {
 		}
 		self.FlyFilters(flyfilters);
 		_.forEach(flyfilters, function (f) {
-			if (f.Field && f.Field()) attachFilterLookup(options, f.Field(), f);
+			var fld = typeof f.Field === 'function' ? f.Field() : f.Field;
+			if (fld) attachFilterLookup(options, fld, f);
 		});
 	}
 

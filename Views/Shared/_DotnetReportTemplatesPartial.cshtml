@@ -1173,7 +1173,7 @@
                                                 <th style="width: 30%">Filter</th>
                                                 <th style="width: 20%"></th>
                                                 <th style="width: 30%">Value</th>
-                                                <th style="width: 10%">Fly</th>  <!-- CHANGED: added label -->
+                                                <th style="width: 10%"></th>
                                         </tr>
                                 </thead>
                                 <tbody data-bind="foreach: Parameters">
@@ -1788,10 +1788,10 @@
 <script type="text/html" id="designer-choose-data">
     <div>
         <div class="pull-left btn-group btn-group-toggle" role="group" data-bind="if: ReportID() <= 0">
-            <label class="btn btn-sm btn-light active" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections">
+            <label class="btn btn-sm btn-light" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections" data-bind="css: { active: !useStoredProc() }">
                 <input type="radio" name="dataoption" id="table" checked data-bind="checked: useStoredProc, checkedValue: false"> Dynamic
             </label>
-            <label class="btn btn-sm btn-light active">
+            <label class="btn btn-sm btn-light" data-bind="css: { active: useStoredProc() }">
                 <input type="radio" name="dataoption" id="proc" value="1" data-bind="checked: useStoredProc, checkedValue: true"> Predefined
             </label>
         </div>
