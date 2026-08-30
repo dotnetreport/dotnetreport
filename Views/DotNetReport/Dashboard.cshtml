@@ -75,7 +75,8 @@
                         printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)",
                         loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")',
                         getDashbordsUrl: '@Url.Action("GetDashboards", "DotNetReportApi")',
-                        getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
+                        getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
+                        previewEmailListUrl: '@Url.Action("PreviewEmailList", "DotNetReportApi")'
                     });
 
                     vm.init().done(function () {

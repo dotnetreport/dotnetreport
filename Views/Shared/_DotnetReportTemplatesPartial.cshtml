@@ -1265,13 +1265,30 @@
             </div>
             <div class="mb-3">
                 <div class="row g-2 align-items-center">
-                    <label class="col-12 col-sm-3 col-form-label">Email to</label>
+                    <div class="col-12 col-sm-3">
+                        <label class="col-form-label pb-0">Email to</label>
+                        <div class="form-check small">
+                            <label class="form-check-label text-muted" title="Send to a saved Email List instead of typing addresses">
+                                <input class="form-check-input" type="checkbox" data-bind="checked: useEmailQuery" />
+                                Email List
+                            </label>
+                        </div>
+                    </div>
 
                     <div class="col-12 col-sm-6">
+                        <!-- ko ifnot: useEmailQuery -->
                         <input type="text" class="form-control"
                                data-bind="value: emailTo"
-                               placeholder="Enter Email Addresses separated by comma"
-                               required />
+                               placeholder="Enter Email Addresses separated by comma" />
+                        <!-- /ko -->
+                        <!-- ko if: useEmailQuery -->
+                        <div class="d-flex align-items-center gap-2">
+                            <select class="form-select" data-bind="options: emailQueries, optionsText: 'name', optionsValue: 'id', value: emailQueryId, optionsCaption: 'Choose Email List...'"></select>
+                            <button type="button" class="btn btn-light btn-sm text-nowrap"
+                                    data-bind="click: previewRecipients, enable: emailQueryId() > 0"
+                                    title="Show who this Email List currently returns">View</button>
+                        </div>
+                        <!-- /ko -->
                     </div>
 
                     <label class="col-6 col-sm-1 col-form-label">Format</label>

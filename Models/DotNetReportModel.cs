@@ -2732,6 +2732,46 @@ namespace ReportBuilder.Web.Models
             return (dt, qry, sqlFields);
         }
 
+        /// <summary>
+        /// Runs a saved data-driven query and returns its full result set. Callers pick the columns
+        /// they need, so the same stored query can feed recipient lists today and user, role or
+        /// client lists later without changing this contract.
+        /// </summary>
+        public static async Task<DataTable> GetDataDrivenQueryRows(string encryptedSql, string connectKey)
+        {
+            var sql = Decrypt(encryptedSql);
+            if (!IsReadOnlySelectSql(sql, out var reason))
+                throw new Exception("Query rejected: " + reason);
+
+            var connectionString = GetConnectionString(connectKey);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            return await Task.Run(() => databaseConnection.ExecuteQuery(connectionString, sql));
+        }
+
+        /// <summary>
+        /// Picks the email addresses out of a data-driven query result. Prefers a column named Email,
+        /// otherwise the first column. Blanks, duplicates and anything without an @ are dropped so one
+        /// bad row cannot fail the whole run.
+        /// </summary>
+        public static List<string> ExtractEmailRecipients(DataTable dt)
+        {
+            var recipients = new List<string>();
+            if (dt == null || dt.Columns.Count == 0) return recipients;
+
+            var emailColumn = dt.Columns.Cast<DataColumn>()
+                .FirstOrDefault(c => string.Equals(c.ColumnName, "Email", StringComparison.OrdinalIgnoreCase))
+                ?? dt.Columns[0];
+
+            foreach (DataRow row in dt.Rows)
+            {
+                var value = row[emailColumn]?.ToString()?.Trim();
+                if (string.IsNullOrEmpty(value) || value.IndexOf('@') < 0) continue;
+                if (!recipients.Contains(value, StringComparer.OrdinalIgnoreCase)) recipients.Add(value);
+            }
+
+            return recipients;
+        }
+
         private static decimal ComputeAggregateValue(string aggregate, IEnumerable<DataRow> rows, string columnName)
         {
             var rowList = rows.ToList();

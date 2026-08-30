@@ -38,6 +38,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 dataFilters: data.dataFilters,
                 runExportUrl: "/api/DotnetReportApi/",
                 getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
+                previewEmailListUrl: '@Url.Action("PreviewEmailList", "DotNetReportApi")',
                 printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)",
                 samePageOnRun: true
             });
@@ -1333,7 +1334,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <tbody data-bind="foreach: schedules">
                             <tr>
                                 <td data-bind="text: $parent.scheduleSummary($data)"></td>
-                                <td data-bind="text: EmailTo"></td>
+                                <td data-bind="text: $root.scheduleBuilder.emailToDisplay($data)"></td>
                                 <td data-bind="text: $parent.formatSummary($data)"></td>
                                 <td class="small text-muted" data-bind="text: $parent.filterSummary($data)"></td>
                                 <td class="text-end text-nowrap">

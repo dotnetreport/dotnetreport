@@ -12,6 +12,7 @@ namespace ReportBuilder.Web.Jobs
         public int Id { get; set; } = 0;
         public string Schedule { get; set; }
         public string EmailTo { get; set; }
+        public int? EmailQueryId { get; set; }
         public string LastRun { get; set; }
         public DateTime? NextRun { get; set; }
         public string UserId { get; set; }
@@ -432,36 +433,69 @@ namespace ReportBuilder.Web.Jobs
                                 DiagLog($"[{report.Name}] format={schedule.Format} builtFileBytes={(fileData?.Length ?? 0)}"
                                       + $"\n    CurrentDataFilters(before email)={DotNetReportHelper.CurrentDataFilters}");
 
-                                // send email
-                                var mail = new MailMessage
+                                // Recipients come from the schedule's saved query when one is set, otherwise EmailTo 
+                                List<string> recipients;
+                                try
                                 {
-                                    From = new MailAddress(fromEmail, fromName),
-                                    Subject = report.Name,
-                                    Body = $"Your scheduled report is attached.<br><br>{report.Description}",
-                                    IsBodyHtml = true
-                                };
-                                mail.To.Add(schedule.EmailTo);
-
-
-                                if (schedule.Format == "Link")
-                                {
-                                    mail.Body = $"Please click on the link below to Run your Report:<br><br><a href=\"{JobScheduler.WebAppRootUrl}/DotnetReport/Report?linkedreport=true&noparent=true&reportId={reportToRun.ReportId}\">{report.Description}</a>";
+                                    recipients = await ResolveRecipients(client, apiUrl, accountApiKey, databaseApiKey, clientId, schedule);
                                 }
-                                else if (fileData != null)
+                                catch (Exception rex)
                                 {
-                                    var attachment = new Attachment(new MemoryStream(fileData), report.Name + fileExt);
-                                    mail.Attachments.Add(attachment);
+                                    DiagLog($"[{report.Name}] schedule={schedule.Id} recipient query failed", rex);
+                                    await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: true, message: "Recipient query failed: " + rex.Message);
+                                    continue;
                                 }
 
-                                using (var smtpServer = new SmtpClient(mailServer))
+                                if (recipients.Count == 0)
                                 {
-                                    smtpServer.Port = 587;
-                                    smtpServer.Credentials = new System.Net.NetworkCredential(mailUserName, mailPassword);
-                                    //smtpServer.EnableSsl = true;
-                                    smtpServer.Send(mail);
+                                    DiagLog($"[{report.Name}] schedule={schedule.Id} recipient list is empty, nothing sent");
+                                    await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: false, message: "No recipients returned, nothing sent");
+                                    continue;
                                 }
 
-                                await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: false, message: "Sent");
+                                DiagLog($"[{report.Name}] schedule={schedule.Id} recipients={recipients.Count}");
+
+                                // One email per recipient so a single bad address cannot stop the rest, and every
+                                // delivery is logged individually.
+                                foreach (var recipient in recipients)
+                                {
+                                    try
+                                    {
+                                        var mail = new MailMessage
+                                        {
+                                            From = new MailAddress(fromEmail, fromName),
+                                            Subject = report.Name,
+                                            Body = $"Your scheduled report is attached.<br><br>{report.Description}",
+                                            IsBodyHtml = true
+                                        };
+                                        mail.To.Add(recipient);
+
+                                        if (schedule.Format == "Link")
+                                        {
+                                            mail.Body = $"Please click on the link below to Run your Report:<br><br><a href=\"{JobScheduler.WebAppRootUrl}/DotnetReport/Report?linkedreport=true&noparent=true&reportId={reportToRun.ReportId}\">{report.Description}</a>";
+                                        }
+                                        else if (fileData != null)
+                                        {
+                                            var attachment = new Attachment(new MemoryStream(fileData), report.Name + fileExt);
+                                            mail.Attachments.Add(attachment);
+                                        }
+
+                                        using (var smtpServer = new SmtpClient(mailServer))
+                                        {
+                                            smtpServer.Port = 587;
+                                            smtpServer.Credentials = new System.Net.NetworkCredential(mailUserName, mailPassword);
+                                            //smtpServer.EnableSsl = true;
+                                            smtpServer.Send(mail);
+                                        }
+
+                                        await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: false, message: "Sent", recipient: recipient);
+                                    }
+                                    catch (Exception sendEx)
+                                    {
+                                        DiagLog($"[{report.Name}] schedule={schedule.Id} send failed for {recipient}", sendEx);
+                                        await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: true, message: sendEx.Message, recipient: recipient);
+                                    }
+                                }
                             }
                         }
                         catch (Exception ex)
@@ -475,14 +509,37 @@ namespace ReportBuilder.Web.Jobs
             }
         }
 
-        private static async Task LogScheduleSent(HttpClient client, string apiUrl, string accountApiKey, string databaseApiKey, ReportSchedule schedule, ReportWithSchedule report, bool isDashboard, bool isError, string message)
+        private static async Task<List<string>> ResolveRecipients(HttpClient client, string apiUrl, string accountApiKey, string databaseApiKey, string clientId, ReportSchedule schedule)
+        {
+            if (schedule.EmailQueryId.GetValueOrDefault() <= 0)
+            {
+                return (schedule.EmailTo ?? "")
+                    .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => x.Trim())
+                    .Where(x => !string.IsNullOrEmpty(x))
+                    .ToList();
+            }
+
+            var resp = await client.GetAsync($"{apiUrl}/ReportApi/GetDataDrivenQuerySql?account={accountApiKey}&dataConnect={databaseApiKey}&id={schedule.EmailQueryId.Value}&clientId={clientId}&userId={schedule.UserId}");
+            resp.EnsureSuccessStatusCode();
+            var json = await resp.Content.ReadAsStringAsync();
+            var result = JsonConvert.DeserializeObject<dynamic>(json);
+            string encryptedSql = result?.sql;
+            string connectKey = result?.connectKey;
+            if (string.IsNullOrEmpty(encryptedSql)) throw new Exception("Recipient query returned no SQL");
+
+            var rows = await DotNetReportHelper.GetDataDrivenQueryRows(encryptedSql, connectKey);
+            return DotNetReportHelper.ExtractEmailRecipients(rows);
+        }
+
+        private static async Task LogScheduleSent(HttpClient client, string apiUrl, string accountApiKey, string databaseApiKey, ReportSchedule schedule, ReportWithSchedule report, bool isDashboard, bool isError, string message, string recipient = null)
         {
             try
             {
                 var itemId = isDashboard ? report.DashboardId : report.ReportId;
                 var itemName = System.Web.HttpUtility.UrlEncode(report.Name ?? "");
                 var format = System.Web.HttpUtility.UrlEncode(schedule.Format ?? "");
-                var sentTo = System.Web.HttpUtility.UrlEncode(schedule.EmailTo ?? "");
+                var sentTo = System.Web.HttpUtility.UrlEncode(recipient ?? schedule.EmailTo ?? "");
                 var msg = System.Web.HttpUtility.UrlEncode(message ?? "");
                 await client.GetAsync($"{apiUrl}/ReportApi/LogScheduleSent?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&itemId={itemId}&isDashboard={isDashboard}&itemName={itemName}&format={format}&sentTo={sentTo}&isError={isError}&message={msg}");
             }

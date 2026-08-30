@@ -24,6 +24,175 @@ var manageViewModel = function (options) {
 	self.onlyApi = ko.observable(options.onlyApi);
 	self.ChartDrillDownData = null;
 	self.activeProcedure = ko.observable();
+
+	self.emailQueries = new function () {
+		var q = this;
+		var validator = new validation();
+		function blank() {
+			return { id: ko.observable(0), name: ko.observable(''), description: ko.observable(''), clientId: ko.observable(''), queryType: ko.observable('EmailList'), sqlQuery: ko.observable('') };
+		}
+		q.queries = ko.observableArray([]);
+		q.queryTypes = [
+			{ value: 'EmailList', label: 'Subscription recipients' },
+			{ value: 'Users', label: 'User list' },
+			{ value: 'UserRoles', label: 'User role list' },
+			{ value: 'Clients', label: 'Client list' }
+		];
+		q.typeLabel = function (value) {
+			var match = _.find(q.queryTypes, { value: value || 'EmailList' });
+			return match ? match.label : (value || '');
+		};
+		q.current = ko.observable(blank());
+		q.loaded = false;
+
+		q.load = function (force) {
+			if (q.loaded && !force) return;
+			q.loaded = true;
+			return ajaxcall({
+				url: options.reportsApiUrl,
+				data: { method: options.getEmailQueriesUrl, model: JSON.stringify({ includeGlobal: true }) }
+			}).done(function (x) {
+				if (x.d) x = x.d;
+				if (x.result) x = x.result;
+				q.queries(x.queries || []);
+			});
+		};
+
+		q.emailToDisplay = function (item) {
+			var id = item ? (item.EmailQueryId || 0) : 0;
+			if (!id) return (item && item.EmailTo) || '';
+			var match = _.find(q.queries(), { id: id });
+			return match ? match.name : 'Email List';
+		};
+
+		q.runQuery = function (sql, done) {
+			ajaxcall({
+				url: options.getPreviewFromSqlUrl,
+				type: 'POST',
+				data: JSON.stringify({
+					value: sql,
+					accountKey: self.keys.AccountApiKey,
+					dataConnectKey: self.keys.DatabaseApiKey,
+					dynamicColumns: false
+				})
+			}).done(function (result) {
+				if (result.d) result = result.d;
+				var error = result.Exception || result.errorMessage || (result.HasError ? 'The query returned an error.' : '');
+				done(error, result.ReportData);
+			}).fail(function () {
+				done('Could not reach the server to run the query.', null);
+			});
+		};
+
+		// Previews what is typed in the modal, so unsaved edits can be checked before saving.
+		q.previewCurrentQuery = function () {
+			var sql = q.current().sqlQuery();
+			if (!sql) { toastr.error('Enter a SQL query first'); return; }
+			q.runQuery(sql, function (error, data) {
+				if (error) { toastr.error('Query error: ' + error); return; }
+				q.showEmails(q.emailsFromResult(data), 'Preview');
+			});
+		};
+
+		q.emailsFromResult = function (reportData) {
+			if (!reportData || !reportData.Columns || !reportData.Rows) return [];
+			var idx = 0;
+			for (var i = 0; i < reportData.Columns.length; i++) {
+				var name = (reportData.Columns[i].ColumnName || '').toLowerCase();
+				if (name === 'email') { idx = i; break; }
+			}
+			var out = [];
+			reportData.Rows.forEach(function (r) {
+				var v = r.Items && r.Items[idx] ? (r.Items[idx].Value || '') : '';
+				v = (v + '').trim();
+				if (v && v.indexOf('@') >= 0 && out.indexOf(v) < 0) out.push(v);
+			});
+			return out;
+		};
+
+		q.showEmails = function (emails, title) {
+			if (!emails.length) { bootbox.alert('This query returned no email addresses.'); return; }
+			var rows = emails.map(function (e) { return '<div>' + $('<div>').text(e).html() + '</div>'; }).join('');
+			bootbox.alert({
+				title: title + ' - ' + emails.length + ' recipient' + (emails.length === 1 ? '' : 's'),
+				message: '<div style="max-height:320px;overflow:auto;">' + rows + '</div>'
+			});
+		};
+
+		q.previewQuery = function (item) {
+			ajaxcall({
+				url: options.previewEmailListUrl,
+				type: 'GET',
+				data: { id: item.id }
+			}).done(function (x) {
+				if (x.d) x = x.d;
+				if (!x || !x.success) { toastr.error((x && x.message) || 'Could not load the Email List'); return; }
+				if (!x.total) { bootbox.alert('This Email List returned no email addresses.'); return; }
+				var rows = x.emails.map(function (e) { return '<div>' + $('<div>').text(e).html() + '</div>'; }).join('');
+				var more = x.total > x.emails.length ? '<div class="text-muted mt-2">Showing ' + x.emails.length + ' of ' + x.total + '</div>' : '';
+				bootbox.alert({
+					title: item.name + ' - ' + x.total + ' recipient' + (x.total === 1 ? '' : 's'),
+					message: '<div style="max-height:320px;overflow:auto;">' + rows + '</div>' + more
+				});
+			});
+		};
+
+		q.addQuery = function () {
+			q.current(blank());
+			validator.clearForm('#email-query-modal');
+			$('#email-query-modal').modal('show');
+		};
+
+		q.editQuery = function (item) {
+			q.current({
+				id: ko.observable(item.id), name: ko.observable(item.name), description: ko.observable(item.description || ''),
+				clientId: ko.observable(item.clientId || ''), queryType: ko.observable(item.queryType || 'EmailList'), sqlQuery: ko.observable(item.sqlQuery || '')
+			});
+			validator.clearForm('#email-query-modal');
+			$('#email-query-modal').modal('show');
+		};
+
+		q.saveQuery = function () {
+			var c = q.current();
+			if (!validator.validateForm('#email-query-modal')) return;
+			q.runQuery(c.sqlQuery(), function (error) {
+				if (error) { toastr.error('Query is not valid and was not saved: ' + error); return; }
+				q.persistQuery(c);
+			});
+		};
+
+		q.persistQuery = function (c) {
+			ajaxcall({
+				url: options.reportsApiUrl,
+				data: {
+					method: options.saveEmailQueryUrl,
+					model: JSON.stringify({ id: c.id(), name: c.name(), description: c.description(), queryClientId: c.clientId(), queryType: c.queryType(), sqlQuery: c.sqlQuery() })
+				}
+			}).done(function (x) {
+				if (x.d) x = x.d;
+				if (x.result) x = x.result;
+				if (x && x.Message) { toastr.error(x.Message); return; }
+				toastr.success('Email list saved');
+				$('#email-query-modal').modal('hide');
+				q.load(true);
+			});
+		};
+
+		q.deleteQuery = function (item) {
+			bootbox.confirm("Are you sure you would like to delete the email list '" + item.name + "'?", function (r) {
+				if (!r) return;
+				ajaxcall({
+					url: options.reportsApiUrl,
+					data: { method: options.deleteEmailQueryUrl, model: JSON.stringify({ id: item.id }) }
+				}).done(function () {
+					toastr.success('Email list deleted');
+					q.load(true);
+				});
+			});
+		};
+	};
+	self.emailQueries.load();
+
 	self.schedules = ko.observableArray([]);
 	// Flattened one row per schedule so the table needs no nested foreach in the markup.
 	self.scheduleRows = ko.computed(function () {

@@ -471,6 +471,7 @@
             dataFilters: JSON.parse(data.dataFilters || '{}'),
             reportData: JSON.parse(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ReportData ?? "{}"))),
             getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
+            previewEmailListUrl: '@Url.Action("PreviewEmailList", "DotNetReportApi")',
             chartSize: { width: 800, height: 450 }
         });
 

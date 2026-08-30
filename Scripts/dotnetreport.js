@@ -332,7 +332,7 @@ function linkFieldViewModel(args, options, adminMode, savedReports, allFolders, 
 	}
 }
 
-function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
+function scheduleBuilder(userId, getTimeZonesUrl,appSettings, apiUrl, previewEmailListUrl) {
 	var self = this;
 
 	self.options = ['day', 'week', 'month', 'year', 'once', 'hour'];
@@ -364,6 +364,52 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 
 	self.hasSchedule = ko.observable(false);
 	self.emailTo = ko.observable('');
+	self.emailQueryId = ko.observable(0);
+	self.emailQueries = ko.observableArray([]);
+	self.useEmailQuery = ko.observable(false);
+	self.useEmailQuery.subscribe(function (v) {
+		if (!v) { self.emailQueryId(0); return; }
+		if (!self.emailQueries().length) self.loadEmailQueries();
+	});
+	self.previewRecipients = function () {
+		if (!self.emailQueryId() || !previewEmailListUrl) return;
+		ajaxcall({
+			url: previewEmailListUrl,
+			type: 'GET',
+			data: { id: self.emailQueryId() }
+		}).done(function (x) {
+			if (x.d) x = x.d;
+			if (!x || !x.success) { toastr.error((x && x.message) || 'Could not load the Email List'); return; }
+			if (!x.total) { bootbox.alert('This Email List returned no email addresses.'); return; }
+			var rows = x.emails.map(function (e) { return '<div>' + $('<div>').text(e).html() + '</div>'; }).join('');
+			var more = x.total > x.emails.length ? '<div class="text-muted mt-2">Showing ' + x.emails.length + ' of ' + x.total + '</div>' : '';
+			bootbox.alert({
+				title: x.total + ' recipient' + (x.total === 1 ? '' : 's'),
+				message: '<div style="max-height:320px;overflow:auto;">' + rows + '</div>' + more
+			});
+		});
+	};
+
+	self.emailToDisplay = function (row) {
+		var id = row ? (row.EmailQueryId || 0) : 0;
+		if (!id) return (row && row.EmailTo) || '';
+		var match = _.find(self.emailQueries(), { id: id });
+		return match ? match.name : 'Email List';
+	};
+
+	self.loadEmailQueries = function () {
+		if (!apiUrl) return;
+		ajaxcall({
+			url: apiUrl,
+			noBlocking: true,
+			data: { method: '/ReportApi/GetDataDrivenQueries', model: JSON.stringify({ includeGlobal: true, queryType: 'EmailList' }) }
+		}).done(function (x) {
+			if (x.d) x = x.d;
+			if (x.result) x = x.result;
+			self.emailQueries(x.queries || []);
+		});
+	};
+	self.loadEmailQueries();
 	self.scheduleId = ko.observable(0);
 	self.dataFilters = ko.observable('');
 	self.filters = ko.observable('');
@@ -480,6 +526,8 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 			SelectedMinute: self.selectedMinute(),
 			SelectedAmPm: self.selectedAmPm(),
 			EmailTo: self.emailTo(),
+			EmailQueryId: self.useEmailQuery() ? (self.emailQueryId() || null) : null,
+			UseEmailQuery: self.useEmailQuery(),
 			UserId: userId,
 			ScheduleStart: self.hasScheduleStart() ? self.scheduleStart() : '',
 			ScheduleEnd: self.hasScheduleEnd() ? self.scheduleEnd() : '',
@@ -520,6 +568,9 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings) {
 		self.selectedMinute(data.SelectedMinute || '00');
 		self.selectedAmPm(data.SelectedAmPm || 'PM');
 		self.emailTo(data.EmailTo || '');
+		self.emailQueryId(data.EmailQueryId || 0);
+		self.useEmailQuery((data.EmailQueryId || 0) > 0);
+		self.loadEmailQueries();
 		self.scheduleStart(data.ScheduleStart ? new Date(data.ScheduleStart.match(/\d+/)[0] * 1) : '');
 		self.scheduleEnd(data.ScheduleEnd ? new Date(data.ScheduleEnd.match(/\d+/)[0] * 1) : '');
 		self.hasScheduleStart(data.ScheduleStart ? true : false);
@@ -4513,7 +4564,7 @@ var reportViewModel = function (options) {
 				item.tableId !== undefined && item.tableId !== null && item.tableId != 0;
 		});
 	});
-	self.scheduleBuilder = new scheduleBuilder(self.userIdForSchedule, options.getTimeZonesUrl, self.appSettings);
+	self.scheduleBuilder = new scheduleBuilder(self.userIdForSchedule, options.getTimeZonesUrl, self.appSettings, options.apiUrl, options.previewEmailListUrl);
 
 	self.ManageFolder = {
 		FolderName: ko.observable(),
@@ -5052,6 +5103,7 @@ var reportViewModel = function (options) {
 			Id: s.Id || 0,
 			UserId: s.UserId || '',
 			EmailTo: s.EmailTo || '',
+			EmailQueryId: s.EmailQueryId || 0,
 			Schedule: s.Schedule || '',
 			Format: s.Format || '',
 			SelectedOption: s.SelectedOption || '',
@@ -5218,15 +5270,23 @@ var reportViewModel = function (options) {
 				}
 			}
 			var emailInput = modal.find('input[data-bind*="emailTo"]');
-			if (!isValid || !scheduleData.EmailTo || scheduleData.EmailTo.trim() === '') {
-				emailInput.addClass('is-invalid');
-				toastr.error('Email is required to save a schedule');
+			var emailListSelect = modal.find('select[data-bind*="emailQueryId"]');
+			emailListSelect.removeClass('is-invalid');
+			var usesEmailQuery = scheduleData.UseEmailQuery === true;
+			if (usesEmailQuery && !(scheduleData.EmailQueryId > 0)) {
+				emailListSelect.addClass('is-invalid');
+				toastr.error('Please choose an Email List');
+				return;
+			}
+			if (!isValid || (!usesEmailQuery && (!scheduleData.EmailTo || scheduleData.EmailTo.trim() === ''))) {
+				if (!usesEmailQuery) emailInput.addClass('is-invalid');
+				toastr.error(usesEmailQuery ? 'Please complete the required fields' : 'Email is required to save a schedule');
 				return;
 			}
 
 			var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-			var emails = scheduleData.EmailTo.split(',').map(function (e) { return e.trim(); }).filter(function (e) { return e !== ''; });
-			if (!emails.every(function (e) { return emailRegex.test(e); })) {
+			var emails = (scheduleData.EmailTo || '').split(',').map(function (e) { return e.trim(); }).filter(function (e) { return e !== ''; });
+			if (!usesEmailQuery && !emails.every(function (e) { return emailRegex.test(e); })) {
 				emailInput.addClass('is-invalid');
 				toastr.error('Please enter valid email address(es)');
 				return;
@@ -12785,7 +12845,7 @@ var dashboardViewModel = function (options) {
 		Name: ko.observable(currentDash.name),
 		Description: ko.observable(currentDash.description),
 		manageAccess: manageAccess(options),
-		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl, self.appSettings),
+		scheduleBuilder: new scheduleBuilder(options.userId, options.getTimeZonesUrl, self.appSettings, options.apiUrl, options.previewEmailListUrl),
 		PdfPage: new PdfPageViewModel(),
 		WordPage: new WordPageViewModel()
 	};
@@ -13092,16 +13152,25 @@ var dashboardViewModel = function (options) {
 				}
 			}
 			var emailInput = modal.find('input[data-bind*="emailTo"]');
-			if (!isValid || !scheduleData.EmailTo || scheduleData.EmailTo.trim() === '') {
-				emailInput.addClass('is-invalid');
-				toastr.error('Email is required to save a schedule');
+			var emailListSelect = modal.find('select[data-bind*="emailQueryId"]');
+			emailListSelect.removeClass('is-invalid');
+			// In Email List mode the addresses come from the list, so only the list itself is required.
+			var usesEmailQuery = scheduleData.UseEmailQuery === true;
+			if (usesEmailQuery && !(scheduleData.EmailQueryId > 0)) {
+				emailListSelect.addClass('is-invalid');
+				toastr.error('Please choose an Email List');
+				return;
+			}
+			if (!isValid || (!usesEmailQuery && (!scheduleData.EmailTo || scheduleData.EmailTo.trim() === ''))) {
+				if (!usesEmailQuery) emailInput.addClass('is-invalid');
+				toastr.error(usesEmailQuery ? 'Please complete the required fields' : 'Email is required to save a schedule');
 				return;
 			}
 
 			// Validate each comma-separated email address
 			var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-			var emails = scheduleData.EmailTo.split(',').map(function (e) { return e.trim(); }).filter(function (e) { return e !== ''; });
-			if (!emails.every(function (e) { return emailRegex.test(e); })) {
+			var emails = (scheduleData.EmailTo || '').split(',').map(function (e) { return e.trim(); }).filter(function (e) { return e !== ''; });
+			if (!usesEmailQuery && !emails.every(function (e) { return emailRegex.test(e); })) {
 				emailInput.addClass('is-invalid');
 				toastr.error('Please enter valid email address(es)');
 				return;

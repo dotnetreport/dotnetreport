@@ -74,6 +74,10 @@
                     deleteScheduleUrl: '/ReportApi/DeleteSchedule',
                     saveCategoriesUrl: '/ReportApi/SaveCategoriesData',
                     getCategoriesUrl: '/ReportApi/GetCategories',
+                    getEmailQueriesUrl: '/ReportApi/GetDataDrivenQueries',
+                    saveEmailQueryUrl: '/ReportApi/SaveDataDrivenQuery',
+                    deleteEmailQueryUrl: '/ReportApi/DeleteDataDrivenQuery',
+                    previewEmailListUrl: '@Url.Action("PreviewEmailList", "DotNetReportApi")',
                     getAppSettingUrl: '/ReportApi/GetAccountSettings',
                     saveAppSettingUrl: '/ReportApi/ChangeAccountSettings',
                     reportsApiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
@@ -147,6 +151,11 @@
             <li role="presentation" class="nav-item">
                 <a class="nav-link" href="#schedules" aria-controls="schedules" role="tab" data-bs-toggle="tab">
                     <i class="fa fa-clock-o"></i> Schedules
+                </a>
+            </li>
+            <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#emailqueries" aria-controls="emailqueries" role="tab" data-bs-toggle="tab" data-bind="click: function() { emailQueries.load(); }">
+                    <i class="fa fa-envelope-o"></i> Email Lists
                 </a>
             </li>
             <li role="presentation" class="nav-item" style="display: none;" data-bind="visible: settings.useFunctions">
@@ -1028,6 +1037,38 @@
             </div>
         </div>
 
+        <div role="tabpanel" class="tab-pane" id="emailqueries" data-bind="with: emailQueries">
+            <div class="d-flex align-items-center mb-2">
+                <button class="btn btn-primary btn-sm" data-bind="click: addQuery"><i class="fa fa-plus"></i> Add Email List</button>
+                <span class="ms-3 text-muted small">Email lists for scheduled reports. Pick one when you schedule a report.</span>
+            </div>
+            <div class="alert alert-info py-2 small" data-bind="visible: queries().length === 0">No email lists yet.</div>
+            <table class="table table-striped table-sm" data-bind="visible: queries().length > 0">
+                <thead>
+                    <tr>
+                        <th style="width: 22%">Name</th>
+                        <th style="width: 28%">Description</th>
+                        <th style="width: 12%">Client</th>
+                        <th style="width: 28%">Query</th>
+                        <th style="width: 10%"></th>
+                    </tr>
+                </thead>
+                <tbody data-bind="foreach: queries">
+                    <tr>
+                        <td data-bind="text: name"></td>
+                        <td data-bind="text: description"></td>
+                        <td><span data-bind="text: clientId ? clientId : 'All Clients'"></span></td>
+                        <td><code class="small text-truncate d-inline-block" style="max-width: 320px;" data-bind="text: sqlQuery"></code></td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-light" title="Show the emails this list returns" data-bind="click: function() { $parent.previewQuery($data); }"><i class="fa fa-search"></i></button>
+                            <button class="btn btn-sm btn-light" title="Edit" data-bind="click: function() { $parent.editQuery($data); }"><i class="fa fa-pencil"></i></button>
+                            <button class="btn btn-sm btn-light text-danger" title="Delete" data-bind="click: function() { $parent.deleteQuery($data); }"><i class="fa fa-trash"></i></button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
         <div role="tabpanel" class="tab-pane" id="schedules">
             <b>Scheduled Reports</b>
             <p>
@@ -1065,7 +1106,7 @@
                                         <span class="badge" data-bind="visible: isFirst, css: isDashboard ? 'bg-info' : 'bg-secondary', text: isDashboard ? 'Dashboard' : 'Report'"></span>
                                     </td>
                                     <td data-bind="text: item.ScheduleDisplay"></td>
-                                    <td class="text-break" data-bind="text: item.EmailTo"></td>
+                                    <td class="text-break" data-bind="text: $root.emailQueries.emailToDisplay(item)"></td>
                                     <td data-bind="text: $root.formatDisplay(item.Format)"></td>
                                     <td class="small text-muted" data-bind="text: item.FilterDisplay ? item.FilterDisplay : 'Report default filters'"></td>
                                     <td data-bind="text: item.LastRun"></td>
@@ -2191,3 +2232,43 @@
 </div>
 
 
+
+<div class="modal" id="email-query-modal" role="dialog" tabindex="-1" data-bind="with: emailQueries">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" data-bind="text: current().id() > 0 ? 'Edit Email List' : 'Add Email List'"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body needs-validation" data-bind="with: current">
+                <div class="mb-3 form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-control" name="emailQueryName" data-bind="textInput: name" placeholder="e.g. Site Managers" required />
+                    <div class="invalid-feedback">Name is required.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-control" data-bind="value: description" placeholder="Optional" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Client Id</label>
+                    <input type="text" class="form-control" data-bind="value: clientId" placeholder="Leave blank to make this available to all clients" />
+                </div>
+                <div class="mb-2 form-group">
+                    <label class="form-label">SQL Query</label>
+                    <textarea class="form-control" rows="8" style="font-family: monospace;" name="emailQuerySql" data-bind="textInput: sqlQuery" placeholder="SELECT Email FROM Users WHERE IsActive = 1" required></textarea>
+                    <div class="invalid-feedback">SQL Query is required.</div>
+                    <div class="form-text">Read only SELECT returning one row per email, with an <code>Email</code> column.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light btn-sm me-auto" data-bind="click: previewCurrentQuery"
+                        title="Run the query above and show the emails it returns">
+                    <i class="fa fa-search"></i> Preview Emails
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-sm" data-bind="click: saveQuery">Save</button>
+            </div>
+        </div>
+    </div>
+</div>

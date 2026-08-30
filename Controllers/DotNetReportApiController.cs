@@ -884,6 +884,49 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> PreviewEmailList(int id)
+        {
+            var settings = GetSettings();
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    var url = settings.ApiUrl + "/ReportApi/GetDataDrivenQuerySql"
+                        + "?account=" + settings.AccountApiToken
+                        + "&dataConnect=" + settings.DataConnectApiToken
+                        + "&id=" + id
+                        + "&clientId=" + settings.ClientId
+                        + "&userId=" + settings.UserId;
+
+                    var response = await client.GetAsync(new Uri(url));
+                    var stringContent = await response.Content.ReadAsStringAsync();
+                    if (!response.IsSuccessStatusCode)
+                        return Ok(new { success = false, message = "Could not load the Email List." });
+
+                    dynamic result = JsonConvert.DeserializeObject<dynamic>(stringContent);
+                    string encryptedSql = result?.sql;
+                    string connectKey = result?.connectKey;
+                    if (string.IsNullOrEmpty(encryptedSql))
+                        return Ok(new { success = false, message = "This Email List has no query." });
+
+                    var rows = await DotNetReportHelper.GetDataDrivenQueryRows(encryptedSql, connectKey);
+                    var emails = DotNetReportHelper.ExtractEmailRecipients(rows);
+
+                    return Ok(new
+                    {
+                        success = true,
+                        total = emails.Count,
+                        rowCount = rows == null ? 0 : rows.Rows.Count,
+                        emails = emails.Take(200).ToList()
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Ok(new { success = false, message = ex.Message });
+            }
+        }
+
         public IActionResult GetUsersAndRoles()
         {
             var settings = GetSettings();

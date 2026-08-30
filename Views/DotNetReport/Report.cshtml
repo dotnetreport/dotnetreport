@@ -42,7 +42,8 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                     dataFilters: data.dataFilters,
                     runExportUrl: "/api/DotnetReportApi",
                     printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)",
-                    getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
+                    getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
+                    previewEmailListUrl: '@Url.Action("PreviewEmailList", "DotNetReportApi")'
                 });
 
                 vm.loadProcs().done(function () {
