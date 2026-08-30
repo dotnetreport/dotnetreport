@@ -541,6 +541,13 @@ namespace ReportBuilder.Web.Models
         private static readonly IConfigurationRoot _configuration;
         private readonly static string _configFileName = "appsettings.dotnetreport.json";
         public static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
+
+        private static string _webAppRootUrl;
+        public static string WebAppRootUrl
+        {
+            get { return _webAppRootUrl ?? (_webAppRootUrl = StaticConfig.GetValue<string>("dotNetReport:webAppRootUrl") ?? ""); }
+            set { _webAppRootUrl = value; }
+        }
         public static bool useAltPivot = false;
         public static string defaultDateFormat = "United States";
 
@@ -1245,55 +1252,48 @@ namespace ReportBuilder.Web.Models
                         }
                     }
                 }
-                //if (formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinkToUrl != null)
-                //{
-                //    for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
-                //    {
-                //        var cellValue = dt.Rows[rowIndex][dc.ColumnName]?.ToString();
-                //        if (!string.IsNullOrEmpty(cellValue))
-                //        {
-                //            var increment = rowstart==3 ? 1 : 0;
-                //            var hyperlinkAddress = formatColumn.LinkFieldItem.SendAsQueryParameter ? $"{formatColumn.LinkFieldItem.LinkToUrl}?{formatColumn.LinkFieldItem.QueryParameterName}={cellValue}" : formatColumn.LinkFieldItem.LinkToUrl;
-                //            if (Uri.TryCreate(hyperlinkAddress, UriKind.Absolute, out var absLinkUri))
-                //            {
-                //                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = absLinkUri;
-                //            }
-                //            else if (Uri.TryCreate(hyperlinkAddress, UriKind.Relative, out var relLinkUri))
-                //            {
-                //                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = relLinkUri;
-                //            }
-                //            ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
-                //            ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
-                //        }
-                //    }
-                //}
-                //if (formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinksToReport != null &&  formatColumn?.LinkFieldItem.LinksToReport==true)
-                //{
-                //    for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
-                //    {
-                //        var cellValue = dt.Rows[rowIndex][dc.ColumnName]?.ToString();
-                //        if (!string.IsNullOrEmpty(cellValue))
-                //        {
-                //            var increment = rowstart == 3 ? 1 : 0;
-                //            //var url = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}";
-                //            var hyperlinkAddress = "/DotNetReport/Report?linkedreport=true&reportId=" + formatColumn.LinkFieldItem.LinkedToReportId;
-                //            if (formatColumn.LinkFieldItem.SendAsFilterParameter && !string.IsNullOrEmpty(cellValue))
-                //            {
-                //                hyperlinkAddress += $"&filterId={formatColumn.LinkFieldItem.SelectedFilterId}&filterValue={cellValue.Replace("'", "").Replace("\"", "")}";
-                //            }
-                //            if (Uri.TryCreate(hyperlinkAddress, UriKind.Absolute, out var absRptUri))
-                //            {
-                //                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = absRptUri;
-                //            }
-                //            else if (Uri.TryCreate(hyperlinkAddress, UriKind.Relative, out var relRptUri))
-                //            {
-                //                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = relRptUri;
-                //            }
-                //            ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
-                //            ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
-                //        }
-                //    }
-                //}
+                if (formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinkToUrl != null)
+                {
+                    for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
+                    {
+                        var cellValue = dt.Rows[rowIndex][dc.ColumnName]?.ToString();
+                        if (!string.IsNullOrEmpty(cellValue))
+                        {
+                            var increment = rowstart==3 ? 1 : 0;
+                            var hyperlinkAddress = formatColumn.LinkFieldItem.SendAsQueryParameter ? $"{formatColumn.LinkFieldItem.LinkToUrl}?{formatColumn.LinkFieldItem.QueryParameterName}={cellValue}" : formatColumn.LinkFieldItem.LinkToUrl;
+                            var linkUri = BuildHyperlinkUri(hyperlinkAddress);
+                            if (linkUri != null)
+                            {
+                                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = linkUri;
+                                ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
+                                ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
+                            }
+                        }
+                    }
+                }
+                if (formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinksToReport != null && formatColumn?.LinkFieldItem.LinksToReport == true)
+                {
+                    for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
+                    {
+                        var cellValue = dt.Rows[rowIndex][dc.ColumnName]?.ToString();
+                        if (!string.IsNullOrEmpty(cellValue))
+                        {
+                            var increment = rowstart == 3 ? 1 : 0;
+                            var hyperlinkAddress = "/DotNetReport/Report?linkedreport=true&reportId=" + formatColumn.LinkFieldItem.LinkedToReportId;
+                            if (formatColumn.LinkFieldItem.SendAsFilterParameter && !string.IsNullOrEmpty(cellValue))
+                            {
+                                hyperlinkAddress += $"&filterId={formatColumn.LinkFieldItem.SelectedFilterId}&filterValue={cellValue.Replace("'", "").Replace("\"", "")}";
+                            }
+                            var linkUri = BuildHyperlinkUri(hyperlinkAddress);
+                            if (linkUri != null)
+                            {
+                                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = linkUri;
+                                ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
+                                ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
+                            }
+                        }
+                    }
+                }
                 i++;
                 counter++;
             }
@@ -1322,6 +1322,17 @@ namespace ReportBuilder.Web.Models
                     ws.Column(colstart + i).Width = pxValue / 7;
                 }
             }
+        }
+
+        private static Uri BuildHyperlinkUri(string address)
+        {
+            if (string.IsNullOrWhiteSpace(address)) return null;
+            if (Uri.TryCreate(address, UriKind.Absolute, out var absolute)) return absolute;
+            if (string.IsNullOrEmpty(WebAppRootUrl)) return null;
+
+            return Uri.TryCreate(WebAppRootUrl.TrimEnd('/') + "/" + address.TrimStart('/'), UriKind.Absolute, out var resolved)
+                ? resolved
+                : null;
         }
 
         public static DataTable Transpose(DataTable dt)
