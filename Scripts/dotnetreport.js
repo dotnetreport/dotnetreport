@@ -2568,7 +2568,9 @@ var reportViewModel = function (options) {
 			_.forEach(groupColumns, function (col) {
 				var val = row.Items[col.fieldIndex].FormattedValue;
 				keyParts.push(val);
-				displayParts.push(col.fieldName + ' - ' + val);
+				var label = ko.unwrap(col.fieldLabel) || col.fieldName;
+				var esc = function (v) { return $('<div>').text(v == null ? '' : v).html(); };
+				displayParts.push('<b>' + esc(label) + '</b> - ' + esc(val));
 			});
 
 			var key = keyParts.join('|');
@@ -7452,6 +7454,7 @@ var reportViewModel = function (options) {
 							self.OuterGroupColumns.push({
 								fieldId: col.fieldId,
 								fieldName: col.fieldName,
+								fieldLabel: col.fieldLabel,
 								fieldIndex: e.colIndex,
 								rowData: _.uniq(_.map(result.ReportData.Rows, function (r) {
 									return r.Items[e.colIndex].FormattedValue;

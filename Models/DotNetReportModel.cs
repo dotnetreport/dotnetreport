@@ -2816,6 +2816,13 @@ namespace ReportBuilder.Web.Models
                 .Select(c => c.fieldName)
                 .ToList() ?? new List<string>();
 
+            // Group headings use the column label when one is set, matching the browser and the headers.
+            var outerGroupLabels = columns?
+                .Where(c => c.aggregateFunction == "Outer Group" || c.outerGroup)
+                .GroupBy(c => c.fieldName)
+                .ToDictionary(g => g.Key, g => string.IsNullOrEmpty(g.First().fieldLabel) ? g.Key : g.First().fieldLabel)
+                ?? new Dictionary<string, string>();
+
             if (!outerGroupColumns.Any())
             {
                 FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeGrandTotal, loadHeader, chartData, false, isSubReport);
@@ -2939,7 +2946,7 @@ namespace ReportBuilder.Web.Models
                     currentRow++;
 
                     // Write group label row above the group's data rows (merged, highlighted)
-                    string groupLabel = string.Join("  |  ", outerGroupColumns.Select(gc => $"{gc} - {row[gc]?.ToString() ?? ""}"));
+                    string groupLabel = string.Join("  |  ", outerGroupColumns.Select(gc => $"{(outerGroupLabels.ContainsKey(gc) ? outerGroupLabels[gc] : gc)} - {row[gc]?.ToString() ?? ""}"));
                     ws.Cells[currentRow, colstart].Value = groupLabel;
                     ws.Cells[currentRow, colstart].Style.Font.Bold = true;
                     ws.Cells[currentRow, colstart].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
