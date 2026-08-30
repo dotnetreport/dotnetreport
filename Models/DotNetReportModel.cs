@@ -6336,6 +6336,11 @@ namespace ReportBuilder.Web.Models
             for (int i = 0; i < dt.Columns.Count; i++)
             {
                 var columnName = !string.IsNullOrEmpty(columns?[i].fieldLabel) ? columns[i].fieldLabel : dt.Columns[i].ColumnName;
+
+                // Prevent formula injection
+                if (!string.IsNullOrEmpty(columnName) && ("=+-@".Contains(columnName[0])))
+                    columnName = "'" + columnName;
+
                 sb.Append('"').Append(columnName.Replace("\"", "\"\"")).Append('"').Append(',');
             }
             sb.Length--; // Remove trailing comma

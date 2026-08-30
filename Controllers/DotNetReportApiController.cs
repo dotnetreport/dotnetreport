@@ -332,6 +332,11 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public async Task<IActionResult> RunReport(RunReportParameters data)
         {
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode) data.adminmode = false;
+            var firstSql = (data.reportSql ?? "").Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+            await ValidateAccess(settings.UserId, HttpUtility.HtmlDecode(firstSql), adminMode: data.adminmode);
+
             return await ExecuteRunReport(data);
         }
 
@@ -763,6 +768,8 @@ namespace ReportBuilder.Web.Controllers
         {
             var model = new DotNetReportModel();
             var settings = GetSettings();
+            if (!settings.CanUseAdminMode) adminMode = false;
+            await ValidateAccess(settings.UserId, reportId: reportId, adminMode: adminMode);
 
             using (var client = new HttpClient())
             {
@@ -828,6 +835,7 @@ namespace ReportBuilder.Web.Controllers
         public async Task<IActionResult> LoadSavedDashboard(int? id = null, bool adminMode = false)
         {
             var settings = GetSettings();
+            if (!settings.CanUseAdminMode) adminMode = false;
             var model = new List<DotNetDasboardReportModel>();
             var dashboards = (await GetDashboardsData(adminMode));
             if (!id.HasValue && dashboards.Count > 0)
@@ -862,6 +870,7 @@ namespace ReportBuilder.Web.Controllers
         private async Task<dynamic> GetDashboardsData(bool adminMode = false)
         {
             var settings = GetSettings();
+            if (!settings.CanUseAdminMode) adminMode = false;
 
             using (var client = new HttpClient())
             {
