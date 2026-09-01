@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.Filters;
 using ReportBuilder.Web.Models;
 using System.Web;
 
@@ -8,6 +10,20 @@ namespace ReportBuilder.Web.Controllers
     //[Authorize]
     public class DotNetReportController : Controller
     {
+        private readonly IConfiguration _configuration;
+        public DotNetReportController(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+
+        public override void OnActionExecuting(ActionExecutingContext context)
+        {
+            base.OnActionExecuting(context);
+            if ((context.ActionDescriptor as ControllerActionDescriptor)?.ActionName == "ReportPrint") return;
+
+            var api = new DotNetReportApiController(_configuration) { ControllerContext = ControllerContext };
+            ViewBag.AllowAdminMode = api.GetSettings().CanUseAdminMode;
+        }
 
         public IActionResult Index()
         {

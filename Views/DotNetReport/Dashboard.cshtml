@@ -134,7 +134,10 @@
     </script>
 }
 
-<div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+@if (ViewBag.AllowAdminMode == true)
+{
+    <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+}
 
 <nav class="navbar navbar-expand-lg navbar-light bg-light" style="display:none; position:relative; z-index:1030;" data-bind="visible: currentDashboard">
     <div class="container-fluid p-0">

@@ -22,7 +22,7 @@ namespace ReportBuilder.Web.Controllers
             _configuration = configuration;
         }
 
-        private DotNetReportSettings GetSettings()
+        public DotNetReportSettings GetSettings()
         {
             DotNetReportHelper.dbtype = DbTypes.MS_SQL.ToDbString();
 

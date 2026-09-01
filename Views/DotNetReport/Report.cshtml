@@ -77,7 +77,10 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
 </div>
 
 <div class="container-fluid">
-    <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+    @if (ViewBag.AllowAdminMode == true)
+    {
+        <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+    }
 
     <div class="card">
         <div class="card-header">
