@@ -635,16 +635,43 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <!-- Folder search results (list view) -->
                                     <div data-bind="if: searchReports() && foldersInSearch().length > 0">
                                         <div class="row fw-bold py-1 border-bottom mt-2 w-100">
-                                            <div class="col-md-6"><span class="fa fa-folder"></span> Matching Folders</div>
-                                            <div class="col-md-6" data-bind="visible: $root.adminMode">Access</div>
+                                            <div class="col-md-3"><span class="fa fa-folder"></span> Matching Folders</div>
+                                            <div class="col-md-1"></div>
+                                            <div class="col-md-8" data-bind="visible: $root.adminMode">Access</div>
                                         </div>
                                         <div data-bind="foreach: foldersInSearch">
                                             <div class="row border-bottom py-2 align-items-center w-100">
-                                                <div class="col-md-6 d-flex align-items-center">
+                                                <div class="col-md-3 d-flex align-items-center">
                                                     <span class="fa fa-folder text-secondary me-2"></span>
                                                     <a href="#" data-bind="click: function(){ $parent.SelectedFolder($data); $parent.searchReports(''); }, highlightedText: { text: FolderName, highlight: $parent.searchReports, css: 'highlight' }" style="cursor: pointer"></a>
                                                 </div>
-                                                <div class="col-md-6" data-bind="visible: $root.adminMode">
+                                                <div class="col-md-1" onclick="event.stopPropagation()">
+                                                    <div class="dropdown hover-ellipsis" data-bind="visible: ($root.CanManageFolders() || $root.adminMode()) && (canEdit || canDelete || $root.adminMode())">
+                                                        <button class="btn btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                            <span class="fa fa-ellipsis-h"></span>
+                                                        </button>
+                                                        <ul class="dropdown-menu">
+                                                            <li>
+                                                                <a class="dropdown-item" href="#" data-bind="click: function(){ $parent.SelectedFolder($data); $parent.ManageFolder.editFolder(); }, visible: canEdit || $root.adminMode()">
+                                                                    <span class="fa fa-edit"></span> Edit Folder
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item text-danger" href="#" data-bind="click: function(){ $parent.SelectedFolder($data); $parent.ManageFolder.deleteFolder(); }, visible: canDelete || $root.adminMode()">
+                                                                    <span class="fa fa-trash"></span> Delete Folder
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item" href="#"
+                                                                   data-bind="click: function(){ $parent.ManageFolder.addSubFolder($data); },
+                                                                    visible: canEdit || $root.adminMode()">
+                                                                    <span class="fa fa-folder"></span> Add Sub Folder
+                                                                </a>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-8" data-bind="visible: $root.adminMode">
                                                     <div class="small text-muted d-flex flex-wrap gap-1 align-items-center">
                                                         <span class="badge bg-info text-white" title="Manage Users" data-bind="text: UserId ? '👤 ' + UserId : '👤 Any User'"> </span>
                                                         <span class="badge bg-info text-white border" title="View only Users" data-bind="visible: ViewOnlyUserId"> 👁 <span data-bind="text: ViewOnlyUserId"></span> </span>
