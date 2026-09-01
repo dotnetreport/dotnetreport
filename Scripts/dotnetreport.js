@@ -4584,8 +4584,10 @@ var reportViewModel = function (options) {
 			self.clearManageFolderAccess();
 			$("#folderModal").modal("show");
 		},
-		addSubFolder : function () {
-			var parent = self.SelectedFolder();
+		addSubFolder: function (folder) {
+			var parent = (folder && typeof folder.Id !== 'undefined' && typeof folder.FolderName === 'string')
+				? folder
+				: self.SelectedFolder();
 			if (!parent) return;
 			self.ManageFolder.IsNew(true);
 			self.ManageFolder.FolderName("");
