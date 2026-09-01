@@ -1,4 +1,5 @@
 ﻿@model ReportBuilder.Web.Models.DotNetReportPrintModel
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Env
 @{
     Layout = "";
 }
@@ -17,7 +18,17 @@
     <link href="~/lib/summernote/summernote-bs5.min.css" rel="stylesheet" />
     <link href="~/lib/select2/css/select2.min.css" rel="stylesheet" />
     <link href="~/lib/leaflet/leaflet.css" rel="stylesheet" />
-    <link href="~/css/dotnetreport.css?v=6.0.0" rel="stylesheet" />
+    @{
+        var dotnetCssDir = System.IO.Path.Combine(Env.WebRootPath ?? "", "css");
+        var dotnetcssFiles = System.IO.Directory.Exists(dotnetCssDir)
+            ? System.IO.Directory.GetFiles(dotnetCssDir, "dotnetreport*.css").Select(f => System.IO.Path.GetFileName(f)).ToList()
+            : new List<string> { "dotnetreport.css" };
+        if (!dotnetcssFiles.Any()) { dotnetcssFiles = new List<string> { "dotnetreport.css" }; }
+    }
+    @foreach (var file in dotnetcssFiles)
+    {
+        <link href="~/css/@file?v=6.0.0" rel="stylesheet" />
+    }
     <style type="text/css">
         .report-view {
             margin: 0 0px 0 0px;
@@ -192,7 +203,8 @@
 
         <div data-bind="foreach: outerGroupData">
             <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
-            <h6 data-bind="html: display"></h6>
+            <br />
+            <h6 style="font-weight: normal; page-break-after: avoid; break-after: avoid;" data-bind="html: display"></h6>
             <div class="" style="padding-top: 5px;"></div>
 
             <!-- ko if: $parents[1].ReportType() != 'Single'-->
@@ -462,6 +474,7 @@
             dataFilters: JSON.parse(data.dataFilters || '{}'),
             reportData: JSON.parse(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ReportData ?? "{}"))),
             getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
+            previewEmailListUrl: '@Url.Action("PreviewEmailList", "DotNetReportApi")',
             chartSize: { width: 800, height: 450 }
         });
 
@@ -511,15 +524,15 @@
                 }
             }
         }
-
+        // FIX: load appSettings FIRST, then LoadReport
+        vm.loadAppSettings().always(function () {
         vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
             // Resolve the per-report header (chosen named header / custom / don't-use) not just the default.
             var headerLoaded = vm.initReportHeaderForRun ? vm.initReportHeaderForRun() : (vm.useReportHeader() ? vm.headerDesigner.init(true) : null);
             var footerLoaded = vm.useReportFooter() ? vm.footerDesigner.init(true) : null;
-            var settingsLoaded = vm.loadAppSettings ? vm.loadAppSettings() : null;
 
             // The header/footer html is fetched over ajax, so wait for it
-            $.when(headerLoaded, footerLoaded, settingsLoaded).always(function () {
+            $.when(headerLoaded, footerLoaded).always(function () {
                 try {
                     var userName = vm.currentUserName || vm.currentUserId || '';
                     var userRoles = vm.currentUserRole || '';
@@ -553,8 +566,14 @@
                     var $h = $('#report-header');
                     var $f = $('#report-footer');
 
-                    var rawHeaderHtml = $h.length ? substitutePlaceholders($h.html()) : '';
-                    var rawFooterHtml = $f.length ? substitutePlaceholders($f.html()) : '';
+                    function outerHtmlWithPlaceholders($el) {
+                        if (!$el.length) return '';
+                        var $clone = $el.clone();
+                        $clone.html(substitutePlaceholders($el.html()));
+                        return $clone.prop('outerHTML');
+                    }
+                    var rawHeaderHtml = outerHtmlWithPlaceholders($h);
+                    var rawFooterHtml = outerHtmlWithPlaceholders($f);
 
                     if ($h.length) { $h.html(substituteInDocPagePlaceholders(substitutePlaceholders($h.html()))); }
                     if ($f.length) { $f.html(substituteInDocPagePlaceholders(substitutePlaceholders($f.html()))); }
@@ -602,7 +621,7 @@
                 }
             }, 15000);
         });
-
+        });
         $(window).resize(function(){
             vm.DrawChart();
         });

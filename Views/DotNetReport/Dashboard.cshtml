@@ -75,7 +75,8 @@
                         printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)",
                         loadSavedDashbordUrl: '@Url.Action("LoadSavedDashboard", "DotNetReportApi")',
                         getDashbordsUrl: '@Url.Action("GetDashboards", "DotNetReportApi")',
-                        getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
+                        getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
+                        previewEmailListUrl: '@Url.Action("PreviewEmailList", "DotNetReportApi")'
                     });
 
                     vm.init().done(function () {
@@ -184,6 +185,12 @@
                                     <span>Refresh</span>
                                 </button>
                             </li>
+                            <li data-bind="visible: hasDashboard()">
+                                <button class="dropdown-item" data-bind="click: resetChartSizes" title="Reset any charts you resized so they fit their widget again">
+                                    <i class="fa fa-arrows-alt"></i>
+                                    <span>Autofit Chart Sizes</span>
+                                </button>
+                            </li>
                             <li><hr class="dropdown-divider"></li>
                             <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
                                 <button class="dropdown-item" data-bind="click: addLineSeparator">
@@ -269,7 +276,7 @@
 
 <div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 && (CanCreateDashboards() || adminMode())">
     No Dashboards yet. Click below to Start<br />
-    <button class="btn btn-lg btn-primary" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
+    <button class="btn btn-lg btn-primary" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard"><i class="fa fa-dashboard"></i> Create a New Dashboard</button>
 </div>
 
 <div class="modal modal-fullscreen" id="add-dashboard-modal" tabindex="-1" aria-labelledby="add-dashboard-modal-label" aria-hidden="true">
@@ -389,7 +396,7 @@
                                 <span class="fa fa-filter"></span> Filter
                             </a>
                         </li>
-                        <li>
+                        <li data-bind="visible: CanEdit()">
                             <a href="#" class="dropdown-item" data-bind="click: openReport">
                                 <span class="fa fa-pencil"></span> Edit
                             </a>

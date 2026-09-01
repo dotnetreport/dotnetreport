@@ -93,18 +93,18 @@
         </select>
         <!-- /ko -->
         <!-- ko if: ['Int','Money','Float','Double','Date','DateTime','Time','Boolean'].indexOf(fieldType) == -1 && ['is blank', 'is not blank', 'is null', 'is not null'].indexOf($parent.Operator()) == -1 -->
-        <input class="form-control" type="text" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default',attr: {id: 'ctl-' + $element.closest('[data-parentprefix]').getAttribute('data-parentprefix') + '-' + uiId}" required />
+        <input class="form-control" type="text" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default',attr: {id: 'ctl-' + $element.closest('[data-parentprefix]').getAttribute('data-parentprefix') + '-' + ($parent.uiId || uiId)}" required />
         <!-- /ko -->
         <!-- /ko -->
         <!-- ko if: hasForeignKey && $parent.Operator() != 'all' && $parent.Operator() != 'none' -->
         <!-- ko if: hasForeignParentKey && $parent.showParentFilter() -->
-        <select multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, options: $parent.ParentList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ParentIn"></select>
+        <select multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, lookupSearch: $parent.SearchParentList, options: $parent.ParentList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ParentIn"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='='-->
-        <select required class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue:   $parent.IsConditionalFilter ? 'text': 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
+        <select required class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, lookupSearch: $parent.SearchLookupList, options: $parent.LookupList, optionsText: 'text', optionsValue:   $parent.IsConditionalFilter ? 'text': 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-        <select required multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, options: $parent.LookupList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ValueIn"></select>
+        <select required multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, lookupSearch: $parent.SearchLookupList, options: $parent.LookupList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ValueIn"></select>
         <!-- /ko -->
         <!-- /ko -->
     </div>
@@ -683,7 +683,7 @@
     <div data-bind="foreach: outerGroupData">
         <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
         <br />
-        <h6 style="font-weight: bold;" data-bind="html: display"></h6>
+        <h6 style="font-weight: normal;" data-bind="html: display"></h6>
         <div class="" style="padding-top: 5px;"></div>
 
         <!-- ko if: $parents[1].ReportType() != 'Single'-->
@@ -1173,7 +1173,7 @@
                                                 <th style="width: 30%">Filter</th>
                                                 <th style="width: 20%"></th>
                                                 <th style="width: 30%">Value</th>
-                                                <th style="width: 10%">Fly</th>  <!-- CHANGED: added label -->
+                                                <th style="width: 10%"></th>
                                         </tr>
                                 </thead>
                                 <tbody data-bind="foreach: Parameters">
@@ -1265,13 +1265,30 @@
             </div>
             <div class="mb-3">
                 <div class="row g-2 align-items-center">
-                    <label class="col-12 col-sm-3 col-form-label">Email to</label>
+                    <div class="col-12 col-sm-3">
+                        <label class="col-form-label pb-0">Email to</label>
+                        <div class="form-check small">
+                            <label class="form-check-label text-muted" title="Send to a saved Email List instead of typing addresses">
+                                <input class="form-check-input" type="checkbox" data-bind="checked: useEmailQuery" />
+                                Email List
+                            </label>
+                        </div>
+                    </div>
 
                     <div class="col-12 col-sm-6">
+                        <!-- ko ifnot: useEmailQuery -->
                         <input type="text" class="form-control"
                                data-bind="value: emailTo"
-                               placeholder="Enter Email Addresses separated by comma"
-                               required />
+                               placeholder="Enter Email Addresses separated by comma" />
+                        <!-- /ko -->
+                        <!-- ko if: useEmailQuery -->
+                        <div class="d-flex align-items-center gap-2">
+                            <select class="form-select" data-bind="options: emailQueries, optionsText: 'name', optionsValue: 'id', value: emailQueryId, optionsCaption: 'Choose Email List...'"></select>
+                            <button type="button" class="btn btn-light btn-sm text-nowrap"
+                                    data-bind="click: previewRecipients, enable: emailQueryId() > 0"
+                                    title="Show who this Email List currently returns">View</button>
+                        </div>
+                        <!-- /ko -->
                     </div>
 
                     <label class="col-6 col-sm-1 col-form-label">Format</label>
@@ -1788,10 +1805,10 @@
 <script type="text/html" id="designer-choose-data">
     <div>
         <div class="pull-left btn-group btn-group-toggle" role="group" data-bind="if: ReportID() <= 0">
-            <label class="btn btn-sm btn-light active" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections">
+            <label class="btn btn-sm btn-light" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections" data-bind="css: { active: !useStoredProc() }">
                 <input type="radio" name="dataoption" id="table" checked data-bind="checked: useStoredProc, checkedValue: false"> Dynamic
             </label>
-            <label class="btn btn-sm btn-light active">
+            <label class="btn btn-sm btn-light" data-bind="css: { active: useStoredProc() }">
                 <input type="radio" name="dataoption" id="proc" value="1" data-bind="checked: useStoredProc, checkedValue: true"> Predefined
             </label>
         </div>
