@@ -216,6 +216,15 @@ namespace ReportBuilder.Web.Controllers
             return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Ok() : await ExecuteCallReportApi(method, model, userId);
         }
 
+        // Account level changes are only available in Admin Mode, the front end flag can be tampered with so check it here too
+        private static readonly string[] AdminOnlyApiMethods = new[]
+        {
+            "/ReportApi/SaveReportHeader",
+            "/ReportApi/SaveFolderData",
+            "/ReportApi/DeleteFolder",
+            "/ReportApi/SaveReportAccess"
+        };
+
         private async Task<IActionResult> ExecuteCallReportApi(string method, string model, string userId, DotNetReportSettings settings = null)
         {
             model = DotNetReportHelper.SanitizeReportModelForMethod(method, model);
@@ -223,6 +232,12 @@ namespace ReportBuilder.Web.Controllers
             using (var client = new HttpClient())
             {
                 settings = settings ?? GetSettings();
+
+                if (!settings.CanUseAdminMode && AdminOnlyApiMethods.Contains((method ?? "").Trim(), StringComparer.OrdinalIgnoreCase))
+                {
+                    return StatusCode(403, new { result = "You are not authorized to perform this action" });
+                }
+
                 var keyvalues = new List<KeyValuePair<string, string>>
                 {
                     new KeyValuePair<string, string>("account", settings.AccountApiToken),
