@@ -56,7 +56,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
 }
 
 <div class="container-fluid">
-    <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+    @if (ViewBag.AllowAdminMode == true)
+    {
+        <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+    }
 
     <!--
         The markup code below is related to presentation. You don't have to change it, unless you
