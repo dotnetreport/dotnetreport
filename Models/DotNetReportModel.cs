@@ -3,6 +3,7 @@ using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using HtmlAgilityPack;
 using Microsoft.CodeAnalysis;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Data.SqlClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -249,6 +250,10 @@ namespace ReportBuilder.Web.Models
         Informix,
         OleDb
     }
+    public static class ReportConstants
+    {
+        public const string SubReportValueToken = "@@SUBVAL@@";
+    }
     public static class DbTypesExtensions
     {
         public static string ToDbString(this DbTypes db)
@@ -474,6 +479,7 @@ namespace ReportBuilder.Web.Models
         public string reportName { get; set; }
         public string reportDescription { get; set; }
         public bool expandAll { get; set; }
+        public bool hasSubreports { get; set; }
         public string printUrl { get; set; }
         public string clientId { get; set; }
         public string userId { get; set; }
@@ -502,20 +508,11 @@ namespace ReportBuilder.Web.Models
 
     public class MsSqlDnrDataConnection : IDnrDataConnection
     {
-        private readonly IConfigurationRoot _configuration;
         public string DbConnection { get; set; }
         public string ConnectKey { get; set; }
 
         public MsSqlDnrDataConnection(string connectKey)
         {
-            // Load appsettings.json
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-
-            _configuration = builder.Build();
-
-            //DbConnection = dbConnection;
             ConnectKey = connectKey;
         }
 
@@ -539,9 +536,16 @@ namespace ReportBuilder.Web.Models
 
     public static class DotNetReportHelper
     {
-        private static readonly IConfigurationRoot _configuration;
+        private static IConfiguration _configuration;
         private readonly static string _configFileName = "appsettings.dotnetreport.json";
         public static string dbtype = DbTypes.MS_SQL.ToString().Replace("_", " ");
+
+        private static string _webAppRootUrl;
+        public static string WebAppRootUrl
+        {
+            get { return _webAppRootUrl ?? (_webAppRootUrl = StaticConfig.GetValue<string>("dotNetReport:webAppRootUrl") ?? ""); }
+            set { _webAppRootUrl = value; }
+        }
         public static bool useAltPivot = false;
         public static string defaultDateFormat = "United States";
 
@@ -550,6 +554,19 @@ namespace ReportBuilder.Web.Models
         {
             get => string.IsNullOrEmpty(_dataFilters.Value) || _dataFilters.Value == "null" ? "{}" : _dataFilters.Value;
             set => _dataFilters.Value = value;
+        }
+        private static readonly Regex CssRuleRegex = new Regex(
+            @"([^\{\}]+)\{([^\{\}]+)\}", RegexOptions.Compiled | RegexOptions.Singleline);
+
+        private class CssRule
+        {
+            public string Tag;
+            public string Id;
+            public List<string> Classes = new List<string>();
+            public List<CssRule> Ancestors = new List<CssRule>();
+            public int Specificity;
+            public int Order;
+            public Dictionary<string, (string Value, bool Important)> Declarations;
         }
 
         #region Report HTML sanitization (server-side XSS guard)
@@ -795,16 +812,25 @@ namespace ReportBuilder.Web.Models
         }
 
 
-        static DotNetReportHelper()
-        {
-            var builder = new ConfigurationBuilder()
-                           .SetBasePath(Directory.GetCurrentDirectory())
-                           .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+        // Only built when the host never calls UseConfiguration
+        private static readonly Lazy<IConfiguration> _fallbackConfiguration = new Lazy<IConfiguration>(() =>
+            new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables()
+                .Build());
 
-            _configuration = builder.Build();
+        /// <summary>
+        /// Call at startup to hand Dotnet Report the host's own configuration, so tokens and connection
+        /// strings can come from any provider instead of appsettings.json on disk.
+        /// </summary>
+        public static void UseConfiguration(IConfiguration configuration)
+        {
+            if (configuration != null) _configuration = configuration;
         }
 
-        public static IConfigurationRoot StaticConfig => _configuration;
+        public static IConfiguration StaticConfig => _configuration ?? _fallbackConfiguration.Value;
 
         public static string GetConnectionString(string key, bool addOledbProvider = false)
         {
@@ -1242,20 +1268,17 @@ namespace ReportBuilder.Web.Models
                         {
                             var increment = rowstart==3 ? 1 : 0;
                             var hyperlinkAddress = formatColumn.LinkFieldItem.SendAsQueryParameter ? $"{formatColumn.LinkFieldItem.LinkToUrl}?{formatColumn.LinkFieldItem.QueryParameterName}={cellValue}" : formatColumn.LinkFieldItem.LinkToUrl;
-                            if (Uri.TryCreate(hyperlinkAddress, UriKind.Absolute, out var absLinkUri))
+                            var linkUri = BuildHyperlinkUri(hyperlinkAddress);
+                            if (linkUri != null)
                             {
-                                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = absLinkUri;
+                                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = linkUri;
+                                ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
+                                ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
                             }
-                            else if (Uri.TryCreate(hyperlinkAddress, UriKind.Relative, out var relLinkUri))
-                            {
-                                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = relLinkUri;
-                            }
-                            ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
-                            ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
                         }
                     }
                 }
-                if (formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinksToReport != null &&  formatColumn?.LinkFieldItem.LinksToReport==true)
+                if (formatColumn != null && formatColumn?.LinkFieldItem != null && formatColumn?.LinkFieldItem.LinksToReport != null && formatColumn?.LinkFieldItem.LinksToReport == true)
                 {
                     for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
                     {
@@ -1263,22 +1286,18 @@ namespace ReportBuilder.Web.Models
                         if (!string.IsNullOrEmpty(cellValue))
                         {
                             var increment = rowstart == 3 ? 1 : 0;
-                            //var url = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}";
                             var hyperlinkAddress = "/DotNetReport/Report?linkedreport=true&reportId=" + formatColumn.LinkFieldItem.LinkedToReportId;
                             if (formatColumn.LinkFieldItem.SendAsFilterParameter && !string.IsNullOrEmpty(cellValue))
                             {
                                 hyperlinkAddress += $"&filterId={formatColumn.LinkFieldItem.SelectedFilterId}&filterValue={cellValue.Replace("'", "").Replace("\"", "")}";
                             }
-                            if (Uri.TryCreate(hyperlinkAddress, UriKind.Absolute, out var absRptUri))
+                            var linkUri = BuildHyperlinkUri(hyperlinkAddress);
+                            if (linkUri != null)
                             {
-                                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = absRptUri;
+                                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = linkUri;
+                                ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
+                                ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
                             }
-                            else if (Uri.TryCreate(hyperlinkAddress, UriKind.Relative, out var relRptUri))
-                            {
-                                ws.Cells[rowIndex + rowstart + increment, i].Hyperlink = relRptUri;
-                            }
-                            ws.Cells[rowIndex + rowstart + increment, i].Style.Font.UnderLine = true;
-                            ws.Cells[rowIndex + rowstart + increment, i].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
                         }
                     }
                 }
@@ -1310,6 +1329,17 @@ namespace ReportBuilder.Web.Models
                     ws.Column(colstart + i).Width = pxValue / 7;
                 }
             }
+        }
+
+        private static Uri BuildHyperlinkUri(string address)
+        {
+            if (string.IsNullOrWhiteSpace(address)) return null;
+            if (Uri.TryCreate(address, UriKind.Absolute, out var absolute)) return absolute;
+            if (string.IsNullOrEmpty(WebAppRootUrl)) return null;
+
+            return Uri.TryCreate(WebAppRootUrl.TrimEnd('/') + "/" + address.TrimStart('/'), UriKind.Absolute, out var resolved)
+                ? resolved
+                : null;
         }
 
         public static DataTable Transpose(DataTable dt)
@@ -1356,7 +1386,7 @@ namespace ReportBuilder.Web.Models
         {
             using (var client = new HttpClient())
             {
-                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetCustomFunctions?account={1}&dataConnect={2}&clientId=", _configuration.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey));
+                var response = await client.GetAsync(String.Format("{0}/ReportApi/GetCustomFunctions?account={1}&dataConnect={2}&clientId=", StaticConfig.GetValue<string>("dotNetReport:apiUrl"), accountKey, dataConnectKey));
                 response.EnsureSuccessStatusCode();
                 var content = await response.Content.ReadAsStringAsync();
                 var functions = JsonConvert.DeserializeObject<List<CustomFunctionModel>>(content);
@@ -1406,7 +1436,6 @@ namespace ReportBuilder.Web.Models
                 return sql;
             }
         }
-
         public static int FindFromIndex(string sql)
         {
             if (sql.Contains("{FROM} "))
@@ -2608,6 +2637,8 @@ namespace ReportBuilder.Web.Models
             foreach (DataRow row in dt.Rows)
             {
                 int rowIndex = dt.Rows.IndexOf(row);
+                // One result set is expected, otherwise skip row 
+                if (rowIndex >= dts.Tables.Count) continue;
                 DataTable dtsTable = dts.Tables[rowIndex];
                 var distinctValues = new Dictionary<string, HashSet<object>>();
                 var maxValues = new Dictionary<string, object>();
@@ -2719,6 +2750,46 @@ namespace ReportBuilder.Web.Models
             return (dt, qry, sqlFields);
         }
 
+        /// <summary>
+        /// Runs a saved data-driven query and returns its full result set. Callers pick the columns
+        /// they need, so the same stored query can feed recipient lists today and user, role or
+        /// client lists later without changing this contract.
+        /// </summary>
+        public static async Task<DataTable> GetDataDrivenQueryRows(string encryptedSql, string connectKey)
+        {
+            var sql = Decrypt(encryptedSql);
+            if (!IsReadOnlySelectSql(sql, out var reason))
+                throw new Exception("Query rejected: " + reason);
+
+            var connectionString = GetConnectionString(connectKey);
+            IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
+            return await Task.Run(() => databaseConnection.ExecuteQuery(connectionString, sql));
+        }
+
+        /// <summary>
+        /// Picks the email addresses out of a data-driven query result. Prefers a column named Email,
+        /// otherwise the first column. Blanks, duplicates and anything without an @ are dropped so one
+        /// bad row cannot fail the whole run.
+        /// </summary>
+        public static List<string> ExtractEmailRecipients(DataTable dt)
+        {
+            var recipients = new List<string>();
+            if (dt == null || dt.Columns.Count == 0) return recipients;
+
+            var emailColumn = dt.Columns.Cast<DataColumn>()
+                .FirstOrDefault(c => string.Equals(c.ColumnName, "Email", StringComparison.OrdinalIgnoreCase))
+                ?? dt.Columns[0];
+
+            foreach (DataRow row in dt.Rows)
+            {
+                var value = row[emailColumn]?.ToString()?.Trim();
+                if (string.IsNullOrEmpty(value) || value.IndexOf('@') < 0) continue;
+                if (!recipients.Contains(value, StringComparer.OrdinalIgnoreCase)) recipients.Add(value);
+            }
+
+            return recipients;
+        }
+
         private static decimal ComputeAggregateValue(string aggregate, IEnumerable<DataRow> rows, string columnName)
         {
             var rowList = rows.ToList();
@@ -2762,6 +2833,13 @@ namespace ReportBuilder.Web.Models
                 .Where(c => c.aggregateFunction == "Outer Group" || c.outerGroup)
                 .Select(c => c.fieldName)
                 .ToList() ?? new List<string>();
+
+            // Group headings use the column label when one is set, matching the browser and the headers.
+            var outerGroupLabels = columns?
+                .Where(c => c.aggregateFunction == "Outer Group" || c.outerGroup)
+                .GroupBy(c => c.fieldName)
+                .ToDictionary(g => g.Key, g => string.IsNullOrEmpty(g.First().fieldLabel) ? g.Key : g.First().fieldLabel)
+                ?? new Dictionary<string, string>();
 
             if (!outerGroupColumns.Any())
             {
@@ -2886,7 +2964,7 @@ namespace ReportBuilder.Web.Models
                     currentRow++;
 
                     // Write group label row above the group's data rows (merged, highlighted)
-                    string groupLabel = string.Join("  |  ", outerGroupColumns.Select(gc => $"{gc} - {row[gc]?.ToString() ?? ""}"));
+                    string groupLabel = string.Join("  |  ", outerGroupColumns.Select(gc => $"{(outerGroupLabels.ContainsKey(gc) ? outerGroupLabels[gc] : gc)} - {row[gc]?.ToString() ?? ""}"));
                     ws.Cells[currentRow, colstart].Value = groupLabel;
                     ws.Cells[currentRow, colstart].Style.Font.Bold = true;
                     ws.Cells[currentRow, colstart].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
@@ -2919,8 +2997,9 @@ namespace ReportBuilder.Web.Models
             ApplyColumnWidths(ws, colstart, dt.Columns.Count, columns);
         }
 
-        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
-                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null, bool isSubReport = false, bool subTotalPerGroup = false, string totalRowFormat = "row", string filterDetailsText = null)
+        public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,bool hasSubreports =false,
+                string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null, bool isSubReport = false, bool subTotalPerGroup = false, string totalRowFormat = "row", string filterDetailsText = null,
+                Func<int, int, bool, Task<string>> linkedReportResolver = null)
         {
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
@@ -2953,7 +3032,7 @@ namespace ReportBuilder.Web.Models
                 }
                 else
                 {
-                    var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                    var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls, qry.parameters);
                     dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
                 }
             }
@@ -2988,7 +3067,88 @@ namespace ReportBuilder.Web.Models
                 bool isTableMode = includeSubtotal && totalRowFormat == "table";
                 bool includeGrandTotal = includeSubtotal && !isTableMode;
                 WriteGroupedExcel(dt, ws, rowstart, colstart, columns, includeSubtotal, includeGrandTotal, true, chartData, isSubReport, subTotalPerGroup);
-
+                // ---- NEW: embed linked sub-reports directly under each parent row, drilldown-style ----
+                if (hasSubreports && linkedReportResolver != null && dt.Rows.Count > 0 && columns?.Count > 0)
+                {
+                    var linkedCols = columns.Where(c => c.LinkFieldItem?.LinksToReport == true 
+                                                      && c.LinkFieldItem.LinkedToReportId.HasValue
+                                                      && c.LinkFieldItem.SelectedFilterId.HasValue).ToList();
+                    if (linkedCols.Count > 0)
+                    {
+                        var perRowBlocks = new List<(int rowDataIndex, List<(ReportHeaderColumn col, string filterValue, DataTable subDt)> blocks)>();
+                        var blockLock = new object();
+                        foreach (var linkCol in linkedCols)
+                        {
+                            if (!dt.Columns.Contains(linkCol.fieldName)) continue;
+                            // Resolve the SQL template ONCE per linked column, not per row.
+                            var sqlTemplate = await linkedReportResolver(
+                                linkCol.LinkFieldItem.LinkedToReportId.Value,
+                                linkCol.LinkFieldItem.SelectedFilterId.Value,
+                                true); // resolver now returns a template with a token, see below
+                            if (string.IsNullOrEmpty(sqlTemplate)) continue;
+                            var subConnectionString = DotNetReportHelper.GetConnectionString(connectKey);
+                            IDatabaseConnection subDbConn = DatabaseConnectionFactory.GetConnection(dbtype);
+                            // De-dupe: many rows may share the same filter value — only query each distinct value once.
+                            var valueCache = new ConcurrentDictionary<string, DataTable>();
+                            var rowValues = new List<(int rowIndex, string value)>();
+                            for (int rowIdx = 0; rowIdx < dt.Rows.Count; rowIdx++)
+                            {
+                                var val = dt.Rows[rowIdx][linkCol.fieldName]?.ToString();
+                                if (!string.IsNullOrEmpty(val)) rowValues.Add((rowIdx, val));
+                            }
+                            var distinctValues = rowValues.Select(r => r.value).Distinct().ToList();
+                            // Run distinct queries with limited parallelism instead of one-at-a-time.
+                            var throttler = new SemaphoreSlim(5); // tune based on DB connection pool size
+                            var queryTasks = distinctValues.Select(async val =>
+                            {
+                                await throttler.WaitAsync();
+                                try
+                                {
+                                    var filteredSql = sqlTemplate.Replace(ReportConstants.SubReportValueToken, val.Replace("'", "''"));
+                                    DataTable subDt;
+                                    try { subDt = subDbConn.ExecuteQuery(subConnectionString, filteredSql); }
+                                    catch { subDt = null; }
+                                    valueCache[val] = subDt;
+                                }
+                                finally { throttler.Release(); }
+                            });
+                            await Task.WhenAll(queryTasks);
+                            foreach (var (rowIndex, value) in rowValues)
+                            {
+                                if (!valueCache.TryGetValue(value, out var subDt) || subDt == null || subDt.Rows.Count == 0) continue;
+                                lock (blockLock)
+                                {
+                                    var existing = perRowBlocks.FirstOrDefault(x => x.rowDataIndex == rowIndex);
+                                    if (existing.blocks == null)
+                                    {
+                                        perRowBlocks.Add((rowIndex, new List<(ReportHeaderColumn, string, DataTable)> { (linkCol, value, subDt) }));
+                                    }
+                                    else
+                                    {
+                                        existing.blocks.Add((linkCol, value, subDt));
+                                    }
+                                }
+                            }
+                        }
+                        // ---- insertion logic below is unchanged from before ----
+                        int dataRowStart = rowstart + 1;
+                        var ordered = perRowBlocks.OrderByDescending(x => x.rowDataIndex).ToList();
+                        foreach (var (rowIdx, blocks) in ordered)
+                        {
+                            int parentRow = dataRowStart + rowIdx;
+                            int insertAt = parentRow + 1;
+                            for (int b = blocks.Count - 1; b >= 0; b--)
+                            {
+                                var (linkCol, filterValue, subDt) = blocks[b];
+                                ws.InsertRow(insertAt, subDt.Rows.Count + 2);
+                                ws.Cells[insertAt, colstart + 1].Value = (linkCol.fieldLabel ?? linkCol.fieldName) + ": " + filterValue;
+                                ws.Cells[insertAt, colstart + 1].Style.Font.Bold = true;
+                                ws.Cells[insertAt, colstart + 1].Style.Font.Italic = true;
+                                FormatExcelSheet(subDt, ws, insertAt + 1, colstart + 1, columns, false, true, null, false, true);
+                            }
+                        }
+                    }
+                }
                 // "As Total Table" mode: write a separate 2-column summary table below the main data
                 if (isTableMode && !pivot)
                 {
@@ -3341,7 +3501,7 @@ namespace ReportBuilder.Web.Models
                 }
                 else
                 {
-                    var ds = await GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                    var ds = await GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls, qry.parameters);
                     dt = PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
                 }
             }
@@ -4102,6 +4262,8 @@ namespace ReportBuilder.Web.Models
                    "<style>" +
                    GetWordReportCss() +
                    "body, p, div, span, td, th, li { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; font-size: 11pt; }" +
+                   "p, div, li { margin: 0; mso-margin-top-alt: 0; margin-bottom: 0; line-height: normal; }" +
+                   "table { mso-table-lspace: 0; mso-table-rspace: 0; }" +
                    "</style></head><body>" + (innerHtml ?? "") + "</body></html>";
         }
 
@@ -4149,9 +4311,7 @@ namespace ReportBuilder.Web.Models
                         var processedHeader = SubstituteHtmlPlaceholders(headerHtml, currentUserName, currentUserRoles, 1, 1, useWordFields: true, reportName: reportName);
                         var headerPart = mainPart.AddNewPart<HeaderPart>();
                         headerRelId = mainPart.GetIdOfPart(headerPart);
-                        processedHeader = ConvertBootstrapGridToTable(processedHeader);
-                        processedHeader = ConvertFlexToTable(processedHeader);
-                        processedHeader = ConvertGridToTable(processedHeader);
+                        processedHeader = ConvertLayoutsForWord(processedHeader);
                         var altHdrPart = headerPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
                         var altHdrRelId = headerPart.GetIdOfPart(altHdrPart);
                         var fullHdrHtml = WrapHtmlForWord(processedHeader);
@@ -4184,9 +4344,7 @@ namespace ReportBuilder.Web.Models
                     {
                         var footerPart = mainPart.AddNewPart<FooterPart>();
                         footerRelId = mainPart.GetIdOfPart(footerPart);
-                        processedFooterHtml = ConvertBootstrapGridToTable(processedFooterHtml);
-                        processedFooterHtml = ConvertFlexToTable(processedFooterHtml);
-                        processedFooterHtml = ConvertGridToTable(processedFooterHtml);
+                        processedFooterHtml = ConvertLayoutsForWord(processedFooterHtml);
                         var altFtrPart = footerPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
                         var altFtrRelId = footerPart.GetIdOfPart(altFtrPart);
                         var fullFtrHtml = WrapHtmlForWord(processedFooterHtml);
@@ -4250,9 +4408,7 @@ namespace ReportBuilder.Web.Models
                     }
                     if (hasCustomHtml)
                     {
-                        customHtml = ConvertBootstrapGridToTable(customHtml);
-                        customHtml = ConvertFlexToTable(customHtml);
-                        customHtml = ConvertGridToTable(customHtml);
+                        customHtml = ConvertLayoutsForWord(customHtml, addTableBorders: true);
                         var altBodyPart = mainPart.AddAlternativeFormatImportPart(AlternativeFormatImportPartType.Html);
                         var altBodyRelId = mainPart.GetIdOfPart(altBodyPart);
                         var fullBodyHtml = WrapHtmlForWord(customHtml);
@@ -4269,7 +4425,7 @@ namespace ReportBuilder.Web.Models
                         // Create table
                         Table table = new Table();
                         TableProperties props = new TableProperties(new Justification() { Val = JustificationValues.Center },
-                         new TableLayout() { Type = TableLayoutValues.Autofit },
+                         new TableLayout() { Type = TableLayoutValues.Fixed },
                          new TableBorders(
                          new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
                          new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
@@ -4305,6 +4461,34 @@ namespace ReportBuilder.Web.Models
                             TableCell cell = new TableCell(paragraph);
                             headerRow.AppendChild(cell);
                         }
+                        // Header text alone underestimates a column, so sample the data too.
+                        var sampleRows = Math.Min(dt.Rows.Count, 200);
+                        for (var sr = 0; sr < sampleRows; sr++)
+                        {
+                            foreach (DataColumn column in dt.Columns)
+                            {
+                                var cellText = dt.Rows[sr][column.ColumnName]?.ToString() ?? "";
+                                if (cellText.Length > 40) cellText = cellText.Substring(0, 40);
+                                var w = EstimateTextWidth(cellText);
+                                if (w > maxColumnWidths[column.Ordinal]) maxColumnWidths[column.Ordinal] = w;
+                            }
+                        }
+
+                        // Word autofits an unsized table by splitting the page evenly between columns, so a
+                        // wide report ends up one character per line. Give it an explicit grid instead.
+                        for (var ci = 0; ci < maxColumnWidths.Length; ci++)
+                            maxColumnWidths[ci] = Math.Min(Math.Max(maxColumnWidths[ci] + 120, 700), 4320);
+
+                        // A fixed layout no longer shrinks to fit, so the grid has to stay inside the
+                        // printable area or the table bleeds off both edges.
+                        FitColumnWidthsToPage(maxColumnWidths, pageSize, pageOrientation);
+
+                        var tableGrid = new TableGrid();
+                        foreach (var gw in maxColumnWidths)
+                            tableGrid.Append(new GridColumn() { Width = gw.ToString() });
+                        table.InsertAfter(tableGrid, props);
+
+                        ApplyCellWidths(headerRow, maxColumnWidths);
                         table.AppendChild(headerRow);
                         // WORD Export page size setup
                         if (!String.IsNullOrEmpty(pageSize))
@@ -4428,6 +4612,7 @@ namespace ReportBuilder.Web.Models
                                 dataRow.AppendChild(cell);
                                 i++;
                             }
+                            ApplyCellWidths(dataRow, maxColumnWidths);
                             table.AppendChild(dataRow);
                         }
                         if (includeSubtotal)
@@ -4454,6 +4639,7 @@ namespace ReportBuilder.Web.Models
                                 dataRow.AppendChild(cell);
                             }
 
+                            ApplyCellWidths(dataRow, maxColumnWidths);
                             table.AppendChild(dataRow);
                         }
 
@@ -4473,8 +4659,11 @@ namespace ReportBuilder.Web.Models
                     // Ensure cells do not wrap their text; also tighten cell padding
                     foreach (TableCell cell in body.Descendants<TableCell>())
                     {
-                        cell.TableCellProperties = new TableCellProperties();
-                        cell.TableCellProperties.Append(new NoWrap());
+                        cell.TableCellProperties ??= new TableCellProperties();
+                        if (!cell.TableCellProperties.Elements<NoWrap>().Any())
+                            cell.TableCellProperties.Append(new NoWrap());
+                        foreach (var existingMargin in cell.TableCellProperties.Elements<TableCellMargin>().ToList())
+                            existingMargin.Remove();
                         cell.TableCellProperties.Append(new TableCellMargin(
                             new TopMargin() { Width = "20", Type = TableWidthUnitValues.Dxa },
                             new BottomMargin() { Width = "20", Type = TableWidthUnitValues.Dxa },
@@ -4490,6 +4679,8 @@ namespace ReportBuilder.Web.Models
 
                         var finalSectionProps = new SectionProperties();
 
+                        bool useTitlePage = headerFirstPageOnly || footerFirstPageOnly;
+
                         if (!string.IsNullOrEmpty(headerRelId))
                         {
                             if (headerFirstPageOnly)
@@ -4501,6 +4692,8 @@ namespace ReportBuilder.Web.Models
                             else
                             {
                                 finalSectionProps.Append(new HeaderReference() { Type = HeaderFooterValues.Default, Id = headerRelId });
+                                if (useTitlePage)
+                                    finalSectionProps.Append(new HeaderReference() { Type = HeaderFooterValues.First, Id = headerRelId });
                             }
                         }
                         if (!string.IsNullOrEmpty(footerRelId))
@@ -4514,11 +4707,13 @@ namespace ReportBuilder.Web.Models
                             else
                             {
                                 finalSectionProps.Append(new FooterReference() { Type = HeaderFooterValues.Default, Id = footerRelId });
+                                if (useTitlePage)
+                                    finalSectionProps.Append(new FooterReference() { Type = HeaderFooterValues.First, Id = footerRelId });
                             }
                         }
 
                         // Enable "different first page" so Word honors the "first" header/footer refs
-                        if (headerFirstPageOnly || footerFirstPageOnly)
+                        if (useTitlePage)
                         {
                             finalSectionProps.Append(new TitlePage());
                         }
@@ -4585,121 +4780,204 @@ namespace ReportBuilder.Web.Models
                 return memStream.ToArray();
             }
         }
-        private static string ConvertGridToTable(string customHtml)
+        /// <summary>
+        /// Parses a descendant selector such as "#report-footer .footer-row a" into a target rule plus
+        /// its ancestor parts. 
+        /// </summary>
+        private static CssRule ParseSelectorChain(string selector)
+        {
+            if (string.IsNullOrEmpty(selector)) return null;
+            if (Regex.IsMatch(selector, @"[+~:\[\]]")) return null;
+
+            var parts = Regex.Split(selector.Replace(">", " ").Trim(), @"\s+")
+                            .Where(x => x.Length > 0).ToArray();
+            if (parts.Length == 0) return null;
+
+            var parsed = new List<CssRule>();
+            foreach (var part in parts)
+            {
+                var simple = ParseSimpleSelector(part);
+                if (simple == null) return null;
+                parsed.Add(simple);
+            }
+
+            var target = parsed[parsed.Count - 1];
+            target.Ancestors = parsed.Take(parsed.Count - 1).ToList();
+            target.Specificity = parsed.Sum(p => (p.Id != null ? 100 : 0) + (p.Classes.Count * 10) + (p.Tag != null ? 1 : 0));
+            return target;
+        }
+
+        private static bool MatchesSimple(CssRule rule, HtmlNode el)
+        {
+            if (el == null || el.NodeType != HtmlNodeType.Element) return false;
+            if (rule.Tag != null && rule.Tag != el.Name.ToLowerInvariant()) return false;
+            if (rule.Id != null && rule.Id != el.GetAttributeValue("id", "")) return false;
+            if (rule.Classes.Count > 0)
+            {
+                var classes = el.GetAttributeValue("class", "")
+                    .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+                if (!rule.Classes.All(c => classes.Contains(c))) return false;
+            }
+            return true;
+        }
+
+        private static bool RuleMatches(CssRule rule, HtmlNode el)
+        {
+            if (!MatchesSimple(rule, el)) return false;
+            if (rule.Ancestors.Count == 0) return true;
+
+            var remaining = new Stack<CssRule>(rule.Ancestors);   // innermost ancestor on top
+            var parent = el.ParentNode;
+            while (parent != null && remaining.Count > 0)
+            {
+                if (MatchesSimple(remaining.Peek(), parent)) remaining.Pop();
+                parent = parent.ParentNode;
+            }
+            return remaining.Count == 0;
+        }
+
+        private static CssRule ParseSimpleSelector(string selector)
+        {
+            if (string.IsNullOrEmpty(selector)) return null;
+            if (Regex.IsMatch(selector, @"[\s>+~:\[\]]")) return null;
+
+            var match = Regex.Match(selector, @"^([a-zA-Z][a-zA-Z0-9]*)?((?:#[a-zA-Z0-9_-]+)?)((?:\.[a-zA-Z0-9_-]+)*)$");
+            if (!match.Success) return null;
+
+            var rule = new CssRule();
+            if (match.Groups[1].Success && match.Groups[1].Value.Length > 0)
+                rule.Tag = match.Groups[1].Value.ToLowerInvariant();
+            if (match.Groups[2].Success && match.Groups[2].Value.Length > 0)
+                rule.Id = match.Groups[2].Value.Substring(1);
+            if (match.Groups[3].Success && match.Groups[3].Value.Length > 0)
+                rule.Classes = match.Groups[3].Value.Split('.', StringSplitOptions.RemoveEmptyEntries).ToList();
+
+            if (rule.Tag == null && rule.Id == null && rule.Classes.Count == 0) return null;
+            return rule;
+        }
+
+        private static Dictionary<string, (string Value, bool Important)> ParseDeclarationsWithImportant(string declText)
+        {
+            var result = new Dictionary<string, (string, bool)>();
+            if (string.IsNullOrWhiteSpace(declText)) return result;
+
+            foreach (var part in declText.Split(';'))
+            {
+                int idx = part.IndexOf(':');
+                if (idx <= 0) continue;
+
+                string prop = part.Substring(0, idx).Trim().ToLowerInvariant();
+                string rawVal = part.Substring(idx + 1).Trim();
+                bool important = Regex.IsMatch(rawVal, "!important", RegexOptions.IgnoreCase);
+                string val = Regex.Replace(rawVal, "!important", "", RegexOptions.IgnoreCase).Trim().TrimEnd(';').Trim();
+
+                if (!string.IsNullOrEmpty(val))
+                    result[prop] = (val, important);
+            }
+            return result;
+        }
+        private static string StripCssComments(string css)
+        {
+            if (string.IsNullOrEmpty(css)) return css;
+            return Regex.Replace(css, @"/\*.*?\*/", "", RegexOptions.Singleline);
+        }
+        private static List<CssRule> ParseAllCssRules(string css)
+        {
+            var rules = new List<CssRule>();
+            if (string.IsNullOrWhiteSpace(css)) return rules;
+
+            css = StripCssComments(css);
+
+            foreach (Match ruleMatch in CssRuleRegex.Matches(css))
+            {
+                string selectorPart = ruleMatch.Groups[1].Value.Trim();
+                string declPart = ruleMatch.Groups[2].Value.Trim();
+
+                var declarations = ParseDeclarationsWithImportant(declPart);
+                if (declarations.Count == 0) continue;
+
+                foreach (var rawSelector in selectorPart.Split(','))
+                {
+                    var parsed = ParseSelectorChain(rawSelector.Trim());
+                    if (parsed == null) continue;
+
+                    parsed.Declarations = declarations;
+                    parsed.Order = rules.Count;
+                    rules.Add(parsed);
+                }
+            }
+            return rules;
+        }
+        private static string ApplyExternalCssInline(string customHtml, params string[] cssSources)
         {
             var doc = new HtmlAgilityPack.HtmlDocument();
             doc.LoadHtml(customHtml);
 
-            bool convertedAny;
-            do
+            var allRules = new List<CssRule>();
+            foreach (var css in cssSources)
+                allRules.AddRange(ParseAllCssRules(css));
+
+            if (allRules.Count == 0) return customHtml;
+
+            var allElements = doc.DocumentNode.SelectNodes("//*[@class or @id]");
+            if (allElements == null) return customHtml;
+
+            var orderedRules = allRules.OrderBy(r => r.Specificity).ThenBy(r => r.Order).ToList();
+
+            foreach (var el in allElements)
             {
-                convertedAny = false;
+                var normal = new Dictionary<string, string>();
+                var important = new Dictionary<string, string>();
 
-                var gridNodes = doc.DocumentNode
-                    .SelectNodes("//*[contains(translate(@style,' ',''),'display:grid')]");
-
-                if (gridNodes == null) break;
-
-                var deepestFirst = gridNodes.OrderByDescending(GetDepth).ToList();
-
-                foreach (var gridNode in deepestFirst)
+                foreach (var rule in orderedRules)
                 {
-                    ConvertSingleGridNode(doc, gridNode);
-                    convertedAny = true;
-                    break; // ek convert karke dobara fetch karo, DOM change ho chuka hy
+                    if (!RuleMatches(rule, el)) continue;
+
+                    foreach (var kv in rule.Declarations)
+                    {
+                        if (kv.Value.Important) important[kv.Key] = kv.Value.Value;
+                        else normal[kv.Key] = kv.Value.Value;
+                    }
                 }
 
-            } while (convertedAny);
+                if (normal.Count == 0 && important.Count == 0) continue;
+
+                var finalDecls = new Dictionary<string, string>(normal);
+                foreach (var kv in important) finalDecls[kv.Key] = kv.Value;
+
+                string existingStyle = el.GetAttributeValue("style", "");
+                var existingProps = ParseDeclarations(existingStyle);
+
+                var sb = new StringBuilder();
+                foreach (var kv in finalDecls)
+                    if (!existingProps.ContainsKey(kv.Key)) 
+                        sb.Append($"{kv.Key}:{kv.Value}; ");
+
+                sb.Append(existingStyle);
+                el.SetAttributeValue("style", sb.ToString().Trim());
+            }
 
             return doc.DocumentNode.OuterHtml;
         }
 
-        private static void ConvertSingleGridNode(HtmlAgilityPack.HtmlDocument doc, HtmlNode gridNode)
+        private static Dictionary<string, string> ParseDeclarations(string declText)
         {
-            var style = gridNode.GetAttributeValue("style", "");
+            var result = new Dictionary<string, string>();
+            if (string.IsNullOrWhiteSpace(declText)) return result;
 
-            var children = gridNode.ChildNodes
-                .Where(n => n.NodeType == HtmlNodeType.Element)
-                .ToList();
-            if (children.Count == 0) return;
-
-            // grid-template-columns se column count nikalo
-            string templateCols = ExtractStyleValue(style, "grid-template-columns");
-            int colCount = GetColumnCount(templateCols, children.Count);
-
-            string columnGap = ExtractStyleValue(style, "column-gap") ?? ExtractStyleValue(style, "gap") ?? "0px";
-            string containerBg = ExtractStyleValue(style, "background-color");
-
-            var wrapper = doc.CreateElement("div");
-            if (!string.IsNullOrEmpty(containerBg))
-                wrapper.SetAttributeValue("style", $"background-color:{containerBg};");
-
-            var table = doc.CreateElement("table");
-            table.SetAttributeValue("width", "100%");
-            table.SetAttributeValue("style", $"border-collapse:collapse; width:100%;{(string.IsNullOrEmpty(containerBg) ? "" : $" background-color:{containerBg};")}");
-            table.SetAttributeValue("cellspacing", "0");
-
-            // Children ko rows mein group karo (colCount ke hisaab se wrap)
-            for (int i = 0; i < children.Count; i += colCount)
+            foreach (var part in declText.Split(';'))
             {
-                var tr = doc.CreateElement("tr");
-                var rowChildren = children.Skip(i).Take(colCount).ToList();
+                int idx = part.IndexOf(':');
+                if (idx <= 0) continue;
 
-                foreach (var child in rowChildren)
-                {
-                    var td = doc.CreateElement("td");
+                string prop = part.Substring(0, idx).Trim().ToLowerInvariant();
+                string val = Regex.Replace(part.Substring(idx + 1), "!important", "", RegexOptions.IgnoreCase)
+                                   .Trim().TrimEnd(';').Trim();
 
-                    // *** Yahi missing piece tha: child ka apna background-color nikal ke td pe daalo ***
-                    var childStyle = child.GetAttributeValue("style", "");
-                    string childBg = ExtractStyleValue(childStyle, "background-color");
-                    string childPadding = ExtractStyleValue(childStyle, "padding") ?? "10px";
-
-                    var tdStyleParts = new List<string>
-            {
-                "vertical-align:top",
-                $"padding:{childPadding}"
-            };
-                    if (!string.IsNullOrEmpty(childBg))
-                        tdStyleParts.Add($"background-color:{childBg}");
-                    if (columnGap != "0px" && rowChildren.IndexOf(child) < rowChildren.Count - 1)
-                        tdStyleParts.Add($"padding-right:{columnGap}");
-
-                    td.SetAttributeValue("style", string.Join("; ", tdStyleParts) + ";");
-                    td.SetAttributeValue("width", $"{100 / colCount}%");
-
-                    // child ka background-color style se hata do (ab td pe hy), baaki styles rehne do
-                    if (!string.IsNullOrEmpty(childBg))
-                    {
-                        var cleanedStyle = System.Text.RegularExpressions.Regex.Replace(
-                            childStyle, @"background-color\s*:\s*[^;]+;?", "",
-                            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                        child.SetAttributeValue("style", cleanedStyle);
-                    }
-
-                    td.InnerHtml = child.OuterHtml;
-                    tr.AppendChild(td);
-                }
-                table.AppendChild(tr);
+                if (!string.IsNullOrEmpty(val))
+                    result[prop] = val;
             }
-
-            wrapper.AppendChild(table);
-            gridNode.ParentNode.ReplaceChild(wrapper, gridNode);
-        }
-
-        private static int GetColumnCount(string templateCols, int fallbackChildCount)
-        {
-            if (string.IsNullOrEmpty(templateCols))
-                return fallbackChildCount;
-
-            // Pattern: repeat(3, 1fr)
-            var repeatMatch = System.Text.RegularExpressions.Regex.Match(
-                templateCols, @"repeat\(\s*(\d+)\s*,");
-            if (repeatMatch.Success)
-                return int.Parse(repeatMatch.Groups[1].Value);
-
-            // Pattern: 1fr 1fr 1fr  ya  200px 1fr auto
-            var parts = templateCols.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            return parts.Length > 0 ? parts.Length : fallbackChildCount;
+            return result;
         }
         private static string ConvertBootstrapGridToTable(string customHtml)
         {
@@ -4737,8 +5015,6 @@ namespace ReportBuilder.Web.Models
                     string colStyle = col.GetAttributeValue("style", "");
                     string colBg = ExtractStyleValue(colStyle, "background-color");
                     string colPadding = ExtractStyleValue(colStyle, "padding");
-
-                    // *** Fix: text-align aur vertical-align bhi nikalo ***
                     string colTextAlign = ExtractStyleValue(colStyle, "text-align");
                     string colVertAlign = ExtractStyleValue(colStyle, "vertical-align");
 
@@ -4752,12 +5028,11 @@ namespace ReportBuilder.Web.Models
 
                     td.SetAttributeValue("style", string.Join("; ", tdStyleParts) + ";");
 
-                    // col ke baaki inline styles (jo td pe copy kar diye) uske apne style se hata do
                     if (!string.IsNullOrEmpty(colStyle))
                     {
-                        var cleanedStyle = System.Text.RegularExpressions.Regex.Replace(
+                        var cleanedStyle = Regex.Replace(
                             colStyle, @"(background-color|padding|text-align|vertical-align)\s*:\s*[^;]+;?", "",
-                            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                            RegexOptions.IgnoreCase);
                         col.SetAttributeValue("style", cleanedStyle);
                     }
 
@@ -4774,12 +5049,12 @@ namespace ReportBuilder.Web.Models
         {
             if (string.IsNullOrEmpty(classAttr)) return 12;
 
-            var match = System.Text.RegularExpressions.Regex.Match(
-                classAttr, @"col-(?:xs-|sm-|md-|lg-|xl-)?(\d+)");
+            var match = Regex.Match(classAttr, @"col-(?:xs-|sm-|md-|lg-|xl-)?(\d+)");
             if (match.Success) return int.Parse(match.Groups[1].Value);
 
             return 12;
         }
+
         private static string ConvertFlexToTable(string customHtml)
         {
             var doc = new HtmlAgilityPack.HtmlDocument();
@@ -4790,35 +5065,145 @@ namespace ReportBuilder.Web.Models
             {
                 convertedAny = false;
 
-                // Kisi bhi tag pe display:flex dhoondo (div, span, section, header, footer, etc.)
                 var flexNodes = doc.DocumentNode
                     .SelectNodes("//*[contains(translate(@style,' ',''),'display:flex')]");
 
                 if (flexNodes == null) break;
 
-                // Sabse deep-nested wala pehle convert karo (bottom-up),
-                // warna outer conversion nested flex ko tor dega
                 var deepestFirst = flexNodes.OrderByDescending(GetDepth).ToList();
 
                 foreach (var flexNode in deepestFirst)
                 {
                     ConvertSingleFlexNode(doc, flexNode);
                     convertedAny = true;
-                    break; // ek convert karke list dobara fetch karo (DOM change ho chuka)
+                    break;
                 }
 
             } while (convertedAny);
 
             return doc.DocumentNode.OuterHtml;
         }
+        private static string WrapPlainBackgroundDivsInTable(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+            bool convertedAny;
+            do
+            {
+                convertedAny = false;
+                var candidates = doc.DocumentNode.SelectNodes(
+                    "//*[contains(translate(@style,' ',''),'background-color:') and not(self::table) and not(self::td) and not(self::tr) and not(self::th)]");
 
+                if (candidates == null) break;
+                var shallowestFirst = candidates.OrderBy(GetDepth).ToList();
+
+                foreach (var node in shallowestFirst)
+                {
+                    if (node.Ancestors("table").Any()) continue;
+                    WrapSingleBackgroundDiv(doc, node);
+                    convertedAny = true;
+                    break; 
+                }
+            } while (convertedAny);
+            return doc.DocumentNode.OuterHtml;
+        }
+        /// <summary>
+        /// Header and footer fragments often right align an element with margin-left:auto, which only works
+        /// inside a flex container. Word has no flex, so split the top level into a two column table.
+        /// </summary>
+        private static string ConvertAutoMarginToTable(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            var topLevel = doc.DocumentNode.ChildNodes
+                .Where(n => n.NodeType == HtmlNodeType.Element)
+                .ToList();
+            if (topLevel.Count < 2) return customHtml;
+
+            var rightStart = topLevel.FindIndex(n =>
+                n.GetAttributeValue("style", "").Replace(" ", "").IndexOf("margin-left:auto", StringComparison.OrdinalIgnoreCase) >= 0);
+            if (rightStart <= 0) return customHtml;
+
+            var table = doc.CreateElement("table");
+            table.SetAttributeValue("width", "100%");
+            table.SetAttributeValue("style", "border-collapse:collapse; width:100%;");
+            var tr = doc.CreateElement("tr");
+
+            var leftTd = doc.CreateElement("td");
+            leftTd.SetAttributeValue("style", "vertical-align:middle; text-align:left;");
+            var rightTd = doc.CreateElement("td");
+            rightTd.SetAttributeValue("style", "vertical-align:middle; text-align:right;");
+
+            for (var i = 0; i < topLevel.Count; i++)
+            {
+                var cell = i < rightStart ? leftTd : rightTd;
+                // margin-left:auto has no meaning once the cell handles alignment
+                var style = topLevel[i].GetAttributeValue("style", "");
+                if (!string.IsNullOrEmpty(style))
+                {
+                    topLevel[i].SetAttributeValue("style",
+                        Regex.Replace(style, @"margin-left\s*:\s*auto\s*;?", "", RegexOptions.IgnoreCase).Trim());
+                }
+                cell.AppendChild(topLevel[i].CloneNode(true));
+            }
+
+            tr.AppendChild(leftTd);
+            tr.AppendChild(rightTd);
+            table.AppendChild(tr);
+
+            foreach (var n in topLevel) n.Remove();
+            doc.DocumentNode.AppendChild(table);
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        public static string ConvertLayoutsForWord(string customHtml, bool addTableBorders = false)
+        {
+            customHtml = ApplyExternalCssInline(customHtml, GetWordReportCss());
+
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+            string result = doc.DocumentNode.OuterHtml;
+
+            result = ConvertBootstrapGridToTable(result);
+            result = ConvertFlexToTable(result);
+            result = ConvertGridToTable(result);
+            result = ConvertAutoMarginToTable(result);
+            result = TightenTableCellsForWord(result);
+            if (addTableBorders) result = EnsureTableBordersForWord(result);
+            result = WrapPlainBackgroundDivsInTable(result); // *** naya step ***
+            result = EnsureTableBackgroundCompat(result);
+            result = FixImageSizingForWord(result);
+
+            return result;
+        }
+        private static void WrapSingleBackgroundDiv(HtmlAgilityPack.HtmlDocument doc, HtmlNode node)
+        {
+            string style = node.GetAttributeValue("style", "");
+            string bg = ExtractStyleValue(style, "background-color");
+            if (string.IsNullOrEmpty(bg)) return;
+
+            string remainingStyle = Regex.Replace(style, @"background-color\s*:\s*[^;]+;?", "", RegexOptions.IgnoreCase).Trim();
+
+            var table = doc.CreateElement("table");
+            table.SetAttributeValue("width", "100%");
+            table.SetAttributeValue("style", $"border-collapse:collapse; width:100%; background-color:{bg};");
+
+            var tr = doc.CreateElement("tr");
+            var td = doc.CreateElement("td");
+            td.SetAttributeValue("style", $"background-color:{bg}; {remainingStyle}");
+            td.InnerHtml = node.InnerHtml; // andar ka poora content copy karo
+
+            tr.AppendChild(td);
+            table.AppendChild(tr);
+
+            node.ParentNode.ReplaceChild(table, node);
+        }
         private static void ConvertSingleFlexNode(HtmlAgilityPack.HtmlDocument doc, HtmlNode flexNode)
         {
             var style = flexNode.GetAttributeValue("style", "");
-
-            var children = flexNode.ChildNodes
-                .Where(n => n.NodeType == HtmlNodeType.Element)
-                .ToList();
+            var children = flexNode.ChildNodes.Where(n => n.NodeType == HtmlNodeType.Element).ToList();
             if (children.Count == 0) return;
 
             bool isColumn = ExtractStyleValue(style, "flex-direction")?.Trim() == "column";
@@ -4827,27 +5212,25 @@ namespace ReportBuilder.Web.Models
             string bg = ExtractStyleValue(style, "background-color");
             string padding = ExtractStyleValue(style, "padding");
 
-            string hAlign = justify switch
+            string hAlign, vAlign;
+
+            if (isColumn)
             {
-                "center" => "center",
-                "flex-end" => "right",
-                _ => "left"
-            };
-            string vAlign = align switch
+                hAlign = align switch { "center" => "center", "flex-end" => "right", _ => "left" };
+                vAlign = justify switch { "flex-start" => "top", "flex-end" => "bottom", "center" => "middle", _ => "top" };
+            }
+            else
             {
-                "flex-start" => "top",
-                "flex-end" => "bottom",
-                _ => "middle"
-            };
+                hAlign = justify switch { "center" => "center", "flex-end" => "right", "space-between" => "left", _ => "left" };
+                vAlign = align switch { "flex-start" => "top", "flex-end" => "bottom", _ => "middle" };
+            }
 
             string bgStyle = string.IsNullOrEmpty(bg) ? "" : $"background-color:{bg};";
 
             var wrapper = doc.CreateElement("div");
-            if (!string.IsNullOrEmpty(bgStyle))
-                wrapper.SetAttributeValue("style", bgStyle);
+            if (!string.IsNullOrEmpty(bgStyle)) wrapper.SetAttributeValue("style", bgStyle);
 
             var table = doc.CreateElement("table");
-            // Table pe bhi bg set karo, warna Word default white fill de dega
             table.SetAttributeValue("style", $"border-collapse:collapse; width:100%; {bgStyle}");
             table.SetAttributeValue("width", "100%");
 
@@ -4857,9 +5240,8 @@ namespace ReportBuilder.Web.Models
                 {
                     var tr = doc.CreateElement("tr");
                     var td = doc.CreateElement("td");
-                    // Har td pe bhi bg zaroori hy
                     td.SetAttributeValue("style",
-                        $"vertical-align:{vAlign}; text-align:{hAlign}; padding:{(string.IsNullOrEmpty(padding) ? "6px" : padding)}; {bgStyle}");
+                        $"vertical-align:{vAlign}; text-align:{hAlign}; padding:{(string.IsNullOrEmpty(padding) ? "0" : padding)}; {bgStyle}");
                     td.InnerHtml = child.OuterHtml;
                     tr.AppendChild(td);
                     table.AppendChild(tr);
@@ -4873,7 +5255,7 @@ namespace ReportBuilder.Web.Models
                     var td = doc.CreateElement("td");
                     string cellAlign = (justify == "space-between" && i == children.Count - 1) ? "right" : hAlign;
                     td.SetAttributeValue("style",
-                        $"vertical-align:{vAlign}; text-align:{cellAlign}; padding:{(string.IsNullOrEmpty(padding) ? "6px" : padding)}; {bgStyle}");
+                        $"vertical-align:{vAlign}; text-align:{cellAlign}; padding:{(string.IsNullOrEmpty(padding) ? "0" : padding)}; {bgStyle}");
                     td.InnerHtml = children[i].OuterHtml;
                     tr.AppendChild(td);
                 }
@@ -4884,21 +5266,229 @@ namespace ReportBuilder.Web.Models
             flexNode.ParentNode.ReplaceChild(wrapper, flexNode);
         }
 
+        private static string ConvertGridToTable(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            bool convertedAny;
+            do
+            {
+                convertedAny = false;
+
+                var gridNodes = doc.DocumentNode
+                    .SelectNodes("//*[contains(translate(@style,' ',''),'display:grid')]");
+
+                if (gridNodes == null) break;
+
+                var deepestFirst = gridNodes.OrderByDescending(GetDepth).ToList();
+
+                foreach (var gridNode in deepestFirst)
+                {
+                    ConvertSingleGridNode(doc, gridNode);
+                    convertedAny = true;
+                    break;
+                }
+
+            } while (convertedAny);
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        private static void ConvertSingleGridNode(HtmlAgilityPack.HtmlDocument doc, HtmlNode gridNode)
+        {
+            var style = gridNode.GetAttributeValue("style", "");
+            var children = gridNode.ChildNodes.Where(n => n.NodeType == HtmlNodeType.Element).ToList();
+            if (children.Count == 0) return;
+
+            string templateCols = ExtractStyleValue(style, "grid-template-columns");
+            int colCount = GetColumnCount(templateCols, children.Count);
+
+            string columnGap = ExtractStyleValue(style, "column-gap") ?? ExtractStyleValue(style, "gap") ?? "0px";
+            string containerBg = ExtractStyleValue(style, "background-color");
+
+            var wrapper = doc.CreateElement("div");
+            if (!string.IsNullOrEmpty(containerBg))
+                wrapper.SetAttributeValue("style", $"background-color:{containerBg};");
+
+            var table = doc.CreateElement("table");
+            table.SetAttributeValue("width", "100%");
+            table.SetAttributeValue("style",
+                $"border-collapse:collapse; width:100%;{(string.IsNullOrEmpty(containerBg) ? "" : $" background-color:{containerBg};")}");
+            table.SetAttributeValue("cellspacing", "0");
+
+            for (int i = 0; i < children.Count; i += colCount)
+            {
+                var tr = doc.CreateElement("tr");
+                var rowChildren = children.Skip(i).Take(colCount).ToList();
+
+                foreach (var child in rowChildren)
+                {
+                    var td = doc.CreateElement("td");
+                    var childStyle = child.GetAttributeValue("style", "");
+                    string childBg = ExtractStyleValue(childStyle, "background-color");
+                    string childPadding = ExtractStyleValue(childStyle, "padding") ?? "10px";
+
+                    var tdStyleParts = new List<string> { "vertical-align:top", $"padding:{childPadding}" };
+                    if (!string.IsNullOrEmpty(childBg)) tdStyleParts.Add($"background-color:{childBg}");
+                    if (columnGap != "0px" && rowChildren.IndexOf(child) < rowChildren.Count - 1)
+                        tdStyleParts.Add($"padding-right:{columnGap}");
+
+                    td.SetAttributeValue("style", string.Join("; ", tdStyleParts) + ";");
+                    td.SetAttributeValue("width", $"{100 / colCount}%");
+
+                    if (!string.IsNullOrEmpty(childBg))
+                    {
+                        var cleanedStyle = Regex.Replace(childStyle, @"background-color\s*:\s*[^;]+;?", "", RegexOptions.IgnoreCase);
+                        child.SetAttributeValue("style", cleanedStyle);
+                    }
+
+                    td.InnerHtml = child.OuterHtml;
+                    tr.AppendChild(td);
+                }
+                table.AppendChild(tr);
+            }
+
+            wrapper.AppendChild(table);
+            gridNode.ParentNode.ReplaceChild(wrapper, gridNode);
+        }
+
+        private static int GetColumnCount(string templateCols, int fallbackChildCount)
+        {
+            if (string.IsNullOrEmpty(templateCols)) return fallbackChildCount;
+
+            var repeatMatch = Regex.Match(templateCols, @"repeat\(\s*(\d+)\s*,");
+            if (repeatMatch.Success) return int.Parse(repeatMatch.Groups[1].Value);
+
+            var parts = templateCols.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length > 0 ? parts.Length : fallbackChildCount;
+        }
+
+        // =========================================================================
+        // WORD-COMPATIBILITY FIXUPS
+        // =========================================================================
+
+        private static string EnsureTableBackgroundCompat(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            var elements = doc.DocumentNode.SelectNodes("//table | //td | //tr");
+            if (elements == null) return customHtml;
+
+            foreach (var el in elements)
+            {
+                string style = el.GetAttributeValue("style", "");
+                string bg = ExtractStyleValue(style, "background-color");
+
+                if (string.IsNullOrEmpty(bg)) continue;
+
+                string bgColor = NormalizeColorForAttribute(bg);
+                if (string.IsNullOrEmpty(bgColor)) continue;
+
+                el.SetAttributeValue("bgcolor", bgColor);
+            }
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        private static string NormalizeColorForAttribute(string cssColor)
+        {
+            cssColor = cssColor.Trim();
+
+            if (Regex.IsMatch(cssColor, @"^#[0-9a-fA-F]{3,6}$"))
+                return cssColor;
+
+            var rgbMatch = Regex.Match(cssColor, @"rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)");
+            if (rgbMatch.Success)
+            {
+                int r = int.Parse(rgbMatch.Groups[1].Value);
+                int g = int.Parse(rgbMatch.Groups[2].Value);
+                int b = int.Parse(rgbMatch.Groups[3].Value);
+                return $"#{r:X2}{g:X2}{b:X2}";
+            }
+
+            if (Regex.IsMatch(cssColor, @"^[a-zA-Z]+$"))
+                return cssColor;
+
+            return null;
+        }
+
+        private static string FixImageSizingForWord(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            var images = doc.DocumentNode.SelectNodes("//img");
+            if (images == null) return customHtml;
+
+            foreach (var img in images)
+            {
+                string style = img.GetAttributeValue("style", "");
+                string widthStyle = ExtractStyleValue(style, "width");
+
+                if (string.IsNullOrEmpty(widthStyle)) continue;
+
+                var pxMatch = Regex.Match(widthStyle, @"(\d+(\.\d+)?)px");
+                if (!pxMatch.Success) continue;
+
+                int targetWidth = (int)Math.Round(double.Parse(pxMatch.Groups[1].Value));
+
+                if (img.Attributes.Contains("width") && img.Attributes.Contains("height")) continue;
+
+                int targetHeight = 0;
+
+                string src = img.GetAttributeValue("src", "");
+                if (src.StartsWith("data:image"))
+                {
+                    try
+                    {
+                        var base64Data = src.Substring(src.IndexOf(",") + 1);
+                        var bytes = Convert.FromBase64String(base64Data);
+                        using (var ms = new MemoryStream(bytes))
+                        using (var image = Image.FromStream(ms))
+                        {
+                            double ratio = (double)image.Height / image.Width;
+                            targetHeight = (int)Math.Round(targetWidth * ratio);
+                        }
+                    }
+                    catch
+                    {
+                        targetHeight = 0;
+                    }
+                }
+
+                img.SetAttributeValue("width", targetWidth.ToString());
+                if (targetHeight > 0)
+                    img.SetAttributeValue("height", targetHeight.ToString());
+
+                string cleanedStyle = Regex.Replace(style, @"width\s*:\s*[^;]+;?", "", RegexOptions.IgnoreCase);
+                img.SetAttributeValue("style", cleanedStyle.Trim());
+            }
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        // =========================================================================
+        // SHARED HELPERS
+        // =========================================================================
+
         private static int GetDepth(HtmlNode node)
         {
             int depth = 0;
-            while (node.ParentNode != null)
-            {
-                depth++;
-                node = node.ParentNode;
-            }
+            while (node.ParentNode != null) { depth++; node = node.ParentNode; }
             return depth;
         }
 
         private static string ExtractStyleValue(string styleAttr, string property)
         {
-            var match = System.Text.RegularExpressions.Regex.Match(
-                styleAttr, $@"{property}\s*:\s*([^;]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (string.IsNullOrEmpty(styleAttr)) return null;
+
+            var match = Regex.Match(
+                styleAttr,
+                $@"(?<![\w-]){Regex.Escape(property)}(?![\w-])\s*:\s*([^;]+)",
+                RegexOptions.IgnoreCase);
+
             return match.Success ? match.Groups[1].Value.Trim() : null;
         }
         static void AddImageToBody(WordprocessingDocument wordDoc, string relationshipId, long cx, long cy)
@@ -4975,6 +5565,170 @@ namespace ReportBuilder.Web.Models
             paragraph.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
             wordDoc.MainDocumentPart.Document.Body.AppendChild(paragraph);
         }
+        /// <summary>
+        /// Printable width in twips for the page the export is about to use, page margins removed.
+        /// </summary>
+        private static int GetPrintableWidthTwips(string pageSize, string pageOrientation)
+        {
+            const int margins = 2880; // 1in each side
+
+            // No page size means the export picks a landscape default further down.
+            if (string.IsNullOrEmpty(pageSize)) return 16838 - margins;
+
+            int width, height;
+            switch (pageSize.ToUpper())
+            {
+                case "A4": width = (int)(210 * 56.7); height = (int)(297 * 56.7); break;
+                case "LEGAL": width = (int)(8.5 * 1440); height = 14 * 1440; break;
+                case "A3": width = (int)(297 * 56.7); height = (int)(420 * 56.7); break;
+                case "TABLOID": width = 11 * 1440; height = 17 * 1440; break;
+                default: width = (int)(8.5 * 1440); height = 11 * 1440; break;
+            }
+
+            var landscape = !string.IsNullOrEmpty(pageOrientation) && pageOrientation.ToUpper() == "LANDSCAPE";
+            return (landscape ? height : width) - margins;
+        }
+
+        /// <summary>
+        /// Scales the grid down proportionally so the table fits the page. Columns are not taken below a
+        /// readable minimum; if even that does not fit, the widest columns give up the remainder.
+        /// </summary>
+        private static void FitColumnWidthsToPage(int[] widths, string pageSize, string pageOrientation)
+        {
+            if (widths == null || widths.Length == 0) return;
+
+            var available = GetPrintableWidthTwips(pageSize, pageOrientation);
+            var total = widths.Sum();
+            if (total <= available) return;
+
+            const int floorWidth = 500;
+            var scale = (double)available / total;
+            for (var i = 0; i < widths.Length; i++)
+                widths[i] = Math.Max((int)Math.Floor(widths[i] * scale), floorWidth);
+
+            // Flooring narrow columns can push the total back over, so trim the widest ones.
+            var over = widths.Sum() - available;
+            while (over > 0)
+            {
+                var widest = Array.IndexOf(widths, widths.Max());
+                if (widths[widest] <= floorWidth) break;
+                var take = Math.Min(over, widths[widest] - floorWidth);
+                widths[widest] -= take;
+                over -= take;
+            }
+        }
+
+        /// <summary>
+        /// Report tables read as loose text in Word without cell borders. Only applied to the report body,
+        /// never to the header or footer, where the layout tables must stay invisible.
+        /// </summary>
+        private static string EnsureTableBordersForWord(string customHtml)
+        {
+            if (string.IsNullOrWhiteSpace(customHtml)) return customHtml;
+
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            var tables = doc.DocumentNode.SelectNodes("//table");
+            if (tables == null) return customHtml;
+
+            const string defaultBorder = "1px solid #dee2e6";
+
+            foreach (var table in tables)
+            {
+                var tableStyle = table.GetAttributeValue("style", "");
+                if (tableStyle.IndexOf("border-collapse", StringComparison.OrdinalIgnoreCase) < 0)
+                    tableStyle = (tableStyle + " border-collapse:collapse;").Trim();
+                table.SetAttributeValue("style", tableStyle);
+
+                foreach (var cell in table.Descendants().Where(n => n.Name == "td" || n.Name == "th"))
+                {
+                    var style = cell.GetAttributeValue("style", "");
+                    // Respect a border the stylesheet already supplied, whatever form it took.
+                    if (Regex.IsMatch(style, @"(^|;)\s*border(-(top|right|bottom|left))?\s*:", RegexOptions.IgnoreCase)) continue;
+                    cell.SetAttributeValue("style", $"{style} border:{defaultBorder};".Trim());
+                }
+            }
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        /// <summary>
+        /// Word turns each block child of a cell into its own paragraph and adds cell padding on top of the
+        /// css padding, so header rows gain blank lines. Drop the children that render nothing and cap the
+        /// vertical padding, leaving the horizontal padding alone.
+        /// </summary>
+        private static string TightenTableCellsForWord(string customHtml)
+        {
+            if (string.IsNullOrWhiteSpace(customHtml)) return customHtml;
+
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            var cells = doc.DocumentNode.SelectNodes("//td | //th");
+            if (cells == null) return customHtml;
+
+            const int maxVerticalPaddingPx = 4;
+
+            foreach (var cell in cells)
+            {
+                // Icon spans and placeholder divs carry no text, but Word still gives them a line.
+                foreach (var child in cell.Descendants().Where(n => n.NodeType == HtmlNodeType.Element).ToList())
+                {
+                    if (child.Name == "img" || child.Name == "br") continue;
+                    if (child.Descendants("img").Any()) continue;
+                    if (!string.IsNullOrWhiteSpace(HtmlAgilityPack.HtmlEntity.DeEntitize(child.InnerText))) continue;
+                    child.Remove();
+                }
+
+                var style = cell.GetAttributeValue("style", "");
+                if (string.IsNullOrEmpty(style)) continue;
+
+                var padding = ExtractStyleValue(style, "padding");
+                if (string.IsNullOrEmpty(padding)) continue;
+
+                var parts = padding.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                var vertical = parts[0];
+                var horizontal = parts.Length > 1 ? parts[1] : parts[0];
+
+                if (ToPixels(vertical) <= maxVerticalPaddingPx) continue;
+
+                var tightened = Regex.Replace(style, @"padding\s*:[^;]+;?", "", RegexOptions.IgnoreCase).Trim();
+                cell.SetAttributeValue("style", $"{tightened} padding:{maxVerticalPaddingPx}px {horizontal};".Trim());
+            }
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
+        private static double ToPixels(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return 0;
+            var m = Regex.Match(value.Trim(), @"^(-?\d+(\.\d+)?)\s*(px|pt|mm|cm|in)?$", RegexOptions.IgnoreCase);
+            if (!m.Success) return 0;
+            var n = double.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+            switch ((m.Groups[3].Value ?? "").ToLowerInvariant())
+            {
+                case "pt": return n * 96.0 / 72.0;
+                case "mm": return n * 96.0 / 25.4;
+                case "cm": return n * 96.0 / 2.54;
+                case "in": return n * 96.0;
+                default: return n;
+            }
+        }
+
+        private static void ApplyCellWidths(TableRow row, int[] widths)
+        {
+            var i = 0;
+            foreach (var cell in row.Elements<TableCell>())
+            {
+                if (i >= widths.Length) break;
+                var tcPr = cell.GetFirstChild<TableCellProperties>();
+                if (tcPr == null) { tcPr = new TableCellProperties(); cell.InsertAt(tcPr, 0); }
+                tcPr.Append(new TableCellWidth() { Width = widths[i].ToString(), Type = TableWidthUnitValues.Dxa });
+                i++;
+            }
+        }
+
         static private int EstimateTextWidth(string text)
         {
             // Simple estimation: number of characters * average width of a character in twips
@@ -4997,23 +5751,37 @@ namespace ReportBuilder.Web.Models
             }
         }
 
+        private async static Task<LaunchOptions> GetBrowserLaunchOptions(bool debug)
+        {
+            var executablePath = DotNetReportHelper.StaticConfig?.GetValue<string>("dotNetReport:chromiumPath");
+
+            if (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath))
+            {
+                var installPath = Path.Combine(AppContext.BaseDirectory, "App_Data", "local-chromium");
+                var fetcher = new BrowserFetcher(new BrowserFetcherOptions { Path = installPath });
+                var installed = await fetcher.DownloadAsync();
+                executablePath = installed.GetExecutablePath();
+            }
+
+            var options = new LaunchOptions { Headless = !debug, ExecutablePath = executablePath };
+
+            var extraArgs = DotNetReportHelper.StaticConfig?.GetValue<string>("dotNetReport:chromiumArgs");
+            if (!string.IsNullOrWhiteSpace(extraArgs))
+            {
+                options.Args = extraArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            }
+
+            return options;
+        }
+
         private async static Task<(IBrowser browser, IPage page)> LaunchAndLoadReportPrintPageAsync(
             string printUrl, int reportId, string reportSql, string connectKey,
             string userId, string clientId, string currentUserRole, string dataFilters,
             bool expandAll, string expandSqls, string pivotColumn, string pivotFunction,
             bool subTotalMode, bool includeColumnTotal, bool isSubreport,
-            int pageNumber, int currentPageSize, bool debug)
+            int pageNumber, int currentPageSize, bool debug, bool canUseAdminMode = false)
         {
-            var installPath = AppContext.BaseDirectory + $"{(AppContext.BaseDirectory.EndsWith("\\") ? "" : "\\")}App_Data\\local-chromium";
-            await new BrowserFetcher(new BrowserFetcherOptions { Path = installPath }).DownloadAsync();
-            var executablePath = "";
-            foreach (var d in Directory.GetDirectories($"{installPath}\\chrome"))
-            {
-                executablePath = $"{d}\\chrome-win64\\chrome.exe";
-                if (File.Exists(executablePath)) break;
-            }
-
-            var browser = await Puppeteer.LaunchAsync(new LaunchOptions { Headless = !debug, ExecutablePath = executablePath });
+            var browser = await Puppeteer.LaunchAsync(await GetBrowserLaunchOptions(debug));
             IPage page = null;
             try
             {
@@ -5038,7 +5806,7 @@ namespace ReportBuilder.Web.Models
                     }
                     else
                     {
-                        var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                        var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls, qry.parameters);
                         dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, ds, pivotColumn, pivotFunction, expandSqls);
                     }
                     var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
@@ -5070,19 +5838,34 @@ namespace ReportBuilder.Web.Models
                     }
                 };
 
+                // Identity and the report query use trusted server-side session here
+                var exportSession = new ExportSession
+                {
+                    ReportId = reportId,
+                    ReportSql = reportSql,
+                    ConnectKey = connectKey,
+                    Settings = new DotNetReportSettings
+                    {
+                        UserId = userId,
+                        ClientId = clientId,
+                        CurrentUserRole = (currentUserRole ?? "")
+                            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                            .ToList(),
+                        DataFilters = string.IsNullOrEmpty(dataFilters)
+                            ? new { }
+                            : System.Text.Json.JsonSerializer.Deserialize<object>(dataFilters) ?? new { },
+                        CanUseAdminMode = canUseAdminMode
+                    }
+                };
+                var exportId = ExportSessionStore.Save(exportSession);
+
                 var formData = new StringBuilder();
                 formData.AppendLine("<html><body>");
                 formData.AppendLine($"<form action=\"{printUrl}\" method=\"post\">");
-                formData.AppendLine($"<input name=\"reportSql\" value=\"{HttpUtility.HtmlEncode(reportSql)}\" />");
-                formData.AppendLine($"<input name=\"connectKey\" value=\"{HttpUtility.HtmlEncode(connectKey)}\" />");
-                formData.AppendLine($"<input name=\"reportId\" value=\"{reportId}\" />");
+                formData.AppendLine($"<input name=\"exportId\" value=\"{HttpUtility.HtmlEncode(exportId)}\" />");
                 formData.AppendLine($"<input name=\"pageNumber\" value=\"{pageNumber}\" />");
                 formData.AppendLine($"<input name=\"pageSize\" value=\"{(isSubreport ? currentPageSize : 99999)}\" />");
-                formData.AppendLine($"<input name=\"userId\" value=\"{userId}\" />");
-                formData.AppendLine($"<input name=\"clientId\" value=\"{clientId}\" />");
-                formData.AppendLine($"<input name=\"currentUserRole\" value=\"{currentUserRole}\" />");
                 formData.AppendLine($"<input name=\"expandAll\" value=\"{expandAll}\" />");
-                formData.AppendLine($"<input name=\"dataFilters\" value=\"{HttpUtility.HtmlEncode(string.IsNullOrEmpty(dataFilters) ? "{}" : dataFilters)}\" />");
                 formData.AppendLine($"<input name=\"reportData\" value=\"{HttpUtility.HtmlEncode(JsonConvert.SerializeObject(model))}\" />");
                 formData.AppendLine($"</form>");
                 formData.AppendLine("<script type=\"text/javascript\">document.getElementsByTagName('form')[0].submit();</script>");
@@ -5128,7 +5911,7 @@ namespace ReportBuilder.Web.Models
                       string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
                       string pivotColumn = null, string pivotFunction = null, bool imageOnly = false, bool debug = false,string pageSize="",string pageOrientation="",bool subTotalMode=false,bool includeColumnTotal=false, bool isSubreport = false,
         int pageNumber = 1,
-        int currentPageSize = 1)
+        int currentPageSize = 1, bool canUseAdminMode = false)
         {
             IBrowser browser = null;
             IPage page = null;
@@ -5140,7 +5923,7 @@ namespace ReportBuilder.Web.Models
                     userId, clientId, currentUserRole, dataFilters,
                     expandAll, expandSqls, pivotColumn, pivotFunction,
                     subTotalMode, includeColumnTotal, isSubreport,
-                    pageNumber, currentPageSize, debug);
+                    pageNumber, currentPageSize, debug, canUseAdminMode);
 
                 if (imageOnly)
                 {
@@ -5203,8 +5986,10 @@ namespace ReportBuilder.Web.Models
                     if (string.IsNullOrEmpty(html)) return "";
                     html = html.Replace("{page.number}", "<span class=\"pageNumber\"></span>")
                                .Replace("{page.total}", "<span class=\"totalPages\"></span>");
+                    // Rebuild the ancestor chain the html had in the document, otherwise rules scoped
+                    // under .report-view cannot match inside the isolated header/footer template.
                     return "<style>" + pageStyles + " * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }</style>"
-                         + "<div style=\"font-size:10px; width:100%; padding: 0 0.4in; -webkit-print-color-adjust: exact; print-color-adjust: exact;\">" + html + "</div>";
+                         + "<div class=\"report-view\" style=\"font-size:10px; width:100%; padding: 0 0.4in; -webkit-print-color-adjust: exact; print-color-adjust: exact;\">" + html + "</div>";
                 }
 
                 if (headerEveryPage || footerEveryPage)
@@ -5342,7 +6127,7 @@ namespace ReportBuilder.Web.Models
 
         public async static Task<string> GetReportRenderedHtml(string printUrl, int reportId, string reportSql, string connectKey, string reportName,
             string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "", bool expandAll = false, string expandSqls = null,
-            string pivotColumn = null, string pivotFunction = null)
+            string pivotColumn = null, string pivotFunction = null, bool canUseAdminMode = false)
         {
             IBrowser browser = null;
             IPage page = null;
@@ -5353,7 +6138,7 @@ namespace ReportBuilder.Web.Models
                     userId, clientId, currentUserRole, dataFilters,
                     expandAll, expandSqls, pivotColumn, pivotFunction,
                     subTotalMode: false, includeColumnTotal: false, isSubreport: false,
-                    pageNumber: 1, currentPageSize: 99999, debug: false);
+                    pageNumber: 1, currentPageSize: 99999, debug: false, canUseAdminMode: canUseAdminMode);
 
                 await Task.Delay(750);
 
@@ -5510,7 +6295,7 @@ namespace ReportBuilder.Web.Models
                 }
                 else
                 {
-                    var dds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls);
+                    var dds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dt, sqlFields, expandSqls, qry.parameters);
                     dt = DotNetReportHelper.PushDatasetIntoDataTable(dt, dds, pivotColumn, pivotFunction, expandSqls);
                 }
             }
@@ -5587,6 +6372,11 @@ namespace ReportBuilder.Web.Models
             for (int i = 0; i < dt.Columns.Count; i++)
             {
                 var columnName = !string.IsNullOrEmpty(columns?[i].fieldLabel) ? columns[i].fieldLabel : dt.Columns[i].ColumnName;
+
+                // Prevent formula injection
+                if (!string.IsNullOrEmpty(columnName) && ("=+-@".Contains(columnName[0])))
+                    columnName = "'" + columnName;
+
                 sb.Append('"').Append(columnName.Replace("\"", "\"\"")).Append('"').Append(',');
             }
             sb.Length--; // Remove trailing comma
@@ -6464,29 +7254,29 @@ namespace ReportBuilder.Web.Models
 
     }
 
+    public class ExportSession
+    {
+        public DotNetReportSettings Settings { get; set; }
+        public int ReportId { get; set; }
+        public string ReportSql { get; set; }
+        public string ConnectKey { get; set; }
+    }
+
     public static class ExportSessionStore
     {
-        private static readonly ConcurrentDictionary<string, DotNetReportSettings> _sessions = new();
+        private static readonly MemoryCache _sessions = new MemoryCache(new MemoryCacheOptions());
 
-        public static string Save(DotNetReportSettings settings)
+        public static string Save(ExportSession session)
         {
             var id = Guid.NewGuid().ToString("N");
-            _sessions[id] = settings;
-
-            // Auto-expire after 10 minutes
-            Task.Run(async () =>
-            {
-                await Task.Delay(TimeSpan.FromMinutes(10));
-                _sessions.TryRemove(id, out _);
-            });
-
+            _sessions.Set(id, session, TimeSpan.FromMinutes(5));
             return id;
         }
 
-        public static DotNetReportSettings Get(string id)
+        public static ExportSession Get(string id)
         {
-            _sessions.TryGetValue(id, out var settings);
-            return settings;
+            if (string.IsNullOrWhiteSpace(id)) return null;
+            return _sessions.Get<ExportSession>(id);
         }
     }
 }

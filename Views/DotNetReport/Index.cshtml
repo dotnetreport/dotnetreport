@@ -38,6 +38,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 dataFilters: data.dataFilters,
                 runExportUrl: "/api/DotnetReportApi/",
                 getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
+                previewEmailListUrl: '@Url.Action("PreviewEmailList", "DotNetReportApi")',
                 printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, Context.Request.Scheme)",
                 samePageOnRun: true
             });
@@ -55,7 +56,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
 }
 
 <div class="container-fluid">
-    <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+    @if (ViewBag.AllowAdminMode == true)
+    {
+        <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+    }
 
     <!--
         The markup code below is related to presentation. You don't have to change it, unless you
@@ -462,14 +466,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <div class="col-sm-5 right-align">
                                                 <div class="d-none d-md-block">
                                                     <br />
-                                                    <span data-bind="if: $root.CanSaveReports() || $root.adminMode() ">
-                                                        <button class="btn btn-sm btn-outline-secondary" data-bind="visible: canEdit, click: openReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
-                                                            <span class="fa fa-edit" aria-hidden="true"></span> Edit
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: copyReport, visible:canEdit || $parent.appSettings.canCopyReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
-                                                            <span class="fa fa-copy" aria-hidden="true"></span> Copy
-                                                        </button>
-                                                    </span>
+                                                    <button class="btn btn-sm btn-outline-secondary" data-bind="visible: canEdit, click: openReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                        <span class="fa fa-edit" aria-hidden="true"></span> Edit
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-secondary" data-bind="click: copyReport, visible: (canEdit || $parent.appSettings.canCopyReport) && ($root.CanSaveReports() || $root.adminMode())" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                        <span class="fa fa-copy" aria-hidden="true"></span> Copy
+                                                    </button>
                                                     <div class="btn-group">
                                                         <button type="button" class="btn btn-sm btn-outline-secondary" data-bind="click: runReport">
                                                             <span class="fa fa-gears" aria-hidden="true"></span> Run
@@ -505,14 +507,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 </div>
 
                                                 <div class="d-block d-md-none">
-                                                    <span data-bind="if: $root.CanSaveReports() || $root.adminMode()">
-                                                        <button class="btn btn-sm btn-outline-secondary" title="Edit" data-bind="visible: canEdit, click: openReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
-                                                            <span class="fa fa-edit" aria-hidden="true"></span>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-light" data-bind="click: copyReport, visible:canEdit || $parent.appSettings.canCopyReport" title="Copy Report" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
-                                                            <span class="fa fa-copy" aria-hidden="true"></span>
-                                                        </button>
-                                                    </span>
+                                                    <button class="btn btn-sm btn-outline-secondary" title="Edit" data-bind="visible: canEdit, click: openReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                        <span class="fa fa-edit" aria-hidden="true"></span>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-light" data-bind="click: copyReport, visible: (canEdit || $parent.appSettings.canCopyReport) && ($root.CanSaveReports() || $root.adminMode())" title="Copy Report" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                                                        <span class="fa fa-copy" aria-hidden="true"></span>
+                                                    </button>
 
                                                     <div class="btn-group">
                                                         <button class="btn btn-sm btn-outline-secondary" data-bind="click: runReport" title="Run Report">
@@ -556,25 +556,10 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
                             <!-- BREADCRUMB -->
                             <nav aria-label="breadcrumb">
-                                <ol class="breadcrumb">
-                                    <li class="breadcrumb-item">
-                                        <a href="#" data-bind="click: function(){ SelectedFolder(null); searchReports(''); }">
-                                            All Folders
-                                        </a>
-                                    </li>
-                                    <!-- ko foreach: folderBreadcrumb() -->
-                                    <li class="breadcrumb-item"
-                                        data-bind="css: { 'active': $index() === $parent.folderBreadcrumb().length - 1 }">
-                                        <!-- ko if: $index() < $parent.folderBreadcrumb().length - 1 -->
-                                        <a href="#" data-bind="text: FolderName, click: function(){ $root.SelectedFolder($data); }"></a>
-                                        <!-- /ko -->
-                                        <!-- ko if: $index() === $parent.folderBreadcrumb().length - 1 -->
-                                        <span data-bind="text: FolderName"></span>
-                                        <!-- /ko -->
-                                    </li>
-                                    <!-- /ko -->
-                                    <li class="breadcrumb-item active" data-bind="visible: searchReports()">
-                                        Search Results
+                                <ol class="breadcrumb" data-bind="foreach: breadcrumbItems">
+                                    <li class="breadcrumb-item" data-bind="css: { 'active': isActive }">
+                                        <a href="#" data-bind="text: FolderName, click: onClick, visible: !isActive"></a>
+                                        <span data-bind="text: FolderName, visible: isActive"></span>
                                     </li>
                                 </ol>
                             </nav>
@@ -590,7 +575,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <div class="row py-2 border-bottom align-items-center w-100 row-hover">
                                             <div class="col-md-3 d-flex align-items-center clickable" data-bind="click: function(){ $parent.SelectedFolder($data); }">
                                                 <span data-bind="visible: $root.selectMode, click: function(d,e){ isSelected(!isSelected()); e.stopPropagation(); },
-                                                    css: isSelected() ? 'fa fa-check-square text-primary me-2' : 'fa fa-square-o me-2'"></span>
+                                                css: isSelected() ? 'fa fa-check-square text-primary me-2' : 'fa fa-square-o me-2'"></span>
                                                 <span class="fa fa-folder text-secondary me-2"></span>
                                                 <span data-bind="text: FolderName"></span>
                                             </div>
@@ -653,16 +638,43 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <!-- Folder search results (list view) -->
                                     <div data-bind="if: searchReports() && foldersInSearch().length > 0">
                                         <div class="row fw-bold py-1 border-bottom mt-2 w-100">
-                                            <div class="col-md-6"><span class="fa fa-folder"></span> Matching Folders</div>
-                                            <div class="col-md-6" data-bind="visible: $root.adminMode">Access</div>
+                                            <div class="col-md-3"><span class="fa fa-folder"></span> Matching Folders</div>
+                                            <div class="col-md-1"></div>
+                                            <div class="col-md-8" data-bind="visible: $root.adminMode">Access</div>
                                         </div>
                                         <div data-bind="foreach: foldersInSearch">
                                             <div class="row border-bottom py-2 align-items-center w-100">
-                                                <div class="col-md-6 d-flex align-items-center">
+                                                <div class="col-md-3 d-flex align-items-center">
                                                     <span class="fa fa-folder text-secondary me-2"></span>
                                                     <a href="#" data-bind="click: function(){ $parent.SelectedFolder($data); $parent.searchReports(''); }, highlightedText: { text: FolderName, highlight: $parent.searchReports, css: 'highlight' }" style="cursor: pointer"></a>
                                                 </div>
-                                                <div class="col-md-6" data-bind="visible: $root.adminMode">
+                                                <div class="col-md-1" onclick="event.stopPropagation()">
+                                                    <div class="dropdown hover-ellipsis" data-bind="visible: ($root.CanManageFolders() || $root.adminMode()) && (canEdit || canDelete || $root.adminMode())">
+                                                        <button class="btn btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                            <span class="fa fa-ellipsis-h"></span>
+                                                        </button>
+                                                        <ul class="dropdown-menu">
+                                                            <li>
+                                                                <a class="dropdown-item" href="#" data-bind="click: function(){ $parent.SelectedFolder($data); $parent.ManageFolder.editFolder(); }, visible: canEdit || $root.adminMode()">
+                                                                    <span class="fa fa-edit"></span> Edit Folder
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item text-danger" href="#" data-bind="click: function(){ $parent.SelectedFolder($data); $parent.ManageFolder.deleteFolder(); }, visible: canDelete || $root.adminMode()">
+                                                                    <span class="fa fa-trash"></span> Delete Folder
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item" href="#"
+                                                                   data-bind="click: function(){ $parent.ManageFolder.addSubFolder($data); },
+                                                                    visible: canEdit || $root.adminMode()">
+                                                                    <span class="fa fa-folder"></span> Add Sub Folder
+                                                                </a>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-8" data-bind="visible: $root.adminMode">
                                                     <div class="small text-muted d-flex flex-wrap gap-1 align-items-center">
                                                         <span class="badge bg-info text-white" title="Manage Users" data-bind="text: UserId ? '👤 ' + UserId : '👤 Any User'"> </span>
                                                         <span class="badge bg-info text-white border" title="View only Users" data-bind="visible: ViewOnlyUserId"> 👁 <span data-bind="text: ViewOnlyUserId"></span> </span>
@@ -691,8 +703,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         </div>
 
                                         <!-- Sub folder rows (same column grid as report rows) -->
-                                        <!-- ko if: !searchReports() -->
-                                        <div data-bind="foreach: subFoldersInFolder">
+                                        <div data-bind="foreach: !searchReports() ? subFoldersInFolder() : []">
                                             <div class="row border-bottom py-2 align-items-center w-100 row-hover">
                                                 <div class="col-md-3 d-flex align-items-center clickable"
                                                      data-bind="click: function(){ $root.SelectedFolder($data); }">
@@ -754,7 +765,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <div class="col-md-1" data-bind="visible: $root.adminMode"></div>
                                             </div>
                                         </div>
-                                        <!-- /ko -->
 
                                         <div class="report-list" data-bind="foreach: searchReports() ? reportsInSearch() : reportsInFolder()">
                                             <div class="row border-bottom py-2 align-items-center w-100 row-hover">
@@ -974,12 +984,18 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <ul class="dropdown-menu">
                                             <li><a href="#" class="dropdown-item" data-bind="click: downloadExcel">Standard</a></li>
                                             <li><a href="#" class="dropdown-item" data-bind="click: downloadExcelWithDrilldown">Expanded</a></li>
+                                            <li data-bind="visible: hasSubReports()"><a href="#" class="dropdown-item" data-bind="click: downloadExcelWithSubreport">Excel with Subreport</a></li>
                                         </ul>
                                     </li>
                                     <!-- Excel, no drilldown -> flat -->
                                     <li data-bind="visible: !canDrilldown()">
                                         <a href="#" class="dropdown-item" data-bind="click: downloadExcel">
                                             <i class="fa fa-file-excel-o"></i> Excel
+                                        </a>
+                                    </li>
+                                    <li data-bind="visible:!canDrilldown() && hasSubReports()">
+                                        <a href="#" class="dropdown-item" data-bind="click: downloadExcelWithSubreport">
+                                            <i class="fa fa-file-excel-o"></i> Excel with Subreport
                                         </a>
                                     </li>
                                     <li data-bind="hidden: appSettings.dontWordExport">
@@ -1348,7 +1364,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <tbody data-bind="foreach: schedules">
                             <tr>
                                 <td data-bind="text: $parent.scheduleSummary($data)"></td>
-                                <td data-bind="text: EmailTo"></td>
+                                <td data-bind="text: $root.scheduleBuilder.emailToDisplay($data)"></td>
                                 <td data-bind="text: $parent.formatSummary($data)"></td>
                                 <td class="small text-muted" data-bind="text: $parent.filterSummary($data)"></td>
                                 <td class="text-end text-nowrap">

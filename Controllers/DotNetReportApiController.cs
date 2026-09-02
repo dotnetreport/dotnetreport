@@ -15,19 +15,15 @@ namespace ReportBuilder.Web.Controllers
     [ApiController]
     public class DotNetReportApiController : ControllerBase
     {
-        private readonly IConfigurationRoot _configuration;
+        private readonly IConfiguration _configuration;
         public readonly static string _configFileName = "appsettings.dotnetreport.json";
-        
-        public DotNetReportApiController()
+        public DotNetReportApiController(IConfiguration configuration)
         {
-            var builder = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-
-            _configuration = builder.Build();
+            _configuration = configuration;
+            DotNetReportHelper.UseConfiguration(configuration);
         }
 
-        private DotNetReportSettings GetSettings()
+        public DotNetReportSettings GetSettings()
         {
             DotNetReportHelper.dbtype = DbTypes.MS_SQL.ToDbString();
 
@@ -43,7 +39,8 @@ namespace ReportBuilder.Web.Controllers
             settings.UserId = ""; // You can pass your current authenticated user id here to track their reports and folders            
             settings.UserName = "";
             settings.CurrentUserRole = new List<string>(); // Populate your current authenticated user's roles
-
+            settings.UserIdForFilter=settings.UserId;
+            settings.UserIdForSchedule = settings.UserId;
             settings.Users = new List<dynamic>() { }; // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
             settings.UserRoles = new List<string>() { }; // Populate all your application's user roles, ex  { "Admin", "Normal" }
             settings.ClientIds = new List<string>() { }; // Populate all your application's client/tenant ids, ex  { "ACME", "CONTOSO" }
@@ -151,39 +148,69 @@ namespace ReportBuilder.Web.Controllers
             public string? userId { get; set; }
             public string? currentUserRole { get; set; } // comma separated
             public string? dataFilters { get; set; } // json string
+            public int reportId { get; set; }
+            public string? reportSql { get; set; }
+            public string? connectKey { get; set; }
         }
 
+        // Allow Anonymous by design for hosts serving views from a separate project. Caller must be authenticated,
+        // or send dotNetReport:exportSessionKey server-to-server. 
         [HttpPost]
         [AllowAnonymous]
         public async Task<IActionResult> SaveExportSession([FromBody] SaveExportSessionRequest data)
         {
-            var settings = new DotNetReportSettings
-            {
-                ClientId = HttpUtility.HtmlDecode(data?.clientId ?? ""),
-                UserId = HttpUtility.HtmlDecode(data?.userId ?? ""),
-                CurrentUserRole = HttpUtility.HtmlDecode(data?.currentUserRole ?? "")
-                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .ToList(),
-                DataFilters = string.IsNullOrEmpty(data?.dataFilters)
-                    ? new { }
-                    : JsonSerializer.Deserialize<object>(HttpUtility.HtmlDecode(data.dataFilters)) ?? new { }
-            };
+            DotNetReportSettings settings;
 
-            var exportId = ExportSessionStore.Save(settings);
+            if (User?.Identity?.IsAuthenticated == true)
+            {
+                settings = GetSettings();
+            }
+            else
+            {
+                var exportKey = _configuration.GetValue<string>("dotNetReport:exportSessionKey");
+                Request.Headers.TryGetValue("X-DotNetReport-Export-Key", out var providedKey);
+
+                if (string.IsNullOrEmpty(exportKey) || !System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+                        Encoding.UTF8.GetBytes(exportKey), Encoding.UTF8.GetBytes(providedKey.ToString() ?? "")))
+                {
+                    return Unauthorized(new { Message = "Export sessions can only be created by an authenticated user or a host supplying dotNetReport:exportSessionKey" });
+                }
+
+                settings = new DotNetReportSettings
+                {
+                    ClientId = HttpUtility.HtmlDecode(data?.clientId ?? ""),
+                    UserId = HttpUtility.HtmlDecode(data?.userId ?? ""),
+                    CurrentUserRole = HttpUtility.HtmlDecode(data?.currentUserRole ?? "")
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .ToList(),
+                    DataFilters = string.IsNullOrEmpty(data?.dataFilters)
+                        ? new { }
+                        : JsonSerializer.Deserialize<object>(HttpUtility.HtmlDecode(data.dataFilters)) ?? new { }
+                };
+            }
+
+            var exportId = ExportSessionStore.Save(new ExportSession
+            {
+                Settings = settings,
+                ReportId = data?.reportId ?? 0,
+                ReportSql = data?.reportSql,
+                ConnectKey = data?.connectKey
+            });
+
             return Ok(new { exportId });
         }
 
         [AllowAnonymous]
         public async Task<IActionResult> CallReportApiUnAuth(string method, string model, string exportId)
         {
-            var settings = ExportSessionStore.Get(exportId);
-            if (settings == null)
+            var session = ExportSessionStore.Get(exportId);
+            if (session == null)
                 return Unauthorized();
+            var settings = session.Settings;
 
             settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
             settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
-            settings.CanUseAdminMode = true;
             DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters ?? new { });
             return await ExecuteCallReportApi(method, model, null, settings);
         }
@@ -221,6 +248,15 @@ namespace ReportBuilder.Web.Controllers
             return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Ok() : await ExecuteCallReportApi(method, model, userId);
         }
 
+        // Account level changes are only available in Admin Mode, the front end flag can be tampered with so check it here too
+        private static readonly string[] AdminOnlyApiMethods = new[]
+        {
+            "/ReportApi/SaveReportHeader",
+            "/ReportApi/SaveFolderData",
+            "/ReportApi/DeleteFolder",
+            "/ReportApi/SaveReportAccess"
+        };
+
         private async Task<IActionResult> ExecuteCallReportApi(string method, string model, string userId, DotNetReportSettings settings = null)
         {
             model = DotNetReportHelper.SanitizeReportModelForMethod(method, model);
@@ -228,6 +264,12 @@ namespace ReportBuilder.Web.Controllers
             using (var client = new HttpClient())
             {
                 settings = settings ?? GetSettings();
+
+                if (!settings.CanUseAdminMode && AdminOnlyApiMethods.Contains((method ?? "").Trim(), StringComparer.OrdinalIgnoreCase))
+                {
+                    return StatusCode(403, new { result = "You are not authorized to perform this action" });
+                }
+
                 var keyvalues = new List<KeyValuePair<string, string>>
                 {
                     new KeyValuePair<string, string>("account", settings.AccountApiToken),
@@ -337,6 +379,11 @@ namespace ReportBuilder.Web.Controllers
         [HttpPost]
         public async Task<IActionResult> RunReport(RunReportParameters data)
         {
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode) data.adminmode = false;
+            var firstSql = (data.reportSql ?? "").Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+            await ValidateAccess(settings.UserId, HttpUtility.HtmlDecode(firstSql), adminMode: data.adminmode);
+
             return await ExecuteRunReport(data);
         }
 
@@ -344,7 +391,7 @@ namespace ReportBuilder.Web.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> RunReportUnAuth([FromQuery] string exportId, [FromBody] RunReportParameters data)
         {
-            var sessionSettings = ExportSessionStore.Get(exportId);
+            var sessionSettings = ExportSessionStore.Get(exportId)?.Settings;
             if (sessionSettings == null)
                 return Unauthorized();
             DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(sessionSettings.DataFilters ?? new { });
@@ -355,14 +402,14 @@ namespace ReportBuilder.Web.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> RunReportApiUnAuth([FromQuery] string exportId, [FromBody] DotNetReportApiCall data)
         {
-            var settings = ExportSessionStore.Get(exportId);
-            if (settings == null)
+            var session = ExportSessionStore.Get(exportId);
+            if (session == null)
                 return Unauthorized();
+            var settings = session.Settings;
 
             settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
             settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
-            settings.CanUseAdminMode = true;
             DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters ?? new { });
             return await ExecuteCallReportApi(data.Method, JsonSerializer.Serialize(data), data.userId, settings);
         }
@@ -598,7 +645,7 @@ namespace ReportBuilder.Web.Controllers
                             else
                             {
                                 reportData = reportData.Replace("\"DrillDownRowUsePlaceholders\":false", $"\"DrillDownRowUsePlaceholders\":true");
-                                var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData);
+                                var ds = await DotNetReportHelper.GetDrillDownData(databaseConnection, connectionString, dtPagedRun, sqlFields, reportData, qry.parameters);
                                 dtPagedRun = DotNetReportHelper.PushDatasetIntoDataTable(dtPagedRun, ds, pivotColumn, pivotFunction, reportData);
                                 if (subtotalMode)
                                 {
@@ -726,14 +773,14 @@ namespace ReportBuilder.Web.Controllers
         public async Task<IActionResult> RunReportLinkUnAuth(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false, string exportId = "")
         {
             var model = new DotNetReportModel();
-            var settings = ExportSessionStore.Get(exportId);
-            if (settings == null)
+            var session = ExportSessionStore.Get(exportId);
+            if (session == null)
                 return Unauthorized();
+            var settings = session.Settings;
 
             settings.ApiUrl = _configuration.GetValue<string>("dotNetReport:apiUrl");
             settings.AccountApiToken = _configuration.GetValue<string>("dotNetReport:accountApiToken");
             settings.DataConnectApiToken = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
-            settings.CanUseAdminMode = true;
             DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters ?? new { });
 
             using (var client = new HttpClient())
@@ -768,6 +815,8 @@ namespace ReportBuilder.Web.Controllers
         {
             var model = new DotNetReportModel();
             var settings = GetSettings();
+            if (!settings.CanUseAdminMode) adminMode = false;
+            await ValidateAccess(settings.UserId, reportId: reportId, adminMode: adminMode);
 
             using (var client = new HttpClient())
             {
@@ -795,8 +844,32 @@ namespace ReportBuilder.Web.Controllers
 
             return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
         }
-
-
+        private async Task<string> ResolveLinkedReportTemplate(int reportId, int filterId, bool adminMode = false)
+        {
+            var settings = GetSettings();
+            using (var client = new HttpClient())
+            {
+                var content = new FormUrlEncodedContent(new[]
+                {
+            new KeyValuePair<string, string>("account", settings.AccountApiToken),
+            new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+            new KeyValuePair<string, string>("clientId", settings.ClientId),
+            new KeyValuePair<string, string>("userId", settings.UserId),
+            new KeyValuePair<string, string>("userRole", String.Join(",", settings.CurrentUserRole)),
+            new KeyValuePair<string, string>("reportId", reportId.ToString()),
+            new KeyValuePair<string, string>("filterId", filterId.ToString()),
+            new KeyValuePair<string, string>("filterValue", ReportConstants.SubReportValueToken), // placeholder, not a real value
+            new KeyValuePair<string, string>("adminMode", adminMode.ToString()),
+            new KeyValuePair<string, string>("dataFilters", JsonSerializer.Serialize(settings.DataFilters)),
+            new KeyValuePair<string, string>("useParameters", DotNetReportHelper.dbtype == "MS SQL" ? "true" : "false")
+        });
+                var response = await client.PostAsync(new Uri(settings.ApiUrl + "/ReportApi/RunLinkedReport"), content);
+                var stringContent = await response.Content.ReadAsStringAsync();
+                var model = JsonSerializer.Deserialize<DotNetReportModel>(stringContent);
+                model.ReportSql = DotNetReportHelper.Decrypt(model.ReportSql.ToString());
+                return (model?.ReportSql);
+            }
+        }
         [HttpGet]
         public async Task<IActionResult> GetDashboards(bool adminMode = false)
         {
@@ -809,6 +882,7 @@ namespace ReportBuilder.Web.Controllers
         public async Task<IActionResult> LoadSavedDashboard(int? id = null, bool adminMode = false)
         {
             var settings = GetSettings();
+            if (!settings.CanUseAdminMode) adminMode = false;
             var model = new List<DotNetDasboardReportModel>();
             var dashboards = (await GetDashboardsData(adminMode));
             if (!id.HasValue && dashboards.Count > 0)
@@ -843,6 +917,7 @@ namespace ReportBuilder.Web.Controllers
         private async Task<dynamic> GetDashboardsData(bool adminMode = false)
         {
             var settings = GetSettings();
+            if (!settings.CanUseAdminMode) adminMode = false;
 
             using (var client = new HttpClient())
             {
@@ -968,8 +1043,53 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> PreviewEmailList(int id)
+        {
+            var settings = GetSettings();
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    var url = settings.ApiUrl + "/ReportApi/GetDataDrivenQuerySql"
+                        + "?account=" + settings.AccountApiToken
+                        + "&dataConnect=" + settings.DataConnectApiToken
+                        + "&id=" + id
+                        + "&clientId=" + settings.ClientId
+                        + "&userId=" + settings.UserId;
+
+                    var response = await client.GetAsync(new Uri(url));
+                    var stringContent = await response.Content.ReadAsStringAsync();
+                    if (!response.IsSuccessStatusCode)
+                        return Ok(new { success = false, message = "Could not load the Email List." });
+
+                    dynamic result = JsonConvert.DeserializeObject<dynamic>(stringContent);
+                    string encryptedSql = result?.sql;
+                    string connectKey = result?.connectKey;
+                    if (string.IsNullOrEmpty(encryptedSql))
+                        return Ok(new { success = false, message = "This Email List has no query." });
+
+                    var rows = await DotNetReportHelper.GetDataDrivenQueryRows(encryptedSql, connectKey);
+                    var emails = DotNetReportHelper.ExtractEmailRecipients(rows);
+
+                    return Ok(new
+                    {
+                        success = true,
+                        total = emails.Count,
+                        rowCount = rows == null ? 0 : rows.Rows.Count,
+                        emails = emails.Take(200).ToList()
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Ok(new { success = false, message = ex.Message });
+            }
+        }
+
         public IActionResult GetUsersAndRoles()
         {
+            var settings = GetSettings();
+
             // These report permission settings will be applied by default to any new report user creates, leave black to allow access to all
             var newReportClientId = ""; // comma separated client ids to set report permission when new report is created
             var newReportEditUserId = ""; // comma separated user ids for report edit permission when new report is created
@@ -1162,7 +1282,7 @@ namespace ReportBuilder.Web.Controllers
         {
             var timeZones = TimeZoneInfo.GetSystemTimeZones();
             SortedList<string, string> timeZoneList = new SortedList<string, string>();
-            timeZoneList.Add("", "");
+            timeZoneList[""] = "";
 
             foreach (TimeZoneInfo timezone in timeZones)
             {
@@ -1181,7 +1301,7 @@ namespace ReportBuilder.Web.Controllers
                     display = $"{display} (active daylight savings)";
                 }
 
-                timeZoneList.Add(display, timezone.Id); // Use timezone Id as value
+                timeZoneList[display] = timezone.Id;
             }
 
             return timeZoneList;
@@ -1381,6 +1501,7 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string connectKey,
             [FromForm] string reportName,
             [FromForm] bool allExpanded,
+            [FromForm] bool hasSubreports,
             [FromForm] string expandSqls,
             [FromForm] string chartData = null,
             [FromForm] string columnDetails = null,
@@ -1405,8 +1526,8 @@ namespace ReportBuilder.Web.Controllers
             DotNetReportHelper.defaultDateFormat = string.IsNullOrEmpty(defaultDateFormat) ? "United States" : defaultDateFormat;
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(onlyAndGroupInColumnDetail));
-
-            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport, subTotalPerGroup, totalRowFormat, HttpUtility.UrlDecode(filterDetailsText));
+            Func<int, int, bool, Task<string>> linkedReportResolver = hasSubreports ? (reportId, filterId, filterValue) => ResolveLinkedReportTemplate(reportId, filterId, adminMode) : null;
+            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, hasSubreports, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport, subTotalPerGroup, totalRowFormat, HttpUtility.UrlDecode(filterDetailsText), linkedReportResolver);
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".xlsx");
             Response.ContentType = "application/vnd.ms-excel";
 
@@ -1446,7 +1567,7 @@ namespace ReportBuilder.Web.Controllers
                 await ValidateAccess(userId, reportSql, adminMode: adminMode);
             }
             var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
-                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation,includeSubTotal,includeColumnTotal,isSubreport,pageNumber,currentPageSize);
+                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation,includeSubTotal,includeColumnTotal,isSubreport,pageNumber,currentPageSize, canUseAdminMode: settings.CanUseAdminMode);
 
             return File(pdf, "application/pdf", reportName + ".pdf");
         }
@@ -1643,7 +1764,7 @@ namespace ReportBuilder.Web.Controllers
                 await ValidateAccess(report.userId, report.reportSql);
                 var columns = report.columnDetails == null ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.columnDetails));
                 var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(report.onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(report.onlyAndGroupInColumnDetail));
-                var excelreport = await DotNetReportHelper.GetExcelFile(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll, HttpUtility.UrlDecode(report.expandSqls), columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction, onlyAndGroupInDetailColumns);
+                var excelreport = await DotNetReportHelper.GetExcelFile(report.reportSql, report.connectKey, HttpUtility.UrlDecode(report.reportName), report.chartData, report.expandAll,report.hasSubreports, HttpUtility.UrlDecode(report.expandSqls), columns, report.includeSubTotal, report.pivot, report.pivotColumn, report.pivotFunction, onlyAndGroupInDetailColumns);
                 excelbyteList.Add(excelreport);
             }
             // Combine all Excel files into one workbook
