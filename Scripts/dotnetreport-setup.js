@@ -2952,7 +2952,21 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 					resolve(false);
 					return;
 				}
-
+				if (e.Columns) {
+					_.each(e.Columns, function (col) {
+						if (!col.ForeignKey) {
+							col.ForeignTable = null;
+							col.ForeignKeyField = null;
+							col.ForeignValueField = null;
+						}
+						if (!col.ForeignParentKey) {
+							col.ForeignParentTable = null;
+							col.ForeignParentApplyTo = null;
+							col.ForeignParentKeyField = null;
+							col.ForeignParentValueField = null;
+						}
+					});
+				}
 				ajaxcall({
 					url: options.apiUrl,
 					type: 'POST',
