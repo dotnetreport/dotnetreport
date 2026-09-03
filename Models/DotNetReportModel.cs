@@ -4972,6 +4972,25 @@ namespace ReportBuilder.Web.Models
             }
             return result;
         }
+        private static string RemoveHiddenElementsForWord(string customHtml)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(customHtml);
+
+            var hiddenNodes = doc.DocumentNode.SelectNodes(
+                "//*[@style and (contains(translate(@style,' ',''),'display:none') " +
+                "or contains(translate(@style,' ',''),'visibility:hidden'))]");
+
+            if (hiddenNodes != null)
+            {
+                foreach (var node in hiddenNodes.ToList())
+                {
+                    node.Remove();  
+                }
+            }
+
+            return doc.DocumentNode.OuterHtml;
+        }
         private static string ConvertBootstrapGridToTable(string customHtml)
         {
             var doc = new HtmlAgilityPack.HtmlDocument();
@@ -5154,7 +5173,7 @@ namespace ReportBuilder.Web.Models
         public static string ConvertLayoutsForWord(string customHtml, bool addTableBorders = false)
         {
             customHtml = ApplyExternalCssInline(customHtml, GetWordReportCss());
-
+            customHtml = RemoveHiddenElementsForWord(customHtml);
             var doc = new HtmlAgilityPack.HtmlDocument();
             doc.LoadHtml(customHtml);
             string result = doc.DocumentNode.OuterHtml;
