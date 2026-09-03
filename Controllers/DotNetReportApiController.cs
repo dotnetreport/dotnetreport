@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ReportBuilder.Web.Models;
 using System.Data;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -920,7 +921,8 @@ namespace ReportBuilder.Web.Controllers
                         + "&dataConnect=" + settings.DataConnectApiToken
                         + "&id=" + id
                         + "&clientId=" + settings.ClientId
-                        + "&userId=" + settings.UserId;
+                        + "&userId=" + settings.UserId
+                        + "&dataFilters=" + WebUtility.UrlEncode(DotNetReportHelper.CurrentDataFilters);
 
                     var response = await client.GetAsync(new Uri(url));
                     var stringContent = await response.Content.ReadAsStringAsync();
