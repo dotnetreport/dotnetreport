@@ -3,6 +3,7 @@ using Quartz;
 using Quartz.Impl;
 using ReportBuilder.Web.Models;
 using System.Globalization;
+using System.Net;
 using System.Net.Mail;
 
 namespace ReportBuilder.Web.Jobs
@@ -520,7 +521,7 @@ namespace ReportBuilder.Web.Jobs
                     .ToList();
             }
 
-            var resp = await client.GetAsync($"{apiUrl}/ReportApi/GetDataDrivenQuerySql?account={accountApiKey}&dataConnect={databaseApiKey}&id={schedule.EmailQueryId.Value}&clientId={clientId}&userId={schedule.UserId}");
+            var resp = await client.GetAsync($"{apiUrl}/ReportApi/GetDataDrivenQuerySql?account={accountApiKey}&dataConnect={databaseApiKey}&id={schedule.EmailQueryId.Value}&clientId={clientId}&userId={schedule.UserId}&dataFilters={WebUtility.UrlEncode(schedule.DataFilters ?? "")}");
             resp.EnsureSuccessStatusCode();
             var json = await resp.Content.ReadAsStringAsync();
             var result = JsonConvert.DeserializeObject<dynamic>(json);

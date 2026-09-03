@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ReportBuilder.Web.Models;
 using System.Data;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -1055,7 +1056,8 @@ namespace ReportBuilder.Web.Controllers
                         + "&dataConnect=" + settings.DataConnectApiToken
                         + "&id=" + id
                         + "&clientId=" + settings.ClientId
-                        + "&userId=" + settings.UserId;
+                        + "&userId=" + settings.UserId
+                        + "&dataFilters=" + WebUtility.UrlEncode(DotNetReportHelper.CurrentDataFilters);
 
                     var response = await client.GetAsync(new Uri(url));
                     var stringContent = await response.Content.ReadAsStringAsync();
@@ -1096,8 +1098,6 @@ namespace ReportBuilder.Web.Controllers
             var newReportViewUserId = ""; // comma separated user ids for report view permission when new report is created
             var newReportEditUserRoles = ""; // comma separated user roles for report edit permission when new report is created
             var newReportViewUserRoles = ""; // comma separated user roles for report view permission when new report is created
-
-            var settings = GetSettings();
 
             // When the account manages Users/Roles/Client ids, use those instead of the lists set in code. 
             var managed = GetManagedUsersAndRoles(settings);
