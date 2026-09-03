@@ -210,7 +210,7 @@ var manageViewModel = function (options) {
 		return rows;
 	});
 	self.settings = new settingPageViewModel(options);
-	self.usersRoles = new usersRolesViewModel(options, self.settings);
+	self.usersRoles = new usersRolesViewModel(options, self.settings, self.previewData);
 	// Access editing opens in a modal (same template the report page uses).
 	self.accessTarget = ko.observable(null);
 	self.accessTargetName = ko.observable('');
@@ -3408,7 +3408,7 @@ var customSqlModel = function (options, keys, tables, activeTable) {
     }
 }
 
-var usersRolesViewModel = function (options, settings) {
+var usersRolesViewModel = function (options, settings, previewData) {
 	var self = this;
 
 	self.userSource = settings.userSource;
@@ -3421,6 +3421,185 @@ var usersRolesViewModel = function (options, settings) {
 	self.codeUsers = ko.observableArray([]);
 	self.codeRoles = ko.observableArray([]);
 	self.codeClientIds = ko.observableArray([]);
+
+	// SQL source: one saved query per list, stored as DataDrivenQueries with a QueryType.
+	// Managed like the Email Lists: edit in a modal, prove the query runs, then save.
+	var sqlValidator = new validation();
+
+	function sqlSource(queryType, title, hint, expects, placeholder) {
+		return {
+			queryType: queryType,
+			title: title,
+			hint: hint,
+			expects: expects,
+			placeholder: placeholder,
+			savedId: ko.observable(0),
+			sqlQuery: ko.observable(''),
+			draft: ko.observable(''),
+			rows: ko.observableArray([]),
+			loading: ko.observable(false),
+			error: ko.observable('')
+		};
+	}
+
+	self.sqlUsers = sqlSource('Users', 'Users Query',
+		'One row per user, with an id and a text column.',
+		['id', 'text'],
+		'SELECT UserId AS id, DisplayName AS text FROM Users WHERE IsActive = 1');
+	self.sqlRoles = sqlSource('UserRoles', 'Roles Query',
+		'One row per role name.',
+		[],
+		'SELECT DISTINCT RoleName FROM Roles');
+	self.sqlClients = sqlSource('Clients', 'Clients Query',
+		'One row per client, with an id and a text column.',
+		['id', 'text'],
+		'SELECT ClientId AS id, ClientName AS text FROM Clients');
+
+	self.sqlSources = [self.sqlUsers, self.sqlRoles, self.sqlClients];
+
+	// The source open in the shared modal. Edits go to draft so Cancel discards them.
+	self.currentSql = ko.observable(self.sqlUsers);
+
+	self.loadSqlSources = function () {
+		_.forEach(self.sqlSources, function (src) {
+			ajaxcall({
+				url: options.reportsApiUrl,
+				data: { method: options.getEmailQueriesUrl, model: JSON.stringify({ includeGlobal: true, queryType: src.queryType }) }
+			}).done(function (x) {
+				if (x.d) x = x.d;
+				if (x.result) x = x.result;
+				var first = (x.queries || [])[0];
+				src.savedId(first ? first.id : 0);
+				src.sqlQuery(first ? (first.sqlQuery || '') : '');
+				self.refreshSqlList(src);
+			});
+		});
+	};
+
+	self.editSqlSource = function (src) {
+		src.draft(src.sqlQuery());
+		self.currentSql(src);
+		sqlValidator.clearForm('#users-roles-sql-modal');
+		$('#users-roles-sql-modal').modal('show');
+	};
+
+	self.beautifyCurrentSql = function () {
+		var src = self.currentSql();
+		if (src.draft()) src.draft(beautifySql(src.draft(), false));
+	};
+
+	// The lists are read back by column name, so a wrong shape would fail silently later.
+	self.missingColumns = function (src, data) {
+		if (!src.expects || !src.expects.length) return [];
+		var names = _.map((data && data.Columns) || [], function (c) { return (c.ColumnName || '').toLowerCase(); });
+		return _.filter(src.expects, function (e) { return names.indexOf(e) < 0; });
+	};
+
+	self.saveSqlSource = function () {
+		var src = self.currentSql();
+		if (!sqlValidator.validateForm('#users-roles-sql-modal')) return;
+		// Prove it runs, and returns what the list needs, before storing it.
+		self.runSql(src.draft(), function (error, data) {
+			if (error) { toastr.error('Query is not valid and was not saved: ' + error); return; }
+			var missing = self.missingColumns(src, data);
+			if (missing.length) {
+				toastr.error('The ' + src.title + ' must return ' + missing.join(' and ') + ', so it was not saved.');
+				return;
+			}
+			ajaxcall({
+				url: options.reportsApiUrl,
+				data: {
+					method: options.saveEmailQueryUrl,
+					model: JSON.stringify({ id: src.savedId(), name: src.title, queryType: src.queryType, sqlQuery: src.draft() })
+				}
+			}).done(function (x) {
+				if (x.d) x = x.d;
+				if (x.result) x = x.result;
+				if (x && x.Message) { toastr.error(x.Message); return; }
+				if (x && x.id) src.savedId(x.id);
+				src.sqlQuery(src.draft());
+				self.refreshSqlList(src);
+				toastr.success(src.title + ' saved');
+				$('#users-roles-sql-modal').modal('hide');
+			});
+		});
+	};
+
+	self.deleteSqlSource = function (src) {
+		bootbox.confirm('Are you sure you would like to delete the ' + src.title + '?', function (r) {
+			if (!r) return;
+			ajaxcall({
+				url: options.reportsApiUrl,
+				data: { method: options.deleteEmailQueryUrl, model: JSON.stringify({ id: src.savedId() }) }
+			}).done(function () {
+				src.savedId(0);
+				src.sqlQuery('');
+				src.rows([]);
+				src.error('');
+				toastr.success(src.title + ' deleted');
+			});
+		});
+	};
+
+	// The saved query is what the app will read at runtime, so the tab shows its rows.
+	self.refreshSqlList = function (src) {
+		src.error('');
+		if (!src.sqlQuery()) { src.rows([]); return; }
+		src.loading(true);
+		self.runSql(src.sqlQuery(), function (error, data) {
+			src.loading(false);
+			if (error) { src.rows([]); src.error(error); return; }
+			src.rows(self.mapSqlRows(data));
+		});
+	};
+
+	// id and text by name when they are there, otherwise the first two columns.
+	self.mapSqlRows = function (data) {
+		var cols = _.map((data && data.Columns) || [], function (c) { return (c.ColumnName || '').toLowerCase(); });
+		var idIdx = cols.indexOf('id');
+		var textIdx = cols.indexOf('text');
+		if (idIdx < 0) idIdx = 0;
+		if (textIdx < 0) textIdx = cols.length > 1 ? 1 : 0;
+		return _.map((data && data.Rows) || [], function (r) {
+			var items = r.Items || [];
+			var id = items[idIdx] ? (items[idIdx].Value || '') : '';
+			var text = items[textIdx] ? (items[textIdx].Value || '') : '';
+			return { id: id, text: text || id };
+		});
+	};
+
+	// Shows the result in the same grid the custom tables use.
+	self.previewSqlSource = function (src, sql) {
+		sql = sql || src.sqlQuery();
+		if (!sql) { toastr.error('Enter a SQL query first'); return; }
+		self.runSql(sql, function (error, data) {
+			if (error) { toastr.error('Query error: ' + error); return; }
+			if (!data || !(data.Rows || []).length) { bootbox.alert('This query returned no rows.'); return; }
+			var missing = self.missingColumns(src, data);
+			if (missing.length) toastr.warning('The ' + src.title + ' should return ' + missing.join(' and ') + '.');
+			previewData(data);
+			$('#data-preview-modal').modal('show');
+		});
+	};
+
+	// Previews what is typed in the modal, so unsaved edits can be checked before saving.
+	self.previewCurrentSql = function () {
+		var src = self.currentSql();
+		self.previewSqlSource(src, src.draft());
+	};
+
+	// Shared runner, surfaces the real SQL error rather than an empty result.
+	self.runSql = function (sql, done) {
+		ajaxcall({
+			url: options.getPreviewFromSqlUrl,
+			type: 'POST',
+			data: JSON.stringify({ value: sql, accountKey: options.model.AccountApiKey, dataConnectKey: options.model.DatabaseApiKey, dynamicColumns: false })
+		}).done(function (result) {
+			if (result.d) result = result.d;
+			var error = result.Exception || result.errorMessage || (result.HasError ? 'The query returned an error.' : '');
+			done(error, result.ReportData);
+		}).fail(function () { done('Could not reach the server to run the query.', null); });
+	};
 
 	self.portalUsers = ko.observableArray([]);
 	self.portalRoles = ko.observableArray([]);
@@ -3475,6 +3654,7 @@ var usersRolesViewModel = function (options, settings) {
 			self.codeClientIds(data.codeClientIds || []);
 		});
 		if (self.userSource() === 'portal') self.loadPortal();
+		self.loadSqlSources();
 		self.settingsDirty(false);
 	};
 
@@ -3483,6 +3663,7 @@ var usersRolesViewModel = function (options, settings) {
 	self.clientIds.subscribe(self.markDirty);
 
 	self.userSource.subscribe(function (v) {
+		if (v === 'sql') self.loadSqlSources();
 		if (v === 'portal') {
 			self.loadPortal();
 		} else {
