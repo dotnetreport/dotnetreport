@@ -4440,7 +4440,7 @@ var reportViewModel = function (options) {
 
 				var operator = f.Operator();
 				// Skip filters with no meaningful operator
-				if (!operator || operator === 'none' || operator === 'all') return;
+				if (!operator || operator === 'none' || operator === 'all' || operator === 'no filter') return;
 
 				var field = f.Field();
 				var fieldName = field.fieldLabel ? (ko.unwrap(field.fieldLabel) || field.fieldName) : field.fieldName;
@@ -6665,10 +6665,10 @@ var reportViewModel = function (options) {
 					FieldId: e.Field().fieldId,
 					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
 					Operator: e.Operator(),
-					Value1: hasTimeInDate ? (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? self.buildInValueList(e) : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : (e.Operator() == 'range' ? e.Value() : e.Value() + " " + e.Valuetime())))
-										  : (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? self.buildInValueList(e) : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value())),
+					Value1: hasTimeInDate ? (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? self.buildInValueList(e) : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' || e.Operator() == 'no filter' ? "blank" : (e.Operator() == 'range' ? e.Value() : e.Value() + " " + e.Valuetime())))
+										  : (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? self.buildInValueList(e) : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' || e.Operator() == 'no filter' ? "blank" : e.Value())),
 					Value2: hasTimeInDate && e.Operator() != 'range' ? (e.Value2() ? e.Value2() + " " + e.Valuetime2() : e.Value2()) : e.Value2(),
-					ParentIn: e.ParentIn().join(","),
+					ParentIn: (e.ParentIn() || []).join(","),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : [],
 					FilterSettings: ''
 				} : null;
@@ -6743,11 +6743,11 @@ var reportViewModel = function (options) {
 					FieldId: e.Field().fieldId,
 					AndOr: i == 0 ? g.AndOr() : e.AndOr(),
 					Operator: e.Operator(),
-					Value1: e.Operator() == "in" || e.Operator() == "not in" ? self.buildInValueList(e) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' ? "blank" : e.Value()),
+					Value1: e.Operator() == "in" || e.Operator() == "not in" ? self.buildInValueList(e) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' || e.Operator() == 'no filter' ? "blank" : e.Value()),
 					Value2: e.Value2(),
 					Valuetime: e.Valuetime(),
 					Valuetime2: e.Valuetime2(),
-					ParentIn: e.ParentIn().join(","),
+					ParentIn: (e.ParentIn() || []).join(","),
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;
 
