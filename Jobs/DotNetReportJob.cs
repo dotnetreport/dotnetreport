@@ -137,6 +137,16 @@ namespace ReportBuilder.Web.Jobs
         }
         #endregion
 
+        private static bool HasChart(DotNetReportModel report)
+        {
+            if (report == null) return false;
+            if (report.ShowDataWithGraph) return true;
+
+            string reportType = report.ReportType == null ? "" : report.ReportType.ToLower();
+            return reportType == "bar" || reportType == "pie" || reportType == "line"
+                || reportType == "combo" || reportType == "map" || reportType == "treemap";
+        }
+
         public (DateTime? NextRunLocal, bool ShouldRun, DateTime currentTimeInTargetTz) CalculateNextRun(
             string cron,
             string timeZoneId,
@@ -344,11 +354,14 @@ namespace ReportBuilder.Web.Jobs
                                             foreach (var r in reportsToRun)
                                             {
                                                 pivotInfo = PreparePivotData(r.Columns);
-                                                try
+                                                if (HasChart(r))
                                                 {
-                                                    imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
+                                                    try
+                                                    {
+                                                        imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
+                                                    }
+                                                    catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                                 }
-                                                catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                                 string customHtmlR = null;
                                                 if (string.Equals(r.ReportType, "Html", StringComparison.OrdinalIgnoreCase))
                                                 {
@@ -371,11 +384,14 @@ namespace ReportBuilder.Web.Jobs
                                         {
                                             pivotInfo = PreparePivotData(reportToRun.Columns);
                                             fileExt = ".docx";
-                                            try
+                                            if (HasChart(reportToRun))
                                             {
-                                                imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
+                                                try
+                                                {
+                                                    imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
+                                                }
+                                                catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                             }
-                                            catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                             string customHtml = null;
                                             if (string.Equals(reportToRun.ReportType, "Html", StringComparison.OrdinalIgnoreCase))
                                             {
@@ -405,11 +421,14 @@ namespace ReportBuilder.Web.Jobs
                                             foreach (var r in reportsToRun)
                                             {
                                                 pivotInfo = PreparePivotData(r.Columns);
-                                                try
+                                                if (HasChart(r))
                                                 {
-                                                    imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
+                                                    try
+                                                    {
+                                                        imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
+                                                    }
+                                                    catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                                 }
-                                                catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                                 fileData = await DotNetReportHelper.GetExcelFile(r.ReportSql, r.ConnectKey, r.ReportName, columns: r.Columns, expandSqls: r.ReportData, includeSubtotal: r.IncludeSubTotals, pivot: r.ReportType == "Pivot", chartData: imageData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
                                                 files.Add(fileData);
                                             }
@@ -420,11 +439,14 @@ namespace ReportBuilder.Web.Jobs
                                         else
                                         {
                                             pivotInfo = PreparePivotData(reportToRun.Columns);
-                                            try
+                                            if (HasChart(reportToRun))
                                             {
-                                                imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
+                                                try
+                                                {
+                                                    imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
+                                                }
+                                                catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                             }
-                                            catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                             fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, expandSqls: reportToRun.ReportData, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
                                             fileExt = ".xlsx";
                                         }
