@@ -140,11 +140,13 @@ namespace ReportBuilder.Web.Jobs
         private static bool HasChart(DotNetReportModel report)
         {
             if (report == null) return false;
-            if (report.ShowDataWithGraph) return true;
 
             string reportType = report.ReportType == null ? "" : report.ReportType.ToLower();
-            return reportType == "bar" || reportType == "pie" || reportType == "line"
+            var hasChart = reportType == "bar" || reportType == "pie" || reportType == "line"
                 || reportType == "combo" || reportType == "map" || reportType == "treemap";
+
+
+            return hasChart && report.ShowDataWithGraph;
         }
 
         public (DateTime? NextRunLocal, bool ShouldRun, DateTime currentTimeInTargetTz) CalculateNextRun(
