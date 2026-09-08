@@ -352,6 +352,7 @@ namespace ReportBuilder.Web.Controllers
             if (!settings.CanUseAdminMode) data.adminmode = false;
             var firstSql = (data.reportSql ?? "").Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
             await ValidateAccess(settings.UserId, HttpUtility.HtmlDecode(firstSql), adminMode: data.adminmode);
+            DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters ?? new { });
 
             return await ExecuteRunReport(data);
         }
