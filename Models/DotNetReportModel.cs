@@ -1892,7 +1892,8 @@ namespace ReportBuilder.Web.Models
             bool desc,
             bool returnSubtotal = false,
             bool includeColumnTotals = false,
-            bool includeRowTotals = false)
+            bool includeRowTotals = false,
+            List<KeyValuePair<string, string>> parameters = null)
         {
             var dts = new DataTable();
             if (dt.Rows.Count == 0)
@@ -1945,7 +1946,7 @@ namespace ReportBuilder.Web.Models
                 ? drilldownSql.Substring(0, lastWhereIndex) + " " + GetWhereClause(sql)
                 : drilldownSql + " " + GetWhereClause(sql);
 
-            var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery);
+            var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery, parameters);
 
             var monthNames = new List<string>
             {
@@ -2004,7 +2005,7 @@ namespace ReportBuilder.Web.Models
                     ) AS pvt;
                 ";
 
-                var countdata = databaseConnection.ExecuteQuery(connectionString, sqlQryforCount);
+                var countdata = databaseConnection.ExecuteQuery(connectionString, sqlQryforCount, parameters);
                 return (countdata, sqlQryforCount, 1, new List<List<string>>());
             }
 
@@ -2164,7 +2165,7 @@ namespace ReportBuilder.Web.Models
 
             try
             {
-                dts = databaseConnection.ExecuteQuery(connectionString, finalPivotSql);
+                dts = databaseConnection.ExecuteQuery(connectionString, finalPivotSql, parameters);
             }
             catch (Exception ex)
             {
@@ -3025,7 +3026,7 @@ namespace ReportBuilder.Web.Models
             {
                 if (!useAltPivot)
                 {
-                    var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                    var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false, parameters: qry.parameters);
                     dt = pd.dt;
                     if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
                     allExpanded = false;
@@ -3495,7 +3496,7 @@ namespace ReportBuilder.Web.Models
             {
                 if (!useAltPivot)
                 {
-                    var pd = await GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                    var pd = await GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false, parameters: qry.parameters);
                     dt = pd.dt;
                     if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
                 }
@@ -5819,7 +5820,7 @@ namespace ReportBuilder.Web.Models
                 {
                     if (!useAltPivot)
                     {
-                        var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false, false, subTotalMode, includeColumnTotal);
+                        var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false, false, subTotalMode, includeColumnTotal, parameters: qry.parameters);
                         dt = pd.dt;
                         if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
                     }
@@ -6308,7 +6309,7 @@ namespace ReportBuilder.Web.Models
             {
                 if (!useAltPivot)
                 {
-                    var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false);
+                    var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dt, qry.sql, sqlFields, expandSqls, pivotColumn, pivotFunction, 1, int.MaxValue, null, false, parameters: qry.parameters);
                     dt = pd.dt;
                     if (!string.IsNullOrEmpty(pd.sql)) qry.sql = pd.sql;
                 }

@@ -611,7 +611,7 @@ namespace ReportBuilder.Web.Controllers
                             var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
                             if (!useAltPivot)
                             {
-                                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, false, includeColumnTotal, subtotalMode);
+                                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, false, includeColumnTotal, subtotalMode, parameters: qry.parameters);
                                 dtPagedRun = pd.dt;
                                 if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
                                 totalRecords = pd.totalRecords;
@@ -1073,12 +1073,14 @@ namespace ReportBuilder.Web.Controllers
 
                     var rows = await DotNetReportHelper.GetDataDrivenQueryRows(encryptedSql, connectKey);
                     var emails = DotNetReportHelper.ExtractEmailRecipients(rows);
+                    var columns = rows == null ? new List<string>() : rows.Columns.Cast<System.Data.DataColumn>().Select(c => c.ColumnName).ToList();
 
                     return Ok(new
                     {
                         success = true,
                         total = emails.Count,
                         rowCount = rows == null ? 0 : rows.Rows.Count,
+                        columns = columns,
                         emails = emails.Take(200).ToList()
                     });
                 }

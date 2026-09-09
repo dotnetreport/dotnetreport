@@ -50,7 +50,7 @@ var manageViewModel = function (options) {
 			q.loaded = true;
 			return ajaxcall({
 				url: options.reportsApiUrl,
-				data: { method: options.getEmailQueriesUrl, model: JSON.stringify({ includeGlobal: true }) }
+				data: { method: options.getEmailQueriesUrl, model: JSON.stringify({ includeGlobal: true, queryType: 'EmailList' }) }
 			}).done(function (x) {
 				if (x.d) x = x.d;
 				if (x.result) x = x.result;
