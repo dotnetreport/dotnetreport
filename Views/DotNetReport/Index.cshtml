@@ -1368,9 +1368,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <td data-bind="text: $parent.formatSummary($data)"></td>
                                 <td class="small text-muted" data-bind="text: $parent.filterSummary($data)"></td>
                                 <td class="text-end text-nowrap">
-                                    <button type="button" class="btn btn-sm btn-link p-0 me-2" data-bind="click: function() { $parent.editSchedule($data); }">Edit</button>
-                                    <button type="button" class="btn btn-sm btn-link p-0 me-2" data-bind="click: function() { $parent.changeFilter($data); }">Change Filter</button>
-                                    <button type="button" class="btn btn-sm btn-link p-0 text-danger" data-bind="click: function() { $parent.deleteSchedule($data); }">Delete</button>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" title="Edit" data-bind="click: function() { $parent.editSchedule($data); }"><i class="fa fa-pencil"></i></button>
+                                        <button type="button" class="btn btn-outline-secondary" title="Change Filter" data-bind="click: function() { $parent.changeFilter($data); }"><i class="fa fa-filter"></i></button>
+                                        <button type="button" class="btn btn-outline-danger" title="Delete" data-bind="click: function() { $parent.deleteSchedule($data); }"><i class="fa fa-trash"></i></button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
@@ -1379,7 +1381,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 <div data-bind="visible: viewMode() === 'edit'">
                     <div data-bind="template: { name: 'report-schedule', data: $parent }"></div>
                 </div>
-                <div data-bind="visible: viewMode() === 'filter'">
+                <div id="schedule-filter-editor" class="needs-validation" data-bind="visible: viewMode() === 'filter'">
                     <strong>Filter for this schedule</strong>
                     <div class="small text-muted mb-2">
                         When set, this schedule runs with <b>exactly these filters</b> instead of the report's saved filters and

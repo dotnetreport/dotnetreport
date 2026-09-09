@@ -851,6 +851,8 @@ function filterGroupViewModel(args) {
 			SearchParentList: function (token) { return runLookupSearch(parentSqlInfo, parentList, token, filter.ParentIn()); },
 			ParentIn: ko.observableArray(parentIn),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
+			EmailListColumn: ko.observable(e.EmailListColumn || ''),
+			useEmailListColumn: ko.observable(!!e.EmailListColumn),
 			IsFilterOnFly: isFilterOnFly === true ? true : false,
 			IsConditionalFilter: e.IsConditionalFilter === true ? true : false,
 			showParentFilter: ko.observable(true),
@@ -860,6 +862,8 @@ function filterGroupViewModel(args) {
 			Valuetime2: ko.observable(timePart2),
 			_savedValueIn: valueIn.slice()
 		};
+
+		filter.useEmailListColumn.subscribe(function (on) { if (!on) filter.EmailListColumn(''); });
 
 		//filter.Operator.subscribe(function () {
 		//	filter.Value(null);
@@ -5048,6 +5052,18 @@ var reportViewModel = function (options) {
 		RemoveFilterGroup: function (g) { self.scheduleFilterGroups.remove(g); }
 	};
 
+	// Columns of the schedule's Email List, offered as filter values while editing a schedule's filters.
+	self.scheduleEmailListColumns = ko.observableArray([]);
+	self.scheduleFilterEditing = ko.observable(false);
+	self.loadScheduleEmailListColumns = function (s) {
+		self.scheduleEmailListColumns([]);
+		if (!s || !s.EmailQueryId || !options.previewEmailListUrl) return;
+		ajaxcall({ url: options.previewEmailListUrl, type: 'GET', noBlocking: true, data: { id: s.EmailQueryId } }).done(function (x) {
+			if (x.d) x = x.d;
+			if (x && x.success) self.scheduleEmailListColumns(x.columns || []);
+		});
+	};
+
 	self.loadFiltersIntoGroups = function (rootGroups, filters) {
 		function add(list, group) {
 			if (!list || !list.length) return;
@@ -5062,6 +5078,21 @@ var reportViewModel = function (options) {
 			});
 		}
 		add(filters, null);
+	};
+
+	self.validateScheduleFilter = function () {
+		var inputs = $('#schedule-filter-editor').find('input:visible, select:visible'), isValid = true;
+		$('.needs-validation').removeClass('was-validated');
+		for (var i = 0; i < inputs.length; i++) {
+			$(inputs[i]).removeClass('is-invalid');
+			if (!self.isInputValid(inputs[i])) {
+				isValid = false;
+				$('.needs-validation').addClass('was-validated');
+				$(inputs[i]).addClass('is-invalid');
+			}
+		}
+		if (!isValid) toastr.error('Please complete the filter values before applying');
+		return isValid;
 	};
 
 	// The report's current filters, serialized (used as the default for a new schedule).
@@ -5082,13 +5113,13 @@ var reportViewModel = function (options) {
 					if (f.FieldId) {
 						var fld = _.find(self.SelectedFields(), function (x) { return x.fieldId == f.FieldId; });
 						var name = fld && fld.fieldName ? fld.fieldName : ('Field ' + f.FieldId);
-						var val = (f.Value1 != null && f.Value1 !== '') ? f.Value1 : '';
-						parts.push((name + ' ' + (f.Operator || '') + (val ? ' ' + val : '')).trim());
+						var val = f.EmailListColumn ? ('[Email List: ' + f.EmailListColumn + ']') : ((f.Value1 != null && f.Value1 !== '') ? f.Value1 : '');
+						parts.push({ andOr: (f.AndOr || 'and').toLowerCase(), text: (name + ' ' + (f.Operator || '') + (val ? ' ' + val : '')).trim() });
 					}
 					if (f.Filters && f.Filters.length) walk(f.Filters);
 				});
 			})(arr);
-			return parts.join(' and ');
+			return _.map(parts, function (x, i) { return (i === 0 ? '' : x.andOr + ' ') + x.text; }).join(' ');
 		} catch (e) { return ''; }
 	};
 
@@ -5188,20 +5219,44 @@ var reportViewModel = function (options) {
 			var filters = (s && s.Filters) ? JSON.parse(s.Filters) : self.BuildFilterData(self.FilterGroups());
 			self.loadFiltersIntoGroups(self.scheduleFilterGroups, filters);
 			m.viewMode('filter');
+			self.loadScheduleEmailListColumns(s);
+			self.scheduleFilterEditing(true);
 		},
 
 		applyScheduleFilter: function () {
 			var m = self.scheduleReportModal;
 			if (!m.filterEditingSchedule) { m.loadSchedules(); return; }
+			if (!self.validateScheduleFilter()) return;
+			self.scheduleEmailListColumns([]);
+			self.scheduleFilterEditing(false);
 			m.filterEditingSchedule.Filters = JSON.stringify(self.BuildFilterData(self.scheduleFilterGroups()));
 			m.persistSchedule(m.filterEditingSchedule);
 		},
 
 		resetScheduleFilter: function () {
+			self.scheduleEmailListColumns([]);
+			self.scheduleFilterEditing(false);
 			var m = self.scheduleReportModal;
 			if (!m.filterEditingSchedule) { m.loadSchedules(); return; }
 			m.filterEditingSchedule.Filters = '';
 			m.persistSchedule(m.filterEditingSchedule);
+		},
+
+		previewSql: function (s) {
+			var m = self.scheduleReportModal;
+			ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/GetScheduleSql",
+					model: JSON.stringify({ adminMode: self.adminMode(), reportId: m.reportId(), scheduleId: s.Id })
+				}
+			}).done(function (x) {
+				if (x.d) x = x.d;
+				if (x.result) x = x.result;
+				if (!x || !x.sql) { toastr.error((x && x.Message) || 'Could not build the SQL for this schedule'); return; }
+				self.ReportResult().ReportSql(beautifySql(x.sql, true));
+				$("#sqlModal").modal('show');
+			}).fail(function () { toastr.error('Could not build the SQL for this schedule'); });
 		},
 
 		deleteSchedule: function (s) {
@@ -5226,6 +5281,8 @@ var reportViewModel = function (options) {
 		},
 
 		backToList: function () {
+			self.scheduleEmailListColumns([]);
+			self.scheduleFilterEditing(false);
 			self.scheduleReportModal.loadSchedules();
 		},
 
@@ -5264,7 +5321,7 @@ var reportViewModel = function (options) {
 
 			// Validate required fields
 			var modal = $('#modal-schedule-report');
-			var curInputs = modal.find('input[required], select[required]');
+			var curInputs = modal.find('input[required]:visible, select[required]:visible');
 			var isValid = true;
 			curInputs.removeClass('is-invalid');
 			for (var i = 0; i < curInputs.length; i++) {
@@ -5282,9 +5339,10 @@ var reportViewModel = function (options) {
 				toastr.error('Please choose an Email List');
 				return;
 			}
-			if (!isValid || (!usesEmailQuery && (!scheduleData.EmailTo || scheduleData.EmailTo.trim() === ''))) {
-				if (!usesEmailQuery) emailInput.addClass('is-invalid');
-				toastr.error(usesEmailQuery ? 'Please complete the required fields' : 'Email is required to save a schedule');
+			var emailMissing = !usesEmailQuery && (!scheduleData.EmailTo || scheduleData.EmailTo.trim() === '');
+			if (emailMissing) emailInput.addClass('is-invalid');
+			if (!isValid || emailMissing) {
+				toastr.error(emailMissing ? 'Email is required to save a schedule' : 'Please complete the required fields');
 				return;
 			}
 
@@ -6669,6 +6727,7 @@ var reportViewModel = function (options) {
 										  : (e.Operator() == "in" || e.Operator() == "not in" ? (e.ValueIn().length > 0 ? self.buildInValueList(e) : e.Value()) : (e.Operator().indexOf("blank") >= 0 || e.Operator() == 'all' || e.Operator() == 'none' || e.Operator() == 'no filter' ? "blank" : e.Value())),
 					Value2: hasTimeInDate && e.Operator() != 'range' ? (e.Value2() ? e.Value2() + " " + e.Valuetime2() : e.Value2()) : e.Value2(),
 					ParentIn: (e.ParentIn() || []).join(","),
+					EmailListColumn: e.EmailListColumn ? e.EmailListColumn() : '',
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : [],
 					FilterSettings: ''
 				} : null;
@@ -6689,7 +6748,7 @@ var reportViewModel = function (options) {
 					}
 				}
 
-				if (f != null && !f.Value1 && !f.Value2) {
+				if (f != null && !f.Value1 && !f.Value2 && !f.EmailListColumn) {
 					f = null;
 				}
 				if (f) filters.push(f);
@@ -6730,7 +6789,7 @@ var reportViewModel = function (options) {
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				};
 
-				if (f != null && !f.Value1 && !f.Value2) {
+				if (f != null && !f.Value1 && !f.Value2 && !f.EmailListColumn) {
 					f = null;
 				}
 				if (f) filters.push(f);
@@ -6748,10 +6807,11 @@ var reportViewModel = function (options) {
 					Valuetime: e.Valuetime(),
 					Valuetime2: e.Valuetime2(),
 					ParentIn: (e.ParentIn() || []).join(","),
+					EmailListColumn: e.EmailListColumn ? e.EmailListColumn() : '',
 					Filters: i == 0 ? self.BuildFilterData(g.FilterGroups()) : []
 				} : null;
 
-				if (f != null && !f.Value1 && !f.Value2) {
+				if (f != null && !f.Value1 && !f.Value2 && !f.EmailListColumn) {
 					f = null;
 				}
 				if (f) filters.push(f);
@@ -13147,7 +13207,7 @@ var dashboardViewModel = function (options) {
 
 			// Validate required fields
 			var modal = $('#modal-schedule-dashboard');
-			var curInputs = modal.find('input[required], select[required]');
+			var curInputs = modal.find('input[required]:visible, select[required]:visible');
 			var isValid = true;
 			curInputs.removeClass('is-invalid');
 			for (var i = 0; i < curInputs.length; i++) {
@@ -13166,9 +13226,10 @@ var dashboardViewModel = function (options) {
 				toastr.error('Please choose an Email List');
 				return;
 			}
-			if (!isValid || (!usesEmailQuery && (!scheduleData.EmailTo || scheduleData.EmailTo.trim() === ''))) {
-				if (!usesEmailQuery) emailInput.addClass('is-invalid');
-				toastr.error(usesEmailQuery ? 'Please complete the required fields' : 'Email is required to save a schedule');
+			var emailMissing = !usesEmailQuery && (!scheduleData.EmailTo || scheduleData.EmailTo.trim() === '');
+			if (emailMissing) emailInput.addClass('is-invalid');
+			if (!isValid || emailMissing) {
+				toastr.error(emailMissing ? 'Email is required to save a schedule' : 'Please complete the required fields');
 				return;
 			}
 

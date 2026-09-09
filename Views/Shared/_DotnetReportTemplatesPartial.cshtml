@@ -1105,9 +1105,21 @@
                                 </div>
                             </div>
                             <div class="col-md-5">
+                                <!-- ko ifnot: $data.useEmailListColumn && $data.useEmailListColumn() -->
                                 <div data-bind="with: Field" data-parentprefix="M">
                                     <div data-bind="template: 'report-filter', data: $data"></div>
                                 </div>
+                                <!-- /ko -->
+                                <!-- ko if: $root.scheduleEmailListColumns && $root.scheduleEmailListColumns().length > 0 -->
+                                <div class="form-check small mt-1">
+                                    <label class="form-check-label text-muted" title="Take this filter's value from the Email List query, one email per row">
+                                        <input class="form-check-input" type="checkbox" data-bind="checked: useEmailListColumn" /> Use value from Email List
+                                    </label>
+                                </div>
+                                <!-- ko if: $data.useEmailListColumn && $data.useEmailListColumn() -->
+                                <select class="form-select" required data-bind="options: $root.scheduleEmailListColumns, optionsCaption: 'Choose Email List column...', value: EmailListColumn"></select>
+                                <!-- /ko -->
+                                <!-- /ko -->
                                 <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $index()==0 -->
                                 <!-- ko if: $parents[$parents.length-2].canAddSeries != undefined && $parents[$parents.length-2].canAddSeries() -->
                                 <button class="btn btn-sm btn-secondary" data-bind="click: $parents[$parents.length-2].AddSeries.bind($data)">Add Comparison</button>
@@ -1125,7 +1137,7 @@
                                             <i class="fa fa-trash"></i>
                                         </button>
                                     </div>
-                                    <div class="form-group" data-bind="with: Field, hidden: document.querySelector('#filter-panel.card-body.collapse')">
+                                    <div class="form-group" data-bind="with: Field, hidden: document.querySelector('#filter-panel.card-body.collapse') || ($root.scheduleFilterEditing && $root.scheduleFilterEditing())">
                                         <span class="btn btn-sm" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {'btn-success': filterOnFly()==true, 'btn-secondary': !filterOnFly()}">
                                             <span class="fa fa-filter" aria-hidden="true" title="Filter on Report"></span>
                                         </span>

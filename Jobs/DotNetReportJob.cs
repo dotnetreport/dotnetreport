@@ -4,6 +4,7 @@ using Quartz.Impl;
 using ReportBuilder.Web.Models;
 using System.Globalization;
 using System.Net;
+using System.Text.RegularExpressions;
 using System.Net.Mail;
 
 namespace ReportBuilder.Web.Jobs
@@ -14,6 +15,7 @@ namespace ReportBuilder.Web.Jobs
         public string Schedule { get; set; }
         public string EmailTo { get; set; }
         public int? EmailQueryId { get; set; }
+        public string Filters { get; set; }
         public string LastRun { get; set; }
         public DateTime? NextRun { get; set; }
         public string UserId { get; set; }
@@ -57,6 +59,13 @@ namespace ReportBuilder.Web.Jobs
         public List<ReportSchedule> Schedules { get; set; }
 
     }
+    // One report run and who it goes to. RowValues is the Email List row feeding mapped filters.
+    public class RecipientRun
+    {
+        public List<string> Recipients { get; set; } = new List<string>();
+        public string RowValues { get; set; } = "";
+    }
+
     public class FormatJson
     {
         public string exportFormat { get; set; }
@@ -295,7 +304,29 @@ namespace ReportBuilder.Web.Jobs
                                 }
                                 catch (Exception ex) { DiagLog("GetReportFooter", ex); /* not critical */ }
 
-                                response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledItem?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&id={itemId}&localRunTime={schedule.NextRun:yyyy-MM-ddTHH:mm:ss}&isDashboard={isDashboard}&clientId={clientId}&dataFilters={schedule.DataFilters}");
+                                // One run per Email List row when the schedule maps its columns to filters, otherwise one run.
+                                List<RecipientRun> runs;
+                                try
+                                {
+                                    runs = await ResolveRecipientRuns(client, apiUrl, accountApiKey, databaseApiKey, clientId, schedule);
+                                }
+                                catch (Exception rex)
+                                {
+                                    DiagLog($"[{report.Name}] schedule={schedule.Id} recipient query failed", rex);
+                                    await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: true, message: "Recipient query failed: " + rex.Message);
+                                    continue;
+                                }
+                                if (runs.Count == 0)
+                                {
+                                    DiagLog($"[{report.Name}] schedule={schedule.Id} recipient list is empty, nothing sent");
+                                    await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: false, message: "No recipients returned, nothing sent");
+                                    continue;
+                                }
+
+                                foreach (var run in runs)
+                                {
+                                DiagLog($"[{report.Name}] schedule={schedule.Id} run recipients={run.Recipients.Count} rowValues={run.RowValues}");
+                                response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledItem?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&id={itemId}&localRunTime={schedule.NextRun:yyyy-MM-ddTHH:mm:ss}&isDashboard={isDashboard}&clientId={clientId}&dataFilters={schedule.DataFilters}&rowValues={WebUtility.UrlEncode(run.RowValues)}");
                                 response.EnsureSuccessStatusCode();                            
 
                                 content = await response.Content.ReadAsStringAsync();
@@ -458,27 +489,7 @@ namespace ReportBuilder.Web.Jobs
                                 DiagLog($"[{report.Name}] format={schedule.Format} builtFileBytes={(fileData?.Length ?? 0)}"
                                       + $"\n    CurrentDataFilters(before email)={DotNetReportHelper.CurrentDataFilters}");
 
-                                // Recipients come from the schedule's saved query when one is set, otherwise EmailTo 
-                                List<string> recipients;
-                                try
-                                {
-                                    recipients = await ResolveRecipients(client, apiUrl, accountApiKey, databaseApiKey, clientId, schedule);
-                                }
-                                catch (Exception rex)
-                                {
-                                    DiagLog($"[{report.Name}] schedule={schedule.Id} recipient query failed", rex);
-                                    await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: true, message: "Recipient query failed: " + rex.Message);
-                                    continue;
-                                }
-
-                                if (recipients.Count == 0)
-                                {
-                                    DiagLog($"[{report.Name}] schedule={schedule.Id} recipient list is empty, nothing sent");
-                                    await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: false, message: "No recipients returned, nothing sent");
-                                    continue;
-                                }
-
-                                DiagLog($"[{report.Name}] schedule={schedule.Id} recipients={recipients.Count}");
+                                var recipients = run.Recipients;
 
                                 // One email per recipient so a single bad address cannot stop the rest, and every
                                 // delivery is logged individually.
@@ -521,6 +532,7 @@ namespace ReportBuilder.Web.Jobs
                                         await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: true, message: sendEx.Message, recipient: recipient);
                                     }
                                 }
+                                } // foreach run
                             }
                         }
                         catch (Exception ex)
@@ -534,15 +546,19 @@ namespace ReportBuilder.Web.Jobs
             }
         }
 
-        private static async Task<List<string>> ResolveRecipients(HttpClient client, string apiUrl, string accountApiKey, string databaseApiKey, string clientId, ReportSchedule schedule)
+        private static async Task<List<RecipientRun>> ResolveRecipientRuns(HttpClient client, string apiUrl, string accountApiKey, string databaseApiKey, string clientId, ReportSchedule schedule)
         {
+            var runs = new List<RecipientRun>();
             if (schedule.EmailQueryId.GetValueOrDefault() <= 0)
             {
-                return (schedule.EmailTo ?? "")
+                var toList = new RecipientRun();
+                toList.Recipients = (schedule.EmailTo ?? "")
                     .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(x => x.Trim())
                     .Where(x => !string.IsNullOrEmpty(x))
                     .ToList();
+                if (toList.Recipients.Count > 0) runs.Add(toList);
+                return runs;
             }
 
             var resp = await client.GetAsync($"{apiUrl}/ReportApi/GetDataDrivenQuerySql?account={accountApiKey}&dataConnect={databaseApiKey}&id={schedule.EmailQueryId.Value}&clientId={clientId}&userId={schedule.UserId}&dataFilters={WebUtility.UrlEncode(schedule.DataFilters ?? "")}");
@@ -554,7 +570,36 @@ namespace ReportBuilder.Web.Jobs
             if (string.IsNullOrEmpty(encryptedSql)) throw new Exception("Recipient query returned no SQL");
 
             var rows = await DotNetReportHelper.GetDataDrivenQueryRows(encryptedSql, connectKey);
-            return DotNetReportHelper.ExtractEmailRecipients(rows);
+
+            // No column mapped to a filter: one run to everyone, as before.
+            if (!Regex.IsMatch(schedule.Filters ?? "", "\"EmailListColumn\":\"[^\"]"))
+            {
+                var everyone = new RecipientRun();
+                everyone.Recipients = DotNetReportHelper.ExtractEmailRecipients(rows);
+                if (everyone.Recipients.Count > 0) runs.Add(everyone);
+                return runs;
+            }
+
+            // Mapped: one run per row, that row's values feeding the mapped filters.
+            var emailColumn = 0;
+            for (var i = 0; i < rows.Columns.Count; i++)
+                if (string.Equals(rows.Columns[i].ColumnName, "Email", StringComparison.OrdinalIgnoreCase)) emailColumn = i;
+
+            foreach (System.Data.DataRow row in rows.Rows)
+            {
+                var email = (row[emailColumn] == null ? "" : row[emailColumn].ToString()).Trim();
+                if (email.Length == 0 || email.IndexOf('@') < 0) continue;
+
+                var values = new Dictionary<string, string>();
+                for (var i = 0; i < rows.Columns.Count; i++)
+                    values[rows.Columns[i].ColumnName] = row[i] == null ? "" : row[i].ToString();
+
+                var one = new RecipientRun();
+                one.Recipients.Add(email);
+                one.RowValues = JsonConvert.SerializeObject(values);
+                runs.Add(one);
+            }
+            return runs;
         }
 
         private static async Task LogScheduleSent(HttpClient client, string apiUrl, string accountApiKey, string databaseApiKey, ReportSchedule schedule, ReportWithSchedule report, bool isDashboard, bool isError, string message, string recipient = null)
