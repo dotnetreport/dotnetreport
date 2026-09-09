@@ -3412,6 +3412,7 @@ var usersRolesViewModel = function (options, settings, previewData) {
 	var self = this;
 
 	self.userSource = settings.userSource;
+	self.loginMode = settings.loginMode;
 	self.clientIdLabel = settings.clientIdLabel;
 	self.clientIds = settings.clientIds;   // catalog of { id, text }
 	self.editingClient = ko.observable(null);
@@ -3633,7 +3634,7 @@ var usersRolesViewModel = function (options, settings, previewData) {
 
 	self.loadPortal = function () {
 		self.loadingUsers(true);
-		api('GetAccountUsersAndRoles').done(function (r) {
+		api('GetAccountUsersAndRoles', { source: 'portal' }).done(function (r) {
 			if (r && r.d) r = r.d;
 			self.portalUsers((r && r.users) || []);
 			self.portalRoles((r && r.roles) || []);
@@ -3659,6 +3660,7 @@ var usersRolesViewModel = function (options, settings, previewData) {
 	};
 
 	self.userSource.subscribe(self.markDirty);
+	self.loginMode.subscribe(self.markDirty);
 	self.clientIdLabel.subscribe(self.markDirty);
 	self.clientIds.subscribe(self.markDirty);
 
@@ -3874,6 +3876,8 @@ var settingPageViewModel = function (options) {
 	self.aiEnabled = ko.observable(false);
 	// Users & Roles source ('code' | 'portal') + client/tenant catalog and its display label
 	self.userSource = ko.observable('code');
+	// How users sign in ('embedded' | 'standalone' | 'sso'). Informational: the behaviour comes from code.
+	self.loginMode = ko.observable('embedded');
 	self.clientIdLabel = ko.observable('Client Id');
 	self.clientIds = ko.observableArray([]);
 	// Sync aiEnabled with aiProvider for backward compatibility
@@ -3974,6 +3978,7 @@ var settingPageViewModel = function (options) {
 								aiModel: self.aiModel(),
 								aiEnabled: self.aiEnabled(),
 								userSource: self.userSource(),
+								loginMode: self.loginMode(),
 								clientIdLabel: self.clientIdLabel() || 'Client Id',
 								clientIds: self.clientIds()
 						})
@@ -4053,6 +4058,7 @@ var settingPageViewModel = function (options) {
 				self.aiModel(settings.aiModel || '');
 				self.aiEnabled(settings.aiEnabled === true || (settings.aiProvider && settings.aiProvider !== ''));
 				self.userSource(settings.userSource || 'code');
+				self.loginMode(settings.loginMode || 'embedded');
 				self.clientIdLabel(settings.clientIdLabel || 'Client Id');
 				self.clientIds(_.isArray(settings.clientIds) ? settings.clientIds : []);
 				//// Optionally, you can manually trigger change event for select elements

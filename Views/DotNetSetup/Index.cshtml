@@ -150,6 +150,11 @@
                 </a>
             </li>
             <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#usersroles" aria-controls="usersroles" role="tab" data-bs-toggle="tab" data-bind="click: function() { usersRoles.onTabOpen(); }">
+                    <i class="fa fa-users"></i> Users &amp; Roles
+                </a>
+            </li>
+            <li role="presentation" class="nav-item">
                 <a class="nav-link" href="#schedules" aria-controls="schedules" role="tab" data-bs-toggle="tab">
                     <i class="fa fa-clock-o"></i> Schedules
                 </a>
@@ -162,11 +167,6 @@
             <li role="presentation" class="nav-item" style="display: none;" data-bind="visible: settings.useFunctions">
                 <a class="nav-link" href="#functions" aria-controls="functions" role="tab" data-bs-toggle="tab">
                     <i class="fa fa-cogs"></i> Custom Functions
-                </a>
-            </li>
-            <li role="presentation" class="nav-item">
-                <a class="nav-link" href="#usersroles" aria-controls="usersroles" role="tab" data-bs-toggle="tab" data-bind="click: function() { usersRoles.onTabOpen(); }">
-                    <i class="fa fa-users"></i> Users &amp; Roles
                 </a>
             </li>
             <li role="presentation" class="nav-item">
@@ -209,12 +209,11 @@
                 <b><i class="fa fa-code"></i> Application Code</b> - Your app supplies these in <code>GetSettings()</code>, settings are displayed here but can only be managed directly in code.
             </div>
             <div class="alert alert-info py-2 small mb-3" data-bind="visible: userSource() === 'sql'">
-                <b><i class="fa fa-database"></i> SQL Query</b> - Read the lists straight from your own database. Write one query per list below.
-                Set the currently logged in user's info in <code>GetSettings</code>.
+                <b><i class="fa fa-database"></i> SQL Query</b> - Read the lists straight from your own database to populate your Users and Roles.
             </div>
             <div class="alert alert-info py-2 small mb-3" data-bind="visible: userSource() === 'portal'">
                 <b><i class="fa fa-cloud"></i> Dotnet Report Managed</b> - Setup users and roles in your Dotnet Report Account. You can manage users here or on our 
-                <a href="https://dotnetreport.com/portal/Account/UsersAndRoles" target="_blank" rel="noopener">portal <i class="fa fa-external-link"></i></a>. Set the currently logged in user's info in <code>GetSettings</code> method.
+                <a href="https://dotnetreport.com/portal/Account/UsersAndRoles" target="_blank" rel="noopener">portal <i class="fa fa-external-link"></i></a>.
             </div>
 
             <ul class="nav nav-tabs" id="usersRolesTabs" role="tablist">
@@ -228,7 +227,7 @@
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#ur-clients" type="button" role="tab"><i class="fa fa-building-o"></i> <span data-bind="text: clientIdLabel() || 'Client Ids'"></span></button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#ur-code" type="button" role="tab"><i class="fa fa-code"></i> Setup Code</button>
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#ur-code" type="button" role="tab"><i class="fa fa-sign-in"></i> Login</button>
                 </li>
             </ul>
             <div class="tab-content pt-3">
@@ -471,8 +470,27 @@
                 </div>
                 <!-- SETUP CODE -->
                 <div class="tab-pane" id="ur-code" role="tabpanel">
-                    <p class="text-muted small">Populate these in <code>GetSettings()</code> in <code>Controllers/DotNetReportApiController.cs</code>:</p>
-                    <pre class="bg-light border rounded p-3 small mb-0">
+                <p class="text-muted small">How do people sign in to see reports? Pick one, then <b>Save</b> above.</p>
+                    <div class="card mb-3" data-bind="css: { 'border-primary': loginMode() === 'embedded' }">
+                        <div class="card-body py-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="loginMode" id="login-embedded" value="embedded" data-bind="checked: loginMode" />
+                                <label class="form-check-label" for="login-embedded">
+                                    <b><i class="fa fa-code"></i> Embedded in your app <span class="badge bg-secondary ms-1">Default</span></b>
+                                    <div class="small text-muted">Your application already has a login. Dotnet Report runs inside it and trusts it: you say who is signed in from C# and switch on <code>[Authorize]</code>.</div>
+                                    <div class="small mt-1"><span class="text-muted">Works with:</span> any source</div>
+                                </label>
+                            </div>
+                            <!-- ko if: loginMode() === 'embedded' -->
+                            <div class="mt-3 ps-4">
+                                <div class="alert alert-warning py-2 small mb-2">
+                                    <i class="fa fa-exclamation-triangle"></i> <b>Turn authorization on.</b> <code>[Authorize]</code> ships commented out on
+                                    <code>DotNetReportController</code> and <code>DotNetReportApiController</code>, and <code>[Authorize(Roles = "Administrator")]</code> on
+                                    <code>DotNetSetupController</code>, so the default runs without a login. Uncomment them so only signed-in users reach reports
+                                    and only administrators reach this page.
+                                </div>
+                                <p class="text-muted small mb-1">Tell Dotnet Report who is signed in, from <code>GetSettings()</code> in <code>Controllers/DotNetReportApiController.cs</code>:</p>
+                                <pre class="bg-light border rounded p-3 small mb-0">
 settings.UserId          = User.Identity.Name;                          // currently logged in user
 settings.CurrentUserRole = new List&lt;string&gt; { "Admin" };                // currently logged in user's roles
 settings.ClientId        = "ACME";                                      // currently logged in user's tenant<!-- ko if: userSource() === 'code' -->
@@ -480,6 +498,75 @@ settings.ClientId        = "ACME";                                      // curre
 settings.Users     = new List&lt;dynamic&gt; { "jane@co.com", "joe@co.com" }; // all users
 settings.UserRoles = new List&lt;string&gt; { "Admin", "Viewer" };            // all roles
 settings.ClientIds = new List&lt;string&gt; { "ACME", "CONTOSO" };            // all tenants<!-- /ko --></pre>
+                            </div>
+                            <!-- /ko -->
+                        </div>
+                    </div>
+                    <div class="card mb-3" data-bind="css: { 'border-primary': loginMode() === 'standalone' }">
+                        <div class="card-body py-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="loginMode" id="login-standalone" value="standalone" data-bind="checked: loginMode" />
+                                <label class="form-check-label" for="login-standalone">
+                                    <b><i class="fa fa-sign-in"></i> Standalone <span class="text-muted fw-normal">(Dotnet Report login pages)</span></b>
+                                    <div class="small text-muted">Your application has no login of its own, or you want reporting behind a separate one. A NuGet package adds the pages and the sign-in.</div>
+                                    <div class="small mt-1"><span class="text-muted">Works with:</span> Dotnet Report Managed</div>
+                                </label>
+                            </div>
+                            <!-- ko if: loginMode() === 'standalone' -->
+                            <div class="mt-3 ps-4">
+                                <div class="alert alert-light border py-2 small mb-2" data-bind="visible: userSource() !== 'portal'">
+                                    <i class="fa fa-info-circle"></i> Standalone login signs users in with a password, so it needs the <b>Dotnet Report Managed</b> source above.
+                                    Application Code and SQL Query sources have no passwords to check.
+                                </div>
+                                <p class="text-muted small mb-1">The <code>DotNetReport.Login</code> package adds Login, Logout and Forgot Password pages to this application and signs users in against the Users tab.</p>
+                                <pre class="bg-light border rounded p-3 small mb-2">dotnet add package DotNetReport.Login
+
+// Program.cs
+builder.Services.AddDotNetReportLogin();   // Identity + cookie sign-in against your Dotnet Report users
+app.UseDotNetReportLogin();                // /Account/Login, /Account/Logout, /Account/ForgotPassword</pre>
+                                <p class="text-muted small mb-0">Then uncomment <code>[Authorize]</code> as above. <code>GetSettings()</code> is filled in for you from the signed-in user.</p>
+                            </div>
+                            <!-- /ko -->
+                        </div>
+                    </div>
+                    <div class="card mb-3" data-bind="css: { 'border-primary': loginMode() === 'sso' }">
+                        <div class="card-body py-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="loginMode" id="login-sso" value="sso" data-bind="checked: loginMode" />
+                                <label class="form-check-label" for="login-sso">
+                                    <b><i class="fa fa-key"></i> Single sign-on</b>
+                                    <div class="small text-muted">Your identity provider signs people in. No passwords are stored here.</div>
+                                    <div class="small mt-1"><span class="text-muted">Works with:</span> any source</div>
+                                </label>
+                            </div>
+                            <!-- ko if: loginMode() === 'sso' -->
+                            <div class="mt-3 ps-4">
+                                <p class="text-muted small mb-1">Sign in with your identity provider (Microsoft Entra ID, Okta, Google, or any OpenID Connect provider). Your provider issues the login; you map its claims:</p>
+                                <pre class="bg-light border rounded p-3 small mb-2">// Program.cs
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = "Cookies";
+    options.DefaultChallengeScheme = "oidc";
+})
+.AddCookie("Cookies")
+.AddOpenIdConnect("oidc", options =>
+{
+    options.Authority = "https://login.microsoftonline.com/&lt;tenant&gt;/v2.0";
+    options.ClientId = "&lt;client id&gt;";
+    options.ClientSecret = "&lt;client secret&gt;";
+    options.ResponseType = "code";
+    options.Scope.Add("email");
+});
+
+// GetSettings() in Controllers/DotNetReportApiController.cs
+settings.UserId          = User.FindFirst("preferred_username")?.Value ?? User.Identity.Name;
+settings.CurrentUserRole = User.Claims.Where(c => c.Type == "roles").Select(c => c.Value).ToList();
+settings.ClientId        = User.FindFirst("ClientId")?.Value;</pre>
+                                <p class="text-muted small mb-0">Then uncomment <code>[Authorize]</code> as above. Roles and tenants can still come from any source on the Users, Roles and Client Ids tabs.</p>
+                            </div>
+                            <!-- /ko -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
