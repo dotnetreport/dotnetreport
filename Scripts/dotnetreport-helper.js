@@ -682,12 +682,34 @@ function secureSummernoteCodeview($el) {
     if (!$.fn || typeof $.fn.summernote !== 'function' || $.fn.summernote.__dnrSecured) return;
     var origSummernote = $.fn.summernote;
 
+    function enterInsertsLineBreak(e) {
+        if (e.shiftKey || e.ctrlKey || e.metaKey) return;
+
+        var sel = window.getSelection();
+        if (sel && sel.rangeCount) {
+            var node = sel.getRangeAt(0).startContainer;
+            if (node.nodeType === 3) node = node.parentNode;
+            if ($(node).closest('li').length) return;
+        }
+
+        e.preventDefault();
+        var inserted = false;
+        try { inserted = document.execCommand('insertLineBreak'); } catch (err) { inserted = false; }
+        if (!inserted) $(this).summernote('pasteHTML', '<br>');
+    }
+
     var wrapped = function () {
         var args = Array.prototype.slice.call(arguments);
         if (args.length >= 2 && (args[0] === 'code' || args[0] === 'pasteHTML') && typeof args[1] === 'string') {
             args[1] = sanitizeReportHtml(args[1]);
         }
         var isInit = args.length === 0 || $.isPlainObject(args[0]);
+
+        if (isInit) {
+            args[0] = $.extend({}, args[0]);
+            args[0].callbacks = $.extend({}, args[0].callbacks);
+            if (!args[0].callbacks.onEnter) args[0].callbacks.onEnter = enterInsertsLineBreak;
+        }
         var result = origSummernote.apply(this, args);
         if (isInit) {
             this.each(function () { secureSummernoteCodeview($(this)); });
