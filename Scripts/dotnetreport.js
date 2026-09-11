@@ -5132,7 +5132,7 @@ var reportViewModel = function (options) {
 			if (!v) return null;
 			if (typeof v === 'string') {
 				var mm = v.match(/\/Date\((-?\d+)\)\//);
-				if (mm) return parseInt(mm[1]) > 0 ? v : null; // drop MinValue/invalid
+				if (mm) return parseInt(mm[1]) > 0 ? new Date(parseInt(mm[1])).toISOString() : null;
 			}
 			return v;
 		}
@@ -5291,15 +5291,16 @@ var reportViewModel = function (options) {
 		persistSchedule: function (scheduleData) {
 			var m = self.scheduleReportModal;
 			return ajaxcall({
-				url: options.apiUrl,
-				data: {
+				url: options.apiUrl.replace('CallReportApi', 'CallPostReportApi'),
+				type: 'POST',
+				data: JSON.stringify({
 					method: "/ReportApi/SaveReportSchedule",
 					model: JSON.stringify({
 						adminMode: self.adminMode(),
 						reportId: m.reportId(),
 						scheduleData: JSON.stringify(self.cleanScheduleForSave(scheduleData))
 					})
-				}
+				})
 			}).done(function () {
 				toastr.success('Schedule saved');
 				m.loadSchedules();
