@@ -3455,6 +3455,9 @@ var usersRolesViewModel = function (options, settings, previewData) {
 		'One row per client, with an id and a text column.',
 		['id', 'text'],
 		'SELECT ClientId AS id, ClientName AS text FROM Clients');
+	// Client ids can be renamed (Tenant, Company...), so this source's wording follows the label.
+	self.sqlClients.title = ko.pureComputed(function () { return (self.clientIdLabel() || 'Client Id') + 's Query'; });
+	self.sqlClients.hint = ko.pureComputed(function () { return 'One row per ' + (self.clientIdLabel() || 'Client Id').toLowerCase() + ', with an id and a text column.'; });
 
 	self.sqlSources = [self.sqlUsers, self.sqlRoles, self.sqlClients];
 
@@ -3504,14 +3507,14 @@ var usersRolesViewModel = function (options, settings, previewData) {
 			if (error) { toastr.error('Query is not valid and was not saved: ' + error); return; }
 			var missing = self.missingColumns(src, data);
 			if (missing.length) {
-				toastr.error('The ' + src.title + ' must return ' + missing.join(' and ') + ', so it was not saved.');
+				toastr.error('The ' + ko.unwrap(src.title) + ' must return ' + missing.join(' and ') + ', so it was not saved.');
 				return;
 			}
 			ajaxcall({
 				url: options.reportsApiUrl,
 				data: {
 					method: options.saveEmailQueryUrl,
-					model: JSON.stringify({ id: src.savedId(), name: src.title, queryType: src.queryType, sqlQuery: src.draft() })
+					model: JSON.stringify({ id: src.savedId(), name: ko.unwrap(src.title), queryType: src.queryType, sqlQuery: src.draft() })
 				}
 			}).done(function (x) {
 				if (x.d) x = x.d;
@@ -3520,14 +3523,14 @@ var usersRolesViewModel = function (options, settings, previewData) {
 				if (x && x.id) src.savedId(x.id);
 				src.sqlQuery(src.draft());
 				self.refreshSqlList(src);
-				toastr.success(src.title + ' saved');
+				toastr.success(ko.unwrap(src.title) + ' saved');
 				$('#users-roles-sql-modal').modal('hide');
 			});
 		});
 	};
 
 	self.deleteSqlSource = function (src) {
-		bootbox.confirm('Are you sure you would like to delete the ' + src.title + '?', function (r) {
+		bootbox.confirm('Are you sure you would like to delete the ' + ko.unwrap(src.title) + '?', function (r) {
 			if (!r) return;
 			ajaxcall({
 				url: options.reportsApiUrl,
@@ -3537,7 +3540,7 @@ var usersRolesViewModel = function (options, settings, previewData) {
 				src.sqlQuery('');
 				src.rows([]);
 				src.error('');
-				toastr.success(src.title + ' deleted');
+				toastr.success(ko.unwrap(src.title) + ' deleted');
 			});
 		});
 	};
@@ -3577,7 +3580,7 @@ var usersRolesViewModel = function (options, settings, previewData) {
 			if (error) { toastr.error('Query error: ' + error); return; }
 			if (!data || !(data.Rows || []).length) { bootbox.alert('This query returned no rows.'); return; }
 			var missing = self.missingColumns(src, data);
-			if (missing.length) toastr.warning('The ' + src.title + ' should return ' + missing.join(' and ') + '.');
+			if (missing.length) toastr.warning('The ' + ko.unwrap(src.title) + ' should return ' + missing.join(' and ') + '.');
 			previewData(data);
 			$('#data-preview-modal').modal('show');
 		});

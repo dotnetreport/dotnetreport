@@ -817,7 +817,18 @@
                 <div class="form-text" data-bind="visible: selectedClientIds().length === 0">Not restricted, available to all.</div>
                 <!-- /ko -->
                 <!-- ko ifnot: $root.clientIdOptions && $root.clientIdOptions().length > 0 -->
-                <input class="form-control text-box single-line" type="text" data-bind="value: clientId">
+                <input class="form-control text-box single-line" type="text" placeholder="Comma separated, leave blank for all" data-bind="value: clientId">
+                <!-- ko if: selectedClientIds().length > 0 -->
+                <div class="d-flex flex-wrap gap-1 mt-2">
+                    <!-- ko foreach: selectedClientIds() -->
+                    <span class="badge bg-secondary d-inline-flex align-items-center">
+                        <span data-bind="text: $data"></span>
+                        <button type="button" class="btn btn-sm btn-link text-white p-0 ms-2 lh-1" title="Remove" data-bind="click: function(){ $parent.removeClientId($data); }"><i class="fa fa-times"></i></button>
+                    </span>
+                    <!-- /ko -->
+                </div>
+                <!-- /ko -->
+                <div class="form-text" data-bind="visible: selectedClientIds().length === 0">Not restricted, available to all.</div>
                 <!-- /ko -->
             </div>
             <div class="col-md-1 col-sm-1">
@@ -830,7 +841,8 @@
 
         <div class="row small">
             <div class="col-md-6">
-                <i class="toggle-icon fa" data-bind="click: toggleManageUsers,css: { 'fa-chevron-down': showManageUsers(), 'fa-chevron-right': !showManageUsers() }"></i> <b>Manage by User</b> (allow edit)
+                <span class="clickable" data-bind="click: toggleManageUsers"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showManageUsers(), 'fa-chevron-right': !showManageUsers() }"></i> <b>Manage by User</b> (allow edit)</span>
+                <div data-bind="template: { name: 'access-selected-pills', data: { list: users, open: showManageUsers } }"></div>
                 <div class="row container-fluid" data-bind="visible: showManageUsers">
                     <!-- ko if: groupedUsers().length > 0 -->
                     <!-- ko foreach: groupedUsers -->
@@ -868,7 +880,8 @@
                     </div>
                 </div>
                 <br />
-                <i class="toggle-icon fa" data-bind="click: toggleViewUsers,css: { 'fa-chevron-down': showViewUsers(), 'fa-chevron-right': !showViewUsers() }"></i> <b>View only by User</b> (no edit/delete)
+                <span class="clickable" data-bind="click: toggleViewUsers"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showViewUsers(), 'fa-chevron-right': !showViewUsers() }"></i> <b>View only by User</b> (no edit/delete)</span>
+                <div data-bind="template: { name: 'access-selected-pills', data: { list: viewOnlyUsers, open: showViewUsers } }"></div>
                 <div class="row container-fluid" data-bind="visible: showViewUsers">
                     <!-- ko if: groupedViewOnlyUsers().length > 0 -->
                     <!-- ko foreach: groupedViewOnlyUsers -->
@@ -907,7 +920,8 @@
                 </div>
                 <br />
                 <div data-bind="ifnot: isDashboard">
-                    <i class="toggle-icon fa" data-bind="click: toggleDeleteUsers,css: { 'fa-chevron-down': showDeleteUsers(), 'fa-chevron-right': !showDeleteUsers() }"></i><b>Delete by User</b> (allow delete)
+                    <span class="clickable" data-bind="click: toggleDeleteUsers"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showDeleteUsers(), 'fa-chevron-right': !showDeleteUsers() }"></i> <b>Delete by User</b> (allow delete)</span>
+                    <div data-bind="template: { name: 'access-selected-pills', data: { list: deleteOnlyUsers, open: showDeleteUsers } }"></div>
                     <div class="row container-fluid" data-bind="visible: showDeleteUsers">
                     <!-- ko if: groupedDeleteOnlyUsers().length > 0 -->
                     <!-- ko foreach: groupedDeleteOnlyUsers -->
@@ -948,7 +962,8 @@
                 </div>
             </div>
             <div class="col-md-6">
-                <i class="toggle-icon fa" data-bind="click: toggleManageRoles,css: { 'fa-chevron-down': showManageRoles(), 'fa-chevron-right': !showManageRoles() }"></i><b>Manage by User Role</b> (allow edit)
+                <span class="clickable" data-bind="click: toggleManageRoles"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showManageRoles(), 'fa-chevron-right': !showManageRoles() }"></i> <b>Manage by User Role</b> (allow edit)</span>
+                <div data-bind="template: { name: 'access-selected-pills', data: { list: userRoles, open: showManageRoles } }"></div>
                 <div class="row container-fluid" data-bind="visible: showManageRoles">
                     <!-- ko foreach: userRoles -->
                     <div class="pull-left">
@@ -964,7 +979,8 @@
                     </div>
                 </div>
                 <br />
-                <i class="toggle-icon fa" data-bind="click: toggleViewRoles,css: { 'fa-chevron-down': showViewRoles(), 'fa-chevron-right': !showViewRoles() }"></i><b>View only by User Role</b> (no edit/delete)
+                <span class="clickable" data-bind="click: toggleViewRoles"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showViewRoles(), 'fa-chevron-right': !showViewRoles() }"></i> <b>View only by User Role</b> (no edit/delete)</span>
+                <div data-bind="template: { name: 'access-selected-pills', data: { list: viewOnlyUserRoles, open: showViewRoles } }"></div>
                 <div class="row container-fluid" data-bind="visible: showViewRoles">
                     <!-- ko foreach: viewOnlyUserRoles -->
                     <div class="pull-left">
@@ -980,7 +996,8 @@
                     </div>
                 </div>
                 <div data-bind="ifnot: isDashboard">
-                    <i class="toggle-icon fa" data-bind="click: toggleDeleteRoles,css: { 'fa-chevron-down': showDeleteRoles(), 'fa-chevron-right': !showDeleteRoles() }"></i><b>Delete by User Role</b> (allow delete)
+                    <span class="clickable" data-bind="click: toggleDeleteRoles"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showDeleteRoles(), 'fa-chevron-right': !showDeleteRoles() }"></i> <b>Delete by User Role</b> (allow delete)</span>
+                    <div data-bind="template: { name: 'access-selected-pills', data: { list: deleteOnlyUserRoles, open: showDeleteRoles } }"></div>
                     <div class="row container-fluid" data-bind="visible: showDeleteRoles">
                         <!-- ko foreach: deleteOnlyUserRoles -->
                         <div class="pull-left">
@@ -998,6 +1015,32 @@
                 </div>
             </div>
         </div>
+    </div>
+</script>
+
+<!-- Collapsed view of one access rule: who is selected, or that it is open to everyone. Hidden while the checkboxes are open. -->
+<script type="text/html" id="access-selected-pills">
+    <!-- ko ifnot: ko.unwrap(open) -->
+    <div class="d-flex flex-wrap gap-1 align-items-center my-1 ms-3">
+        <!-- ko foreach: _.filter(list(), function (x) { return x.selected(); }) -->
+        <span class="badge bg-secondary d-inline-flex align-items-center">
+            <span data-bind="text: text"></span>
+            <button type="button" class="btn btn-sm btn-link text-white p-0 ms-2 lh-1" title="Remove" data-bind="click: function(){ selected(false); }"><i class="fa fa-times"></i></button>
+        </span>
+        <!-- /ko -->
+        <span class="text-muted small" data-bind="visible: !_.some(list(), function (x) { return x.selected(); })"><i class="fa fa-globe"></i> Everyone, not restricted</span>
+    </div>
+    <!-- /ko -->
+</script>
+<!-- Access summary badges for a report/folder/dashboard row (admin mode). Grey = restricted, outlined = open to all. -->
+<script type="text/html" id="access-badges">
+    <div class="d-flex flex-wrap gap-1 align-items-center" data-bind="foreach: accessBadges($data, $root)">
+        <span class="badge d-inline-flex align-items-center" data-bind="attr: { title: title }, css: restricted ? 'bg-secondary' : 'bg-light text-muted border'">
+            <!-- ko foreach: icons.split(' ') -->
+            <i class="fa me-1" data-bind="css: $data"></i>
+            <!-- /ko -->
+            <span data-bind="text: text"></span>
+        </span>
     </div>
 </script>
 <script type="text/html" id="filter-group">

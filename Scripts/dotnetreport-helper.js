@@ -905,6 +905,40 @@ function pagerViewModel(args) {
 
 }
 
+// Access summary for a report, folder or dashboard row
+var accessBadges = function (item, root) {
+    var read = function () {
+        for (var i = 0; i < arguments.length; i++) {
+            if (item && item[arguments[i]] !== undefined) return ko.unwrap(item[arguments[i]]) || '';
+        }
+        return '';
+    };
+    var access = root && root.manageAccess ? root.manageAccess : null;
+    var nameOf = function (list, id) {
+        var items = list ? ko.unwrap(list) : null;
+        var match = _.find(items || [], function (x) { return ko.unwrap(x.value !== undefined ? x.value : x.id) == id; });
+        return match ? (ko.unwrap(match.text) || id) : id;
+    };
+    var names = function (value, list) {
+        return _.map(String(value).split(','), function (id) { return nameOf(list, id.trim()); }).join(', ');
+    };
+    var badges = [];
+    var add = function (icons, title, value, list, anyText) {
+        if (!value && !anyText) return;
+        badges.push({ icons: icons, title: title, text: value ? names(value, list) : anyText, restricted: !!value });
+    };
+    var users = access ? access.users : null, roles = access ? access.userRoles : null;
+    var clients = root ? root.clientIdOptions : null;
+    add('fa-user', 'Manage by User', read('UserId', 'userId'), users, 'Any User');
+    add('fa-lock fa-user', 'View only by User', read('ViewOnlyUserId', 'viewOnlyUserId'), users);
+    add('fa-trash fa-user', 'Delete by User', read('DeleteOnlyUserId', 'deleteOnlyUserId'), users);
+    add('fa-key', 'Manage by Role', read('UserRoles', 'userRole', 'userRoles'), roles, 'Any Role');
+    add('fa-lock fa-key', 'View only by Role', read('ViewOnlyUserRoles', 'viewOnlyUserRole', 'viewOnlyUserRoles'), roles);
+    add('fa-trash fa-key', 'Delete by Role', read('DeleteOnlyUserRoles', 'deleteOnlyUserRole', 'deleteOnlyUserRoles'), roles);
+    add('fa-building-o', root && root.clientIdLabelText ? ko.unwrap(root.clientIdLabelText) : 'Client Id', read('ClientId', 'clientId'), clients);
+    return badges;
+};
+
 var manageAccess = function (options) {
     var buildList = function (array) { return _.map(array || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x, category: x.category || null }; }) };
     var access = {

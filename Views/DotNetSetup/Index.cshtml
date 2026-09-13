@@ -188,9 +188,9 @@
 <div class="fix-content" style="display: none;" data-bind="visible: true">
     <div class="tab-content">
         <div role="tabpanel" class="tab-pane" id="usersroles" data-bind="with: usersRoles">
-            <b>Users, Roles &amp; Tenants</b>
+            <b>Users, Roles &amp; <span data-bind="text: clientIdLabel() || 'Client Id'"></span>s</b>
             <p>
-                Choose where Dotnet Report gets the Users, Roles and Client Ids used to control access to Reports, Folders and Dashboards.
+                Choose where Dotnet Report gets the Users, Roles and <span data-bind="text: clientIdLabel() || 'Client Id'"></span>s used to control access to Reports, Folders and Dashboards.
             </p>
             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                 <label class="control-label mb-0">Source</label>
@@ -384,7 +384,7 @@
 
                 <!-- CLIENT IDS -->
                 <div class="tab-pane" id="ur-clients" role="tabpanel">
-                    <p class="text-muted small">Restrict Reports, Folders and Dashboards by your clients, set the currently logged in user client in <code>settings.ClientId</code>.</p>
+                    <p class="text-muted small">Restrict Reports, Folders and Dashboards by <span data-bind="text: (clientIdLabel() || 'Client Id').toLowerCase()"></span>, set the currently logged in user's <span data-bind="text: (clientIdLabel() || 'Client Id').toLowerCase()"></span> in <code>settings.ClientId</code>.</p>
                     <div data-bind="template: { name: 'users-roles-sql-source', data: sqlClients }"></div>
                     <div class="alert alert-warning py-2 small" data-bind="visible: userSource() === 'portal'">
                         <i class="fa fa-exclamation-triangle"></i> Clients are not stored in your Dotnet Report account.
@@ -1244,13 +1244,7 @@ settings.ClientId        = User.FindFirst("ClientId")?.Value;</pre>
                                             </div>
                                             <div class="col-md-5">
                                                 <div class="d-flex flex-wrap gap-1 align-items-center small">
-                                                    <span class="badge bg-info text-white" title="Manage by User" data-bind="text: '👤 ' + (userId() ? userId() : 'Any User')"></span>
-                                                    <span class="badge bg-info text-white border" title="View only by User" data-bind="visible: viewOnlyUserId">👁 <span data-bind="text: viewOnlyUserId"></span></span>
-                                                    <span class="badge bg-info text-white border" title="Delete only by User" data-bind="visible: deleteOnlyUserId">🗑 <span data-bind="text: deleteOnlyUserId"></span></span>
-                                                    <span class="badge bg-info text-white" title="Manage by Role" data-bind="text: '🔑 ' + (userRole() ? userRole() : 'Any Role')"></span>
-                                                    <span class="badge bg-info text-white border" title="View only by Role" data-bind="visible: viewOnlyUserRole">👁 <span data-bind="text: viewOnlyUserRole"></span></span>
-                                                    <span class="badge bg-info text-white border" title="Delete only by Role" data-bind="visible: deleteOnlyUserRole">🗑 <span data-bind="text: deleteOnlyUserRole"></span></span>
-                                                    <span class="badge bg-info text-white" title="Client" data-bind="visible: clientId">🏢 <span data-bind="text: clientId"></span></span>
+                                                    <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                                 </div>
                                             </div>
                                             <div class="col-md-1 text-end">
@@ -1281,13 +1275,7 @@ settings.ClientId        = User.FindFirst("ClientId")?.Value;</pre>
                                 <div class="row align-items-center py-2">
                                     <div class="col-md-10">
                                         <div class="d-flex flex-wrap gap-1 align-items-center small">
-                                            <span class="badge bg-info text-white" title="Manage by User" data-bind="text: '👤 ' + (UserId() ? UserId() : 'Any User')"></span>
-                                            <span class="badge bg-info text-white border" title="View only by User" data-bind="visible: ViewOnlyUserId">👁 <span data-bind="text: ViewOnlyUserId"></span></span>
-                                            <span class="badge bg-info text-white border" title="Delete only by User" data-bind="visible: DeleteOnlyUserId">🗑 <span data-bind="text: DeleteOnlyUserId"></span></span>
-                                            <span class="badge bg-info text-white" title="Manage by Role" data-bind="text: '🔑 ' + (UserRoles() ? UserRoles() : 'Any Role')"></span>
-                                            <span class="badge bg-info text-white border" title="View only by Role" data-bind="visible: ViewOnlyUserRoles">👁 <span data-bind="text: ViewOnlyUserRoles"></span></span>
-                                            <span class="badge bg-info text-white border" title="Delete only by Role" data-bind="visible: DeleteOnlyUserRoles">🗑 <span data-bind="text: DeleteOnlyUserRoles"></span></span>
-                                            <span class="badge bg-info text-white" title="Client" data-bind="visible: ClientId">🏢 <span data-bind="text: ClientId"></span></span>
+                                            <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                         </div>
                                     </div>
                                     <div class="col-md-2 text-end">

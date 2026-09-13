@@ -992,6 +992,64 @@ namespace ReportBuilder.Web.Controllers
         }
 
         /// <summary>
+        /// SQL Query source: runs the saved Users / UserRoles / Clients query 
+        /// </summary>
+        private async Task<List<AccountListItem>> GetSqlSourceList(DotNetReportSettings settings, string queryType)
+        {
+            var items = new List<AccountListItem>();
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    var listUrl = settings.ApiUrl + "/ReportApi/GetDataDrivenQueries"
+                        + "?account=" + settings.AccountApiToken
+                        + "&dataConnect=" + settings.DataConnectApiToken
+                        + "&includeGlobal=true&queryType=" + WebUtility.UrlEncode(queryType);
+                    var listResponse = await client.GetAsync(new Uri(listUrl));
+                    if (!listResponse.IsSuccessStatusCode) return items;
+                    dynamic list = JsonConvert.DeserializeObject<dynamic>(await listResponse.Content.ReadAsStringAsync());
+                    int? id = list?.queries?[0]?.id;
+                    if (!id.HasValue) return items;
+
+                    var sqlUrl = settings.ApiUrl + "/ReportApi/GetDataDrivenQuerySql"
+                        + "?account=" + settings.AccountApiToken
+                        + "&dataConnect=" + settings.DataConnectApiToken
+                        + "&id=" + id.Value
+                        + "&clientId=" + settings.ClientId
+                        + "&userId=" + settings.UserId
+                        + "&dataFilters=" + WebUtility.UrlEncode(DotNetReportHelper.CurrentDataFilters);
+                    var sqlResponse = await client.GetAsync(new Uri(sqlUrl));
+                    if (!sqlResponse.IsSuccessStatusCode) return items;
+                    dynamic result = JsonConvert.DeserializeObject<dynamic>(await sqlResponse.Content.ReadAsStringAsync());
+                    string encryptedSql = result?.sql;
+                    string connectKey = result?.connectKey;
+                    if (string.IsNullOrEmpty(encryptedSql)) return items;
+
+                    var rows = await DotNetReportHelper.GetDataDrivenQueryRows(encryptedSql, connectKey);
+                    if (rows == null || rows.Columns.Count == 0) return items;
+
+                    var columns = rows.Columns.Cast<System.Data.DataColumn>().ToList();
+                    var idColumn = columns.FirstOrDefault(c => string.Equals(c.ColumnName, "id", StringComparison.OrdinalIgnoreCase)) ?? columns[0];
+                    var textColumn = columns.FirstOrDefault(c => string.Equals(c.ColumnName, "text", StringComparison.OrdinalIgnoreCase))
+                        ?? (columns.Count > 1 ? columns[1] : columns[0]);
+
+                    foreach (System.Data.DataRow row in rows.Rows)
+                    {
+                        var itemId = row[idColumn]?.ToString()?.Trim() ?? "";
+                        if (itemId.Length == 0) continue;
+                        var text = row[textColumn]?.ToString()?.Trim();
+                        items.Add(new AccountListItem { id = itemId, text = string.IsNullOrEmpty(text) ? itemId : text });
+                    }
+                }
+            }
+            catch
+            {
+                // A broken query leaves the list empty; the setup page shows the SQL error itself.
+            }
+            return items;
+        }
+
+        /// <summary>
         /// Asks the Dotnet Report portal to email a user a link to set their portal password.
         /// </summary>
         [ValidateAntiForgeryToken]
@@ -1091,7 +1149,7 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        public IActionResult GetUsersAndRoles()
+        public async Task<IActionResult> GetUsersAndRoles()
         {
             var settings = GetSettings();
 
@@ -1102,19 +1160,32 @@ namespace ReportBuilder.Web.Controllers
             var newReportEditUserRoles = ""; // comma separated user roles for report edit permission when new report is created
             var newReportViewUserRoles = ""; // comma separated user roles for report view permission when new report is created
 
-            // When the account manages Users/Roles/Client ids, use those instead of the lists set in code. 
             var managed = GetManagedUsersAndRoles(settings);
-            var usingManaged = managed != null && managed.userSource == "portal";
-            // Access is granted by email, so it matches the settings.UserId an application passes in.
-            var users = usingManaged
-                ? managed.users.Select(u => (object)new AccountListItem { id = u.email, text = u.email }).ToList()
-                : settings.Users.Cast<object>().ToList();
-            var userRoles = usingManaged
-                ? managed.roles.Select(r => r.text).ToList()
-                : settings.UserRoles;
-            var clientIds = (managed != null && managed.clientIds != null && managed.clientIds.Any())
-                ? managed.clientIds.Cast<object>().ToList()
-                : settings.ClientIds.Select(c => (object)new AccountListItem { id = c, text = c }).ToList();
+            var userSource = managed?.userSource ?? "code";
+            var codeClientIds = settings.ClientIds.Select(c => (object)new AccountListItem { id = c, text = c }).ToList();
+            List<object> users, clientIds;
+            List<string> userRoles;
+            if (userSource == "portal")
+            {
+                // Access is granted by email, so it matches the settings.UserId an application passes in.
+                users = managed.users.Select(u => (object)new AccountListItem { id = u.email, text = u.email }).ToList();
+                userRoles = managed.roles.Select(r => r.text).ToList();
+                clientIds = managed.clientIds != null && managed.clientIds.Any()
+                    ? managed.clientIds.Cast<object>().ToList()
+                    : codeClientIds;
+            }
+            else if (userSource == "sql")
+            {
+                users = (await GetSqlSourceList(settings, "Users")).Cast<object>().ToList();
+                userRoles = (await GetSqlSourceList(settings, "UserRoles")).Select(r => r.text).ToList();
+                clientIds = (await GetSqlSourceList(settings, "Clients")).Cast<object>().ToList();
+            }
+            else
+            {
+                users = settings.Users.Cast<object>().ToList();
+                userRoles = settings.UserRoles;
+                clientIds = codeClientIds;
+            }
 
             return Ok(new
             {
@@ -1123,7 +1194,7 @@ namespace ReportBuilder.Web.Controllers
                 userRoles,
                 clientIds,
                 clientIdLabel = managed?.clientIdLabel,
-                userSource = managed?.userSource ?? "code",
+                userSource,
                 codeUsers = settings.Users,
                 codeUserRoles = settings.UserRoles,
                 codeClientIds = settings.ClientIds,

@@ -3898,7 +3898,15 @@ var reportViewModel = function (options) {
 	self.manageFolderAccess = manageAccess(options);
 
 	self.accessModalReport = ko.observable(null);
+	self.accessModalFolder = ko.observable(null);
+	self.accessModalTitle = ko.pureComputed(function () {
+		var f = self.accessModalFolder();
+		if (f) return f.FolderName || '';
+		var r = self.accessModalReport();
+		return r ? (r.reportName || '') : '';
+	});
 	self.openAccessModal = function (report) {
+		self.accessModalFolder(null);
 		self.accessModalReport(report);
 		self.manageAccess.clientId(report.clientId || '');
 		self.manageAccess.setupList(self.manageAccess.users, report.userId || '');
@@ -3909,7 +3917,55 @@ var reportViewModel = function (options) {
 		self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, report.deleteOnlyUserRole || '');
 		$('#manage-access-modal').modal('show');
 	};
+
+	self.openFolderAccessModal = function (folder) {
+		if (!folder || !folder.Id) {
+			toastr.error("Cannot change access on the Default folder");
+			return;
+		}
+		self.accessModalReport(null);
+		self.accessModalFolder(folder);
+		self.manageAccess.clientId(folder.ClientId || '');
+		self.manageAccess.setupList(self.manageAccess.users, folder.UserId || '');
+		self.manageAccess.setupList(self.manageAccess.userRoles, folder.UserRoles || '');
+		self.manageAccess.setupList(self.manageAccess.viewOnlyUsers, folder.ViewOnlyUserId || '');
+		self.manageAccess.setupList(self.manageAccess.viewOnlyUserRoles, folder.ViewOnlyUserRoles || '');
+		self.manageAccess.setupList(self.manageAccess.deleteOnlyUsers, folder.DeleteOnlyUserId || '');
+		self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, folder.DeleteOnlyUserRoles || '');
+		$('#manage-access-modal').modal('show');
+	};
+	self.saveFolderAccessModal = function (folder) {
+		var folderToSave = {
+			Id: folder.Id,
+			FolderName: folder.FolderName,
+			ShowAdminOnly: folder.ShowAdminOnly || false,
+			ParentFolderId: folder.ParentFolderId || null,
+			ClientId: self.manageAccess.clientId() || '',
+			UserId: self.manageAccess.getAsList(self.manageAccess.users),
+			ViewOnlyUserId: self.manageAccess.getAsList(self.manageAccess.viewOnlyUsers),
+			DeleteOnlyUserId: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUsers),
+			UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
+			ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
+			DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles)
+		};
+		return ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/SaveFolderData",
+				model: JSON.stringify({
+					folderData: JSON.stringify(folderToSave),
+					adminMode: self.adminMode()
+				})
+			}
+		}).done(function () {
+			toastr.success('Access changes saved');
+			_.extend(folder, _.pick(folderToSave, 'ClientId', 'UserId', 'UserRoles', 'ViewOnlyUserId', 'ViewOnlyUserRoles', 'DeleteOnlyUserId', 'DeleteOnlyUserRoles'));
+			$('#manage-access-modal').modal('hide');
+			self.loadFolders();
+		}).fail(function () { toastr.error('Failed to save access changes'); });
+	};
 	self.saveAccessModal = function () {
+		if (self.accessModalFolder()) return self.saveFolderAccessModal(self.accessModalFolder());
 		var report = self.accessModalReport();
 		if (!report) return;
 		return ajaxcall({
