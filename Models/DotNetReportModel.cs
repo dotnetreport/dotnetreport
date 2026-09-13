@@ -59,6 +59,7 @@ namespace ReportBuilder.Web.Models
         // CustomReportHeaderHtml); HideReportHeader means "don't use a header for this report".
         public string ReportSettings { get; set; }
         public bool HideReportHeader { get; set; }
+        public bool HideReportFooter { get; set; }
     }
 
     public class DotNetReportPrintModel : DotNetReportModel

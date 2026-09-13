@@ -406,7 +406,7 @@ namespace ReportBuilder.Web.Jobs
                                                 }
                                                 var rHdr = await ResolveScheduledReportHeader(client, apiUrl, accountApiKey, databaseApiKey, clientId, schedule.UserId, r);
                                                 fileData = await DotNetReportHelper.GetWordFile(r.ReportSql, r.ConnectKey, r.ReportName, columns: r.Columns, includeSubtotal: r.IncludeSubTotals, pivot: r.ReportType == "Pivot", chartData: imageData, expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation,
-                                                    headerHtml: rHdr.html, footerHtml: hfFooterHtml, headerEveryPage: rHdr.everyPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
+                                                    headerHtml: rHdr.html, footerHtml: r.HideReportFooter ? null : hfFooterHtml, headerEveryPage: rHdr.everyPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
                                                     customHtml: customHtmlR);
                                                 files.Add(fileData);
                                             }
@@ -436,7 +436,7 @@ namespace ReportBuilder.Web.Jobs
                                             }
                                             var singleHdr = await ResolveScheduledReportHeader(client, apiUrl, accountApiKey, databaseApiKey, clientId, schedule.UserId, reportToRun);
                                             fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData, expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation,
-                                                headerHtml: singleHdr.html, footerHtml: hfFooterHtml, headerEveryPage: singleHdr.everyPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
+                                                headerHtml: singleHdr.html, footerHtml: reportToRun.HideReportFooter ? null : hfFooterHtml, headerEveryPage: singleHdr.everyPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
                                                 customHtml: customHtml);
                                         }
                                         break;
