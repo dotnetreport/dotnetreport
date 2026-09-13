@@ -4423,7 +4423,7 @@ var reportViewModel = function (options) {
 			function (e) {
 				if (options.reportMode === "dashboard") {
 					var activeId = options.reportWizard.data('report-id');
-					if (activeId != null && activeId != self.ReportID()) return;
+					if (activeId != null && activeId != (self.ReportID() || 0)) return;
 				}
 				if ($(e.target).closest('.subreport-inline-container, [data-bind*="subreport-content"]').length) return;
 				self.reportChanged();
@@ -12860,6 +12860,11 @@ var dashboardViewModel = function (options) {
 	self.clientIdLabelText = ko.observable('Client Id');
 	self.clientIdOptions = ko.observableArray([]);
 	self.reportsAndFolders = ko.observableArray([]);
+	self.selectedReportCount = ko.pureComputed(function () {
+		var n = 0;
+		_.forEach(self.reportsAndFolders(), function (f) { _.forEach(f.reports, function (r) { if (r.selected()) n++; }); });
+		return n;
+	});
 	self.allowAdmin = ko.observable(options.allowAdmin);
 	self.FlyFilters = ko.observableArray([]);
 	self.ReportID = ko.observable(0);
@@ -13078,8 +13083,8 @@ var dashboardViewModel = function (options) {
 		});
 	}
 
-	self.getDashboards = function () {
-		ajaxcall({
+	self.getDashboards = function (reloadCurrent) {
+		return ajaxcall({
 			url: options.getDashbordsUrl+ '?adminMode=' + self.adminMode(),
 			noBlocking: true
 		}).done(function (dashboardData) {
@@ -13091,9 +13096,16 @@ var dashboardViewModel = function (options) {
 			_.forEach(dashboardData, function (d) {
 				self.dashboards.push({ id: d.Id, name: d.Name, description: d.Description, selectedReports: d.SelectedReports, schedule: d.Schedule, userId: d.UserId, userRoles: d.UserRoles, viewOnlyUserId: d.ViewOnlyUserId, viewOnlyUserRoles: d.ViewOnlyUserRoles, clientId: d.ClientId, canManage: d.CanManage, displayOrder: d.DisplayOrder });
 			});
-			var dashboardId = 0;
-			if (self.dashboards().length > 0) { dashboardId = self.dashboards()[0].id; }
-			self.selectDashboard(dashboardId);
+			var currentId = self.currentDashboard() ? self.currentDashboard().id : 0;
+			var dashboardId = _.find(self.dashboards(), { id: currentId }) ? currentId
+				: (self.dashboards().length > 0 ? self.dashboards()[0].id : 0);
+			if (dashboardId != self.currentDashboard().id) {
+				self.selectDashboard(dashboardId); // loads it through the subscriber
+			} else if (reloadCurrent || dashboardId == 0) {
+				self.lineSeparators([]);
+				self.textWidgets([]);
+				self.loadDashboard(dashboardId);
+			}
 		});
 	}
 
@@ -13192,6 +13204,15 @@ var dashboardViewModel = function (options) {
 			});
 		});
 		self.setupDirtyCheckForDashboard();
+	};
+
+	self.openDashboardAccessModal = function () {
+		if (!self.currentDashboard()) return;
+		self.editDashboard();
+		$('#manage-access-modal').modal('show');
+	};
+	self.saveDashboardAccess = function () {
+		if (self.saveDashboard()) $('#manage-access-modal').modal('hide');
 	};
 
 	self.removeReportFromDashboard = function (reportId) {
@@ -13582,8 +13603,9 @@ var dashboardViewModel = function (options) {
 		report.panelStyle = 'panel-' + (i == 0 ? 'default' : (i == 1 ? 'info' : (i == 2 ? 'warning' : 'danger')));
 		
 		report.adminMode(self.adminMode());
-		var accessMatch = _.find(self.savedReports || [], { reportId: x.reportId || x.ReportID }) || { canEdit: false };
-		report.canEdit = accessMatch.canEdit === true;
+		var reportId = x.reportId || x.ReportID || 0;
+		var accessMatch = _.find(self.savedReports || [], { reportId: reportId }) || { canEdit: false };
+		report.canEdit = reportId === 0 || accessMatch.canEdit === true;
 		report.CanEdit(report.canEdit || self.adminMode());
 		report.showFlyFilters = ko.observable(false);
 		report.toggleFlyFilters = function () {
@@ -13622,7 +13644,7 @@ var dashboardViewModel = function (options) {
 				report.allFolders = self.folders;
 				report.SaveReport(true);
 				self.selectedReport(report);
-				if (options.reportWizard) options.reportWizard.data('report-id', report.ReportID());
+				if (options.reportWizard) options.reportWizard.data('report-id', report.ReportID() || 0);
 				report.activeDesign(true);
 
 				setTimeout(function () {
@@ -13648,7 +13670,7 @@ var dashboardViewModel = function (options) {
 				report.allFolders = self.folders;
 				report.SaveReport(true);
 				self.selectedReport(report);
-				if (options.reportWizard) options.reportWizard.data('report-id', report.ReportID());
+				if (options.reportWizard) options.reportWizard.data('report-id', report.ReportID() || 0);
 
 				setTimeout(function () {
 					var reportModel = new bootstrap.Modal(document.getElementById('modal-reportbuilder'));
@@ -14360,12 +14382,9 @@ var dashboardViewModel = function (options) {
 
 	self.adminMode.subscribe(function (newValue) {
 		if (localStorage) localStorage.setItem('reportAdminMode', newValue);
-		if (typeof event !== "undefined" && event.type === "click") {			
+		if (typeof event !== "undefined" && event.type === "click") {
 			self.init().done(function () {
-				self.getDashboards();
-				self.lineSeparators([]);
-				self.textWidgets([]);
-				self.loadDashboard(self.selectDashboard());
+				self.getDashboards(true);
 			})
 		}
 	});
