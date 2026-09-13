@@ -378,13 +378,10 @@
                 <!-- ko if: $parentContext.$parent.SubTotals().length == 1 && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
                 <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
                     <tr class="sub-total">
-                        <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() -->
-                            <td></td>
-                        <!-- /ko -->
                         <!-- ko foreach: Items -->
                         <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
                         <td data-bind="style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : 'right'}">
-                            <div data-bind="style: {'width': fieldWidth }">
+                            <div data-bind="style: {'width': fieldWidth }, visible: _showInTotalRow != false">
                                 <span class="preserve-space" data-bind="html: formattedVal"></span>
                             </div>
                         </td>
