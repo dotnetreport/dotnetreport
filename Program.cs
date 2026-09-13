@@ -1,11 +1,13 @@
-using ReportBuilder.Web.Jobs;
+﻿using ReportBuilder.Web.Jobs;
 using ReportBuilder.Web.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
-                //.AddNewtonsoftJson(options => options.UseMemberCasing()); // <-- This is important otherwise javascript calls won't work;
+var mvc = builder.Services.AddControllersWithViews();
+
+// Recompile .cshtml on save while developing, so Hot Reload applies view changes without a restart.
+if (builder.Environment.IsDevelopment()) mvc.AddRazorRuntimeCompilation();
 
 var app = builder.Build();
 
