@@ -470,14 +470,12 @@
                 </div>
                 <!-- SETUP CODE -->
                 <div class="tab-pane" id="ur-code" role="tabpanel">
-                <p class="text-muted small">How do people sign in to see reports? Pick one, then <b>Save</b> above.</p>
                     <div class="card mb-3" data-bind="css: { 'border-primary': loginMode() === 'embedded' }">
                         <div class="card-body py-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="loginMode" id="login-embedded" value="embedded" data-bind="checked: loginMode" />
-                                <label class="form-check-label" for="login-embedded">
+                            <div>
+                                <label class="form-check-label">
                                     <b><i class="fa fa-code"></i> Embedded in your app <span class="badge bg-secondary ms-1">Default</span></b>
-                                    <div class="small text-muted">Your application already has a login. Dotnet Report runs inside it and trusts it: you say who is signed in from C# and switch on <code>[Authorize]</code>.</div>
+                                    <div class="small text-muted">Your application already has a login. Dotnet Report runs inside it and trusts it, you specify who is signed in from C# and switch on <code>[Authorize]</code>.</div>
                                     <div class="small mt-1"><span class="text-muted">Works with:</span> any source</div>
                                 </label>
                             </div>
@@ -491,17 +489,19 @@
                                 </div>
                                 <p class="text-muted small mb-1">Tell Dotnet Report who is signed in, from <code>GetSettings()</code> in <code>Controllers/DotNetReportApiController.cs</code>:</p>
                                 <pre class="bg-light border rounded p-3 small mb-0">
-settings.UserId          = User.Identity.Name;                          // currently logged in user
-settings.CurrentUserRole = new List&lt;string&gt; { "Admin" };                // currently logged in user's roles
-settings.ClientId        = "ACME";                                      // currently logged in user's tenant<!-- ko if: userSource() === 'code' -->
-
-settings.Users     = new List&lt;dynamic&gt; { "jane@co.com", "joe@co.com" }; // all users
-settings.UserRoles = new List&lt;string&gt; { "Admin", "Viewer" };            // all roles
-settings.ClientIds = new List&lt;string&gt; { "ACME", "CONTOSO" };            // all tenants<!-- /ko --></pre>
+                                settings.UserId          = User.Identity.Name;                          // currently logged in user
+                                settings.CurrentUserRole = new List&lt;string&gt; { "Admin" };          // currently logged in user's roles
+                                settings.ClientId        = "ACME";                                      // currently logged in user's tenant
+                                <!-- ko if: userSource() === 'code' -->
+                                settings.Users     = new List&lt;dynamic&gt; { "jane@co.com", "joe@co.com" }; // all users
+                                settings.UserRoles = new List&lt;string&gt; { "Admin", "Viewer" };            // all roles
+                                settings.ClientIds = new List&lt;string&gt; { "ACME", "CONTOSO" };            // all tenants<!-- /ko --></pre>
                             </div>
                             <!-- /ko -->
                         </div>
                     </div>
+                    @* Standalone and SSO login options for a later release. *@
+                    @*
                     <div class="card mb-3" data-bind="css: { 'border-primary': loginMode() === 'standalone' }">
                         <div class="card-body py-3">
                             <div class="form-check">
@@ -567,6 +567,7 @@ settings.ClientId        = User.FindFirst("ClientId")?.Value;</pre>
                             <!-- /ko -->
                         </div>
                     </div>
+*@
                 </div>
             </div>
         </div>
