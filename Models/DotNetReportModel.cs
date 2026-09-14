@@ -1142,11 +1142,12 @@ namespace ReportBuilder.Web.Models
             }
             return jsonObj.ToString();
         }
-        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null,bool isexpanded=false,bool isSubReport=false)
+        private static void FormatExcelSheet(DataTable dt, ExcelWorksheet ws, int rowstart, int colstart, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool loadHeader = true, string chartData = null,bool isexpanded=false,bool isSubReport= false,bool isFilterDetail = false)
         {
             RemoveColumnsBySubstring(dt, "__prm__");
             ws.Cells[rowstart, colstart].LoadFromDataTable(dt, loadHeader);
             if (loadHeader) ws.Cells[rowstart, colstart, rowstart, colstart + dt.Columns.Count -1].Style.Font.Bold = true;
+            int headerRow = isFilterDetail ? 4 : 3;
             if (!string.IsNullOrEmpty(chartData) && chartData != "undefined")
             {
                 byte[] imageBytes = Convert.FromBase64String(chartData.Substring(chartData.LastIndexOf(',') + 1));
@@ -1155,7 +1156,8 @@ namespace ReportBuilder.Web.Models
                     Image image = Image.FromStream(ms);
                     // Add the image to the worksheet
                     var picture = ws.Drawings.AddPicture("ChartImage", image);
-                    picture.SetPosition(1, 0, dt.Columns.Count + 1, 0); // Set the position of the image
+                    int imageColOffset = isexpanded ? (dt.Columns.Count * 2) + 2 : dt.Columns.Count + 1;
+                    picture.SetPosition(1, 0, imageColOffset, 0); // Set the position of the image
                     picture.SetSize(400, 300); // Set the size of the image in pixels (width, height)
                 }
             }
@@ -1166,15 +1168,15 @@ namespace ReportBuilder.Web.Models
                 var formatColumn = GetColumnFormatting(dc, columns, ref value);
                 string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
                 isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
-                if (rowstart == 3 & !string.IsNullOrEmpty(formatColumn.fieldLabel))
+                if (rowstart == headerRow & !string.IsNullOrEmpty(formatColumn.fieldLabel))
                 {
                     ws.Cells[rowstart, i].Value = formatColumn.fieldLabel;
                 }
-                if (rowstart == 3 & isexpanded && !string.IsNullOrEmpty(formatColumn.fieldLabel2))
+                if (rowstart == headerRow & isexpanded && !string.IsNullOrEmpty(formatColumn.fieldLabel2))
                 {
                     ws.Cells[rowstart, i].Value = formatColumn.fieldLabel2;
                 }
-                if (rowstart == 3 & isSubReport && !string.IsNullOrEmpty(formatColumn.fieldLabel2))
+                if (rowstart == headerRow & isSubReport && !string.IsNullOrEmpty(formatColumn.fieldLabel2))
                 {
                     ws.Cells[rowstart, i].Value = formatColumn.fieldLabel2;
                 }
@@ -1243,7 +1245,7 @@ namespace ReportBuilder.Web.Models
                         headerCell.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
                         headerCell.Style.Fill.BackgroundColor.SetColor(ColorTranslator.FromHtml(formatColumn.headerBackColor));
                     }
-                    int increment = rowstart == 3 ? 1 : 0;
+                    int increment = rowstart == headerRow ? 1 : 0;
                     for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
                     {
                         var cellValue = dt.Rows[rowIndex][dc.ColumnName]?.ToString();
@@ -1286,7 +1288,7 @@ namespace ReportBuilder.Web.Models
                         var cellValue = dt.Rows[rowIndex][dc.ColumnName]?.ToString();
                         if (!string.IsNullOrEmpty(cellValue))
                         {
-                            var increment = rowstart == 3 ? 1 : 0;
+                            var increment = rowstart == headerRow ? 1 : 0;
                             var hyperlinkAddress = "/DotNetReport/Report?linkedreport=true&reportId=" + formatColumn.LinkFieldItem.LinkedToReportId;
                             if (formatColumn.LinkFieldItem.SendAsFilterParameter && !string.IsNullOrEmpty(cellValue))
                             {
@@ -2829,7 +2831,9 @@ namespace ReportBuilder.Web.Models
             bool loadHeader,
             string chartData,
             bool isSubReport,
-            bool subTotalPerGroup = false)
+            bool subTotalPerGroup = false,
+            bool isFilterDetail = false,
+            bool isexpanded = false)
         {
             var outerGroupColumns = columns?
                 .Where(c => c.aggregateFunction == "Outer Group" || c.outerGroup)
@@ -2845,7 +2849,7 @@ namespace ReportBuilder.Web.Models
 
             if (!outerGroupColumns.Any())
             {
-                FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeGrandTotal, loadHeader, chartData, false, isSubReport);
+                FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeGrandTotal, loadHeader, chartData, isexpanded, isSubReport, isFilterDetail);
                 return;
             }
 
@@ -3010,7 +3014,7 @@ namespace ReportBuilder.Web.Models
             var qry = data.qry;
             var sqlFields = data.sqlFields;
             var dt = data.dt;
-
+            bool isFilterDetail = false;
             if (pivot) dt = Transpose(dt);
 
             if (columns?.Count > 0)
@@ -3055,6 +3059,7 @@ namespace ReportBuilder.Web.Models
 
                 if (!string.IsNullOrEmpty(filterDetailsText))
                 {
+                    isFilterDetail = true;
                     rowstart++;
                     ws.Cells[rowstart, colstart, rowstart, colend].Merge = true;
                     ws.Cells[rowstart, colstart].Value = "Filters: " + filterDetailsText;
@@ -3068,7 +3073,7 @@ namespace ReportBuilder.Web.Models
 
                 bool isTableMode = includeSubtotal && totalRowFormat == "table";
                 bool includeGrandTotal = includeSubtotal && !isTableMode;
-                WriteGroupedExcel(dt, ws, rowstart, colstart, columns, includeSubtotal, includeGrandTotal, true, chartData, isSubReport, subTotalPerGroup);
+                WriteGroupedExcel(dt, ws, rowstart, colstart, columns, includeSubtotal, includeGrandTotal, true, chartData, isSubReport, subTotalPerGroup, isFilterDetail, allExpanded);
                 // ---- NEW: embed linked sub-reports directly under each parent row, drilldown-style ----
                 if (hasSubreports && linkedReportResolver != null && dt.Rows.Count > 0 && columns?.Count > 0)
                 {
@@ -3146,7 +3151,7 @@ namespace ReportBuilder.Web.Models
                                 ws.Cells[insertAt, colstart + 1].Value = (linkCol.fieldLabel ?? linkCol.fieldName) + ": " + filterValue;
                                 ws.Cells[insertAt, colstart + 1].Style.Font.Bold = true;
                                 ws.Cells[insertAt, colstart + 1].Style.Font.Italic = true;
-                                FormatExcelSheet(subDt, ws, insertAt + 1, colstart + 1, columns, false, true, null, false, true);
+                                FormatExcelSheet(subDt, ws, insertAt + 1, colstart + 1, columns, false, true, null, false, true, isFilterDetail);
                             }
                         }
                     }
@@ -3205,7 +3210,8 @@ namespace ReportBuilder.Web.Models
                         var columnOrderList = GetGroupFunctionList(expandSqls);
                         columns = columns.OrderBy(c => columnOrderList.FindIndex(g => g.CustomLabel == c.fieldName)).ToList();
                     }
-                    var insertRowIndex = 3;
+                    int headerRow = isFilterDetail ? 4 : 3;
+                    var insertRowIndex = headerRow;
 
                     var drilldownRow = new List<string>();
                     var dr = dt.Rows[0];
@@ -3276,12 +3282,11 @@ namespace ReportBuilder.Web.Models
 
                             // Execute one batch at a time
                             var dts = databaseConnection.ExecuteDataSetQuery(connectionString, combinedSqls.ToString(), qry?.parameters);
-
                             foreach (DataTable ddt in dts.Tables)
                             {
                                 ws.InsertRow(insertRowIndex + 2, ddt.Rows.Count);
 
-                                FormatExcelSheet(ddt, ws, insertRowIndex == 3 ? 3 : (insertRowIndex + 1), dt.Columns.Count + 2, columns, false, insertRowIndex == 3, isexpanded: true);
+                                FormatExcelSheet(ddt, ws, insertRowIndex == headerRow ? headerRow : (insertRowIndex + 1), dt.Columns.Count + 2, columns, false, insertRowIndex == headerRow, isexpanded: true,isFilterDetail: isFilterDetail);
 
                                 insertRowIndex += ddt.Rows.Count + 1;
                             }
