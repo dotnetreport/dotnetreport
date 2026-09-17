@@ -745,7 +745,6 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
-        [HttpGet]
         [AllowAnonymous]
         public async Task<JsonResult> RunReportLinkUnAuth(int reportId, int? filterId = null, string filterValue = "", bool adminMode = false, string exportId = "")
         {
