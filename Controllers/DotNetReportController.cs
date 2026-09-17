@@ -10,6 +10,15 @@ namespace ReportBuilder.Web.Controllers
 {
     public class DotNetReportController : Controller
     {
+        protected override void OnActionExecuting(ActionExecutingContext filterContext)
+        {
+            base.OnActionExecuting(filterContext);
+            // Skip for specific actions
+            if (filterContext.ActionDescriptor.ActionName == "ReportPrint")
+                return;
+            var api = new DotNetReportApiController();
+            ViewBag.AllowAdminMode = api.GetSettings().CanUseAdminMode;
+        }
         public ActionResult Index()
         {
             return View();
