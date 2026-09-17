@@ -96,7 +96,7 @@
         <input class="form-control" type="text" data-bind="value: $parent.Value, disable: $parent.Operator() == 'is default',attr: {id: 'ctl-' + $element.closest('[data-parentprefix]').getAttribute('data-parentprefix') + '-' + ($parent.uiId || uiId)}" required />
         <!-- /ko -->
         <!-- /ko -->
-        <!-- ko if: hasForeignKey && $parent.Operator() != 'all' && $parent.Operator() != 'none' -->
+        <!-- ko if: hasForeignKey && $parent.Operator() != 'all' && $parent.Operator() != 'none' && $parent.Operator() != 'no filter' -->
         <!-- ko if: hasForeignParentKey && $parent.showParentFilter() -->
         <select multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, lookupSearch: $parent.SearchParentList, options: $parent.ParentList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ParentIn"></select>
         <!-- /ko -->
@@ -683,7 +683,7 @@
     <div data-bind="foreach: outerGroupData">
         <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
         <br />
-        <h6 style="font-weight: bold;" data-bind="html: display"></h6>
+        <h6 style="font-weight: normal;" data-bind="html: display"></h6>
         <div class="" style="padding-top: 5px;"></div>
 
         <!-- ko if: $parents[1].ReportType() != 'Single'-->
@@ -797,12 +797,42 @@
     <div class="panel panel-default panel-body" style="margin-left: 20px;">
 
         <div class="form-group row">
-            <label class="col-md-3 col-sm-3 control-label">Client Id to Restrict Access</label>
-            <div class="col-md-3 col-sm-3">
-                <input class="form-control text-box single-line" type="text" data-bind="value: clientId">
+            <label class="col-md-3 col-sm-3 control-label" data-bind="text: ($root.clientIdLabelText ? $root.clientIdLabelText() : 'Client Id') + ' to Restrict Access'"></label>
+            <div class="col-md-6 col-sm-6">
+                <!-- ko if: $root.clientIdOptions && $root.clientIdOptions().length > 0 -->
+                <select class="form-select form-select-sm"
+                        data-bind="options: $root.clientIdOptions().filter(function(c){ return selectedClientIds().indexOf(c.id) < 0; }),
+                            optionsText: 'text', optionsValue: 'id', optionsCaption: 'Add to restrict access',
+                            value: clientIdToAdd, event: { change: function(){ addClientId(clientIdToAdd()); } }"></select>
+                <!-- ko if: selectedClientIds().length > 0 -->
+                <div class="d-flex flex-wrap gap-1 mt-2">
+                    <!-- ko foreach: selectedClientIds() -->
+                    <span class="badge bg-secondary d-inline-flex align-items-center">
+                        <span data-bind="text: (function(){ var m = _.find($root.clientIdOptions(), function(c){ return c.id == $data; }); return m ? m.text : $data; })()"></span>
+                        <button type="button" class="btn btn-sm btn-link text-white p-0 ms-2 lh-1" title="Remove" data-bind="click: function(){ $parent.removeClientId($data); }"><i class="fa fa-times"></i></button>
+                    </span>
+                    <!-- /ko -->
+                </div>
+                <!-- /ko -->
+                <div class="form-text" data-bind="visible: selectedClientIds().length === 0">Not restricted, available to all.</div>
+                <!-- /ko -->
+                <!-- ko ifnot: $root.clientIdOptions && $root.clientIdOptions().length > 0 -->
+                <input class="form-control text-box single-line" type="text" placeholder="Comma separated, leave blank for all" data-bind="value: clientId">
+                <!-- ko if: selectedClientIds().length > 0 -->
+                <div class="d-flex flex-wrap gap-1 mt-2">
+                    <!-- ko foreach: selectedClientIds() -->
+                    <span class="badge bg-secondary d-inline-flex align-items-center">
+                        <span data-bind="text: $data"></span>
+                        <button type="button" class="btn btn-sm btn-link text-white p-0 ms-2 lh-1" title="Remove" data-bind="click: function(){ $parent.removeClientId($data); }"><i class="fa fa-times"></i></button>
+                    </span>
+                    <!-- /ko -->
+                </div>
+                <!-- /ko -->
+                <div class="form-text" data-bind="visible: selectedClientIds().length === 0">Not restricted, available to all.</div>
+                <!-- /ko -->
             </div>
             <div class="col-md-1 col-sm-1">
-                <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give all clients access (Global Reports)"></span>
+                <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give Global access"></span>
             </div>
         </div>
         <div class="alert alert-info">
@@ -811,7 +841,8 @@
 
         <div class="row small">
             <div class="col-md-6">
-                <i class="toggle-icon fa" data-bind="click: toggleManageUsers,css: { 'fa-chevron-down': showManageUsers(), 'fa-chevron-right': !showManageUsers() }"></i> <b>Manage by User</b> (allow edit)
+                <span class="clickable" data-bind="click: toggleManageUsers"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showManageUsers(), 'fa-chevron-right': !showManageUsers() }"></i> <b>Manage by User</b> (allow edit)</span>
+                <div data-bind="template: { name: 'access-selected-pills', data: { list: users, open: showManageUsers } }"></div>
                 <div class="row container-fluid" data-bind="visible: showManageUsers">
                     <!-- ko if: groupedUsers().length > 0 -->
                     <!-- ko foreach: groupedUsers -->
@@ -849,7 +880,8 @@
                     </div>
                 </div>
                 <br />
-                <i class="toggle-icon fa" data-bind="click: toggleViewUsers,css: { 'fa-chevron-down': showViewUsers(), 'fa-chevron-right': !showViewUsers() }"></i> <b>View only by User</b> (no edit/delete)
+                <span class="clickable" data-bind="click: toggleViewUsers"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showViewUsers(), 'fa-chevron-right': !showViewUsers() }"></i> <b>View only by User</b> (no edit/delete)</span>
+                <div data-bind="template: { name: 'access-selected-pills', data: { list: viewOnlyUsers, open: showViewUsers } }"></div>
                 <div class="row container-fluid" data-bind="visible: showViewUsers">
                     <!-- ko if: groupedViewOnlyUsers().length > 0 -->
                     <!-- ko foreach: groupedViewOnlyUsers -->
@@ -888,7 +920,8 @@
                 </div>
                 <br />
                 <div data-bind="ifnot: isDashboard">
-                    <i class="toggle-icon fa" data-bind="click: toggleDeleteUsers,css: { 'fa-chevron-down': showDeleteUsers(), 'fa-chevron-right': !showDeleteUsers() }"></i><b>Delete by User</b> (allow delete)
+                    <span class="clickable" data-bind="click: toggleDeleteUsers"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showDeleteUsers(), 'fa-chevron-right': !showDeleteUsers() }"></i> <b>Delete by User</b> (allow delete)</span>
+                    <div data-bind="template: { name: 'access-selected-pills', data: { list: deleteOnlyUsers, open: showDeleteUsers } }"></div>
                     <div class="row container-fluid" data-bind="visible: showDeleteUsers">
                     <!-- ko if: groupedDeleteOnlyUsers().length > 0 -->
                     <!-- ko foreach: groupedDeleteOnlyUsers -->
@@ -929,7 +962,8 @@
                 </div>
             </div>
             <div class="col-md-6">
-                <i class="toggle-icon fa" data-bind="click: toggleManageRoles,css: { 'fa-chevron-down': showManageRoles(), 'fa-chevron-right': !showManageRoles() }"></i><b>Manage by User Role</b> (allow edit)
+                <span class="clickable" data-bind="click: toggleManageRoles"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showManageRoles(), 'fa-chevron-right': !showManageRoles() }"></i> <b>Manage by User Role</b> (allow edit)</span>
+                <div data-bind="template: { name: 'access-selected-pills', data: { list: userRoles, open: showManageRoles } }"></div>
                 <div class="row container-fluid" data-bind="visible: showManageRoles">
                     <!-- ko foreach: userRoles -->
                     <div class="pull-left">
@@ -945,7 +979,8 @@
                     </div>
                 </div>
                 <br />
-                <i class="toggle-icon fa" data-bind="click: toggleViewRoles,css: { 'fa-chevron-down': showViewRoles(), 'fa-chevron-right': !showViewRoles() }"></i><b>View only by User Role</b> (no edit/delete)
+                <span class="clickable" data-bind="click: toggleViewRoles"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showViewRoles(), 'fa-chevron-right': !showViewRoles() }"></i> <b>View only by User Role</b> (no edit/delete)</span>
+                <div data-bind="template: { name: 'access-selected-pills', data: { list: viewOnlyUserRoles, open: showViewRoles } }"></div>
                 <div class="row container-fluid" data-bind="visible: showViewRoles">
                     <!-- ko foreach: viewOnlyUserRoles -->
                     <div class="pull-left">
@@ -961,7 +996,8 @@
                     </div>
                 </div>
                 <div data-bind="ifnot: isDashboard">
-                    <i class="toggle-icon fa" data-bind="click: toggleDeleteRoles,css: { 'fa-chevron-down': showDeleteRoles(), 'fa-chevron-right': !showDeleteRoles() }"></i><b>Delete by User Role</b> (allow delete)
+                    <span class="clickable" data-bind="click: toggleDeleteRoles"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showDeleteRoles(), 'fa-chevron-right': !showDeleteRoles() }"></i> <b>Delete by User Role</b> (allow delete)</span>
+                    <div data-bind="template: { name: 'access-selected-pills', data: { list: deleteOnlyUserRoles, open: showDeleteRoles } }"></div>
                     <div class="row container-fluid" data-bind="visible: showDeleteRoles">
                         <!-- ko foreach: deleteOnlyUserRoles -->
                         <div class="pull-left">
@@ -979,6 +1015,32 @@
                 </div>
             </div>
         </div>
+    </div>
+</script>
+
+<!-- Collapsed view of one access rule: who is selected, or that it is open to everyone. Hidden while the checkboxes are open. -->
+<script type="text/html" id="access-selected-pills">
+    <!-- ko ifnot: ko.unwrap(open) -->
+    <div class="d-flex flex-wrap gap-1 align-items-center my-1 ms-3">
+        <!-- ko foreach: _.filter(list(), function (x) { return x.selected(); }) -->
+        <span class="badge bg-secondary d-inline-flex align-items-center">
+            <span data-bind="text: text"></span>
+            <button type="button" class="btn btn-sm btn-link text-white p-0 ms-2 lh-1" title="Remove" data-bind="click: function(){ selected(false); }"><i class="fa fa-times"></i></button>
+        </span>
+        <!-- /ko -->
+        <span class="text-muted small" data-bind="visible: !_.some(list(), function (x) { return x.selected(); })"><i class="fa fa-globe"></i> Everyone, not restricted</span>
+    </div>
+    <!-- /ko -->
+</script>
+<!-- Access summary badges for a report/folder/dashboard row (admin mode). Grey = restricted, outlined = open to all. -->
+<script type="text/html" id="access-badges">
+    <div class="d-flex flex-wrap gap-1 align-items-center" data-bind="foreach: accessBadges($data, $root)">
+        <span class="badge d-inline-flex align-items-center" data-bind="attr: { title: title }, css: restricted ? 'bg-secondary' : 'bg-light text-muted border'">
+            <!-- ko foreach: icons.split(' ') -->
+            <i class="fa me-1" data-bind="css: $data"></i>
+            <!-- /ko -->
+            <span data-bind="text: text"></span>
+        </span>
     </div>
 </script>
 <script type="text/html" id="filter-group">
@@ -1105,9 +1167,21 @@
                                 </div>
                             </div>
                             <div class="col-md-5">
+                                <!-- ko ifnot: $data.useEmailListColumn && $data.useEmailListColumn() -->
                                 <div data-bind="with: Field" data-parentprefix="M">
                                     <div data-bind="template: 'report-filter', data: $data"></div>
                                 </div>
+                                <!-- /ko -->
+                                <!-- ko if: $root.scheduleEmailListColumns && $root.scheduleEmailListColumns().length > 0 -->
+                                <div class="form-check small mt-1">
+                                    <label class="form-check-label text-muted" title="Take this filter's value from the Email List query, one email per row">
+                                        <input class="form-check-input" type="checkbox" data-bind="checked: useEmailListColumn" /> Use value from Email List
+                                    </label>
+                                </div>
+                                <!-- ko if: $data.useEmailListColumn && $data.useEmailListColumn() -->
+                                <select class="form-select" required data-bind="options: $root.scheduleEmailListColumns, optionsCaption: 'Choose Email List column...', value: EmailListColumn"></select>
+                                <!-- /ko -->
+                                <!-- /ko -->
                                 <!-- ko if: Field() && Field().fieldType == 'DateTime' && Operator() == 'range' && $index()==0 -->
                                 <!-- ko if: $parents[$parents.length-2].canAddSeries != undefined && $parents[$parents.length-2].canAddSeries() -->
                                 <button class="btn btn-sm btn-secondary" data-bind="click: $parents[$parents.length-2].AddSeries.bind($data)">Add Comparison</button>
@@ -1125,7 +1199,7 @@
                                             <i class="fa fa-trash"></i>
                                         </button>
                                     </div>
-                                    <div class="form-group" data-bind="with: Field, hidden: document.querySelector('#filter-panel.card-body.collapse')">
+                                    <div class="form-group" data-bind="with: Field, hidden: document.querySelector('#filter-panel.card-body.collapse') || ($root.scheduleFilterEditing && $root.scheduleFilterEditing())">
                                         <span class="btn btn-sm" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {'btn-success': filterOnFly()==true, 'btn-secondary': !filterOnFly()}">
                                             <span class="fa fa-filter" aria-hidden="true" title="Filter on Report"></span>
                                         </span>
@@ -1173,7 +1247,7 @@
                                                 <th style="width: 30%">Filter</th>
                                                 <th style="width: 20%"></th>
                                                 <th style="width: 30%">Value</th>
-                                                <th style="width: 10%">Fly</th>  <!-- CHANGED: added label -->
+                                                <th style="width: 10%"></th>
                                         </tr>
                                 </thead>
                                 <tbody data-bind="foreach: Parameters">
@@ -1265,13 +1339,30 @@
             </div>
             <div class="mb-3">
                 <div class="row g-2 align-items-center">
-                    <label class="col-12 col-sm-3 col-form-label">Email to</label>
+                    <div class="col-12 col-sm-3">
+                        <label class="col-form-label pb-0">Email to</label>
+                        <div class="form-check small">
+                            <label class="form-check-label text-muted" title="Send to a saved Email List instead of typing addresses">
+                                <input class="form-check-input" type="checkbox" data-bind="checked: useEmailQuery" />
+                                Email List
+                            </label>
+                        </div>
+                    </div>
 
                     <div class="col-12 col-sm-6">
+                        <!-- ko ifnot: useEmailQuery -->
                         <input type="text" class="form-control"
                                data-bind="value: emailTo"
-                               placeholder="Enter Email Addresses separated by comma"
-                               required />
+                               placeholder="Enter Email Addresses separated by comma" />
+                        <!-- /ko -->
+                        <!-- ko if: useEmailQuery -->
+                        <div class="d-flex align-items-center gap-2">
+                            <select class="form-select" data-bind="options: emailQueries, optionsText: 'name', optionsValue: 'id', value: emailQueryId, optionsCaption: 'Choose Email List...'"></select>
+                            <button type="button" class="btn btn-light btn-sm text-nowrap"
+                                    data-bind="click: previewRecipients, enable: emailQueryId() > 0"
+                                    title="Show who this Email List currently returns">View</button>
+                        </div>
+                        <!-- /ko -->
                     </div>
 
                     <label class="col-6 col-sm-1 col-form-label">Format</label>
@@ -1788,10 +1879,10 @@
 <script type="text/html" id="designer-choose-data">
     <div>
         <div class="pull-left btn-group btn-group-toggle" role="group" data-bind="if: ReportID() <= 0">
-            <label class="btn btn-sm btn-light active" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections">
+            <label class="btn btn-sm btn-light" style="margin-right: 0px;" title="You can change the Data source only when creating a new report, changing this will clear all selections" data-bind="css: { active: !useStoredProc() }">
                 <input type="radio" name="dataoption" id="table" checked data-bind="checked: useStoredProc, checkedValue: false"> Dynamic
             </label>
-            <label class="btn btn-sm btn-light active">
+            <label class="btn btn-sm btn-light" data-bind="css: { active: useStoredProc() }">
                 <input type="radio" name="dataoption" id="proc" value="1" data-bind="checked: useStoredProc, checkedValue: true"> Predefined
             </label>
         </div>

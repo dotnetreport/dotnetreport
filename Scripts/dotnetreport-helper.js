@@ -694,12 +694,34 @@ function secureSummernoteCodeview($el) {
     if (!$.fn || typeof $.fn.summernote !== 'function' || $.fn.summernote.__dnrSecured) return;
     var origSummernote = $.fn.summernote;
 
+    function enterInsertsLineBreak(e) {
+        if (e.shiftKey || e.ctrlKey || e.metaKey) return;
+
+        var sel = window.getSelection();
+        if (sel && sel.rangeCount) {
+            var node = sel.getRangeAt(0).startContainer;
+            if (node.nodeType === 3) node = node.parentNode;
+            if ($(node).closest('li').length) return;
+        }
+
+        e.preventDefault();
+        var inserted = false;
+        try { inserted = document.execCommand('insertLineBreak'); } catch (err) { inserted = false; }
+        if (!inserted) $(this).summernote('pasteHTML', '<br>');
+    }
+
     var wrapped = function () {
         var args = Array.prototype.slice.call(arguments);
         if (args.length >= 2 && (args[0] === 'code' || args[0] === 'pasteHTML') && typeof args[1] === 'string') {
             args[1] = sanitizeReportHtml(args[1]);
         }
         var isInit = args.length === 0 || $.isPlainObject(args[0]);
+
+        if (isInit) {
+            args[0] = $.extend({}, args[0]);
+            args[0].callbacks = $.extend({}, args[0].callbacks);
+            if (!args[0].callbacks.onEnter) args[0].callbacks.onEnter = enterInsertsLineBreak;
+        }
         var result = origSummernote.apply(this, args);
         if (isInit) {
             this.each(function () { secureSummernoteCodeview($(this)); });
@@ -895,10 +917,45 @@ function pagerViewModel(args) {
 
 }
 
+// Access summary for a report, folder or dashboard row
+var accessBadges = function (item, root) {
+    var read = function () {
+        for (var i = 0; i < arguments.length; i++) {
+            if (item && item[arguments[i]] !== undefined) return ko.unwrap(item[arguments[i]]) || '';
+        }
+        return '';
+    };
+    var access = root && root.manageAccess ? root.manageAccess : null;
+    var nameOf = function (list, id) {
+        var items = list ? ko.unwrap(list) : null;
+        var match = _.find(items || [], function (x) { return ko.unwrap(x.value !== undefined ? x.value : x.id) == id; });
+        return match ? (ko.unwrap(match.text) || id) : id;
+    };
+    var names = function (value, list) {
+        return _.map(String(value).split(','), function (id) { return nameOf(list, id.trim()); }).join(', ');
+    };
+    var badges = [];
+    var add = function (icons, title, value, list, anyText) {
+        if (!value && !anyText) return;
+        badges.push({ icons: icons, title: title, text: value ? names(value, list) : anyText, restricted: !!value });
+    };
+    var users = access ? access.users : null, roles = access ? access.userRoles : null;
+    var clients = root ? root.clientIdOptions : null;
+    add('fa-user', 'Manage by User', read('UserId', 'userId'), users, 'Any User');
+    add('fa-lock fa-user', 'View only by User', read('ViewOnlyUserId', 'viewOnlyUserId'), users);
+    add('fa-trash fa-user', 'Delete by User', read('DeleteOnlyUserId', 'deleteOnlyUserId'), users);
+    add('fa-key', 'Manage by Role', read('UserRoles', 'userRole', 'userRoles'), roles, 'Any Role');
+    add('fa-lock fa-key', 'View only by Role', read('ViewOnlyUserRoles', 'viewOnlyUserRole', 'viewOnlyUserRoles'), roles);
+    add('fa-trash fa-key', 'Delete by Role', read('DeleteOnlyUserRoles', 'deleteOnlyUserRole', 'deleteOnlyUserRoles'), roles);
+    add('fa-building-o', root && root.clientIdLabelText ? ko.unwrap(root.clientIdLabelText) : 'Client Id', read('ClientId', 'clientId'), clients);
+    return badges;
+};
+
 var manageAccess = function (options) {
     var buildList = function (array) { return _.map(array || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x, category: x.category || null }; }) };
     var access = {
         clientId: ko.observable(),
+        clientIdToAdd: ko.observable(''),
         users: ko.observableArray(buildList(options.users)),
         userRoles: ko.observableArray(buildList(options.userRoles)),
         viewOnlyUsers: ko.observableArray(buildList(options.users)),
@@ -917,6 +974,19 @@ var manageAccess = function (options) {
         toggleManageRoles: function () { this.showManageRoles(!this.showManageRoles()); },
         toggleViewRoles: function () { this.showViewRoles(!this.showViewRoles()); },
         toggleDeleteRoles: function () { this.showDeleteRoles(!this.showDeleteRoles()); },
+        selectedClientIds: function () {
+            var v = access.clientId();
+            return v ? String(v).split(',').map(function (x) { return x.trim(); }).filter(function (x) { return x.length; }) : [];
+        },
+        addClientId: function (id) {
+            if (!id) return;
+            var list = access.selectedClientIds();
+            if (list.indexOf(id) < 0) { list.push(id); access.clientId(list.join(',')); }
+            access.clientIdToAdd('');
+        },
+        removeClientId: function (id) {
+            access.clientId(access.selectedClientIds().filter(function (x) { return x !== id; }).join(','));
+        },
         getAsList: function (x) {
             var list = '';
             _.forEach(x(), function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
