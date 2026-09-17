@@ -24,6 +24,175 @@ var manageViewModel = function (options) {
 	self.onlyApi = ko.observable(options.onlyApi);
 	self.ChartDrillDownData = null;
 	self.activeProcedure = ko.observable();
+
+	self.emailQueries = new function () {
+		var q = this;
+		var validator = new validation();
+		function blank() {
+			return { id: ko.observable(0), name: ko.observable(''), description: ko.observable(''), clientId: ko.observable(''), queryType: ko.observable('EmailList'), sqlQuery: ko.observable('') };
+		}
+		q.queries = ko.observableArray([]);
+		q.queryTypes = [
+			{ value: 'EmailList', label: 'Subscription recipients' },
+			{ value: 'Users', label: 'User list' },
+			{ value: 'UserRoles', label: 'User role list' },
+			{ value: 'Clients', label: 'Client list' }
+		];
+		q.typeLabel = function (value) {
+			var match = _.find(q.queryTypes, { value: value || 'EmailList' });
+			return match ? match.label : (value || '');
+		};
+		q.current = ko.observable(blank());
+		q.loaded = false;
+
+		q.load = function (force) {
+			if (q.loaded && !force) return;
+			q.loaded = true;
+			return ajaxcall({
+				url: options.reportsApiUrl,
+				data: { method: options.getEmailQueriesUrl, model: JSON.stringify({ includeGlobal: true, queryType: 'EmailList' }) }
+			}).done(function (x) {
+				if (x.d) x = x.d;
+				if (x.result) x = x.result;
+				q.queries(x.queries || []);
+			});
+		};
+
+		q.emailToDisplay = function (item) {
+			var id = item ? (item.EmailQueryId || 0) : 0;
+			if (!id) return (item && item.EmailTo) || '';
+			var match = _.find(q.queries(), { id: id });
+			return match ? match.name : 'Email List';
+		};
+
+		q.runQuery = function (sql, done) {
+			ajaxcall({
+				url: options.getPreviewFromSqlUrl,
+				type: 'POST',
+				data: JSON.stringify({
+					value: sql,
+					accountKey: self.keys.AccountApiKey,
+					dataConnectKey: self.keys.DatabaseApiKey,
+					dynamicColumns: false
+				})
+			}).done(function (result) {
+				if (result.d) result = result.d;
+				var error = result.Exception || result.errorMessage || (result.HasError ? 'The query returned an error.' : '');
+				done(error, result.ReportData);
+			}).fail(function () {
+				done('Could not reach the server to run the query.', null);
+			});
+		};
+
+		// Previews what is typed in the modal, so unsaved edits can be checked before saving.
+		q.previewCurrentQuery = function () {
+			var sql = q.current().sqlQuery();
+			if (!sql) { toastr.error('Enter a SQL query first'); return; }
+			q.runQuery(sql, function (error, data) {
+				if (error) { toastr.error('Query error: ' + error); return; }
+				q.showEmails(q.emailsFromResult(data), 'Preview');
+			});
+		};
+
+		q.emailsFromResult = function (reportData) {
+			if (!reportData || !reportData.Columns || !reportData.Rows) return [];
+			var idx = 0;
+			for (var i = 0; i < reportData.Columns.length; i++) {
+				var name = (reportData.Columns[i].ColumnName || '').toLowerCase();
+				if (name === 'email') { idx = i; break; }
+			}
+			var out = [];
+			reportData.Rows.forEach(function (r) {
+				var v = r.Items && r.Items[idx] ? (r.Items[idx].Value || '') : '';
+				v = (v + '').trim();
+				if (v && v.indexOf('@') >= 0 && out.indexOf(v) < 0) out.push(v);
+			});
+			return out;
+		};
+
+		q.showEmails = function (emails, title) {
+			if (!emails.length) { bootbox.alert('This query returned no email addresses.'); return; }
+			var rows = emails.map(function (e) { return '<div>' + $('<div>').text(e).html() + '</div>'; }).join('');
+			bootbox.alert({
+				title: title + ' - ' + emails.length + ' recipient' + (emails.length === 1 ? '' : 's'),
+				message: '<div style="max-height:320px;overflow:auto;">' + rows + '</div>'
+			});
+		};
+
+		q.previewQuery = function (item) {
+			ajaxcall({
+				url: options.previewEmailListUrl,
+				type: 'GET',
+				data: { id: item.id }
+			}).done(function (x) {
+				if (x.d) x = x.d;
+				if (!x || !x.success) { toastr.error((x && x.message) || 'Could not load the Email List'); return; }
+				if (!x.total) { bootbox.alert('This Email List returned no email addresses.'); return; }
+				var rows = x.emails.map(function (e) { return '<div>' + $('<div>').text(e).html() + '</div>'; }).join('');
+				var more = x.total > x.emails.length ? '<div class="text-muted mt-2">Showing ' + x.emails.length + ' of ' + x.total + '</div>' : '';
+				bootbox.alert({
+					title: item.name + ' - ' + x.total + ' recipient' + (x.total === 1 ? '' : 's'),
+					message: '<div style="max-height:320px;overflow:auto;">' + rows + '</div>' + more
+				});
+			});
+		};
+
+		q.addQuery = function () {
+			q.current(blank());
+			validator.clearForm('#email-query-modal');
+			$('#email-query-modal').modal('show');
+		};
+
+		q.editQuery = function (item) {
+			q.current({
+				id: ko.observable(item.id), name: ko.observable(item.name), description: ko.observable(item.description || ''),
+				clientId: ko.observable(item.clientId || ''), queryType: ko.observable(item.queryType || 'EmailList'), sqlQuery: ko.observable(item.sqlQuery || '')
+			});
+			validator.clearForm('#email-query-modal');
+			$('#email-query-modal').modal('show');
+		};
+
+		q.saveQuery = function () {
+			var c = q.current();
+			if (!validator.validateForm('#email-query-modal')) return;
+			q.runQuery(c.sqlQuery(), function (error) {
+				if (error) { toastr.error('Query is not valid and was not saved: ' + error); return; }
+				q.persistQuery(c);
+			});
+		};
+
+		q.persistQuery = function (c) {
+			ajaxcall({
+				url: options.reportsApiUrl,
+				data: {
+					method: options.saveEmailQueryUrl,
+					model: JSON.stringify({ id: c.id(), name: c.name(), description: c.description(), queryClientId: c.clientId(), queryType: c.queryType(), sqlQuery: c.sqlQuery() })
+				}
+			}).done(function (x) {
+				if (x.d) x = x.d;
+				if (x.result) x = x.result;
+				if (x && x.Message) { toastr.error(x.Message); return; }
+				toastr.success('Email list saved');
+				$('#email-query-modal').modal('hide');
+				q.load(true);
+			});
+		};
+
+		q.deleteQuery = function (item) {
+			bootbox.confirm("Are you sure you would like to delete the email list '" + item.name + "'?", function (r) {
+				if (!r) return;
+				ajaxcall({
+					url: options.reportsApiUrl,
+					data: { method: options.deleteEmailQueryUrl, model: JSON.stringify({ id: item.id }) }
+				}).done(function () {
+					toastr.success('Email list deleted');
+					q.load(true);
+				});
+			});
+		};
+	};
+	self.emailQueries.load();
+
 	self.schedules = ko.observableArray([]);
 	// Flattened one row per schedule so the table needs no nested foreach in the markup.
 	self.scheduleRows = ko.computed(function () {
@@ -41,6 +210,7 @@ var manageViewModel = function (options) {
 		return rows;
 	});
 	self.settings = new settingPageViewModel(options);
+	self.usersRoles = new usersRolesViewModel(options, self.settings, self.previewData);
 	// Access editing opens in a modal (same template the report page uses).
 	self.accessTarget = ko.observable(null);
 	self.accessTargetName = ko.observable('');
@@ -63,6 +233,12 @@ var manageViewModel = function (options) {
 		if (promise && promise.done) { promise.done(done); } else { done(); }
 	};
 
+	self.clientIdLabelText = self.settings.clientIdLabel;
+	self.clientIdOptions = ko.computed(function () {
+		return _.map(self.settings.clientIds() || [], function (c) {
+			return (c && typeof c === 'object') ? { id: c.id || '', text: c.text || c.id || '' } : { id: c, text: c };
+		});
+	});
 	self.ReportResult = ko.observable({
 		ReportSql: ko.observable()
 	});
@@ -2783,7 +2959,21 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 					resolve(false);
 					return;
 				}
-
+				if (e.Columns) {
+					_.each(e.Columns, function (col) {
+						if (!col.ForeignKey) {
+							col.ForeignTable = null;
+							col.ForeignKeyField = null;
+							col.ForeignValueField = null;
+						}
+						if (!col.ForeignParentKey) {
+							col.ForeignParentTable = null;
+							col.ForeignParentApplyTo = null;
+							col.ForeignParentKeyField = null;
+							col.ForeignParentValueField = null;
+						}
+					});
+				}
 				ajaxcall({
 					url: options.apiUrl,
 					type: 'POST',
@@ -3218,6 +3408,430 @@ var customSqlModel = function (options, keys, tables, activeTable) {
     }
 }
 
+var usersRolesViewModel = function (options, settings, previewData) {
+	var self = this;
+
+	self.userSource = settings.userSource;
+	self.loginMode = settings.loginMode;
+	self.clientIdLabel = settings.clientIdLabel;
+	self.clientIds = settings.clientIds;   // catalog of { id, text }
+	self.editingClient = ko.observable(null);
+	self.editingLabel = ko.observable(false);
+	self.labelDraft = ko.observable('');
+
+	self.codeUsers = ko.observableArray([]);
+	self.codeRoles = ko.observableArray([]);
+	self.codeClientIds = ko.observableArray([]);
+
+	// SQL source: one saved query per list, stored as DataDrivenQueries with a QueryType.
+	// Managed like the Email Lists: edit in a modal, prove the query runs, then save.
+	var sqlValidator = new validation();
+
+	function sqlSource(queryType, title, hint, expects, placeholder) {
+		return {
+			queryType: queryType,
+			title: title,
+			hint: hint,
+			expects: expects,
+			placeholder: placeholder,
+			savedId: ko.observable(0),
+			sqlQuery: ko.observable(''),
+			draft: ko.observable(''),
+			rows: ko.observableArray([]),
+			loading: ko.observable(false),
+			error: ko.observable('')
+		};
+	}
+
+	self.sqlUsers = sqlSource('Users', 'Users Query',
+		'One row per user, with an id and a text column.',
+		['id', 'text'],
+		'SELECT UserId AS id, DisplayName AS text FROM Users WHERE IsActive = 1');
+	self.sqlRoles = sqlSource('UserRoles', 'Roles Query',
+		'One row per role name.',
+		[],
+		'SELECT DISTINCT RoleName FROM Roles');
+	self.sqlClients = sqlSource('Clients', 'Clients Query',
+		'One row per client, with an id and a text column.',
+		['id', 'text'],
+		'SELECT ClientId AS id, ClientName AS text FROM Clients');
+	// Client ids can be renamed (Tenant, Company...), so this source's wording follows the label.
+	self.sqlClients.title = ko.pureComputed(function () { return (self.clientIdLabel() || 'Client Id') + 's Query'; });
+	self.sqlClients.hint = ko.pureComputed(function () { return 'One row per ' + (self.clientIdLabel() || 'Client Id').toLowerCase() + ', with an id and a text column.'; });
+
+	self.sqlSources = [self.sqlUsers, self.sqlRoles, self.sqlClients];
+
+	// The source open in the shared modal. Edits go to draft so Cancel discards them.
+	self.currentSql = ko.observable(self.sqlUsers);
+
+	self.loadSqlSources = function () {
+		_.forEach(self.sqlSources, function (src) {
+			ajaxcall({
+				url: options.reportsApiUrl,
+				data: { method: options.getEmailQueriesUrl, model: JSON.stringify({ includeGlobal: true, queryType: src.queryType }) }
+			}).done(function (x) {
+				if (x.d) x = x.d;
+				if (x.result) x = x.result;
+				var first = (x.queries || [])[0];
+				src.savedId(first ? first.id : 0);
+				src.sqlQuery(first ? (first.sqlQuery || '') : '');
+				self.refreshSqlList(src);
+			});
+		});
+	};
+
+	self.editSqlSource = function (src) {
+		src.draft(src.sqlQuery());
+		self.currentSql(src);
+		sqlValidator.clearForm('#users-roles-sql-modal');
+		$('#users-roles-sql-modal').modal('show');
+	};
+
+	self.beautifyCurrentSql = function () {
+		var src = self.currentSql();
+		if (src.draft()) src.draft(beautifySql(src.draft(), false));
+	};
+
+	// The lists are read back by column name, so a wrong shape would fail silently later.
+	self.missingColumns = function (src, data) {
+		if (!src.expects || !src.expects.length) return [];
+		var names = _.map((data && data.Columns) || [], function (c) { return (c.ColumnName || '').toLowerCase(); });
+		return _.filter(src.expects, function (e) { return names.indexOf(e) < 0; });
+	};
+
+	self.saveSqlSource = function () {
+		var src = self.currentSql();
+		if (!sqlValidator.validateForm('#users-roles-sql-modal')) return;
+		// Prove it runs, and returns what the list needs, before storing it.
+		self.runSql(src.draft(), function (error, data) {
+			if (error) { toastr.error('Query is not valid and was not saved: ' + error); return; }
+			var missing = self.missingColumns(src, data);
+			if (missing.length) {
+				toastr.error('The ' + ko.unwrap(src.title) + ' must return ' + missing.join(' and ') + ', so it was not saved.');
+				return;
+			}
+			ajaxcall({
+				url: options.reportsApiUrl,
+				data: {
+					method: options.saveEmailQueryUrl,
+					model: JSON.stringify({ id: src.savedId(), name: ko.unwrap(src.title), queryType: src.queryType, sqlQuery: src.draft() })
+				}
+			}).done(function (x) {
+				if (x.d) x = x.d;
+				if (x.result) x = x.result;
+				if (x && x.Message) { toastr.error(x.Message); return; }
+				if (x && x.id) src.savedId(x.id);
+				src.sqlQuery(src.draft());
+				self.refreshSqlList(src);
+				toastr.success(ko.unwrap(src.title) + ' saved');
+				$('#users-roles-sql-modal').modal('hide');
+			});
+		});
+	};
+
+	self.deleteSqlSource = function (src) {
+		bootbox.confirm('Are you sure you would like to delete the ' + ko.unwrap(src.title) + '?', function (r) {
+			if (!r) return;
+			ajaxcall({
+				url: options.reportsApiUrl,
+				data: { method: options.deleteEmailQueryUrl, model: JSON.stringify({ id: src.savedId() }) }
+			}).done(function () {
+				src.savedId(0);
+				src.sqlQuery('');
+				src.rows([]);
+				src.error('');
+				toastr.success(ko.unwrap(src.title) + ' deleted');
+			});
+		});
+	};
+
+	// The saved query is what the app will read at runtime, so the tab shows its rows.
+	self.refreshSqlList = function (src) {
+		src.error('');
+		if (!src.sqlQuery()) { src.rows([]); return; }
+		src.loading(true);
+		self.runSql(src.sqlQuery(), function (error, data) {
+			src.loading(false);
+			if (error) { src.rows([]); src.error(error); return; }
+			src.rows(self.mapSqlRows(data));
+		});
+	};
+
+	// id and text by name when they are there, otherwise the first two columns.
+	self.mapSqlRows = function (data) {
+		var cols = _.map((data && data.Columns) || [], function (c) { return (c.ColumnName || '').toLowerCase(); });
+		var idIdx = cols.indexOf('id');
+		var textIdx = cols.indexOf('text');
+		if (idIdx < 0) idIdx = 0;
+		if (textIdx < 0) textIdx = cols.length > 1 ? 1 : 0;
+		return _.map((data && data.Rows) || [], function (r) {
+			var items = r.Items || [];
+			var id = items[idIdx] ? (items[idIdx].Value || '') : '';
+			var text = items[textIdx] ? (items[textIdx].Value || '') : '';
+			return { id: id, text: text || id };
+		});
+	};
+
+	// Shows the result in the same grid the custom tables use.
+	self.previewSqlSource = function (src, sql) {
+		sql = sql || src.sqlQuery();
+		if (!sql) { toastr.error('Enter a SQL query first'); return; }
+		self.runSql(sql, function (error, data) {
+			if (error) { toastr.error('Query error: ' + error); return; }
+			if (!data || !(data.Rows || []).length) { bootbox.alert('This query returned no rows.'); return; }
+			var missing = self.missingColumns(src, data);
+			if (missing.length) toastr.warning('The ' + ko.unwrap(src.title) + ' should return ' + missing.join(' and ') + '.');
+			previewData(data);
+			$('#data-preview-modal').modal('show');
+		});
+	};
+
+	// Previews what is typed in the modal, so unsaved edits can be checked before saving.
+	self.previewCurrentSql = function () {
+		var src = self.currentSql();
+		self.previewSqlSource(src, src.draft());
+	};
+
+	// Shared runner, surfaces the real SQL error rather than an empty result.
+	self.runSql = function (sql, done) {
+		ajaxcall({
+			url: options.getPreviewFromSqlUrl,
+			type: 'POST',
+			data: JSON.stringify({ value: sql, accountKey: options.model.AccountApiKey, dataConnectKey: options.model.DatabaseApiKey, dynamicColumns: false })
+		}).done(function (result) {
+			if (result.d) result = result.d;
+			var error = result.Exception || result.errorMessage || (result.HasError ? 'The query returned an error.' : '');
+			done(error, result.ReportData);
+		}).fail(function () { done('Could not reach the server to run the query.', null); });
+	};
+
+	self.portalUsers = ko.observableArray([]);
+	self.portalRoles = ko.observableArray([]);
+	self.loadingUsers = ko.observable(false);
+	self.editingUser = ko.observable(null);
+	self.newRoleName = ko.observable('');
+
+	self.clientIdChoices = ko.computed(function () {
+		return _.map(self.clientIds() || [], function (c) {
+			return (c && typeof c === 'object') ? { id: c.id || '', text: c.text || c.id || '' } : { id: c, text: c };
+		});
+	});
+
+	self.clientNames = function (ids) {
+		var choices = self.clientIdChoices();
+		return _.map(ids || [], function (id) {
+			var match = _.find(choices, function (c) { return c.id === id; });
+			return match ? match.text : id;
+		}).join(', ');
+	};
+
+	var api = function (method, model) {
+		model = model || {};
+		model.adminMode = true;
+		return ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({ method: '/ReportApi/' + method, model: JSON.stringify(model) })
+		});
+	};
+
+	self.loadPortal = function () {
+		self.loadingUsers(true);
+		api('GetAccountUsersAndRoles', { source: 'portal' }).done(function (r) {
+			if (r && r.d) r = r.d;
+			self.portalUsers((r && r.users) || []);
+			self.portalRoles((r && r.roles) || []);
+		}).fail(function () {
+			toastr.error('Could not load Users and Roles from your Dotnet Report account');
+		}).always(function () { self.loadingUsers(false); });
+	};
+
+	self.settingsDirty = ko.observable(false);
+	self.markDirty = function () { self.settingsDirty(true); };
+
+	self.onTabOpen = function () {
+		// codeUsers/codeRoles/codeClientIds are what the application supplies in code, whichever
+		// source is currently saved.
+		ajaxcall({ url: options.getUsersAndRoles }).done(function (data) {
+			self.codeUsers(data.codeUsers || []);
+			self.codeRoles(data.codeUserRoles || []);
+			self.codeClientIds(data.codeClientIds || []);
+		});
+		if (self.userSource() === 'portal') self.loadPortal();
+		self.loadSqlSources();
+		self.settingsDirty(false);
+	};
+
+	self.userSource.subscribe(self.markDirty);
+	self.loginMode.subscribe(self.markDirty);
+	self.clientIdLabel.subscribe(self.markDirty);
+	self.clientIds.subscribe(self.markDirty);
+
+	self.userSource.subscribe(function (v) {
+		if (v === 'sql') self.loadSqlSources();
+		if (v === 'portal') {
+			self.loadPortal();
+		} else {
+			self.portalUsers([]);
+			self.portalRoles([]);
+			self.editingUser(null);
+			self.loadingUsers(false);
+		}
+	});
+
+	var buildEditor = function (u) {
+		u = u || {};
+		var assignedRoles = u.roles || [];
+		var assignedClients = u.clientIds || [];
+		return {
+			id: ko.observable(u.id || ''),
+			name: ko.observable(u.name || ''),
+			email: ko.observable(u.email || ''),
+			roles: _.map(self.portalRoles(), function (r) {
+				return { id: r.id, text: r.text, isSelected: ko.observable(assignedRoles.indexOf(r.text) >= 0) };
+			}),
+			clients: _.map(self.clientIdChoices(), function (c) {
+				return { id: c.id, text: c.text, isSelected: ko.observable(assignedClients.indexOf(c.id) >= 0) };
+			})
+		};
+	};
+
+	self.newUser = function () { self.editingUser(buildEditor(null)); };
+	self.editUser = function (u) { self.editingUser(buildEditor(u)); };
+
+	self.saveUser = function () {
+		var e = self.editingUser();
+		if (!e) return;
+		if (!e.email()) { toastr.error('Please enter an email'); return; }
+		var model = {
+			userJson: JSON.stringify({
+				Id: e.id() || '',
+				Name: e.name() || '',
+				Email: e.email(),
+				Roles: _.map(_.filter(e.roles, function (r) { return r.isSelected(); }), function (r) { return r.text; }),
+				ClientIds: _.map(_.filter(e.clients, function (c) { return c.isSelected(); }), function (c) { return c.id; })
+			})
+		};
+		api('SaveAccountUser', model).done(function () {
+			toastr.success('User saved');
+			self.editingUser(null);
+			self.loadPortal();
+		}).fail(function () { toastr.error('Could not save user'); });
+	};
+
+	self.sendPasswordSetup = function (u) {
+		if (!u || !u.email) { toastr.error('This user has no email address'); return; }
+		ajaxcall({
+			url: options.sendPasswordSetupUrl,
+			type: 'POST',
+			data: JSON.stringify({ email: u.email })
+		}).done(function (r) {
+			if (r && r.Success === false) { toastr.error(r.Message || 'Could not send the email'); return; }
+			toastr.success('Password setup email sent to ' + u.email);
+		}).fail(function () { toastr.error('Could not send the password setup email'); });
+	};
+
+	self.deleteUser = function (u) {
+		bootbox.confirm('Delete user ' + (u.email || u.text) + '?', function (ok) {
+			if (!ok) return;
+			api('DeleteAccountUser', { id: u.id }).done(function () {
+				toastr.success('User deleted');
+				self.loadPortal();
+			}).fail(function () { toastr.error('Could not delete user'); });
+		});
+	};
+
+	self.addRole = function () {
+		var name = (self.newRoleName() || '').trim();
+		if (!name) return;
+		if (_.filter(self.portalRoles(), function (r) { return (r.text || '').toLowerCase() === name.toLowerCase(); }).length) {
+			toastr.warning('Role already exists'); return;
+		}
+		api('SaveAccountRole', { roleJson: JSON.stringify({ Name: name }) }).done(function () {
+			toastr.success('Role added');
+			self.newRoleName('');
+			self.loadPortal();
+		}).fail(function () { toastr.error('Could not add role'); });
+	};
+
+	self.deleteRole = function (r) {
+		bootbox.confirm('Delete role ' + r.text + '? Users assigned to it will lose it.', function (ok) {
+			if (!ok) return;
+			api('DeleteAccountRole', { id: r.id }).done(function () {
+				toastr.success('Role deleted');
+				self.loadPortal();
+			}).fail(function () { toastr.error('Could not delete role'); });
+		});
+	};
+
+	self.newClient = function () {
+		self.editingClient({ id: ko.observable(''), text: ko.observable(''), original: null });
+	};
+
+	self.editClient = function (c) {
+		self.editingClient({ id: ko.observable(self.clientKey(c)), text: ko.observable(self.clientText(c)), original: c });
+	};
+
+	self.cancelClient = function () { self.editingClient(null); };
+
+	self.saveClient = function () {
+		var e = self.editingClient();
+		if (!e) return;
+		var id = (e.id() || '').trim();
+		if (!id) { toastr.warning('Id is required'); return; }
+		if (_.filter(self.clientIds(), function (c) { return c !== e.original && self.clientKey(c) === id; }).length) {
+			toastr.warning('Already added'); return;
+		}
+		var item = { id: id, text: (e.text() || '').trim() || id };
+		if (e.original) { self.clientIds.replace(e.original, item); } else { self.clientIds.push(item); }
+		self.editingClient(null);
+		self.persistSettings();
+	};
+
+	self.removeClientId = function (c) {
+		var label = self.clientIdLabel() || 'Client Id';
+		bootbox.confirm({
+			title: 'Delete ' + label,
+			message: 'Delete <b>' + self.clientText(c) + '</b>? Reports, Folders and Dashboards restricted to this ' + label + ' will no longer match it.',
+			buttons: { cancel: { label: 'Cancel', className: 'btn-secondary' }, confirm: { label: 'Delete', className: 'btn-danger' } },
+			callback: function (ok) {
+				if (!ok) return;
+				self.clientIds.remove(c);
+				self.persistSettings();
+			}
+		});
+	};
+
+	self.clientText = function (c) { return (c && typeof c === 'object') ? (c.text || c.id) : c; };
+	self.clientKey = function (c) { return (c && typeof c === 'object') ? c.id : c; };
+
+	self.persistSettings = function () {
+		if (typeof settings.saveAppSettings !== 'function') {
+			toastr.error('Settings are not available, check your account connection');
+			return;
+		}
+		var p = settings.saveAppSettings();
+		if (p && p.done) { p.done(function () { self.settingsDirty(false); }); } else { self.settingsDirty(false); }
+	};
+
+	self.startEditLabel = function () {
+		self.labelDraft(self.clientIdLabel() || '');
+		self.editingLabel(true);
+	};
+
+	self.cancelLabel = function () { self.editingLabel(false); };
+
+	self.applyLabel = function () {
+		var v = (self.labelDraft() || '').trim();
+		if (!v) { toastr.warning('Label is required'); return; }
+		self.editingLabel(false);
+		if (v === self.clientIdLabel()) return;
+		self.clientIdLabel(v);
+		self.persistSettings();
+	};
+
+	self.saveSourceSettings = function () { self.persistSettings(); };
+};
 var settingPageViewModel = function (options) {
 	var self = this;
 	var dbConfig = options.model.DbConfig || {};
@@ -3263,6 +3877,12 @@ var settingPageViewModel = function (options) {
 	self.aiApiKeyChanged = false;
 	self.aiModel = ko.observable('');
 	self.aiEnabled = ko.observable(false);
+	// Users & Roles source ('code' | 'portal') + client/tenant catalog and its display label
+	self.userSource = ko.observable('code');
+	// How users sign in ('embedded' | 'standalone' | 'sso'). Informational: the behaviour comes from code.
+	self.loginMode = ko.observable('embedded');
+	self.clientIdLabel = ko.observable('Client Id');
+	self.clientIds = ko.observableArray([]);
 	// Sync aiEnabled with aiProvider for backward compatibility
 	self.aiEnabled.subscribe(function (enabled) {
 		if (enabled && !self.aiProvider()) {
@@ -3319,7 +3939,7 @@ var settingPageViewModel = function (options) {
 	self.saveAppSettings = function () {
 
 		if (this.isValidforAppSetting()) {
-			ajaxcall({
+			return ajaxcall({
 				url: options.apiUrl,
 				type: 'POST',
 				data: JSON.stringify({
@@ -3359,7 +3979,11 @@ var settingPageViewModel = function (options) {
 								aiProvider: self.aiProvider(),
 								aiApiKey: self.aiApiKeyChanged ? self.aiApiKey() : undefined,
 								aiModel: self.aiModel(),
-								aiEnabled: self.aiEnabled()
+								aiEnabled: self.aiEnabled(),
+								userSource: self.userSource(),
+								loginMode: self.loginMode(),
+								clientIdLabel: self.clientIdLabel() || 'Client Id',
+								clientIds: self.clientIds()
 						})
 					})
 				})
@@ -3436,6 +4060,10 @@ var settingPageViewModel = function (options) {
 				self.aiApiKeyChanged = false;
 				self.aiModel(settings.aiModel || '');
 				self.aiEnabled(settings.aiEnabled === true || (settings.aiProvider && settings.aiProvider !== ''));
+				self.userSource(settings.userSource || 'code');
+				self.loginMode(settings.loginMode || 'embedded');
+				self.clientIdLabel(settings.clientIdLabel || 'Client Id');
+				self.clientIds(_.isArray(settings.clientIds) ? settings.clientIds : []);
 				//// Optionally, you can manually trigger change event for select elements
 				$('#themeSelect').trigger('change');
 				$('#timezoneSelect').trigger('change');
