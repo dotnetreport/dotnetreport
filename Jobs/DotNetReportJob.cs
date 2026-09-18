@@ -9,8 +9,10 @@ using System.Configuration;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Mail;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace ReportBuilder.Web.Jobs
@@ -20,6 +22,8 @@ namespace ReportBuilder.Web.Jobs
         public int Id { get; set; } = 0;
         public string Schedule { get; set; }
         public string EmailTo { get; set; }
+        public int? EmailQueryId { get; set; }
+        public string Filters { get; set; }
         public string LastRun { get; set; }
         public DateTime? NextRun { get; set; }
         public string UserId { get; set; }
@@ -63,6 +67,13 @@ namespace ReportBuilder.Web.Jobs
         public List<ReportSchedule> Schedules { get; set; }
 
     }
+    // One report run and who it goes to. RowValues is the Email List row feeding mapped filters.
+    public class RecipientRun
+    {
+        public List<string> Recipients { get; set; } = new List<string>();
+        public string RowValues { get; set; } = "";
+    }
+
     public class FormatJson
     {
         public string exportFormat { get; set; }
@@ -146,6 +157,18 @@ namespace ReportBuilder.Web.Jobs
         }
         #endregion
 
+        private static bool HasChart(DotNetReportModel report)
+        {
+            if (report == null) return false;
+
+            string reportType = report.ReportType == null ? "" : report.ReportType.ToLower();
+            var hasChart = reportType == "bar" || reportType == "pie" || reportType == "line"
+                || reportType == "combo" || reportType == "map" || reportType == "treemap";
+
+
+            return hasChart && report.ShowDataWithGraph;
+        }
+
         public (DateTime? NextRunLocal, bool ShouldRun, DateTime currentTimeInTargetTz) CalculateNextRun(
             string cron,
             string timeZoneId,
@@ -159,7 +182,8 @@ namespace ReportBuilder.Web.Jobs
                     : TimeZoneInfo.Local;
 
             var chron = new CronExpression(cron);
-            var lastRun = !String.IsNullOrEmpty(lastRunFromDb) ? Convert.ToDateTime(lastRunFromDb) : DateTimeOffset.UtcNow.AddMinutes(-10);
+            var utcNow = currentTimeToTest.HasValue ? DateTime.SpecifyKind(currentTimeToTest.Value, DateTimeKind.Utc) : DateTime.UtcNow;
+            var lastRun = !String.IsNullOrEmpty(lastRunFromDb) ? Convert.ToDateTime(lastRunFromDb) : new DateTimeOffset(utcNow).AddMinutes(-10);
             var nextRun = chron.GetTimeAfter(lastRun);
 
             if (!String.IsNullOrEmpty(timeZoneId))
@@ -171,9 +195,17 @@ namespace ReportBuilder.Web.Jobs
 
                 nextRun = chron.GetTimeAfter(lastRun);
             }
+
+            // A stale LastRun puts the next occurrence in the past, where it can never fire again.
+            var anchor = lastRun;
+            if (scheduleStart.HasValue && anchor < scheduleStart.Value) anchor = scheduleStart.Value;
+            var nowInTargetTz = TimeZoneInfo.ConvertTime(new DateTimeOffset(utcNow), targetTimeZone);
+            if (anchor < nowInTargetTz.AddMinutes(-10)) anchor = nowInTargetTz.AddMinutes(-10);
+            if (anchor != lastRun) nextRun = chron.GetTimeAfter(anchor);
+
             var _nextRun = (nextRun.HasValue ? nextRun.Value.ToLocalTime().DateTime : (DateTime?)null);
 
-            DateTime currentTimeInTargetTz = TimeZoneInfo.ConvertTime(DateTime.UtcNow, targetTimeZone);
+            DateTime currentTimeInTargetTz = TimeZoneInfo.ConvertTime(utcNow, targetTimeZone);
 
             bool shouldRun = false;
             if ((scheduleStart.HasValue && _nextRun.HasValue && _nextRun < scheduleStart.Value) ||
@@ -288,7 +320,29 @@ namespace ReportBuilder.Web.Jobs
                                 }
                                 catch (Exception ex) { DiagLog("GetReportFooter", ex); /* not critical */ }
 
-                                response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledItem?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&id={itemId}&localRunTime={schedule.NextRun:yyyy-MM-ddTHH:mm:ss}&isDashboard={isDashboard}&clientId={clientId}&dataFilters={schedule.DataFilters}");
+                                // One run per Email List row when the schedule maps its columns to filters, otherwise one run.
+                                List<RecipientRun> runs;
+                                try
+                                {
+                                    runs = await ResolveRecipientRuns(client, apiUrl, accountApiKey, databaseApiKey, clientId, schedule);
+                                }
+                                catch (Exception rex)
+                                {
+                                    DiagLog($"[{report.Name}] schedule={schedule.Id} recipient query failed", rex);
+                                    await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: true, message: "Recipient query failed: " + rex.Message);
+                                    continue;
+                                }
+                                if (runs.Count == 0)
+                                {
+                                    DiagLog($"[{report.Name}] schedule={schedule.Id} recipient list is empty, nothing sent");
+                                    await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: false, message: "No recipients returned, nothing sent");
+                                    continue;
+                                }
+
+                                foreach (var run in runs)
+                                {
+                                DiagLog($"[{report.Name}] schedule={schedule.Id} run recipients={run.Recipients.Count} rowValues={run.RowValues}");
+                                response = await client.GetAsync($"{apiUrl}/ReportApi/RunScheduledItem?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&id={itemId}&localRunTime={schedule.NextRun:yyyy-MM-ddTHH:mm:ss}&isDashboard={isDashboard}&clientId={clientId}&dataFilters={schedule.DataFilters}&rowValues={WebUtility.UrlEncode(run.RowValues)}");
                                 response.EnsureSuccessStatusCode();                            
 
                                 content = await response.Content.ReadAsStringAsync();
@@ -349,11 +403,14 @@ namespace ReportBuilder.Web.Jobs
                                             foreach (var r in reportsToRun)
                                             {
                                                 pivotInfo = PreparePivotData(r.Columns);
-                                                try
+                                                if (HasChart(r))
                                                 {
-                                                    imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
+                                                    try
+                                                    {
+                                                        imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
+                                                    }
+                                                    catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                                 }
-                                                catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                                 string customHtmlR = null;
                                                 if (string.Equals(r.ReportType, "Html", StringComparison.OrdinalIgnoreCase))
                                                 {
@@ -365,7 +422,7 @@ namespace ReportBuilder.Web.Jobs
                                                 }
                                                 var rHdr = await ResolveScheduledReportHeader(client, apiUrl, accountApiKey, databaseApiKey, clientId, schedule.UserId, r);
                                                 fileData = await DotNetReportHelper.GetWordFile(r.ReportSql, r.ConnectKey, r.ReportName, columns: r.Columns, includeSubtotal: r.IncludeSubTotals, pivot: r.ReportType == "Pivot", chartData: imageData, expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation,
-                                                    headerHtml: rHdr.html, footerHtml: hfFooterHtml, headerEveryPage: rHdr.everyPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
+                                                    headerHtml: rHdr.html, footerHtml: r.HideReportFooter ? null : hfFooterHtml, headerEveryPage: rHdr.everyPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
                                                     customHtml: customHtmlR);
                                                 files.Add(fileData);
                                             }
@@ -376,11 +433,14 @@ namespace ReportBuilder.Web.Jobs
                                         {
                                             pivotInfo = PreparePivotData(reportToRun.Columns);
                                             fileExt = ".docx";
-                                            try
+                                            if (HasChart(reportToRun))
                                             {
-                                                imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
+                                                try
+                                                {
+                                                    imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
+                                                }
+                                                catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                             }
-                                            catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                             string customHtml = null;
                                             if (string.Equals(reportToRun.ReportType, "Html", StringComparison.OrdinalIgnoreCase))
                                             {
@@ -392,7 +452,7 @@ namespace ReportBuilder.Web.Jobs
                                             }
                                             var singleHdr = await ResolveScheduledReportHeader(client, apiUrl, accountApiKey, databaseApiKey, clientId, schedule.UserId, reportToRun);
                                             fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData, expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation,
-                                                headerHtml: singleHdr.html, footerHtml: hfFooterHtml, headerEveryPage: singleHdr.everyPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
+                                                headerHtml: singleHdr.html, footerHtml: reportToRun.HideReportFooter ? null : hfFooterHtml, headerEveryPage: singleHdr.everyPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
                                                 customHtml: customHtml);
                                         }
                                         break;
@@ -410,11 +470,14 @@ namespace ReportBuilder.Web.Jobs
                                             foreach (var r in reportsToRun)
                                             {
                                                 pivotInfo = PreparePivotData(r.Columns);
-                                                try
+                                                if (HasChart(r))
                                                 {
-                                                    imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
+                                                    try
+                                                    {
+                                                        imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
+                                                    }
+                                                    catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                                 }
-                                                catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                                 fileData = await DotNetReportHelper.GetExcelFile(r.ReportSql, r.ConnectKey, r.ReportName, columns: r.Columns, expandSqls: r.ReportData, includeSubtotal: r.IncludeSubTotals, pivot: r.ReportType == "Pivot", chartData: imageData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
                                                 files.Add(fileData);
                                             }
@@ -425,11 +488,14 @@ namespace ReportBuilder.Web.Jobs
                                         else
                                         {
                                             pivotInfo = PreparePivotData(reportToRun.Columns);
-                                            try
+                                            if (HasChart(reportToRun))
                                             {
-                                                imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
+                                                try
+                                                {
+                                                    imageData = Convert.ToBase64String(await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", reportToRun.ReportId, reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, imageOnly: true));
+                                                }
+                                                catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                             }
-                                            catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                             fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, expandSqls: reportToRun.ReportData, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
                                             fileExt = ".xlsx";
                                         }
@@ -439,36 +505,50 @@ namespace ReportBuilder.Web.Jobs
                                 DiagLog($"[{report.Name}] format={schedule.Format} builtFileBytes={(fileData?.Length ?? 0)}"
                                       + $"\n    CurrentDataFilters(before email)={DotNetReportHelper.CurrentDataFilters}");
 
-                                // send email
-                                var mail = new MailMessage
-                                {
-                                    From = new MailAddress(fromEmail, fromName),
-                                    Subject = report.Name,
-                                    Body = $"Your scheduled report is attached.<br><br>{report.Description}",
-                                    IsBodyHtml = true
-                                };
-                                mail.To.Add(schedule.EmailTo);
+                                var recipients = run.Recipients;
 
-
-                                if (schedule.Format == "Link")
+                                // One email per recipient so a single bad address cannot stop the rest, and every
+                                // delivery is logged individually.
+                                foreach (var recipient in recipients)
                                 {
-                                    mail.Body = $"Please click on the link below to Run your Report:<br><br><a href=\"{JobScheduler.WebAppRootUrl}/DotnetReport/Report?linkedreport=true&noparent=true&reportId={reportToRun.ReportId}\">{report.Description}</a>";
+                                    try
+                                    {
+                                        var mail = new MailMessage
+                                        {
+                                            From = new MailAddress(fromEmail, fromName),
+                                            Subject = report.Name,
+                                            Body = $"Your scheduled report is attached.<br><br>{report.Description}",
+                                            IsBodyHtml = true
+                                        };
+                                        mail.To.Add(recipient);
+
+                                        if (schedule.Format == "Link")
+                                        {
+                                            mail.Body = $"Please click on the link below to Run your Report:<br><br><a href=\"{JobScheduler.WebAppRootUrl}/DotnetReport/Report?linkedreport=true&noparent=true&reportId={reportToRun.ReportId}\">{report.Description}</a>";
+                                        }
+                                        else if (fileData != null)
+                                        {
+                                            var attachment = new Attachment(new MemoryStream(fileData), report.Name + fileExt);
+                                            mail.Attachments.Add(attachment);
+                                        }
+
+                                        using (var smtpServer = new SmtpClient(mailServer))
+                                        {
+                                            smtpServer.Port = 587;
+                                            smtpServer.Credentials = new System.Net.NetworkCredential(mailUserName, mailPassword);
+                                            //smtpServer.EnableSsl = true;
+                                            smtpServer.Send(mail);
+                                        }
+
+                                        await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: false, message: "Sent", recipient: recipient);
+                                    }
+                                    catch (Exception sendEx)
+                                    {
+                                        DiagLog($"[{report.Name}] schedule={schedule.Id} send failed for {recipient}", sendEx);
+                                        await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: true, message: sendEx.Message, recipient: recipient);
+                                    }
                                 }
-                                else if (fileData != null)
-                                {
-                                    var attachment = new Attachment(new MemoryStream(fileData), report.Name + fileExt);
-                                    mail.Attachments.Add(attachment);
-                                }
-
-                                using (var smtpServer = new SmtpClient(mailServer))
-                                {
-                                    smtpServer.Port = 587;
-                                    smtpServer.Credentials = new System.Net.NetworkCredential(mailUserName, mailPassword);
-                                    //smtpServer.EnableSsl = true;
-                                    smtpServer.Send(mail);
-                                }
-
-                                await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: false, message: "Sent");
+                                } // foreach run
                             }
                         }
                         catch (Exception ex)
@@ -482,14 +562,70 @@ namespace ReportBuilder.Web.Jobs
             }
         }
 
-        private static async Task LogScheduleSent(HttpClient client, string apiUrl, string accountApiKey, string databaseApiKey, ReportSchedule schedule, ReportWithSchedule report, bool isDashboard, bool isError, string message)
+        private static async Task<List<RecipientRun>> ResolveRecipientRuns(HttpClient client, string apiUrl, string accountApiKey, string databaseApiKey, string clientId, ReportSchedule schedule)
+        {
+            var runs = new List<RecipientRun>();
+            if (schedule.EmailQueryId.GetValueOrDefault() <= 0)
+            {
+                var toList = new RecipientRun();
+                toList.Recipients = (schedule.EmailTo ?? "")
+                    .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => x.Trim())
+                    .Where(x => !string.IsNullOrEmpty(x))
+                    .ToList();
+                if (toList.Recipients.Count > 0) runs.Add(toList);
+                return runs;
+            }
+
+            var resp = await client.GetAsync($"{apiUrl}/ReportApi/GetDataDrivenQuerySql?account={accountApiKey}&dataConnect={databaseApiKey}&id={schedule.EmailQueryId.Value}&clientId={clientId}&userId={schedule.UserId}&dataFilters={WebUtility.UrlEncode(schedule.DataFilters ?? "")}");
+            resp.EnsureSuccessStatusCode();
+            var json = await resp.Content.ReadAsStringAsync();
+            var result = JsonConvert.DeserializeObject<dynamic>(json);
+            string encryptedSql = result?.sql;
+            string connectKey = result?.connectKey;
+            if (string.IsNullOrEmpty(encryptedSql)) throw new Exception("Recipient query returned no SQL");
+
+            var rows = await DotNetReportHelper.GetDataDrivenQueryRows(encryptedSql, connectKey);
+
+            // No column mapped to a filter: one run to everyone, as before.
+            if (!Regex.IsMatch(schedule.Filters ?? "", "\"EmailListColumn\":\"[^\"]"))
+            {
+                var everyone = new RecipientRun();
+                everyone.Recipients = DotNetReportHelper.ExtractEmailRecipients(rows);
+                if (everyone.Recipients.Count > 0) runs.Add(everyone);
+                return runs;
+            }
+
+            // Mapped: one run per row, that row's values feeding the mapped filters.
+            var emailColumn = 0;
+            for (var i = 0; i < rows.Columns.Count; i++)
+                if (string.Equals(rows.Columns[i].ColumnName, "Email", StringComparison.OrdinalIgnoreCase)) emailColumn = i;
+
+            foreach (System.Data.DataRow row in rows.Rows)
+            {
+                var email = (row[emailColumn] == null ? "" : row[emailColumn].ToString()).Trim();
+                if (email.Length == 0 || email.IndexOf('@') < 0) continue;
+
+                var values = new Dictionary<string, string>();
+                for (var i = 0; i < rows.Columns.Count; i++)
+                    values[rows.Columns[i].ColumnName] = row[i] == null ? "" : row[i].ToString();
+
+                var one = new RecipientRun();
+                one.Recipients.Add(email);
+                one.RowValues = JsonConvert.SerializeObject(values);
+                runs.Add(one);
+            }
+            return runs;
+        }
+
+        private static async Task LogScheduleSent(HttpClient client, string apiUrl, string accountApiKey, string databaseApiKey, ReportSchedule schedule, ReportWithSchedule report, bool isDashboard, bool isError, string message, string recipient = null)
         {
             try
             {
                 var itemId = isDashboard ? report.DashboardId : report.ReportId;
                 var itemName = System.Web.HttpUtility.UrlEncode(report.Name ?? "");
                 var format = System.Web.HttpUtility.UrlEncode(schedule.Format ?? "");
-                var sentTo = System.Web.HttpUtility.UrlEncode(schedule.EmailTo ?? "");
+                var sentTo = System.Web.HttpUtility.UrlEncode(recipient ?? schedule.EmailTo ?? "");
                 var msg = System.Web.HttpUtility.UrlEncode(message ?? "");
                 await client.GetAsync($"{apiUrl}/ReportApi/LogScheduleSent?account={accountApiKey}&dataConnect={databaseApiKey}&scheduleId={schedule.Id}&itemId={itemId}&isDashboard={isDashboard}&itemName={itemName}&format={format}&sentTo={sentTo}&isError={isError}&message={msg}");
             }

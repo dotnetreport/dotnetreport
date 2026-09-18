@@ -25,6 +25,7 @@
                     execReportUrl: svc + "RunReport",
                     runLinkReportUrl: svc + "RunReportLink",
                     reportWizard: $("#filter-panel"),
+                    fieldOptionsModal: $("#fieldOptionsModal"),
                     reportHeader: "report-header",
                     lookupListUrl: svc + "GetLookupList",
                     apiUrl: svc + "CallReportApi",
@@ -39,6 +40,7 @@
                     dataFilters: data.dataFilters,
                     runExportUrl: svc,
                     getTimeZonesUrl: svc + "GetAllTimezones",
+                    previewEmailListUrl:svc + "PreviewEmailList" ,
                     printReportUrl: window.location.protocol + "//" + window.location.host + "/DotnetReport/ReportPrint"
                 });
 
@@ -103,7 +105,7 @@
                             <i class="fa fa-refresh"></i>
                             <span>Refresh</span>
                         </button>
-                        <button class="btn btn-light btn-sm" data-bind="visible: CanSaveReports(), click: SaveWithoutRun">
+                        <button class="btn btn-light btn-sm" data-bind="visible: canSaveCurrentReport(), click: SaveWithoutRun">
                             <i class="fa fa-save"></i>
                             <span>Save Report</span>
                         </button>

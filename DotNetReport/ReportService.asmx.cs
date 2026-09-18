@@ -1,15 +1,18 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
+using System.Web.Mvc;
 using System.Web.Script.Serialization;
 using System.Web.Script.Services;
 using System.Web.Services;
@@ -45,6 +48,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             settings.UserIdForSchedule = settings.UserId;
             settings.Users = new List<dynamic>(); // Populate all your application's user, ex  { "Jane", "John" } or { new { id="1", text="Jane" }, new { id="2", text="John" }}
             settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
+            settings.ClientIds = new List<string>() { }; // Populate all your application's client/tenant ids, ex  { "ACME", "CONTOSO" }
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/docs/advance-topics/global-filters/
             DotNetReportHelper.CurrentDataFilters = JsonConvert.SerializeObject(settings.DataFilters);
@@ -132,6 +136,9 @@ namespace ReportBuilder.WebForms.DotNetReport
             public string userId { get; set; }
             public string currentUserRole { get; set; } // comma separated
             public string dataFilters { get; set; } // json string
+            public int reportId { get; set; }
+            public string reportSql { get; set; }
+            public string connectKey { get; set; }
         }
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
@@ -167,7 +174,7 @@ namespace ReportBuilder.WebForms.DotNetReport
         }
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public object PostReportHeaderApi(string method, string headerJson, bool useReportHeader,string headerClientId,bool includeOnEveryPage)
+        public object PostReportHeaderApi(string method, string headerJson, bool useReportHeader,string headerClientId,bool includeOnEveryPage,string name,bool isDefault,int id)
         {
             return CallReportApi(method, JsonConvert.SerializeObject(new PostReportApiCallMode
             {
@@ -175,7 +182,10 @@ namespace ReportBuilder.WebForms.DotNetReport
                 headerJson = headerJson,
                 useReportHeader = useReportHeader,
                 headerClientId= headerClientId,
-                includeOnEveryPage = includeOnEveryPage
+                includeOnEveryPage = includeOnEveryPage,
+                name=name,
+                isDefault= isDefault,
+                id=id
             }));
         }
         [WebMethod(EnableSession = true)]
@@ -217,6 +227,10 @@ namespace ReportBuilder.WebForms.DotNetReport
         public async Task<object> CallReportApi(string method, string model,string userId = null)
         {
             var settings = GetSettings();
+            if (!settings.CanUseAdminMode && AdminOnlyApiMethods.Contains((method ?? "").Trim(), StringComparer.OrdinalIgnoreCase))
+            {
+                throw new Exception("You are not authorized to perform this action");
+            }
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
             {
                 throw new Exception("User context mismatch");
@@ -286,6 +300,14 @@ namespace ReportBuilder.WebForms.DotNetReport
             }
         }
 
+        // Account level changes are only available in Admin Mode, the front end flag can be tampered with so check it here too
+        private static readonly string[] AdminOnlyApiMethods = new[]
+        {
+            "/ReportApi/SaveReportHeader",
+            "/ReportApi/SaveFolderData",
+            "/ReportApi/DeleteFolder",
+            "/ReportApi/SaveReportAccess"
+        };
         public class RunReportParameters
         {
             public string reportSql { get; set; }
@@ -522,7 +544,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                             var keywordsToExclude = new[] { "Count", "Sum", "Max", "Avg" };
                             if (!useAltPivot)
                             {
-                                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, false, includeColumnTotal, subtotalMode);
+                                var pd = await DotNetReportHelper.GetPivotTable(databaseConnection, connectionString, dtPagedRun, sql, sqlFields, reportData, pivotColumn, pivotFunction, pageNumber, pageSize, sortBy, desc, false, includeColumnTotal, subtotalMode, parameters: qry.parameters);
                                 dtPagedRun = pd.dt;
                                 if (!string.IsNullOrEmpty(pd.sql)) sql = pd.sql;
                                 totalRecords = pd.totalRecords;
@@ -704,6 +726,12 @@ namespace ReportBuilder.WebForms.DotNetReport
                 useAltPivot = useAltPivot,
                 includeColumnTotal = includeColumnTotal
             };
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode) data.adminmode = false;
+            var firstSql = (data.reportSql ?? "").Split(new string[] { "%2C", "," }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+            ValidateAccess(settings.UserId, HttpUtility.HtmlDecode(firstSql), adminMode: data.adminmode);
+            DotNetReportHelper.CurrentDataFilters = JsonConvert.SerializeObject(settings.DataFilters ?? new { });
+
             return await ExecuteRunReport(data);
         }
         [WebMethod(EnableSession = true)]
@@ -812,6 +840,8 @@ namespace ReportBuilder.WebForms.DotNetReport
         {
             var model = new DotNetReportModel();
             var settings = GetSettings();
+            if (!settings.CanUseAdminMode) adminMode = false;
+            ValidateAccess(settings.UserId, reportId: reportId, adminMode: adminMode);
 
             using (var client = new HttpClient())
             {
@@ -882,6 +912,7 @@ namespace ReportBuilder.WebForms.DotNetReport
         public object LoadSavedDashboard(int? id = null, bool adminMode = false)
         {
             var settings = GetSettings();
+            if (!settings.CanUseAdminMode) adminMode = false;
             var model = new List<DotNetDasboardReportModel>();
             var dashboards = (GetDashboardsData(adminMode));
             if (!id.HasValue && dashboards.Count > 0)
@@ -915,7 +946,7 @@ namespace ReportBuilder.WebForms.DotNetReport
         private List<dynamic> GetDashboardsData(bool adminMode = false)
         {
             var settings = GetSettings();
-
+            if (!settings.CanUseAdminMode) adminMode = false;
             using (var client = new HttpClient())
             {
                 var content = new FormUrlEncodedContent(new[]
@@ -935,10 +966,270 @@ namespace ReportBuilder.WebForms.DotNetReport
                 return model;
             }
         }
+        public class AccountUsersResult
+        {
+            public string userSource { get; set; } = "code";
+            public string clientIdLabel { get; set; }
+            public List<AccountUserItem> users { get; set; } = new List<AccountUserItem>();
+            public List<AccountListItem> roles { get; set; } = new List<AccountListItem>();
+            public List<AccountListItem> clientIds { get; set; } = new List<AccountListItem>();
+        }
+        public class AccountListItem
+        {
+            public string id { get; set; }
+            public string text { get; set; }
+        }
+        public class AccountUserItem : AccountListItem
+        {
+            public string email { get; set; }
+            public string name { get; set; }
+            public bool isPrimary { get; set; }
+            public List<string> roles { get; set; } = new List<string>();
+            public List<string> clientIds { get; set; } = new List<string>();
+        }
+        private AccountUsersResult GetManagedUsersAndRoles(DotNetReportSettings settings)
+        {
+            if (string.IsNullOrEmpty(settings.AccountApiToken)) return null;
+
+            try
+            {
+                using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) })
+                {
+                    var content = new FormUrlEncodedContent(new[]
+                    {
+                new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken ?? "")
+            });
+
+                    var response = client.PostAsync(new Uri(settings.ApiUrl + "/ReportApi/GetAccountUsersAndRoles"), content).Result;
+                    if (!response.IsSuccessStatusCode) return null;
+
+                    var json = response.Content.ReadAsStringAsync().Result;
+                    var result = JsonConvert.DeserializeObject<AccountUsersResult>(json);
+                    if (result == null) return null;
+
+                    // API can return nulls for empty lists - keep callers safe
+                    result.userSource = string.IsNullOrEmpty(result.userSource) ? "code" : result.userSource;
+                    result.users = result.users ?? new List<AccountUserItem>();
+                    result.roles = result.roles ?? new List<AccountListItem>();
+                    result.clientIds = result.clientIds ?? new List<AccountListItem>();
+                    return result;
+                }
+            }
+            catch (Exception ex)
+            {
+                Context.Response.StatusCode = 500;
+                return null;
+            }
+        }
+
+
+        /// <summary>
+        /// SQL Query source: runs the saved Users / UserRoles / Clients query
+        /// </summary>
+        private List<AccountListItem> GetSqlSourceList(DotNetReportSettings settings, string queryType)
+        {
+            var items = new List<AccountListItem>();
+            try
+            {
+                using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) })
+                {
+                    var baseQuery = "?account=" + Uri.EscapeDataString(settings.AccountApiToken ?? "")
+                                  + "&dataConnect=" + Uri.EscapeDataString(settings.DataConnectApiToken ?? "");
+
+                    // 1) find the saved query id
+                    var listUrl = settings.ApiUrl + "/ReportApi/GetDataDrivenQueries" + baseQuery
+                                + "&includeGlobal=true&queryType=" + Uri.EscapeDataString(queryType);
+                    var listResponse = client.GetAsync(new Uri(listUrl)).Result;
+                    if (!listResponse.IsSuccessStatusCode) return items;
+
+                    var list = JToken.Parse(listResponse.Content.ReadAsStringAsync().Result);
+                    // SelectToken returns null for missing/empty array (no exception like JArray[0])
+                    int? id = (int?)list.SelectToken("queries[0].id");
+                    if (!id.HasValue) return items;
+
+                    // 2) get its (encrypted) SQL + connect key
+                    var sqlUrl = settings.ApiUrl + "/ReportApi/GetDataDrivenQuerySql" + baseQuery
+                               + "&id=" + id.Value
+                               + "&clientId=" + Uri.EscapeDataString(settings.ClientId ?? "")
+                               + "&userId=" + Uri.EscapeDataString(settings.UserId ?? "")
+                               + "&dataFilters=" + Uri.EscapeDataString(DotNetReportHelper.CurrentDataFilters ?? "");
+                    var sqlResponse = client.GetAsync(new Uri(sqlUrl)).Result;
+                    if (!sqlResponse.IsSuccessStatusCode) return items;
+
+                    var result = JToken.Parse(sqlResponse.Content.ReadAsStringAsync().Result);
+                    var encryptedSql = (string)result["sql"];
+                    var connectKey = (string)result["connectKey"];
+                    if (string.IsNullOrEmpty(encryptedSql)) return items;
+
+                    // 3) run it (GetDataDrivenQueryRows returns Task<DataTable>; if yours is already sync, drop .Result)
+                    var rows = DotNetReportHelper.GetDataDrivenQueryRows(encryptedSql, connectKey).Result;
+                    if (rows == null || rows.Columns.Count == 0) return items;
+
+                    var columns = rows.Columns.Cast<DataColumn>().ToList();
+                    var idColumn = columns.FirstOrDefault(c => string.Equals(c.ColumnName, "id", StringComparison.OrdinalIgnoreCase)) ?? columns[0];
+                    var textColumn = columns.FirstOrDefault(c => string.Equals(c.ColumnName, "text", StringComparison.OrdinalIgnoreCase))
+                        ?? (columns.Count > 1 ? columns[1] : columns[0]);
+
+                    foreach (DataRow row in rows.Rows)
+                    {
+                        var itemId = row[idColumn]?.ToString()?.Trim() ?? "";
+                        if (itemId.Length == 0) continue;
+                        var text = row[textColumn]?.ToString()?.Trim();
+                        items.Add(new AccountListItem { id = itemId, text = string.IsNullOrEmpty(text) ? itemId : text });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // A broken query leaves the list empty; the setup page shows the SQL error itself.
+            }
+            return items;
+        }
+
+        /// <summary>
+        /// Asks the Dotnet Report portal to email a user a link to set their portal password.
+        /// </summary>
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public object SendUserPasswordSetup(string email)
+        {
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode)
+                throw new Exception("Unauthorized");
+
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                Context.Response.StatusCode = 400;
+                return new { success = false, message = "Email is required" };
+            }
+
+            var portalUrl = ConfigurationManager.AppSettings["dotNetReport.portalUrl"] ?? "https://dotnetreport.com/portal";
+            var forgotUrl = portalUrl.TrimEnd('/') + "/Account/ForgotPassword";
+
+            try
+            {
+                using (var handler = new HttpClientHandler { CookieContainer = new CookieContainer(), AllowAutoRedirect = false })
+                using (var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) })
+                {
+                    var page = client.GetAsync(forgotUrl).Result;
+                    if (!page.IsSuccessStatusCode)
+                    {
+                        Context.Response.StatusCode = 400;
+                        return new { success = false, message = "Could not reach the Dotnet Report portal" };
+                    }
+
+                    var html = page.Content.ReadAsStringAsync().Result;
+                    var token = Regex.Match(html, @"name=""__RequestVerificationToken""[^>]*value=""([^""]+)""").Groups[1].Value;
+                    if (string.IsNullOrEmpty(token))
+                        token = Regex.Match(html, @"value=""([^""]+)""[^>]*name=""__RequestVerificationToken""").Groups[1].Value;
+                    if (string.IsNullOrEmpty(token))
+                    {
+                        Context.Response.StatusCode = 400;
+                        return new { success = false, message = "Could not read the portal request token" };
+                    }
+
+                    var form = new FormUrlEncodedContent(new[]
+                    {
+                new KeyValuePair<string, string>("__RequestVerificationToken", token),
+                new KeyValuePair<string, string>("Email", email.Trim())
+            });
+
+                    var response = client.PostAsync(forgotUrl, form).Result;
+
+                    // Success redirects to ForgotPasswordConfirmation; a failure re-renders the form.
+                    var redirected = (int)response.StatusCode == 302
+                                     && (response.Headers.Location?.ToString() ?? "").IndexOf("ForgotPasswordConfirmation", StringComparison.OrdinalIgnoreCase) >= 0;
+                    if (!redirected)
+                    {
+                        Context.Response.StatusCode = 400;
+                        return new { success = false, message = "Could not send the password setup email. Please verify the user has a valid email on the portal." };
+                    }
+
+                    return new { success = true };
+                }
+            }
+            catch (Exception ex)
+            {
+                Context.Response.StatusCode = 500;
+                return new { success = false, message = ex.GetBaseException().Message };
+            }
+        }
+
+        public class SendPasswordSetupCall
+        {
+            public string email { get; set; }
+        }
+
+
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(UseHttpGet = true, ResponseFormat = ResponseFormat.Json)]
+        public object PreviewEmailList(int? id)
+        {
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode)
+                throw new Exception("Unauthorized");
+
+            if (!id.HasValue)
+            {
+                Context.Response.StatusCode = 400;
+                return new { success = false, message = "Email List id is required." };
+            }
+
+            try
+            {
+                using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) })
+                {
+                    var url = settings.ApiUrl + "/ReportApi/GetDataDrivenQuerySql"
+                        + "?account=" + Uri.EscapeDataString(settings.AccountApiToken ?? "")
+                        + "&dataConnect=" + Uri.EscapeDataString(settings.DataConnectApiToken ?? "")
+                        + "&id=" + id.Value
+                        + "&clientId=" + Uri.EscapeDataString(settings.ClientId ?? "")
+                        + "&userId=" + Uri.EscapeDataString(settings.UserId ?? "")
+                        + "&dataFilters=" + Uri.EscapeDataString(DotNetReportHelper.CurrentDataFilters ?? "");
+
+                    var response = client.GetAsync(new Uri(url)).Result;
+                    var stringContent = response.Content.ReadAsStringAsync().Result;
+                    if (!response.IsSuccessStatusCode)
+                        return new { success = false, message = "Could not load the Email List." };
+
+                    var result = JToken.Parse(stringContent);
+                    var encryptedSql = (string)result["sql"];
+                    var connectKey = (string)result["connectKey"];
+                    if (string.IsNullOrEmpty(encryptedSql))
+                        return new { success = false, message = "This Email List has no query." };
+
+                    // GetDataDrivenQueryRows returns Task<DataTable>; if yours is already sync, drop .Result
+                    var rows = DotNetReportHelper.GetDataDrivenQueryRows(encryptedSql, connectKey).Result;
+                    var emails = rows == null
+                        ? new List<string>()
+                        : DotNetReportHelper.ExtractEmailRecipients(rows).ToList();
+                    var columns = rows == null
+                        ? new List<string>()
+                        : rows.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
+
+                    return new
+                    {
+                        success = true,
+                        total = emails.Count,
+                        rowCount = rows == null ? 0 : rows.Rows.Count,
+                        columns = columns,
+                        emails = emails.Take(200).ToList()
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                Context.Response.StatusCode = 500;
+                return new { success = false, message = ex.GetBaseException().Message };
+            }
+        }
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public object GetUsersAndRoles()
         {
+            var settings = GetSettings();
+
             // These report permission settings will be applied by default to any new report user creates, leave black to allow access to all
             var newReportClientId = ""; // comma separated client ids to set report permission when new report is created
             var newReportEditUserId = ""; // comma separated user ids for report edit permission when new report is created
@@ -946,12 +1237,43 @@ namespace ReportBuilder.WebForms.DotNetReport
             var newReportEditUserRoles = ""; // comma separated user roles for report edit permission when new report is created
             var newReportViewUserRoles = ""; // comma separated user roles for report view permission when new report is created
 
-            var settings = GetSettings();
+            var managed = GetManagedUsersAndRoles(settings);
+            var userSource = managed?.userSource ?? "code";
+            var codeClientIds = settings.ClientIds.Select(c => (object)new AccountListItem { id = c, text = c }).ToList();
+            List<object> users, clientIds;
+            List<string> userRoles;
+            if (userSource == "portal")
+            {
+                // Access is granted by email, so it matches the settings.UserId an application passes in.
+                users = managed.users.Select(u => (object)new AccountListItem { id = u.email, text = u.email }).ToList();
+                userRoles = managed.roles.Select(r => r.text).ToList();
+                clientIds = managed.clientIds != null && managed.clientIds.Any()
+                    ? managed.clientIds.Cast<object>().ToList()
+                    : codeClientIds;
+            }
+            else if (userSource == "sql")
+            {
+                users = GetSqlSourceList(settings, "Users").Cast<object>().ToList();
+                userRoles = GetSqlSourceList(settings, "UserRoles").Select(r => r.text).ToList();
+                clientIds = GetSqlSourceList(settings, "Clients").Cast<object>().ToList();
+            }
+            else
+            {
+                users = settings.Users.Cast<object>().ToList();
+                userRoles = settings.UserRoles;
+                clientIds = codeClientIds;
+            }
             return new
             {
                 noAccount = string.IsNullOrEmpty(settings.AccountApiToken) || settings.AccountApiToken == "Your Public Account Api Token",
-                users = settings.CanUseAdminMode ? settings.Users : new List<dynamic>(),
-                userRoles = settings.CanUseAdminMode ? settings.UserRoles : new List<string>(),
+                users,
+                userRoles,
+                clientIds,
+                clientIdLabel = managed?.clientIdLabel,
+                userSource,
+                codeUsers = settings.Users,
+                codeUserRoles = settings.UserRoles,
+                codeClientIds = settings.ClientIds,
                 currentUserId = settings.UserId,
                 currentUserRoles = settings.CurrentUserRole,
                 currentUserName = settings.UserName,
@@ -968,6 +1290,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 newReportViewUserRoles
             };
         }
+        
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public object GetSchemaFromSql(string value, string accountKey, string dataConnectKey, bool dynamicColumns)
@@ -1380,7 +1703,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 await ValidateAccess(userId, reportSql, adminMode: adminMode);
             }
             var pdf = await DotNetReportHelper.GetPdfFile(HttpUtility.UrlDecode(printUrl), reportId, reportSql, HttpUtility.UrlDecode(connectKey), HttpUtility.UrlDecode(reportName),
-                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation, includeSubTotal, includeColumnTotal, isSubreport, pageNumber, currentPageSize);
+                                settings.UserId, settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), expandAll, expandSqls, pivotColumn, pivotFunction, false, debug, pageSize, pageOrientation, includeSubTotal, includeColumnTotal, isSubreport, pageNumber, currentPageSize, canUseAdminMode: settings.CanUseAdminMode);
 
             Context.Response.AddHeader("content-disposition", "attachment; filename=" + reportName + ".pdf");
             Context.Response.ContentType = "application/pdf";
@@ -1631,7 +1954,7 @@ namespace ReportBuilder.WebForms.DotNetReport
         {
             var timeZones = TimeZoneInfo.GetSystemTimeZones();
             SortedList<string, string> timeZoneList = new SortedList<string, string>();
-            timeZoneList.Add("", "");
+            timeZoneList[""] = "";
 
             foreach (TimeZoneInfo timezone in timeZones)
             {
@@ -1650,7 +1973,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                     display = $"{display} (active daylight savings)";
                 }
 
-                timeZoneList.Add(display, timezone.Id); // Use timezone Id as value
+                timeZoneList[display] = timezone.Id;
             }
 
             return timeZoneList;

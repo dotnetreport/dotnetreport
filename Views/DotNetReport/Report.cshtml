@@ -27,6 +27,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                 execReportUrl: "@Url.Action("RunReport", "DotNetReportApi")",
                 runLinkReportUrl: "@Url.Action("RunReportLink", "DotNetReportApi")",
                 reportWizard: $("#filter-panel"),
+                fieldOptionsModal: $("#fieldOptionsModal"),
                 reportHeader: "report-header",
                 lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
                 apiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
@@ -41,7 +42,8 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                 dataFilters: data.dataFilters,
                 runExportUrl: "/DotnetReportApi/",
                 printReportUrl: "@Url.Action("ReportPrint", "DotNetReport", null, this.Request.Url.Scheme)",
-                getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")'
+                getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
+                previewEmailListUrl: '@Url.Action("PreviewEmailList", "DotNetReportApi")'
             });
 
                 vm.loadProcs().done(function () {
@@ -75,7 +77,10 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
 </div>
 
 <div class="container-fluid">
-    <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+    @if (ViewBag.AllowAdminMode == true)
+    {
+        <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
+    }
 
     <div class="card">
         <div class="card-header">

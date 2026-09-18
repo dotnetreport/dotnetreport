@@ -192,7 +192,8 @@
 
         <div data-bind="foreach: outerGroupData">
             <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
-            <h6 data-bind="html: display"></h6>
+            <br />
+            <h6 style="font-weight: normal; page-break-after: avoid; break-after: avoid;" data-bind="html: display"></h6>
             <div class="" style="padding-top: 5px;"></div>
 
             <!-- ko if: $parents[1].ReportType() != 'Single'-->
@@ -366,13 +367,10 @@
                 <!-- ko if: $parentContext.$parent.SubTotals().length == 1 && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
                 <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
                     <tr class="sub-total">
-                        <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() -->
-                            <td></td>
-                        <!-- /ko -->
                         <!-- ko foreach: Items -->
                         <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
                         <td data-bind="style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : 'right'}">
-                            <div data-bind="style: {'width': fieldWidth }">
+                            <div data-bind="style: {'width': fieldWidth }, visible: _showInTotalRow != false">
                                 <span class="preserve-space" data-bind="html: formattedVal"></span>
                             </div>
                         </td>
@@ -430,15 +428,17 @@
         }
 
         var exportId = '@ViewBag.ExportId';
-        ajaxcall({
-            url: '@Url.Action("SaveExportSession", "DotNetReportApi")',
-            type: 'POST',
-            async: false,
-            noBlocking: true,
-            data: JSON.stringify(data)
-        }).done(function (result) {
-            if (result && result.exportId) exportId = result.exportId;
-        });
+        if (!exportId) {
+            ajaxcall({
+               url: '@Url.Action("SaveExportSession", "DotNetReportApi")',
+               type: 'POST',
+               async: false,
+               noBlocking: true,
+               data: JSON.stringify(data)
+            }).done(function (result) {
+               if (result && result.exportId) exportId = result.exportId;
+            });
+        }
         $('#exportId').val(exportId);
 
         var vm = new reportViewModel({
@@ -460,6 +460,7 @@
             dataFilters: JSON.parse(data.dataFilters || '{}'),
             reportData: JSON.parse(@Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.ReportData ?? "{}"))),
             getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
+            previewEmailListUrl: '@Url.Action("PreviewEmailList", "DotNetReportApi")',
             chartSize: { width: 800, height: 450 }
         });
 

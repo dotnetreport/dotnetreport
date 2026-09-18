@@ -1,4 +1,6 @@
 ﻿using ReportBuilder.Web.Models;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
@@ -8,7 +10,15 @@ namespace ReportBuilder.Web.Controllers
 {
     public class DotNetReportController : Controller
     {
-
+        protected override void OnActionExecuting(ActionExecutingContext filterContext)
+        {
+            base.OnActionExecuting(filterContext);
+            // Skip for specific actions
+            if (filterContext.ActionDescriptor.ActionName == "ReportPrint")
+                return;
+            var api = new DotNetReportApiController();
+            ViewBag.AllowAdminMode = api.GetSettings().CanUseAdminMode;
+        }
         public ActionResult Index()
         {
             return View();
@@ -40,8 +50,11 @@ namespace ReportBuilder.Web.Controllers
         public ActionResult ReportPrint(int reportId, string reportName, string reportDescription, string reportSql, string connectKey, string reportFilter, string reportType,
             int selectedFolder = 0, bool includeSubTotal = true, bool showUniqueRecords = false, bool aggregateReport = false, bool showDataWithGraph = true,
             string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "",
-            string reportSeries = "", bool expandAll = false, string reportData = "")
+            string reportSeries = "", bool expandAll = false, string reportData = "", string exportId = "")
         {
+            var session = ExportSessionStore.Get(exportId);
+            if (session == null)
+                throw new Exception("Unauthorized");
             var settings = new DotNetReportSettings
             {
                 ClientId = clientId,
@@ -54,7 +67,6 @@ namespace ReportBuilder.Web.Controllers
                                     System.Text.Json.JsonSerializer.Deserialize<object>(dataFilters) ?? new { }
             };
 
-            var exportId = ExportSessionStore.Save(settings);
             ViewBag.ExportId = exportId;
 
             var sanitizer = new Ganss.Xss.HtmlSanitizer
@@ -78,9 +90,9 @@ namespace ReportBuilder.Web.Controllers
                 SelectedFolder = selectedFolder,
                 ReportFilter = reportFilter, // json data to setup filter correctly again
                 ExpandAll = expandAll,
-
-                ClientId = clientId,
-                UserId = userId,
+                
+                ClientId = settings.ClientId,
+                UserId = settings.UserId,
                 CurrentUserRoles = currentUserRole,
                 DataFilters = HttpUtility.UrlDecode(dataFilters),
                 ReportData = sanitizer.Sanitize(HttpUtility.UrlDecode(reportData))

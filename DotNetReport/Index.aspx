@@ -39,7 +39,8 @@ Its Recommended you use it as is, and only change styling as needed to match you
                     printReportUrl: window.location.protocol + "//" + window.location.host + "/DotnetReport/ReportPrint",
                     getTimeZonesUrl: svc + "GetAllTimezones",
                     samePageOnRun: true,
-                    runExportUrl: svc
+                    runExportUrl: svc,
+                    previewEmailListUrl:svc+ "PreviewEmailList" 
                 });
 
                 vm.init(queryParams.folderid || 0, data.noAccount, queryParams.reportId || 0);
@@ -61,7 +62,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
 <div class="container-fluid">
     <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
-    <!--
+ <!--
         The markup code below is related to presentation. You don't have to change it, unless you
         intentionally want to change something in the Report Builder's behavior in your Application.
         It's Recommended you use it as is. You will be responsible for managing and maintaining any changes.
@@ -235,12 +236,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <button type="button" class="btn btn-sm btn-link text-decoration-none px-0" data-bind="visible: !showClientScope(), click: function() { showClientScope(true); }">
                                     <i class="fa fa-user"></i> <span data-bind="text: headerClientId() ? 'Change client (' + headerClientId() + ')' : 'Restrict to a Client Id'"></span>
                                 </button>
-                                <div class="input-group input-group-sm" style="max-width: 400px;" data-bind="visible: showClientScope">
+                                <!-- ko if: showClientScope --><div class="input-group input-group-sm" style="max-width: 400px;">
                                     <span class="input-group-text">Client Id</span>
                                     <input class="form-control" type="text" placeholder="Blank = Global" data-bind="value: headerClientId, event: { change: function () { applyHeaderScope(); } }">
                                     <button class="btn btn-outline-secondary" type="button" data-bind="click: cancelHeaderScope" title="Cancel"><i class="fa fa-times"></i></button>
                                     <span class="input-group-text bg-white" data-bs-toggle="tooltip" data-placement="top" title="Leave blank for a Global header. Changing this switches to that client's headers."><i class="fa fa-question-circle helptip"></i></span>
-                                </div>
+                                </div><!-- /ko -->
                                 <button class="btn btn-primary btn-sm ms-auto" data-bind="click: saveHtmlHeader">
                                     <i class="fa fa-save"></i> Save Header
                                 </button>
@@ -273,7 +274,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <!-- Designer (hidden when report footers are turned off) -->
                         <div data-bind="visible: UseReportFooter">
                         <!-- Selection toolbar (footer has one per scope, so just the client scope) -->
-                        <div class="d-flex flex-wrap align-items-end gap-2 mb-3" data-bind="visible: clientListIds().length > 0">
+                        <!-- ko if: clientListIds().length > 0 --><div class="d-flex flex-wrap align-items-end gap-2 mb-3">
                             <div>
                                 <label class="form-label small text-muted mb-1">Client scope</label>
                                 <select class="form-select form-select-sm" style="min-width: 200px;"
@@ -283,7 +284,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             event: { change: function () { loadHtmlFooter(false); } }">
                                 </select>
                             </div>
-                        </div>
+                        </div><!-- /ko -->
 
                         <!-- Editor card -->
                         <div class="card shadow-sm">
@@ -313,12 +314,12 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <button type="button" class="btn btn-sm btn-link text-decoration-none px-0" data-bind="visible: !showClientScope(), click: function() { showClientScope(true); }">
                                     <i class="fa fa-user"></i> <span data-bind="text: footerClientId() ? 'Change client (' + footerClientId() + ')' : 'Restrict to a Client Id'"></span>
                                 </button>
-                                <div class="input-group input-group-sm" style="max-width: 400px;" data-bind="visible: showClientScope">
+                                <!-- ko if: showClientScope --><div class="input-group input-group-sm" style="max-width: 400px;">
                                     <span class="input-group-text">Client Id</span>
                                     <input class="form-control" type="text" placeholder="Blank = Global" data-bind="value: footerClientId, event: { change: function () { applyFooterScope(); } }">
                                     <button class="btn btn-outline-secondary" type="button" data-bind="click: cancelFooterScope" title="Cancel"><i class="fa fa-times"></i></button>
                                     <span class="input-group-text bg-white" data-bs-toggle="tooltip" data-placement="top" title="Leave blank for a Global footer. Changing this switches to that client's footer."><i class="fa fa-question-circle helptip"></i></span>
-                                </div>
+                                </div><!-- /ko -->
                                 <button class="btn btn-primary btn-sm ms-auto" data-bind="click: saveHtmlFooter">
                                     <i class="fa fa-save"></i> Save Footer
                                 </button>
@@ -348,8 +349,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <span class="fa fa-3x fa-folder text-secondary"></span>
                                     <span class="desc" data-bind="text: FolderName"></span>
                                     <div data-bind="visible: $root.adminMode" style="font-size: 0.75em; margin-top: 4px;" onclick="event.stopPropagation()">
-                                        <span class="badge text-bg-info text-white" data-bind="text: UserId ? UserId : 'Any User'"></span>
-                                        <span class="badge text-bg-info text-white" data-bind="text: UserRoles ? UserRoles : 'Any Role'"></span>
+                                        <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                     </div>
                                 </li>
                             </ul>
@@ -385,13 +385,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <span class="desc" data-bind="highlightedText: { text: FolderName, highlight: $parent.searchReports, css: 'highlight' }"></span>
                                             <div data-bind="visible: $root.adminMode" style="font-size: 0.75em; margin-top: 4px;" onclick="event.stopPropagation()">
                                                 <div class="d-flex flex-wrap gap-1">
-                                                    <span class="badge bg-info text-white" title="Manage Users" data-bind="text: UserId ? '👤 ' + UserId : '👤 Any User'"> </span>
-                                                    <span class="badge bg-info text-white border" title="View only Users" data-bind="visible: ViewOnlyUserId"> 👁 <span data-bind="text: ViewOnlyUserId"></span> </span>
-                                                    <span class="badge bg-info text-white border" title="Delete only Users" data-bind="visible: DeleteOnlyUserId"> 🗑 <span data-bind="text: DeleteOnlyUserId"></span> </span>
-                                                    <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (UserRoles ? UserRoles : 'Any Role')"> </span>
-                                                    <span class="badge bg-info text-white border" title="View only Roles" data-bind="visible: ViewOnlyUserRoles"> 👁 <span data-bind="text: ViewOnlyUserRoles"></span> </span>
-                                                    <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="visible: DeleteOnlyUserRoles"> 🗑 <span data-bind="text: DeleteOnlyUserRoles"></span> </span>
-                                                    <span class="badge bg-info text-white" title="Client" data-bind="visible: ClientId"> 🏢 <span data-bind="text: ClientId"></span> </span>
+                                                    <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                                 </div>
                                             </div>
                                         </li>
@@ -408,10 +402,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <div data-bind="visible: $root.adminMode"
                                                  style="font-size: 0.75em; margin-top: 4px;"
                                                  onclick="event.stopPropagation()">
-                                                <span class="badge text-bg-info text-white"
-                                                      data-bind="text: UserId ? UserId : 'Any User'"></span>
-                                                <span class="badge text-bg-info text-white"
-                                                      data-bind="text: UserRoles ? UserRoles : 'Any Role'"></span>
+                                                <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                             </div>
                                         </li>
                                     </ul>
@@ -451,13 +442,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 </div>
                                                 <div data-bind="if: $parent.adminMode">
                                                     <div class="d-flex flex-wrap gap-1 align-items-center mt-1">
-                                                        <span class="badge bg-info text-white" title="Manage Users" data-bind="text: userId ? '👤 ' + userId : '👤 Any User'"> </span>
-                                                        <span class="badge bg-info text-white border" title="View only Users" data-bind="visible: viewOnlyUserId"> 👁 <span data-bind="text: viewOnlyUserId"></span> </span>
-                                                        <span class="badge bg-info text-white border" title="Delete only Users" data-bind="visible: deleteOnlyUserId"> 🗑 <span data-bind="text: deleteOnlyUserId"></span> </span>
-                                                        <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (userRole ? userRole : 'Any Role')"> </span>
-                                                        <span class="badge bg-info text-white border" title="View only Roles" data-bind="visible: viewOnlyUserRole"> 👁 <span data-bind="text: viewOnlyUserRole"></span> </span>
-                                                        <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="visible: deleteOnlyUserRole"> 🗑 <span data-bind="text: deleteOnlyUserRole"></span> </span>
-                                                        <span class="badge bg-info text-white" title="Client" data-bind="visible: clientId"> 🏢 <span data-bind="text: clientId"></span> </span>
+                                                        <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                                         <a data-bind="attr: {href: '/DotNetReport/?linkedreport=true&noparent=true&reportId=' + reportId }" target="_blank" title="Direct Link"><span class="fa fa-link"></span></a>
                                                         <a href="#" data-bind="click: function() { navigator && navigator.clipboard && navigator.clipboard.writeText('/DotNetReport?linkedreport=true&noparent=true&reportId=' + reportId) }" title="Copy Link"><span class="fa fa-copy"></span></a>
                                                     </div>
@@ -602,18 +587,17 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                 <span class="fa fa-folder"></span> Add Sub Folder
                                                             </a>
                                                         </li>
+                                                        <li data-bind="visible: $root.adminMode() && Id">
+                                                            <a class="dropdown-item" href="#" data-bind="click: function(){ $root.openFolderAccessModal($data); }">
+                                                                <span class="fa fa-key"></span> Manage Access
+                                                            </a>
+                                                        </li>
                                                     </ul>
                                                 </div>
                                             </div>
                                             <div class="col-md-8" data-bind="visible: $parent.adminMode">
                                                 <div class="d-flex flex-wrap gap-1 align-items-center">
-                                                    <span class="badge bg-info text-white" title="Manage Users" data-bind="text: UserId ? '👤 ' + UserId : '👤 Any User'"> </span>
-                                                    <span class="badge bg-info text-white border" title="View only Users" data-bind="visible: ViewOnlyUserId"> 👁 <span data-bind="text: ViewOnlyUserId"></span> </span>
-                                                    <span class="badge bg-info text-white border" title="Delete only Users" data-bind="visible: DeleteOnlyUserId"> 🗑 <span data-bind="text: DeleteOnlyUserId"></span> </span>
-                                                    <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (UserRoles ? UserRoles : 'Any Role')"> </span>
-                                                    <span class="badge bg-info text-white border" title="View only Roles" data-bind="visible: ViewOnlyUserRoles"> 👁 <span data-bind="text: ViewOnlyUserRoles"></span> </span>
-                                                    <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="visible: DeleteOnlyUserRoles"> 🗑 <span data-bind="text: DeleteOnlyUserRoles"></span> </span>
-                                                    <span class="badge bg-info text-white" title="Client" data-bind="visible: ClientId"> 🏢 <span data-bind="text: ClientId"></span> </span>
+                                                    <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -638,24 +622,50 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <!-- Folder search results (list view) -->
                                     <div data-bind="if: searchReports() && foldersInSearch().length > 0">
                                         <div class="row fw-bold py-1 border-bottom mt-2 w-100">
-                                            <div class="col-md-6"><span class="fa fa-folder"></span> Matching Folders</div>
-                                            <div class="col-md-6" data-bind="visible: $root.adminMode">Access</div>
+                                            <div class="col-md-3"><span class="fa fa-folder"></span> Matching Folders</div>
+                                            <div class="col-md-1"></div>
+                                            <div class="col-md-8" data-bind="visible: $root.adminMode">Access</div>
                                         </div>
                                         <div data-bind="foreach: foldersInSearch">
                                             <div class="row border-bottom py-2 align-items-center w-100">
-                                                <div class="col-md-6 d-flex align-items-center">
+                                                <div class="col-md-3 d-flex align-items-center">
                                                     <span class="fa fa-folder text-secondary me-2"></span>
                                                     <a href="#" data-bind="click: function(){ $parent.SelectedFolder($data); $parent.searchReports(''); }, highlightedText: { text: FolderName, highlight: $parent.searchReports, css: 'highlight' }" style="cursor: pointer"></a>
                                                 </div>
-                                                <div class="col-md-6" data-bind="visible: $root.adminMode">
+                                                <div class="col-md-1" onclick="event.stopPropagation()">
+                                                    <div class="dropdown hover-ellipsis" data-bind="visible: ($root.CanManageFolders() || $root.adminMode()) && (canEdit || canDelete || $root.adminMode())">
+                                                        <button class="btn btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                            <span class="fa fa-ellipsis-h"></span>
+                                                        </button>
+                                                        <ul class="dropdown-menu">
+                                                            <li>
+                                                                <a class="dropdown-item" href="#" data-bind="click: function(){ $parent.SelectedFolder($data); $parent.ManageFolder.editFolder(); }, visible: canEdit || $root.adminMode()">
+                                                                    <span class="fa fa-edit"></span> Edit Folder
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item text-danger" href="#" data-bind="click: function(){ $parent.SelectedFolder($data); $parent.ManageFolder.deleteFolder(); }, visible: canDelete || $root.adminMode()">
+                                                                    <span class="fa fa-trash"></span> Delete Folder
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item" href="#"
+                                                                   data-bind="click: function(){ $parent.ManageFolder.addSubFolder($data); },
+                                                                    visible: canEdit || $root.adminMode()">
+                                                                    <span class="fa fa-folder"></span> Add Sub Folder
+                                                                </a>
+                                                            </li>
+                                                            <li data-bind="visible: $root.adminMode() && Id">
+                                                                <a class="dropdown-item" href="#" data-bind="click: function(){ $root.openFolderAccessModal($data); }">
+                                                                    <span class="fa fa-key"></span> Manage Access
+                                                                </a>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-8" data-bind="visible: $root.adminMode">
                                                     <div class="small text-muted d-flex flex-wrap gap-1 align-items-center">
-                                                        <span class="badge bg-info text-white" title="Manage Users" data-bind="text: UserId ? '👤 ' + UserId : '👤 Any User'"> </span>
-                                                        <span class="badge bg-info text-white border" title="View only Users" data-bind="visible: ViewOnlyUserId"> 👁 <span data-bind="text: ViewOnlyUserId"></span> </span>
-                                                        <span class="badge bg-info text-white border" title="Delete only Users" data-bind="visible: DeleteOnlyUserId"> 🗑 <span data-bind="text: DeleteOnlyUserId"></span> </span>
-                                                        <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (UserRoles ? UserRoles : 'Any Role')"> </span>
-                                                        <span class="badge bg-info text-white border" title="View only Roles" data-bind="visible: ViewOnlyUserRoles"> 👁 <span data-bind="text: ViewOnlyUserRoles"></span> </span>
-                                                        <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="visible: DeleteOnlyUserRoles"> 🗑 <span data-bind="text: DeleteOnlyUserRoles"></span> </span>
-                                                        <span class="badge bg-info text-white" title="Client" data-bind="visible: ClientId"> 🏢 <span data-bind="text: ClientId"></span> </span>
+                                                        <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -712,6 +722,11 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                     <span class="fa fa-folder"></span> Add Sub Folder
                                                                 </a>
                                                             </li>
+                                                            <li data-bind="visible: $root.adminMode() && Id">
+                                                                <a class="dropdown-item" href="#" data-bind="click: function(){ $root.openFolderAccessModal($data); }">
+                                                                    <span class="fa fa-key"></span> Manage Access
+                                                                </a>
+                                                            </li>
                                                         </ul>
                                                     </div>
                                                 </div>
@@ -719,20 +734,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <div class="col-md-2"></div>
                                                 <div class="col-md-2" data-bind="visible: $root.adminMode">
                                                     <div class="d-flex flex-wrap gap-1 align-items-center">
-                                                        <span class="badge bg-info text-white" title="Manage Users"
-                                                              data-bind="text: UserId ? '👤 ' + UserId : '👤 Any User'"></span>
-                                                        <span class="badge bg-info text-white border" title="View only Users"
-                                                              data-bind="visible: ViewOnlyUserId"> 👁 <span data-bind="text: ViewOnlyUserId"></span></span>
-                                                        <span class="badge bg-info text-white border" title="Delete only Users"
-                                                              data-bind="visible: DeleteOnlyUserId"> 🗑 <span data-bind="text: DeleteOnlyUserId"></span></span>
-                                                        <span class="badge bg-info text-white" title="Manage Roles"
-                                                              data-bind="text: '🔑 ' + (UserRoles ? UserRoles : 'Any Role')"></span>
-                                                        <span class="badge bg-info text-white border" title="View only Roles"
-                                                              data-bind="visible: ViewOnlyUserRoles"> 👁 <span data-bind="text: ViewOnlyUserRoles"></span></span>
-                                                        <span class="badge bg-info text-white border" title="Delete only Roles"
-                                                              data-bind="visible: DeleteOnlyUserRoles"> 🗑 <span data-bind="text: DeleteOnlyUserRoles"></span></span>
-                                                        <span class="badge bg-info text-white" title="Client"
-                                                              data-bind="visible: ClientId"> 🏢 <span data-bind="text: ClientId"></span></span>
+                                                        <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                                     </div>
                                                 </div>
                                                 <div class="col-md-1" data-bind="visible: $root.adminMode"></div>
@@ -844,13 +846,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <div class="col-md-2" data-bind="text: folderName, visible: $parent.searchReports()"></div>
                                                 <div class="col-md-2" data-bind="visible: $parent.adminMode">
                                                     <div class="d-flex flex-wrap gap-1 align-items-center mt-1">
-                                                        <span class="badge bg-info text-white" title="Manage Users" data-bind="text: userId ? '👤 ' + userId : '👤 Any User'"> </span>
-                                                        <span class="badge bg-info text-white border" title="View only Users" data-bind="visible: viewOnlyUserId"> 👁 <span data-bind="text: viewOnlyUserId"></span> </span>
-                                                        <span class="badge bg-info text-white border" title="Delete only Users" data-bind="visible: deleteOnlyUserId"> 🗑 <span data-bind="text: deleteOnlyUserId"></span> </span>
-                                                        <span class="badge bg-info text-white" title="Manage Roles" data-bind="text: '🔑 ' + (userRole ? userRole : 'Any Role')"> </span>
-                                                        <span class="badge bg-info text-white border" title="View only Roles" data-bind="visible: viewOnlyUserRole"> 👁 <span data-bind="text: viewOnlyUserRole"></span> </span>
-                                                        <span class="badge bg-info text-white border" title="Delete only Roles" data-bind="visible: deleteOnlyUserRole"> 🗑 <span data-bind="text: deleteOnlyUserRole"></span> </span>
-                                                        <span class="badge bg-info text-white" title="Client" data-bind="visible: clientId"> 🏢 <span data-bind="text: clientId"></span> </span>
+                                                        <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                                     </div>
                                                 </div>
                                                 <div class="col-md-1" data-bind="visible: $parent.adminMode">
@@ -1175,7 +1171,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fa fa-key"></i> Manage Access <span class="text-muted ms-1" data-bind="text: accessModalReport() ? accessModalReport().reportName : ''"></span></h5>
+                <h5 class="modal-title"><i class="fa fa-key"></i> Manage Access <span class="text-muted ms-1" data-bind="text: accessModalTitle"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -1337,13 +1333,15 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <tbody data-bind="foreach: schedules">
                             <tr>
                                 <td data-bind="text: $parent.scheduleSummary($data)"></td>
-                                <td data-bind="text: EmailTo"></td>
+                                <td data-bind="text: $root.scheduleBuilder.emailToDisplay($data)"></td>
                                 <td data-bind="text: $parent.formatSummary($data)"></td>
                                 <td class="small text-muted" data-bind="text: $parent.filterSummary($data)"></td>
                                 <td class="text-end text-nowrap">
-                                    <button type="button" class="btn btn-sm btn-link p-0 me-2" data-bind="click: function() { $parent.editSchedule($data); }">Edit</button>
-                                    <button type="button" class="btn btn-sm btn-link p-0 me-2" data-bind="click: function() { $parent.changeFilter($data); }">Change Filter</button>
-                                    <button type="button" class="btn btn-sm btn-link p-0 text-danger" data-bind="click: function() { $parent.deleteSchedule($data); }">Delete</button>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" title="Edit" data-bind="click: function() { $parent.editSchedule($data); }"><i class="fa fa-pencil"></i></button>
+                                        <button type="button" class="btn btn-outline-secondary" title="Change Filter" data-bind="click: function() { $parent.changeFilter($data); }"><i class="fa fa-filter"></i></button>
+                                        <button type="button" class="btn btn-outline-danger" title="Delete" data-bind="click: function() { $parent.deleteSchedule($data); }"><i class="fa fa-trash"></i></button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
@@ -1352,7 +1350,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 <div data-bind="visible: viewMode() === 'edit'">
                     <div data-bind="template: { name: 'report-schedule', data: $parent }"></div>
                 </div>
-                <div data-bind="visible: viewMode() === 'filter'">
+                <div id="schedule-filter-editor" class="needs-validation" data-bind="visible: viewMode() === 'filter'">
                     <strong>Filter for this schedule</strong>
                     <div class="small text-muted mb-2">
                         When set, this schedule runs with <b>exactly these filters</b> instead of the report's saved filters and

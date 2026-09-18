@@ -40,7 +40,11 @@ namespace ReportBuilder.WebForms.DotNetReport
             string currentUserRole = Request.Form["currentUserRole"];
             string dataFilters = HttpUtility.HtmlDecode(Request.Form["dataFilters"]) ?? "";
             string reportData = HttpUtility.HtmlDecode(Request.Unvalidated["reportData"]) ?? "";
-
+            string exportId = Request.Form["exportId"];
+            var session = ExportSessionStore.Get(exportId);
+            if (session == null)
+                throw new Exception("Unauthorized");
+            Session["ExportId"] = exportId;
             Session["reportPrint"] = "true";
             Session["userId"] = userId;
             Session["clientId"] = clientId;
@@ -58,8 +62,6 @@ namespace ReportBuilder.WebForms.DotNetReport
                                     Newtonsoft.Json.JsonConvert.DeserializeObject<object>(dataFilters)
             };
 
-            var exportId = ExportSessionStore.Save(settings);
-            Session["ExportId"] = exportId;
 
             var sanitizer = new Ganss.Xss.HtmlSanitizer
             {
