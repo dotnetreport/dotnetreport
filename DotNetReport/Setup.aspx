@@ -512,8 +512,8 @@
                             <!-- /ko -->
                         </div>
                     </div>
-                    @* Standalone and SSO login options for a later release. *@
-                    @*
+                    <%-- Standalone and SSO login options for a later release. --%>
+                    <%--
                     <div class="card mb-3" data-bind="css: { 'border-primary': loginMode() === 'standalone' }">
                         <div class="card-body py-3">
                             <div class="form-check">
@@ -579,7 +579,7 @@ settings.ClientId        = User.FindFirst("ClientId")?.Value;</pre>
                             <!-- /ko -->
                         </div>
                     </div>
-*@
+--%>
                 </div>
             </div>
         </div>

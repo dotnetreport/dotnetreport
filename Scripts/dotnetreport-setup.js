@@ -128,6 +128,8 @@ var manageViewModel = function (options) {
 				type: 'GET'
 			}).done(function (x) {
 				if (x.d) x = x.d;
+				if (x.result) x = x.result;
+				if (x.Result) x = x.Result;
 				if (!x || !x.success) { toastr.error((x && x.message) || 'Could not load the Email List'); return; }
 				if (!x.total) { bootbox.alert('This Email List returned no email addresses.'); return; }
 				var rows = x.emails.map(function (e) { return '<div>' + $('<div>').text(e).html() + '</div>'; }).join('');
@@ -3713,6 +3715,8 @@ var usersRolesViewModel = function (options, settings, previewData) {
 		self.loadingUsers(true);
 		api('GetAccountUsersAndRoles', { source: 'portal' }).done(function (r) {
 			if (r && r.d) r = r.d;
+			if (r && r.result) r = r.result;
+			if (r && r.Result) r = r.Result;
 			self.portalUsers((r && r.users) || []);
 			self.portalRoles((r && r.roles) || []);
 		}).fail(function () {

@@ -383,6 +383,8 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings, apiUrl, previewEma
 			data: { id: self.emailQueryId() }
 		}).done(function (x) {
 			if (x.d) x = x.d;
+			if (x.result) x = x.result;
+			if (x.Result) x = x.Result;
 			if (!x || !x.success) { toastr.error((x && x.message) || 'Could not load the Email List'); return; }
 			if (!x.total) { bootbox.alert('This Email List returned no email addresses.'); return; }
 			var rows = x.emails.map(function (e) { return '<div>' + $('<div>').text(e).html() + '</div>'; }).join('');
@@ -5160,6 +5162,8 @@ var reportViewModel = function (options) {
 		if (!s || !s.EmailQueryId || !options.previewEmailListUrl) return;
 		ajaxcall({ url: options.previewEmailListUrl, type: 'GET', noBlocking: true, data: { id: s.EmailQueryId } }).done(function (x) {
 			if (x.d) x = x.d;
+			if (x.result) x = x.result;
+			if (x.Result) x = x.Result;
 			if (x && x.success) self.scheduleEmailListColumns(x.columns || []);
 		});
 	};
