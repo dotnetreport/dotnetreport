@@ -181,6 +181,16 @@ namespace ReportBuilder.Web.Models
         public bool Hidden { get; set; }
     }
 
+    public class ForeignKeyModel
+    {
+        public string SchemaName { get; set; }
+        public string TableName { get; set; }
+        public string ColumnName { get; set; }
+        public string JoinedSchemaName { get; set; }
+        public string JoinedTableName { get; set; }
+        public string JoinedColumnName { get; set; }
+    }
+
     public class RelationModel
     {
         public int Id { get; set; }
@@ -6646,6 +6656,20 @@ namespace ReportBuilder.Web.Models
             }
         }
 
+        public static List<ForeignKeyModel> MapForeignKeys(DataTable dt)
+        {
+            var list = new List<ForeignKeyModel>();
+            foreach (DataRow r in dt.Rows)
+            {
+                list.Add(new ForeignKeyModel
+                {
+                    SchemaName = r[0].ToString(), TableName = r[1].ToString(), ColumnName = r[2].ToString(),
+                    JoinedSchemaName = r[3].ToString(), JoinedTableName = r[4].ToString(), JoinedColumnName = r[5].ToString()
+                });
+            }
+            return list;
+        }
+
         public static AppSettingModel GetAppSettings()
         {
             var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
@@ -6800,6 +6824,7 @@ namespace ReportBuilder.Web.Models
         Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null);
         Task<TableViewModel> GetSchemaFromSql(string connString, TableViewModel table, string sql, bool dynamicColumns);
         Task<List<TableViewModel>> GetSearchProcedure(string value = null, string accountKey = null, string dataConnectKey = null);
+        Task<List<ForeignKeyModel>> GetForeignKeys(string dataConnectKey = null);
 
     }
 
@@ -7062,6 +7087,20 @@ namespace ReportBuilder.Web.Models
                     return FieldTypes.Varchar; // 
                     //throw new ArgumentException(string.Format("The data type {0} is not handled by Jet. Did you retrieve this from Jet?", ((SqlDbType)SqlDataType)));
             }
+        }
+
+        public async Task<List<ForeignKeyModel>> GetForeignKeys(string dataConnectKey = null)
+        {
+            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
+            var sql = @"SELECT s1.name, t1.name, c1.name, s2.name, t2.name, c2.name
+                FROM sys.foreign_key_columns fkc
+                JOIN sys.tables t1 ON t1.object_id = fkc.parent_object_id
+                JOIN sys.schemas s1 ON s1.schema_id = t1.schema_id
+                JOIN sys.columns c1 ON c1.object_id = fkc.parent_object_id AND c1.column_id = fkc.parent_column_id
+                JOIN sys.tables t2 ON t2.object_id = fkc.referenced_object_id
+                JOIN sys.schemas s2 ON s2.schema_id = t2.schema_id
+                JOIN sys.columns c2 ON c2.object_id = fkc.referenced_object_id AND c2.column_id = fkc.referenced_column_id";
+            return DotNetReportHelper.MapForeignKeys(ExecuteQuery(connString, sql));
         }
 
         public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)

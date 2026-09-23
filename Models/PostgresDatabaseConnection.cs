@@ -161,6 +161,22 @@ namespace ReportBuilder.Web.Models
                     return FieldTypes.Varchar;
             }
         }
+        public async Task<List<ForeignKeyModel>> GetForeignKeys(string dataConnectKey = null)
+        {
+            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
+            var sql = @"SELECT ns.nspname, cl.relname, a.attname, fns.nspname, fcl.relname, fa.attname
+                FROM pg_constraint con
+                JOIN pg_class cl ON cl.oid = con.conrelid
+                JOIN pg_namespace ns ON ns.oid = cl.relnamespace
+                JOIN pg_class fcl ON fcl.oid = con.confrelid
+                JOIN pg_namespace fns ON fns.oid = fcl.relnamespace
+                JOIN LATERAL unnest(con.conkey, con.confkey) AS k(attnum, fattnum) ON true
+                JOIN pg_attribute a ON a.attrelid = cl.oid AND a.attnum = k.attnum
+                JOIN pg_attribute fa ON fa.attrelid = fcl.oid AND fa.attnum = k.fattnum
+                WHERE con.contype = 'f'";
+            return DotNetReportHelper.MapForeignKeys(ExecuteQuery(connString, sql));
+        }
+
         public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();

@@ -1512,6 +1512,31 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
+        public class DatabaseRelationsCall
+        {
+            public string? accountKey { get; set; }
+            public string? dataConnectKey { get; set; }
+        }
+
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<IActionResult> GetDatabaseRelations([FromBody] DatabaseRelationsCall data)
+        {
+            try
+            {
+                var settings = GetSettings();
+                if (!settings.CanUseAdminMode) throw new Exception("Not Authorized to access this Resource");
+
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
+                return new JsonResult(await databaseConnection.GetForeignKeys(data.dataConnectKey), new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = 500;
+                return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+        }
+
         private class checkAccessModel {
             public bool hasAccess { get; set; }
             public string access { get; set; }

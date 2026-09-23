@@ -137,6 +137,15 @@ namespace ReportBuilder.Web.Models
         }
 
 
+        public async Task<List<ForeignKeyModel>> GetForeignKeys(string dataConnectKey = null)
+        {
+            var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
+            var sql = @"SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, REFERENCED_TABLE_SCHEMA, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME
+                FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+                WHERE TABLE_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL";
+            return DotNetReportHelper.MapForeignKeys(ExecuteQuery(connString, sql));
+        }
+
         public async Task<List<TableViewModel>> GetTables(string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();
