@@ -522,7 +522,7 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings, apiUrl, previewEma
 			SelectedDays: self.selectedDays().join(","),
 			SelectedMonths: self.selectedMonths().join(","),
 			SelectedDates: self.selectedOption() == 'once' ? self.selectedDate() : self.selectedDates().join(","),
-			SelectedHour: self.selectedHour(),
+			SelectedHour: (self.selectedHour() || '12').toString(),
 			SelectedMinute: self.selectedMinute(),
 			SelectedAmPm: self.selectedAmPm(),
 			EmailTo: self.emailTo(),
@@ -909,13 +909,15 @@ function filterGroupViewModel(args) {
 			});
 		}
 
-		function loadLookupList(fieldId, dataFilters) {
+		function loadLookupList(fieldId, dataFilters, parentValues) {
 			if (printMode === true) return;
+			var model = { fieldId: fieldId, addToken: true };
+			if (parentValues && parentValues.length > 0) model.parentFilterValues = JSON.stringify(parentValues);
 			ajaxcall({
 				url: args.options.apiUrl,
 				data: {
 					method: "/ReportApi/GetLookupList",
-					model: JSON.stringify({ fieldId: fieldId, dataFilters: dataFilters, addToken: true })
+					model: JSON.stringify(model)
 				},
 				noBlocking: args.parent.ReportMode()=='dashboard'
 			}).done(function (result) {
@@ -969,13 +971,7 @@ function filterGroupViewModel(args) {
 				if (newField.hasForeignParentKey) {
 
 					filter.ParentIn.subscribe(function (newValue) {
-						if (newValue && newValue.length > 0) {
-							var df = Object.assign({}, args.options.dataFilters || {});
-							df[newField.foreignParentApplyTo] = newValue.join();
-							loadLookupList(newField.fieldId, df);
-						} else {
-							loadLookupList(newField.fieldId, args.options.dataFilters);
-						}
+						loadLookupList(newField.fieldId, args.options.dataFilters, newValue);
 					});
 
 					var existingParentFilter = self.GetValuesInFilterGroupForFieldAndTable(newField.foreignParentTable, newField.foreignParentKeyField);
