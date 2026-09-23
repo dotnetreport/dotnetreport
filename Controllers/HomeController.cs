@@ -134,6 +134,9 @@ namespace ReportBuilder.Web.Controllers
                         SessionHelper.SetUserRoles(HttpContext, loginResult.User.AllRoles);
                         SessionHelper.SetCurrentUserRoles(HttpContext, loginResult.User.Roles);
                         await LoginUser(model.Email, loginResult.PrimaryContact, true, loginResult.User.Claims, loginResult.User.Roles, model.RememberMe);
+                        // Always switch the stored tokens to the account that just logged in
+                        DotNetReportHelper.UpdateConfigurationFile(loginResult.AccountKey, loginResult.PrivateKey, loginResult.DataConnect);
+                        _userApiController.UseAccountKey(loginResult.AccountKey);
                         var usersResult = await _userApiController.LoadUsers();
                         if (usersResult.Result is OkObjectResult okResult)
                         {
@@ -143,7 +146,6 @@ namespace ReportBuilder.Web.Controllers
                                 SessionHelper.SetUsers(HttpContext, apiResult.data);
                             }
                         }
-                        DotNetReportHelper.UpdateConfigurationFile(loginResult.AccountKey, loginResult.PrivateKey, loginResult.DataConnect, true);
                         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                         {
                             return Redirect(returnUrl);
@@ -179,6 +181,7 @@ namespace ReportBuilder.Web.Controllers
         public async Task<ActionResult> LogOut()
         {
             await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+            HttpContext.Session.Clear(); // drop the previous user's roles and user list
 
             return RedirectToAction("Index", "Home");
         }

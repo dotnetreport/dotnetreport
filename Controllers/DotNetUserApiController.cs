@@ -18,7 +18,7 @@ namespace ReportBuilder.Web.Controllers
         private readonly IConfiguration _configuration;
         private readonly HttpClient _httpClient;
         private readonly string _apiBaseUrl;
-        private readonly string accountKey;
+        private string accountKey;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
         public DotNetUserApiController(IConfiguration configuration, HttpClient httpClient, IHttpContextAccessor httpContextAccessor)
@@ -28,6 +28,11 @@ namespace ReportBuilder.Web.Controllers
             _apiBaseUrl = _configuration["dotNetReport:accountApiUrl"];
             accountKey = _configuration["dotNetReport:accountApiToken"];
             _httpContextAccessor = httpContextAccessor;
+        }
+
+        public void UseAccountKey(string key)
+        {
+            if (!string.IsNullOrEmpty(key)) accountKey = key;
         }
 
         private void AddUserClaimsToRequestHeaders()
