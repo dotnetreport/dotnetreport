@@ -1,4 +1,5 @@
 ﻿@model ReportBuilder.Web.Models.DotNetReportPrintModel
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Env
 @{
     Layout = "";
 }
@@ -17,8 +18,17 @@
     <link href="~/lib/summernote/summernote-bs5.min.css" rel="stylesheet" />
     <link href="~/lib/select2/css/select2.min.css" rel="stylesheet" />
     <link href="~/lib/leaflet/leaflet.css" rel="stylesheet" />
-    <link href="~/css/dotnetreport.css?v=6.0.0" rel="stylesheet" />
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    @{
+        var dotnetCssDir = System.IO.Path.Combine(Env.WebRootPath ?? "", "css");
+        var dotnetcssFiles = System.IO.Directory.Exists(dotnetCssDir)
+            ? System.IO.Directory.GetFiles(dotnetCssDir, "dotnetreport*.css").Select(f => System.IO.Path.GetFileName(f)).ToList()
+            : new List<string> { "dotnetreport.css" };
+        if (!dotnetcssFiles.Any()) { dotnetcssFiles = new List<string> { "dotnetreport.css" }; }
+    }
+    @foreach (var file in dotnetcssFiles)
+    {
+        <link href="~/css/@file?v=6.0.0" rel="stylesheet" />
+    }
     <style type="text/css">
         .report-view {
         margin: 0 0px 0 0px;
@@ -193,7 +203,8 @@
 
         <div data-bind="foreach: outerGroupData">
             <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
-            <h6 data-bind="html: display"></h6>
+            <br />
+            <h6 style="font-weight: normal; page-break-after: avoid; break-after: avoid;" data-bind="html: display"></h6>
             <div class="" style="padding-top: 5px;"></div>
 
             <!-- ko if: $parents[1].ReportType() != 'Single'-->
@@ -352,28 +363,25 @@
                         </td>
                     </tr>
                     <!-- /ko -->
-                    <!-- ko if: subReportsRan().length > 0 -->
-                    <tr>
-                        <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
-                            <div data-bind="foreach: subReportsRan">
-                                <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
-                            </div>
-                        </td>
-                    </tr>
-                    <!-- /ko -->
+                     <!-- ko if: nonInlineSubReports().length > 0 -->
+                <tr>
+                    <td data-bind="attr:{colspan: $parent.Columns.length }" style="padding-left: 0px;">
+                        <div data-bind="foreach: nonInlineSubReports">
+                            <div data-bind="template: { name: 'subreport-content', data: $data }"></div>
+                        </div>
+                    </td>
+                </tr>
+                <!-- /ko -->
                     <!-- /ko -->
                     <!-- /ko-->
                 </tbody>
                 <!-- ko if: $parentContext.$parent.SubTotals().length == 1 && $parentContext.$parentContext.$parent.OuterGroupColumns().length == 0 -->
                 <tfoot data-bind="foreach: $parentContext.$parent.SubTotals">
                     <tr class="sub-total">
-                        <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() -->
-                        <td></td>
-                        <!-- /ko -->
                         <!-- ko foreach: Items -->
                         <!-- ko if: Value != 'NA' && Value != 'NaN' && !outerGroup() -->
                         <td data-bind="style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : 'right'}">
-                            <div data-bind="style: {'width': fieldWidth }">
+                            <div data-bind="style: {'width': fieldWidth }, visible: _showInTotalRow != false">
                                 <span class="preserve-space" data-bind="html: formattedVal"></span>
                             </div>
                         </td>
@@ -415,10 +423,10 @@
     
         $(document).ready(function () {
         var data = {
-        currentUserId: '@Model.UserId',
-        currentUserRoles: ('@Model.CurrentUserRoles' ||'').split(','),
-        dataFilters: '@Model.DataFilters',
-        clientId: '@Model.ClientId'
+            currentUserId: '@Model.UserId',
+            currentUserRoles: ('@Model.CurrentUserRoles' ||'').split(','),
+            dataFilters: decodeHTMLEntities('@Model.DataFilters'),
+            clientId: '@Model.ClientId'
         };
 
         function decodeHTMLEntities(text) {
@@ -429,32 +437,50 @@
         // Remove new lines and carriage returns
         return decodedText.replace(/[\n\r]/g, '');
         }
-        
+
+        var exportId = '@ViewBag.ExportId';
+        if (!exportId) {
+            ajaxcall({
+               url: '@Url.Action("SaveExportSession", "DotNetReportApi")',
+               type: 'POST',
+               async: false,
+               noBlocking: true,
+               data: JSON.stringify(data)
+            }).done(function (result) {
+               if (result && result.exportId) exportId = result.exportId;
+            });
+        }
+        $('#exportId').val(exportId);
+
         var vm = new reportViewModel({
-        runReportUrl: "@Url.Action("Report")",
-        execReportUrl: "@Url.Action("RunReportUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId",
-        runLinkReportUrl: "@Url.Action("RunReportLinkUnAuth", "DotNetReportApi")",
-        reportWizard: $("#filter-panel"),
-        reportHeader: "report-header",
-        lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
-        apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")',
-        runReportApiUrl: '@Url.Action("RunReportApiUnAuth", "DotNetReportApi")?exportId=@ViewBag.ExportId',
-        reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)') || '{}',
-        reportMode: "print",
-        reportSql: "@Model.ReportSql",
-        reportConnect: "@Model.ConnectKey",
-        ReportSeries : "@Model.ReportSeries",
-        reportHeader: 'report-header',
-        userSettings: data,
-        dataFilters: JSON.parse(decodeHTMLEntities(data.dataFilters) || '{}'),
-        reportData: JSON.parse(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ReportData ?? "{}"))),
-        getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
-        chartSize: { width: 800, height: 450 }
+            runReportUrl: "@Url.Action("Report")",
+            execReportUrl: "@Url.Action("RunReportUnAuth", "DotNetReportApi")?exportId=" + exportId,
+            runLinkReportUrl: "@Url.Action("RunReportLinkUnAuth", "DotNetReportApi")?exportId=" + exportId,
+            reportWizard: $("#filter-panel"),
+            reportHeader: "report-header",
+            lookupListUrl: "@Url.Action("GetLookupList", "DotNetReportApi")",
+            apiUrl: '@Url.Action("CallReportApiUnAuth", "DotNetReportApi")?exportId=' + exportId,
+            runReportApiUrl: '@Url.Action("RunReportApiUnAuth", "DotNetReportApi")?exportId=' + exportId,
+            reportFilter: htmlDecode('@System.Web.HttpUtility.UrlDecode(Model.ReportFilter)') || '{}',
+            reportMode: "print",
+            reportSql: "@Model.ReportSql",
+            reportConnect: "@Model.ConnectKey",
+            ReportSeries : "@Model.ReportSeries",
+            reportHeader: 'report-header',
+            userSettings: data,
+            dataFilters: JSON.parse(data.dataFilters || '{}'),
+            reportData: JSON.parse(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ReportData ?? "{}"))),
+            getTimeZonesUrl: '@Url.Action("GetAllTimezones", "DotNetReportApi")',
+            previewEmailListUrl: '@Url.Action("PreviewEmailList", "DotNetReportApi")',
+            chartSize: { width: 800, height: 450 }
         });
 
         vm.pager.pageSize(10000);
         vm.adminMode(true);
         ko.applyBindings(vm);
+        
+        vm.headerDesigner.selectedHeaderClientId(data.clientId);
+        vm.footerDesigner.selectedFooterClientId(data.clientId);
 
         function checkReportsLoaded() {
         var allReportsLoaded = true;
@@ -486,55 +512,65 @@
         }
 
         var checkInterval;
+        var placeholdersReady = false;
         function showReportWhenReady() {
-        if (checkReportsLoaded()) {
-        $('.report-inner').show();
-        if (checkInterval) {
-        clearInterval(checkInterval);
+            if (placeholdersReady && checkReportsLoaded()) {
+                $('.report-inner').show();
+                if (checkInterval) {
+                    clearInterval(checkInterval);
+                }
+            }
         }
-        }
-        }
+        // FIX: load appSettings FIRST, then LoadReport
+        vm.loadAppSettings().always(function () {
+        vm.LoadReport(@Model.ReportId, true, "@Model.ReportSeries").done(function () {
+            // Resolve the per-report header (chosen named header / custom / don't-use) not just the default.
+            var headerLoaded = vm.initReportHeaderForRun ? vm.initReportHeaderForRun() : (vm.useReportHeader() ? vm.headerDesigner.init(true) : null);
+            var footerLoaded = vm.useReportFooter() ? vm.footerDesigner.init(true) : null;
 
-        vm.LoadReport(@Model.ReportId , true, "@Model.ReportSeries").done(function () {
-        if (vm.useReportHeader()) {
-        vm.headerDesigner.init(true);
-        }
-        if (vm.useReportFooter()) {
-        vm.footerDesigner.init(true);
-        }
+            // The header/footer html is fetched over ajax, so wait for it
+            $.when(headerLoaded, footerLoaded).always(function () {
+                try {
+                    var userName = vm.currentUserName || vm.currentUserId || '';
+                    var userRoles = vm.currentUserRole || '';
+                    var locale = vm.resolveDateLocale ? vm.resolveDateLocale() : 'en-US';
+                    var now = new Date();
+                    var dateStr = now.toLocaleDateString(locale);
+                    var timeStr = now.toLocaleTimeString(locale);
+                    var nowStr = dateStr + ' ' + timeStr;
+                    var reportName = (vm.ReportName && vm.ReportName()) ? vm.ReportName() : '';
 
-        setTimeout(function () {
-        try {
-        var userName = vm.currentUserName || vm.currentUserId || '';
-        var userRoles = vm.currentUserRole || '';
-        var nowStr = new Date().toLocaleString();
-        var reportName = (vm.ReportName && vm.ReportName()) ? vm.ReportName() : '';
-
-        function substitutePlaceholders(html) {
-        console.log('Substituting placeholders in:', html);
-        debugger;
-        if (!html) return html;
-        return html
-        .replace(/\{current\.user\}/g, userName)
-        .replace(/\{CURRENTUSER\}/g, userName)
-        .replace(/\{current\.user\.roles\}/g, userRoles)
-        .replace(/\{CURRENTUSERROLES\}/g, userRoles)
-        .replace(/\{current\.datetime\}/g, nowStr)
-        .replace(/\{CURRENTDATETIME\}/g, nowStr)
-        .replace(/\{report\.name\}/g, reportName);
-        }
-        function substituteInDocPagePlaceholders(html) {
-        if (!html) return html;
-        return html
-        .replace(/\{page\.number\}/g, '1')
-        .replace(/\{page\.total\}/g, '1');
-        }
+                    function substitutePlaceholders(html) {
+                        if (!html) return html;
+                        return html
+                            .replace(/\{current\.user\}/g, userName)
+                            .replace(/\{CURRENTUSER\}/g, userName)
+                            .replace(/\{current\.user\.roles\}/g, userRoles)
+                            .replace(/\{CURRENTUSERROLES\}/g, userRoles)
+                            .replace(/\{current\.datetime\}/g, nowStr)
+                            .replace(/\{CURRENTDATETIME\}/g, nowStr)
+                            .replace(/\{current\.date\}/g, dateStr)
+                            .replace(/\{current\.time\}/g, timeStr)
+                            .replace(/\{report\.name\}/g, reportName);
+                    }
+                    function substituteInDocPagePlaceholders(html) {
+                        if (!html) return html;
+                        return html
+                            .replace(/\{page\.number\}/g, '1')
+                            .replace(/\{page\.total\}/g, '1');
+                    }
 
         var $h = $('#report-header');
         var $f = $('#report-footer');
 
-        var rawHeaderHtml = $h.length ? substitutePlaceholders($h.html()) : '';
-        var rawFooterHtml = $f.length ? substitutePlaceholders($f.html()) : '';
+                    function outerHtmlWithPlaceholders($el) {
+                        if (!$el.length) return '';
+                        var $clone = $el.clone();
+                        $clone.html(substitutePlaceholders($el.html()));
+                        return $clone.prop('outerHTML');
+                    }
+                    var rawHeaderHtml = outerHtmlWithPlaceholders($h);
+                    var rawFooterHtml = outerHtmlWithPlaceholders($f);
 
         if ($h.length) { $h.html(substituteInDocPagePlaceholders(substitutePlaceholders($h.html()))); }
         if ($f.length) { $f.html(substituteInDocPagePlaceholders(substitutePlaceholders($f.html()))); }
@@ -544,24 +580,25 @@
         window.reportHeaderIncludeOnEveryPage = vm.headerDesigner && vm.headerDesigner.IncludeOnEveryPage ? vm.headerDesigner.IncludeOnEveryPage() : false;
         window.reportFooterIncludeOnEveryPage = vm.footerDesigner && vm.footerDesigner.IncludeOnEveryPage ? vm.footerDesigner.IncludeOnEveryPage() : false;
 
-        function measureHtmlHeightInches(html) {
-        if (!html) return 0;
-        var d = document.createElement('div');
-        d.style.position = 'absolute';
-        d.style.visibility = 'hidden';
-        d.style.left = '-99999px';
-        d.style.top = '0';
-        d.style.width = '7.5in';
-        d.innerHTML = html;
-        document.body.appendChild(d);
-        var px = d.offsetHeight;
-        d.parentNode.removeChild(d);
-        return px / 96.0;
-        }
-        window.reportHeaderHeightIn = $h.length ? measureHtmlHeightInches($h.html()) : 0;
-        window.reportFooterHeightIn = $f.length ? measureHtmlHeightInches($f.html()) : 0;
-        } catch (e) { console.log('placeholder substitution failed', e); }
-        }, 600);
+                    function measureHtmlHeightInches(html) {
+                        if (!html) return 0;
+                        var d = document.createElement('div');
+                        d.style.position = 'absolute';
+                        d.style.visibility = 'hidden';
+                        d.style.left = '-99999px';
+                        d.style.top = '0';
+                        d.style.width = '7.5in';
+                        d.innerHTML = html;
+                        document.body.appendChild(d);
+                        var px = d.offsetHeight;
+                        d.parentNode.removeChild(d);
+                        return px / 96.0;
+                    }
+                    window.reportHeaderHeightIn = $h.length ? measureHtmlHeightInches($h.html()) : 0;
+                    window.reportFooterHeightIn = $f.length ? measureHtmlHeightInches($f.html()) : 0;
+                } catch (e) { console.log('placeholder substitution failed', e); }
+                placeholdersReady = true;
+            });
 
         if (vm.useStoredProc()) {
         setTimeout(function(){
@@ -573,14 +610,15 @@
 
         checkInterval = setInterval(showReportWhenReady, 500);
 
-        setTimeout(function () {
-        $('.report-inner').show();
-        if (checkInterval) {
-        clearInterval(checkInterval);
-        }
-        }, 1000);
+            // Safety net only. 
+            setTimeout(function () {
+                $('.report-inner').show();
+                if (checkInterval) {
+                    clearInterval(checkInterval);
+                }
+            }, 15000);
         });
-
+        });
         $(window).resize(function(){
         vm.DrawChart();
         });

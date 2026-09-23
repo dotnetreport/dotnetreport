@@ -84,7 +84,11 @@ builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(dpKeysPath))
     .SetApplicationName("DotNetReport");
 
-builder.Services.AddControllersWithViews();
+// Add services to the container.
+var mvc = builder.Services.AddControllersWithViews();
+
+// Recompile .cshtml on save while developing, so Hot Reload applies view changes without a restart.
+if (builder.Environment.IsDevelopment()) mvc.AddRazorRuntimeCompilation();
 
 // Configure authentication
 services.AddAuthentication(options =>

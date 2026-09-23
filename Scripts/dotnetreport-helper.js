@@ -234,6 +234,9 @@ ko.bindingHandlers.datepicker = {
     init: function (element, valueAccessor, allBindingsAccessor) {
         //initialize datepicker with some optional options
         var options = allBindingsAccessor().datepickerOptions || {};
+        if (!options.dateFormat && window._defaultDateFormat) {
+            options.dateFormat = window._defaultDateFormat;
+        }
         $(element).datepicker(options);
 
         //handle the field changing
@@ -249,7 +252,7 @@ ko.bindingHandlers.datepicker = {
         ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
             $(element).datepicker("destroy");
         });
-        
+
     },
     //update the control when the view model changes
     update: function (element, valueAccessor) {
@@ -258,7 +261,8 @@ ko.bindingHandlers.datepicker = {
             $(element).datepicker("setDate", null);
             $(element).val('');
         } else if (value) {
-            var formattedDate = $.datepicker.formatDate($(element).datepicker("option", "dateFormat") || 'mm/dd/yy', new Date(value));
+            var fmt = $(element).datepicker("option", "dateFormat") || window._defaultDateFormat || 'mm/dd/yy';
+            var formattedDate = $.datepicker.formatDate(fmt, new Date(value));
             if (formattedDate !== $(element).val()) {
                 $(element).datepicker("setDate", formattedDate);
             }
@@ -314,7 +318,22 @@ ko.bindingHandlers.select2 = {
     init: function (el, valueAccessor, allBindingsAccessor, viewModel) {
         var allBindings = allBindingsAccessor();
         var s2opts = $.extend(
-            { width: '100%', dropdownParent: $(el).closest('.modal').length ? $(el).closest('.modal') : $(document.body) },
+            {
+                width: '100%',
+                dropdownParent: $(el).closest('.modal').length ? $(el).closest('.modal') : $(document.body),
+                templateResult: function (item) {
+                    if (!item.text) return item.text;
+                    return $('<span style="white-space: pre;">' + item.text + '</span>');
+                },
+                templateSelection: function (item) {
+                    if (!item.text) return item.text;
+                    return $('<span style="white-space: pre;">' + item.text + '</span>');
+                },
+                escapeMarkup: function (markup) {
+                    return markup; // IMPORTANT
+                }
+
+            },
             ko.unwrap(valueAccessor()) || {}
         );
         // Always use closest modal as dropdownParent if element is inside a modal
@@ -322,6 +341,22 @@ ko.bindingHandlers.select2 = {
             s2opts.dropdownParent = $(el).closest('.modal');
         }
         $(el).select2(s2opts);
+
+        var lookupSearch = allBindings.lookupSearch;
+        if (typeof lookupSearch === 'function') {
+            var searchTimer;
+            $(el).on('select2:open.lookupsearch', function () {
+                var $search = $('.select2-container--open .select2-search__field');
+                $search.off('input.lookupsearch').on('input.lookupsearch', function () {
+                    var term = this.value;
+                    clearTimeout(searchTimer);
+                    searchTimer = setTimeout(function () {
+                        var p = lookupSearch(term);
+                        if (p && p.done) p.done(function () { $(el).trigger('change.select2'); });
+                    }, 350);
+                });
+            });
+        }
         // Sync user selection back to KO value observable (Select2 v4)
         $(el).on('change.select2binding', function () {
             if (allBindings.value && ko.isObservable(allBindings.value)) {
@@ -331,6 +366,7 @@ ko.bindingHandlers.select2 = {
         });
         ko.utils.domNodeDisposal.addDisposeCallback(el, function () {
             $(el).off('change.select2binding');
+            $(el).off('select2:open.lookupsearch');
             if (el && $(el).length && $(el).data('select2')) {
                 $(el).select2('destroy');
             }
@@ -544,6 +580,151 @@ ko.bindingHandlers.moveToInlineContainer = {
     }
 };
 
+function stripPositionRelativeDeclaration(style) {
+    if (!style) return style;
+    return style
+        .replace(/(?:^|;)\s*position\s*:\s*relative\s*(?=;|$)/i, '')
+        .replace(/^\s*;+\s*/, '')
+        .replace(/;\s*$/, '')
+        .trim();
+}
+
+function stripTableResizeArtifacts(html) {
+    if (!html) return html;
+    var wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+
+    wrapper.querySelectorAll('.resize-col, .resize-row, .resize-corner').forEach(function (handle) {
+        if (handle.parentNode) handle.parentNode.removeChild(handle);
+    });
+
+    wrapper.querySelectorAll('.dnr-resize-anchor').forEach(function (el) {
+        el.classList.remove('dnr-resize-anchor');
+        if (!el.getAttribute('class')) el.removeAttribute('class');
+    });
+
+    wrapper.querySelectorAll('table[style], th[style], td[style]').forEach(function (el) {
+        var raw = el.getAttribute('style');
+        var stripped = stripPositionRelativeDeclaration(raw);
+        if (stripped !== raw) {
+            if (stripped) el.setAttribute('style', stripped);
+            else el.removeAttribute('style');
+        }
+    });
+
+    return wrapper.innerHTML;
+}
+
+var _dnrUnsafeElements = { SCRIPT: 1, IFRAME: 1, OBJECT: 1, EMBED: 1, APPLET: 1, LINK: 1, META: 1, BASE: 1, FRAME: 1, FRAMESET: 1 };
+var _dnrUriAttributes = ['href', 'src', 'xlink:href', 'action', 'formaction', 'data'];
+
+function sanitizeReportHtml(html) {
+    if (html == null || typeof html !== 'string' || html.indexOf('<') < 0) return html;
+
+    var doc;
+    try {
+        doc = new DOMParser().parseFromString(html, 'text/html');
+    } catch (e) {
+        return '';
+    }
+
+    var all = doc.body.querySelectorAll('*');
+    for (var i = all.length - 1; i >= 0; i--) {
+        var el = all[i];
+        if (_dnrUnsafeElements[el.tagName]) {
+            if (el.parentNode) el.parentNode.removeChild(el);
+            continue;
+        }
+        for (var j = el.attributes.length - 1; j >= 0; j--) {
+            var attr = el.attributes[j];
+            var name = attr.name.toLowerCase();
+            if (name.indexOf('on') === 0 || name === 'srcdoc') {
+                el.removeAttribute(attr.name);
+            } else if (_dnrUriAttributes.indexOf(name) >= 0) {
+                // strip whitespace/control chars that can disguise the scheme (e.g. "java\nscript:")
+                var val = (attr.value || '').replace(/[\u0000-\u0020]/g, '').toLowerCase();
+                if (val.indexOf('javascript:') === 0 || val.indexOf('vbscript:') === 0 ||
+                    (val.indexOf('data:') === 0 && val.indexOf('data:image/') !== 0)) {
+                    el.removeAttribute(attr.name);
+                }
+            }
+        }
+    }
+    return doc.body.innerHTML;
+}
+
+function secureSummernoteCodeview($el) {
+    if (!$el || !$el.length || $el.data('dnrCodeviewSecured')) return;
+    $el.data('dnrCodeviewSecured', true);
+
+    try {
+        var context = $el.data('summernote');
+        var codeview = context && context.modules && context.modules.codeview;
+        if (codeview) {
+            var origPurify = codeview.purify ? codeview.purify.bind(codeview) : null;
+            codeview.purify = function (value) {
+                return sanitizeReportHtml(origPurify ? origPurify(value) : value);
+            };
+        }
+    } catch (e) { /* render-side sanitizer remains the safety net */ }
+
+    $el.on('summernote.codeview.toggled', function () {
+        var $editor = $el.next('.note-editor');
+        if (!$editor.hasClass('codeview')) {
+            var code = $el.summernote('code');
+            var clean = sanitizeReportHtml(code);
+            if (clean !== code) $el.summernote('code', clean);
+        }
+    });
+}
+
+(function () {
+    if (!$.fn || typeof $.fn.summernote !== 'function' || $.fn.summernote.__dnrSecured) return;
+    var origSummernote = $.fn.summernote;
+
+    function enterInsertsLineBreak(e) {
+        if (e.shiftKey || e.ctrlKey || e.metaKey) return;
+
+        var sel = window.getSelection();
+        if (sel && sel.rangeCount) {
+            var node = sel.getRangeAt(0).startContainer;
+            if (node.nodeType === 3) node = node.parentNode;
+            if ($(node).closest('li').length) return;
+        }
+
+        e.preventDefault();
+        var inserted = false;
+        try { inserted = document.execCommand('insertLineBreak'); } catch (err) { inserted = false; }
+        if (!inserted) $(this).summernote('pasteHTML', '<br>');
+    }
+
+    var wrapped = function () {
+        var args = Array.prototype.slice.call(arguments);
+        if (args.length >= 2 && (args[0] === 'code' || args[0] === 'pasteHTML') && typeof args[1] === 'string') {
+            args[1] = sanitizeReportHtml(args[1]);
+        }
+        var isInit = args.length === 0 || $.isPlainObject(args[0]);
+
+        if (isInit) {
+            args[0] = $.extend({}, args[0]);
+            args[0].callbacks = $.extend({}, args[0].callbacks);
+            if (!args[0].callbacks.onEnter) args[0].callbacks.onEnter = enterInsertsLineBreak;
+        }
+        var result = origSummernote.apply(this, args);
+        if (isInit) {
+            this.each(function () { secureSummernoteCodeview($(this)); });
+        }
+        return result;
+    };
+
+    // Preserve any statics Summernote hung off the plugin function.
+    for (var k in origSummernote) {
+        if (Object.prototype.hasOwnProperty.call(origSummernote, k)) wrapped[k] = origSummernote[k];
+    }
+    wrapped.__dnrSecured = true;
+    $.fn.summernote = wrapped;
+})();
+
 ko.bindingHandlers.summernote = {
     init: function (element, valueAccessor, allBindings) {
         const observable = valueAccessor();
@@ -587,6 +768,19 @@ ko.bindingHandlers.summernote = {
         };
 
         $(element).summernote(options);
+
+        var _codeViewActive = false;
+        $(element).on('summernote.codeview.toggled', function () {
+            _codeViewActive = !_codeViewActive;
+            if (_codeViewActive) {
+                var $codable = $(element).next('.note-editor').find('.note-codable');
+                var html = $codable.val();
+                var cleaned = stripTableResizeArtifacts(html);
+                if (cleaned !== html) {
+                    $codable.val(cleaned);
+                }
+            }
+        });
 
         const value = ko.unwrap(observable);
         $(element).summernote('code', value || "");
@@ -711,10 +905,45 @@ function pagerViewModel(args) {
 
 }
 
+// Access summary for a report, folder or dashboard row
+var accessBadges = function (item, root) {
+    var read = function () {
+        for (var i = 0; i < arguments.length; i++) {
+            if (item && item[arguments[i]] !== undefined) return ko.unwrap(item[arguments[i]]) || '';
+        }
+        return '';
+    };
+    var access = root && root.manageAccess ? root.manageAccess : null;
+    var nameOf = function (list, id) {
+        var items = list ? ko.unwrap(list) : null;
+        var match = _.find(items || [], function (x) { return ko.unwrap(x.value !== undefined ? x.value : x.id) == id; });
+        return match ? (ko.unwrap(match.text) || id) : id;
+    };
+    var names = function (value, list) {
+        return _.map(String(value).split(','), function (id) { return nameOf(list, id.trim()); }).join(', ');
+    };
+    var badges = [];
+    var add = function (icons, title, value, list, anyText) {
+        if (!value && !anyText) return;
+        badges.push({ icons: icons, title: title, text: value ? names(value, list) : anyText, restricted: !!value });
+    };
+    var users = access ? access.users : null, roles = access ? access.userRoles : null;
+    var clients = root ? root.clientIdOptions : null;
+    add('fa-user', 'Manage by User', read('UserId', 'userId'), users, 'Any User');
+    add('fa-lock fa-user', 'View only by User', read('ViewOnlyUserId', 'viewOnlyUserId'), users);
+    add('fa-trash fa-user', 'Delete by User', read('DeleteOnlyUserId', 'deleteOnlyUserId'), users);
+    add('fa-key', 'Manage by Role', read('UserRoles', 'userRole', 'userRoles'), roles, 'Any Role');
+    add('fa-lock fa-key', 'View only by Role', read('ViewOnlyUserRoles', 'viewOnlyUserRole', 'viewOnlyUserRoles'), roles);
+    add('fa-trash fa-key', 'Delete by Role', read('DeleteOnlyUserRoles', 'deleteOnlyUserRole', 'deleteOnlyUserRoles'), roles);
+    add('fa-building-o', root && root.clientIdLabelText ? ko.unwrap(root.clientIdLabelText) : 'Client Id', read('ClientId', 'clientId'), clients);
+    return badges;
+};
+
 var manageAccess = function (options) {
     var buildList = function (array) { return _.map(array || [], function (x) { return { selected: ko.observable(false), value: ko.observable(x.id ? x.id : x), text: x.text ? x.text : x, category: x.category || null }; }) };
     var access = {
         clientId: ko.observable(),
+        clientIdToAdd: ko.observable(''),
         users: ko.observableArray(buildList(options.users)),
         userRoles: ko.observableArray(buildList(options.userRoles)),
         viewOnlyUsers: ko.observableArray(buildList(options.users)),
@@ -733,6 +962,19 @@ var manageAccess = function (options) {
         toggleManageRoles: function () { this.showManageRoles(!this.showManageRoles()); },
         toggleViewRoles: function () { this.showViewRoles(!this.showViewRoles()); },
         toggleDeleteRoles: function () { this.showDeleteRoles(!this.showDeleteRoles()); },
+        selectedClientIds: function () {
+            var v = access.clientId();
+            return v ? String(v).split(',').map(function (x) { return x.trim(); }).filter(function (x) { return x.length; }) : [];
+        },
+        addClientId: function (id) {
+            if (!id) return;
+            var list = access.selectedClientIds();
+            if (list.indexOf(id) < 0) { list.push(id); access.clientId(list.join(',')); }
+            access.clientIdToAdd('');
+        },
+        removeClientId: function (id) {
+            access.clientId(access.selectedClientIds().filter(function (x) { return x !== id; }).join(','));
+        },
         getAsList: function (x) {
             var list = '';
             _.forEach(x(), function (e) { if (e.selected()) list += (list ? ',' : '') + e.value(); });
@@ -790,11 +1032,16 @@ var manageAccess = function (options) {
     access.applyDefaultSettings = function () {
         var userSettings = options.userSettings;
         if (userSettings) {
-            access.clientId(options.userSettings.newReportClientId);
+            access.clientId(options.userSettings.newReportClientId || options.userSettings.clientId);
             var editUserIds = userSettings.newReportEditUserId ? userSettings.newReportEditUserId.split(',') : [];
             var viewUserIds = userSettings.newReportViewUserId ? userSettings.newReportViewUserId.split(',') : [];
             var editUserRoles = userSettings.newReportEditUserRoles ? userSettings.newReportEditUserRoles.split(',') : [];
             var viewUserRoles = userSettings.newReportViewUserRoles ? userSettings.newReportViewUserRoles.split(',') : [];
+
+            var currentUserId = userSettings.currentUserId;
+            if (currentUserId && editUserIds.indexOf(currentUserId) === -1) {
+                editUserIds.push(currentUserId);
+            }
 
             access.addMissingAndSelect(access.users, editUserIds);
             access.addMissingAndSelect(access.deleteOnlyUsers, editUserIds);
@@ -1096,6 +1343,13 @@ var textQuery = function (options) {
         }
     }
 
+    self.removeQueryItem = function (item) {
+        if (!item) return;
+        var i = self.queryItems.indexOf(item);
+        if (i < 0) i = _.findIndex(self.queryItems, { 'value': item.value });
+        if (i >= 0) self.queryItems.splice(i, 1);
+    }
+
     self.addQueryItem = function (newItem, skipFilter) {
         var match = _.find(self.queryItems, { 'value': newItem.value });
         if (!match) {
@@ -1258,7 +1512,7 @@ var textQuery = function (options) {
                 });
 
                 inputElement.addEventListener("menuItemRemoved", function (e) {
-                    self.queryItems.remove(e.detail.item.original);
+                    self.removeQueryItem(e.detail.item.original);
                 });
 
                 inputElement.addEventListener('keydown', function (e) {
@@ -1296,7 +1550,7 @@ var textQuery = function (options) {
         });
 
         inputEl.addEventListener("menuItemRemoved", function (e) {
-            self.queryItems.remove(e.detail.item.original);
+            self.removeQueryItem(e.detail.item.original);
         });
     };
 
@@ -1314,7 +1568,7 @@ var textQuery = function (options) {
                 });
 
             searchInput.addEventListener("menuItemRemoved", function (e) {
-                    self.queryItems.remove(e.detail.item.original);
+                    self.removeQueryItem(e.detail.item.original);
                 });
 
             searchInput.addEventListener('blur', function () {
@@ -1367,25 +1621,31 @@ var textQuery = function (options) {
     }
 
     self._lookupTributes = self._lookupTributes || {};
+    self._lookupOperatorSubs = self._lookupOperatorSubs || {};
 
     self.setupLookup = function (field, filter) {
-        var uiId = field.uiId;
+        var candidateIds = [filter && filter.uiId, field && field.uiId].filter(function (x) { return !!x; });
+        var uiId = candidateIds[0];
+        var isMultiValue = function (op) { return op === 'in' || op === 'not in'; };
         var prefixes = ['C', 'F', 'M', 'P'];
         var filterInputs = [];
-        prefixes.forEach(function (p) {
-            var el = document.getElementById('ctl-' + p + '-' + uiId);
-            if (el) filterInputs.push(el);
+        candidateIds.forEach(function (id) {
+            prefixes.forEach(function (p) {
+                document.querySelectorAll('[id="ctl-' + p + '-' + id + '"]').forEach(function (el) {
+                    if (filterInputs.indexOf(el) < 0) filterInputs.push(el);
+                });
+            });
         });
 
-        // Detach the previous tribute for this field so its keyboard/input handlers are removed
-        // before we create a fresh instance (e.g. when the data operation changes).
-        if (self._lookupTributes[uiId]) {
-            filterInputs.forEach(function (el) {
-                try { self._lookupTributes[uiId].detach(el); } catch (e) {}
+        filterInputs.forEach(function (el) {
+            var existing = el._currentTribute || self._lookupTributes[uiId];
+            if (existing) {
+                try { existing.detach(el); } catch (e) { }
                 el.removeAttribute('data-tribute');
-            });
-            delete self._lookupTributes[uiId];
-        }
+                el._currentTribute = null;
+            }
+        });
+        delete self._lookupTributes[uiId];
 
         if (filterInputs.length > 0) {
             var tributeAttributes = self.getTributeAttributes({ searchLookupFilter: true });
@@ -1398,12 +1658,31 @@ var textQuery = function (options) {
             // initLookupQuery is per-field, not per-element — call it once.
             self.initLookupQuery(field);
 
+            // Switching between a single value and a list operator must not carry the old picks over.
+            if (self._lookupOperatorSubs[uiId]) {
+                self._lookupOperatorSubs[uiId].dispose();
+                delete self._lookupOperatorSubs[uiId];
+            }
+            if (filter && ko.isObservable(filter.Operator)) {
+                var previousOperator = filter.Operator();
+                self._lookupOperatorSubs[uiId] = filter.Operator.subscribe(function (newOperator) {
+                    var wasMulti = isMultiValue(previousOperator);
+                    previousOperator = newOperator;
+                    if (wasMulti === isMultiValue(newOperator)) return;
+                    self.queryItems = [];
+                    filterInputs.forEach(function (el) { el.value = ''; });
+                    if (ko.isObservable(filter.Value)) filter.Value('');
+                    if (ko.isObservable(filter.ValueIn)) filter.ValueIn([]);
+                });
+            }
+
             filterInputs.forEach(function (filterInput) {
                 // Always keep current references on the element so the single set of listeners
                 // (added only once via _tributeEventsAdded) uses up-to-date instances when
                 // the data operation changes.
                 filterInput._lookupFilter = filter;
                 filterInput._currentTribute = tribute;
+                filterInput._currentQuery = self;
 
                 if (!filterInput._tributeEventsAdded) {
                     filterInput._tributeEventsAdded = true;
@@ -1417,23 +1696,41 @@ var textQuery = function (options) {
 
                     filterInput.addEventListener("tribute-replaced", function (e) {
                         if (filterInput._currentTribute) filterInput._currentTribute._noMatch = false;
-                        self.addQueryItem(e.detail.item.original);
+                        var f = filterInput._lookupFilter;
+                        var multi = f && ko.isObservable(f.Operator) && isMultiValue(f.Operator());
+                        if (f && ko.isObservable(f.Operator) && !multi) {
+                            filterInput._currentQuery.queryItems = [];
+                        }
+                        filterInput._currentQuery.addQueryItem(e.detail.item.original);
+                        if (multi) {
+                            var items = filterInput._currentQuery.queryItems.map(function (x) { return x.text; });
+                            f.Value(items.join(', '));
+                            f.ValueIn(items);
+                            filterInput.value = items.join(', ') + ', ';
+                        }
                     });
 
                     filterInput.addEventListener("menuItemRemoved", function (e) {
-                        self.queryItems.remove(e.detail.item.original);
+                        filterInput._currentQuery.removeQueryItem(e.detail.item.original);
                     });
 
                     filterInput.addEventListener('blur', function () {
                         var f = filterInput._lookupFilter;
-                        if (f && self.queryItems.length > 0) {
-                            f.Value(self.queryItems.map(x => x.text).join(','));
+                        var q = filterInput._currentQuery;
+                        if (f && q.queryItems.length > 0) {
+                            var items = q.queryItems.map(x => x.text);
+                            if (isMultiValue(f.Operator())) {
+                                f.Value(items.join(', '));
+                                f.ValueIn(items);
+                            } else {
+                                f.Value(items[items.length - 1]);
+                            }
                         }
                     });
 
                     filterInput.addEventListener("input", function () {
                         if (!filterInput.value.trim()) {
-                            self.queryItems = [];
+                            filterInput._currentQuery.queryItems = [];
                             var f = filterInput._lookupFilter;
                             if (f) f.Value("");
                         }
@@ -1638,8 +1935,15 @@ $.extend($.summernote.plugins, {
     'tableresize': function (context) {
         var $editable = context.layoutInfo.editable;
 
+        if (!document.getElementById('dnr-tableresize-style')) {
+            var st = document.createElement('style');
+            st.id = 'dnr-tableresize-style';
+            st.textContent = '.note-editable .dnr-resize-anchor{position:relative;}';
+            document.head.appendChild(st);
+        }
+
         function makeResizable(table) {
-            $(table).css('position', 'relative');
+            $(table).addClass('dnr-resize-anchor');
 
             $(table).find('th, td').each(function () {
                 var $cell = $(this);
@@ -1654,7 +1958,7 @@ $.extend($.summernote.plugins, {
                         userSelect: 'none',
                         height: '100%'
                     });
-                    $cell.css('position', 'relative').append($colHandle);
+                    $cell.addClass('dnr-resize-anchor').append($colHandle);
 
                     $colHandle.on('mousedown', function (e) {
                         e.preventDefault();

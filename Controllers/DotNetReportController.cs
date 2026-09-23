@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.Filters;
 using ReportBuilder.Web.Models;
 using System.Web;
 
@@ -8,6 +10,20 @@ namespace ReportBuilder.Web.Controllers
     [Authorize]
     public class DotNetReportController : Controller
     {
+        private readonly IConfiguration _configuration;
+        public DotNetReportController(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+
+        public override void OnActionExecuting(ActionExecutingContext context)
+        {
+            base.OnActionExecuting(context);
+            if ((context.ActionDescriptor as ControllerActionDescriptor)?.ActionName == "ReportPrint") return;
+
+            var api = new DotNetReportApiController(_configuration) { ControllerContext = ControllerContext };
+            ViewBag.AllowAdminMode = api.GetSettings().CanUseAdminMode;
+        }
 
         public IActionResult Index()
         {
@@ -37,24 +53,22 @@ namespace ReportBuilder.Web.Controllers
         }
 
         [AllowAnonymous]
-        public IActionResult ReportPrint(int reportId, string reportName, string reportDescription, string reportSql, string connectKey, string reportFilter, string reportType,
+        public IActionResult ReportPrint(string reportName, string reportDescription, string reportFilter, string reportType,
             int selectedFolder = 0, bool includeSubTotal = true, bool showUniqueRecords = false, bool aggregateReport = false, bool showDataWithGraph = true,
-            string userId = null, string clientId = null, string currentUserRole = null, string dataFilters = "",
-            string reportSeries = "", bool expandAll = false, string reportData = "")
+            string reportSeries = "", bool expandAll = false, string reportData = "", string exportId = "")
         {
-            var settings = new DotNetReportSettings
+            var session = ExportSessionStore.Get(exportId);
+            if (session == null)
             {
-                ClientId = clientId,
-                UserId = userId,
-                CurrentUserRole = (currentUserRole ?? "")
-                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .ToList(),
-                DataFilters = string.IsNullOrEmpty(dataFilters) ? 
-                                    new { } : 
-                                    Newtonsoft.Json.JsonConvert.DeserializeObject<object>(dataFilters)
-            };
+                return Unauthorized();
+            }
 
-            var exportId = ExportSessionStore.Save(settings);
+            var settings = session.Settings;
+            var reportId = session.ReportId;
+            var reportSql = session.ReportSql;
+            var connectKey = session.ConnectKey;
+            var dataFilters = System.Text.Json.JsonSerializer.Serialize(settings.DataFilters ?? new { });
+
             ViewBag.ExportId = exportId;
 
             var sanitizer = new Ganss.Xss.HtmlSanitizer
@@ -79,10 +93,10 @@ namespace ReportBuilder.Web.Controllers
                 ReportFilter = reportFilter, // json data to setup filter correctly again
                 ExpandAll = expandAll,
                 
-                ClientId = clientId,    
-                UserId = userId,
-                CurrentUserRoles = currentUserRole,
-                DataFilters = HttpUtility.UrlDecode(dataFilters),
+                ClientId = settings.ClientId,
+                UserId = settings.UserId,
+                CurrentUserRoles = string.Join(",", settings.CurrentUserRole ?? new List<string>()),
+                DataFilters = dataFilters,
                 ReportData = sanitizer.Sanitize(HttpUtility.UrlDecode(reportData))
             };
 

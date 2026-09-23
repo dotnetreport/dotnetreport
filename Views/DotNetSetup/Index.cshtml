@@ -1,9 +1,9 @@
-@using Newtonsoft.Json;
+﻿@using Newtonsoft.Json;
 @{
     Layout = "~/Views/shared/_Layout.Report.cshtml";
 }
 
-@section head {
+@section head{   
     <link href="~/lib/x-editable-bs4/css/bootstrap-editable.css" rel="stylesheet" />
     <link href="~/lib/tributejs/tribute.css" rel="stylesheet" />
     <style type="text/css">
@@ -34,7 +34,7 @@
         }
     </style>
 }
-@section scripts {
+@section scripts{
     <script>$.fn.popover = { Constructor: {} };</script>
     <script src="~/lib/tributejs/tribute.min.js"></script>
     <script src="~/js/dotnetreport-setup.js"></script>
@@ -53,10 +53,9 @@
             $('.panel-collapse.in')
                 .collapse('show');
         };
-
-        $(document).ready(function () {
+        $(document).ready(function() {
             var queryParams = Object.fromEntries((new URLSearchParams(window.location.search)).entries());
-            ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + (queryParams.onlyApi === 'false' ? false : true) }).done(function (model) {
+            ajaxcall({ url: '@Url.Action("LoadSetupSchema", "DotNetReportApi")' + '?databaseApiKey=' + (queryParams.databaseApiKey || '') + '&onlyApi=' + (queryParams.onlyApi === 'false' ? false : true) }).done(function(model) {
                 if (model && model.noAccount === true) {
                     $("#noaccountModal").modal('show');
                     return;
@@ -79,11 +78,16 @@
                     deleteScheduleUrl: '/ReportApi/DeleteSchedule',
                     saveCategoriesUrl: '/ReportApi/SaveCategoriesData',
                     getCategoriesUrl: '/ReportApi/GetCategories',
+                    getEmailQueriesUrl: '/ReportApi/GetDataDrivenQueries',
+                    saveEmailQueryUrl: '/ReportApi/SaveDataDrivenQuery',
+                    deleteEmailQueryUrl: '/ReportApi/DeleteDataDrivenQuery',
+                    previewEmailListUrl: '@Url.Action("PreviewEmailList", "DotNetReportApi")',
                     getAppSettingUrl: '/ReportApi/GetAccountSettings',
                     saveAppSettingUrl: '/ReportApi/ChangeAccountSettings',
                     reportsApiUrl: '@Url.Action("CallReportApi", "DotNetReportApi")',
                     runReportApiUrl: '@Url.Action("RunReportApi", "DotNetReportApi")',
                     getUsersAndRoles: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")',
+                    sendPasswordSetupUrl: '@Url.Action("SendUserPasswordSetup", "DotNetReportApi")',
                     searchProcUrl: '@Url.Action("SearchProcedure", "DotNetReportApi")',
                     getSchemaFromSql: '@Url.Action("GetSchemaFromSql", "DotNetReportApi")',
                     updateDbConnectionUrl: '@Url.Action("UpdateDbConnection", "DotNetReportApi")',
@@ -115,6 +119,7 @@
 
     </script>
 }
+
 <div>
     <div class="alert alert-danger">
         Do not expose this Setup Tool to end users who should not have access to it. Ideally, only Developers should be given access to this utility.
@@ -152,11 +157,21 @@
                 </a>
             </li>
             <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#usersroles" aria-controls="usersroles" role="tab" data-bs-toggle="tab" data-bind="click: function() { usersRoles.onTabOpen(); }">
+                    <i class="fa fa-users"></i> Users &amp; Roles
+                </a>
+            </li>
+            <li role="presentation" class="nav-item">
                 <a class="nav-link" href="#schedules" aria-controls="schedules" role="tab" data-bs-toggle="tab">
                     <i class="fa fa-clock-o"></i> Schedules
                 </a>
             </li>
-            <li role="presentation" class="nav-item" data-bind="visible: settings.useFunctions">
+            <li role="presentation" class="nav-item">
+                <a class="nav-link" href="#emailqueries" aria-controls="emailqueries" role="tab" data-bs-toggle="tab" data-bind="click: function() { emailQueries.load(); }">
+                    <i class="fa fa-envelope-o"></i> Email Lists
+                </a>
+            </li>
+            <li role="presentation" class="nav-item" style="display: none;" data-bind="visible: settings.useFunctions">
                 <a class="nav-link" href="#functions" aria-controls="functions" role="tab" data-bs-toggle="tab">
                     <i class="fa fa-cogs"></i> Custom Functions
                 </a>
@@ -182,11 +197,395 @@
     <div style="background:#b02a37; color:#fff; padding:5px 16px; font-size:.82rem; line-height:1.5;"
          title="Reports and dashboards cannot run without a database connection. Go to the Workspace tab and click 'Connect to Database' to get started.">
         <i class="fa fa-plug me-1"></i>
-        <strong>No database connected</strong> — go to the <strong>Workspace</strong> tab and connect to your data to get started.
+        <strong>No database connected</strong> &mdash; go to the <strong>Workspace</strong> tab and connect to your data to get started.
         <i class="fa fa-info-circle ms-1 opacity-75"></i>
     </div>
     <!-- /ko -->
     <div class="tab-content">
+        <div role="tabpanel" class="tab-pane" id="usersroles" data-bind="with: usersRoles">
+            <b>Users, Roles &amp; <span data-bind="text: clientIdLabel() || 'Client Id'"></span>s</b>
+            <p>
+                Choose where Dotnet Report gets the Users, Roles and <span data-bind="text: clientIdLabel() || 'Client Id'"></span>s used to control access to Reports, Folders and Dashboards.
+            </p>
+            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                <label class="control-label mb-0">Source</label>
+                <select class="form-select form-select-sm" style="width: 240px;" data-bind="value: userSource">
+                    <option value="code">Application Code</option>
+                    <option value="sql">SQL Query</option>
+                    <option value="portal">Dotnet Report Managed</option>
+                </select>
+                <button class="btn btn-primary btn-sm" data-bind="visible: userSource() === 'portal', click: loadPortal"><i class="fa fa-refresh"></i> Reload</button>
+                <button class="btn btn-primary btn-sm" data-bind="click: saveSourceSettings"><i class="fa fa-save"></i> Save</button>
+                <span class="text-warning" title="You have unsaved changes" data-bind="visible: settingsDirty"><i class="fa fa-exclamation-triangle"></i></span>
+            </div>
+            <hr />
+
+            <div class="alert alert-info py-2 small mb-3" data-bind="visible: userSource() === 'code'">
+                <b><i class="fa fa-code"></i> Application Code</b> - Your app supplies these in <code>GetSettings()</code>, settings are displayed here but can only be managed directly in code.
+            </div>
+            <div class="alert alert-info py-2 small mb-3" data-bind="visible: userSource() === 'sql'">
+                <b><i class="fa fa-database"></i> SQL Query</b> - Read the lists straight from your own database to populate your Users and Roles.
+            </div>
+            <div class="alert alert-info py-2 small mb-3" data-bind="visible: userSource() === 'portal'">
+                <b><i class="fa fa-cloud"></i> Dotnet Report Managed</b> - Setup users and roles in your Dotnet Report Account. You can manage users here or on our 
+                <a href="https://dotnetreport.com/portal/Account/UsersAndRoles" target="_blank" rel="noopener">portal <i class="fa fa-external-link"></i></a>.
+            </div>
+
+            <ul class="nav nav-tabs" id="usersRolesTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#ur-users" type="button" role="tab"><i class="fa fa-user"></i> Users</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#ur-roles" type="button" role="tab"><i class="fa fa-shield"></i> Roles</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#ur-clients" type="button" role="tab"><i class="fa fa-building-o"></i> <span data-bind="text: clientIdLabel() || 'Client Ids'"></span></button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#ur-code" type="button" role="tab"><i class="fa fa-sign-in"></i> Login</button>
+                </li>
+            </ul>
+            <div class="tab-content pt-3">
+                <!-- USERS -->
+                <div class="tab-pane active" id="ur-users" role="tabpanel">
+                    <p class="text-muted small">Set the currently logged in user id or email in <code>settings.UserId</code>.</p>
+                    <div data-bind="template: { name: 'users-roles-sql-source', data: sqlUsers }"></div>
+                    <div class="alert alert-light border py-2 small" data-bind="visible: userSource() === 'portal'">
+                        <i class="fa fa-info-circle"></i> Users are created here without a password, set one via <b>Forgot Password</b> email.
+                    </div>
+                    <div data-bind="visible: userSource() === 'portal'">
+                        <button class="btn btn-primary btn-sm mb-2" data-bind="click: newUser"><i class="fa fa-plus"></i> Add User</button>
+                        <div class="card card-body mb-3" data-bind="visible: editingUser() !== null, with: editingUser">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="small fw-bold">Name</label>
+                                    <input class="form-control form-control-sm" placeholder="Name" data-bind="value: name">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="small fw-bold">Email</label>
+                                    <input class="form-control form-control-sm" placeholder="Email" data-bind="value: email, enable: !id()">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="small fw-bold">Roles</label>
+                                    <div data-bind="foreach: roles">
+                                        <label class="d-block small"><input type="checkbox" data-bind="checked: isSelected"> <span data-bind="text: text"></span></label>
+                                    </div>
+                                    <div class="small text-muted" data-bind="visible: roles.length === 0">No roles defined yet</div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="small fw-bold" data-bind="text: $parent.clientIdLabel() || 'Client Ids'"></label>
+                                    <div data-bind="foreach: clients">
+                                        <label class="d-block small"><input type="checkbox" data-bind="checked: isSelected"> <span data-bind="text: text"></span></label>
+                                    </div>
+                                    <div class="small text-muted" data-bind="visible: clients.length === 0">None defined yet</div>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-sm btn-primary me-2" data-bind="click: $parent.saveUser">Save User</button>
+                                <button class="btn btn-sm btn-secondary" data-bind="click: function() { $parent.editingUser(null); }">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center py-3" data-bind="visible: loadingUsers"><span class="fa fa-spinner fa-spin fa-2x text-muted"></span></div>
+                    <table class="table table-sm align-middle" data-bind="visible: !loadingUsers()">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Email / Id</th>
+                                <th>Name</th>
+                                <th>Roles</th>
+                                <th data-bind="text: clientIdLabel() || 'Client Ids'"></th>
+                                <th style="width: 130px;"></th>
+                            </tr>
+                        </thead>
+                        <!-- ko if: userSource() === 'portal' -->
+                        <tbody data-bind="foreach: portalUsers">
+                            <tr>
+                                <td data-bind="text: email"></td>
+                                <td data-bind="text: name"></td>
+                                <td class="small" data-bind="text: (roles || []).join(', ')"></td>
+                                <td class="small" data-bind="text: $parent.clientNames(clientIds)"></td>
+                                <td class="text-end text-nowrap" style="width: 130px;">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" title="Edit User" data-bind="click: $parent.editUser"><i class="fa fa-pencil"></i></button>
+                                        <button type="button" class="btn btn-outline-secondary" title="Email a link to set their portal password" data-bind="click: $parent.sendPasswordSetup"><i class="fa fa-envelope-o"></i></button>
+                                        <button type="button" class="btn btn-outline-danger" data-bind="click: $parent.deleteUser, disable: isPrimary, attr: { title: isPrimary ? 'The primary account user cannot be deleted' : 'Delete User' }"><i class="fa fa-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <!-- /ko -->
+                        <!-- ko if: userSource() === 'sql' -->
+                        <tbody data-bind="foreach: sqlUsers.rows">
+                            <tr>
+                                <td data-bind="text: id"></td>
+                                <td data-bind="text: text"></td>
+                                <td class="small text-muted"></td>
+                                <td class="small text-muted"></td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                        <!-- /ko -->
+                        <!-- ko if: userSource() === 'code' -->
+                        <tbody data-bind="foreach: codeUsers">
+                            <tr>
+                                <td data-bind="text: (typeof $data === 'object') ? ($data.id || '') : $data"></td>
+                                <td data-bind="text: (typeof $data === 'object') ? ($data.text || '') : ''"></td>
+                                <td class="small text-muted"></td>
+                                <td class="small text-muted"></td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                        <!-- /ko -->
+                    </table>
+                    <div class="text-muted" data-bind="visible: !loadingUsers() && userSource() === 'portal' && portalUsers().length === 0">
+                        <i class="fa fa-exclamation-circle"></i> No Users found, click <b>Add User</b> to create one.
+                    </div>
+                    <!-- ko if: userSource() === 'sql' -->
+                    <div class="text-muted" data-bind="visible: sqlUsers.loading"><i class="fa fa-spinner fa-spin"></i> Running the Users Query...</div>
+                    <div class="text-danger small" data-bind="visible: sqlUsers.error, text: 'Users Query error: ' + sqlUsers.error()"></div>
+                    <div class="text-muted" data-bind="visible: !sqlUsers.loading() && !sqlUsers.error() && sqlUsers.rows().length === 0">
+                        <i class="fa fa-exclamation-circle"></i> No Users found, add a <b>Users Query</b> above.
+                    </div>
+                    <div class="text-muted small" data-bind="visible: sqlUsers.rows().length > 0">
+                        <span data-bind="text: sqlUsers.rows().length"></span> users returned by the Users Query.
+                    </div>
+                    <!-- /ko -->
+                    <div class="text-muted" data-bind="visible: !loadingUsers() && userSource() === 'code' && codeUsers().length === 0">
+                        <i class="fa fa-exclamation-circle"></i> No Users found, populate <code>settings.Users</code> in your code.
+                    </div>
+                </div>
+                <!-- ROLES -->
+                <div class="tab-pane" id="ur-roles" role="tabpanel">
+                    <p class="text-muted small">Set the currently logged in user role in <code>settings.CurrentUserRole</code>.</p>
+                    <div data-bind="template: { name: 'users-roles-sql-source', data: sqlRoles }"></div>
+                    <!-- ko if: userSource() === 'portal' -->
+                    <div class="input-group input-group-sm mb-3" style="max-width: 320px;">
+                        <input class="form-control" placeholder="New role name" data-bind="value: newRoleName">
+                        <button class="btn btn-primary btn-sm" data-bind="click: addRole"><i class="fa fa-plus"></i> Add Role</button>
+                    </div>
+                    <!-- /ko -->
+                    <!-- ko if: userSource() === 'portal' -->
+                    <div class="d-flex flex-wrap gap-2">
+                        <!-- ko foreach: portalRoles -->
+                        <span class="badge bg-light text-dark border py-2 d-inline-flex align-items-center">
+                            <span data-bind="text: text"></span>
+                            <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2 lh-1" title="Delete Role" data-bind="click: $parent.deleteRole"><i class="fa fa-times"></i></button>
+                        </span>
+                        <!-- /ko -->
+                    </div>
+                    <div class="text-muted" data-bind="visible: portalRoles().length === 0"><i class="fa fa-exclamation-circle"></i> No Roles found, add one above.</div>
+                    <!-- /ko -->
+                    <!-- ko if: userSource() === 'sql' -->
+                    <div class="d-flex flex-wrap gap-2">
+                        <!-- ko foreach: sqlRoles.rows -->
+                        <span class="badge bg-light text-dark border py-2" data-bind="text: text"></span>
+                        <!-- /ko -->
+                    </div>
+                    <div class="text-muted" data-bind="visible: sqlRoles.loading"><i class="fa fa-spinner fa-spin"></i> Running the Roles Query...</div>
+                    <div class="text-danger small" data-bind="visible: sqlRoles.error, text: 'Roles Query error: ' + sqlRoles.error()"></div>
+                    <div class="text-muted" data-bind="visible: !sqlRoles.loading() && !sqlRoles.error() && sqlRoles.rows().length === 0">
+                        <i class="fa fa-exclamation-circle"></i> No Roles found, add a <b>Roles Query</b> above.
+                    </div>
+                    <!-- /ko -->
+                    <!-- ko if: userSource() === 'code' -->
+                    <div class="d-flex flex-wrap gap-2">
+                        <!-- ko foreach: codeRoles -->
+                        <span class="badge bg-light text-dark border py-2" data-bind="text: $data"></span>
+                        <!-- /ko -->
+                    </div>
+                    <div class="text-muted" data-bind="visible: codeRoles().length === 0"><i class="fa fa-exclamation-circle"></i> No Roles found, populate <code>settings.UserRoles</code> in your code.</div>
+                    <!-- /ko -->
+                </div>
+
+                <!-- CLIENT IDS -->
+                <div class="tab-pane" id="ur-clients" role="tabpanel">
+                    <p class="text-muted small">Restrict Reports, Folders and Dashboards by <span data-bind="text: (clientIdLabel() || 'Client Id').toLowerCase()"></span>, set the currently logged in user's <span data-bind="text: (clientIdLabel() || 'Client Id').toLowerCase()"></span> in <code>settings.ClientId</code>.</p>
+                    <div data-bind="template: { name: 'users-roles-sql-source', data: sqlClients }"></div>
+                    <div class="alert alert-warning py-2 small" data-bind="visible: userSource() === 'portal'">
+                        <i class="fa fa-exclamation-triangle"></i> Clients are not stored in your Dotnet Report account.
+                        Keep managing them here, or switch the source to SQL Query or Application Code.
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 small">
+                        <!-- ko ifnot: editingLabel -->
+                        <span class="text-muted">Called</span>
+                        <b data-bind="text: clientIdLabel() || 'Client Id'"></b>
+                        <span class="text-muted">across the app.</span>
+                        <button type="button" class="btn btn-sm btn-link p-0" title="Change this wording" data-bind="click: startEditLabel"><i class="fa fa-pencil"></i> Change</button>
+                        <!-- /ko -->
+                        <!-- ko if: editingLabel -->
+                        <input class="form-control form-control-sm" style="width: 200px;" placeholder="Client Id / Tenant" data-bind="value: labelDraft, hasFocus: true">
+                        <button type="button" class="btn btn-sm btn-primary" data-bind="click: applyLabel">Save</button>
+                        <button type="button" class="btn btn-sm btn-secondary" data-bind="click: cancelLabel">Cancel</button>
+                        <!-- /ko -->
+                    </div>
+
+                    <!-- ko if: userSource() === 'portal' -->
+                    <button class="btn btn-primary btn-sm mb-2" data-bind="click: newClient"><i class="fa fa-plus"></i> Add <span data-bind="text: clientIdLabel() || 'Client Id'"></span></button>
+                    <div class="card card-body mb-3" style="max-width: 520px;" data-bind="visible: editingClient() !== null, with: editingClient">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="small fw-bold">Id</label>
+                                <input class="form-control form-control-sm" placeholder="ACME" data-bind="value: id, enable: !original">
+                                <div class="form-text">The value your app passes as <code>settings.ClientId</code>.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="small fw-bold">Display Name</label>
+                                <input class="form-control form-control-sm" placeholder="Acme Corporation" data-bind="value: text">
+                                <div class="form-text">Optional, defaults to the Id.</div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-primary me-2" data-bind="click: $parent.saveClient, text: original ? 'Save' : 'Add'">Add</button>
+                            <button class="btn btn-sm btn-secondary" data-bind="click: $parent.cancelClient">Cancel</button>
+                        </div>
+                    </div>
+                    <label class="form-label mb-1"></label>
+                    <table class="table table-sm align-middle" style="max-width: 520px;" data-bind="visible: clientIds().length > 0">
+                        <thead class="table-light"><tr><th>Id</th><th>Display Name</th><th></th></tr></thead>
+                        <tbody data-bind="foreach: clientIds">
+                            <tr>
+                                <td data-bind="text: $parent.clientKey($data)"></td>
+                                <td data-bind="text: $parent.clientText($data)"></td>
+                                <td class="text-end text-nowrap" style="width: 90px;">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" title="Edit" data-bind="click: function() { $parent.editClient($data); }"><i class="fa fa-pencil"></i></button>
+                                        <button type="button" class="btn btn-outline-danger" title="Remove" data-bind="click: function() { $parent.removeClientId($data); }"><i class="fa fa-trash"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="text-muted mb-3" data-bind="visible: clientIds().length === 0"><i class="fa fa-exclamation-circle"></i> None added yet.</div>
+
+                    <!-- /ko -->
+
+                    <!-- ko if: userSource() === 'sql' -->
+                    <label class="form-label mb-1">Current <span data-bind="text: clientIdLabel() || 'Client Ids'"></span> <span class="text-muted fw-normal small">from your query</span></label>
+                    <div class="d-flex flex-wrap gap-2">
+                        <!-- ko foreach: sqlClients.rows -->
+                        <span class="badge bg-light text-dark border py-2" data-bind="text: text"></span>
+                        <!-- /ko -->
+                    </div>
+                    <div class="text-muted" data-bind="visible: sqlClients.loading"><i class="fa fa-spinner fa-spin"></i> Running the Clients Query...</div>
+                    <div class="text-danger small" data-bind="visible: sqlClients.error, text: 'Clients Query error: ' + sqlClients.error()"></div>
+                    <div class="text-muted" data-bind="visible: !sqlClients.loading() && !sqlClients.error() && sqlClients.rows().length === 0">
+                        <i class="fa fa-exclamation-circle"></i> No <span data-bind="text: clientIdLabel() || 'Client Ids'"></span> found, add a <b>Clients Query</b> above.
+                    </div>
+                    <!-- /ko -->
+
+                    <!-- ko if: userSource() === 'code' -->
+                    <label class="form-label mb-1">Current <span data-bind="text: clientIdLabel() || 'Client Ids'"></span> <span class="text-muted fw-normal small">from your code</span></label>
+                    <div class="d-flex flex-wrap gap-2">
+                        <!-- ko foreach: codeClientIds -->
+                        <span class="badge bg-light text-dark border py-2" data-bind="text: (typeof $data === 'object') ? ($data.text || $data.id) : $data"></span>
+                        <!-- /ko -->
+                    </div>
+                    <div class="text-muted" data-bind="visible: codeClientIds().length === 0"><i class="fa fa-exclamation-circle"></i> No <span data-bind="text: clientIdLabel() || 'Client Ids'"></span> found, populate <code>settings.ClientIds</code> in your code.</div>
+                    <!-- /ko -->
+                </div>
+                <!-- SETUP CODE -->
+                <div class="tab-pane" id="ur-code" role="tabpanel">
+                    <div class="card mb-3" data-bind="css: { 'border-primary': loginMode() === 'embedded' }">
+                        <div class="card-body py-3">
+                            <div>
+                                <label class="form-check-label">
+                                    <b><i class="fa fa-code"></i> Embedded in your app <span class="badge bg-secondary ms-1">Default</span></b>
+                                    <div class="small text-muted">Your application already has a login. Dotnet Report runs inside it and trusts it, you specify who is signed in from C# and switch on <code>[Authorize]</code>.</div>
+                                    <div class="small mt-1"><span class="text-muted">Works with:</span> any source</div>
+                                </label>
+                            </div>
+                            <!-- ko if: loginMode() === 'embedded' -->
+                            <div class="mt-3 ps-4">
+                                <div class="alert alert-warning py-2 small mb-2">
+                                    <i class="fa fa-exclamation-triangle"></i> <b>Turn authorization on.</b> <code>[Authorize]</code> ships commented out on
+                                    <code>DotNetReportController</code> and <code>DotNetReportApiController</code>, and <code>[Authorize(Roles = "Administrator")]</code> on
+                                    <code>DotNetSetupController</code>, so the default runs without a login. Uncomment them so only signed-in users reach reports
+                                    and only administrators reach this page.
+                                </div>
+                                <p class="text-muted small mb-1">Tell Dotnet Report who is signed in, from <code>GetSettings()</code> in <code>Controllers/DotNetReportApiController.cs</code>:</p>
+                                <pre class="bg-light border rounded p-3 small mb-0">
+                                settings.UserId          = User.Identity.Name;                          // currently logged in user
+                                settings.CurrentUserRole = new List&lt;string&gt; { "Admin" };          // currently logged in user's roles
+                                settings.ClientId        = "ACME";                                      // currently logged in user's tenant
+                                <!-- ko if: userSource() === 'code' -->
+                                settings.Users     = new List&lt;dynamic&gt; { "jane@co.com", "joe@co.com" }; // all users
+                                settings.UserRoles = new List&lt;string&gt; { "Admin", "Viewer" };            // all roles
+                                settings.ClientIds = new List&lt;string&gt; { "ACME", "CONTOSO" };            // all tenants<!-- /ko --></pre>
+                            </div>
+                            <!-- /ko -->
+                        </div>
+                    </div>
+                    @* Standalone and SSO login options for a later release. *@
+                    @*
+                    <div class="card mb-3" data-bind="css: { 'border-primary': loginMode() === 'standalone' }">
+                        <div class="card-body py-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="loginMode" id="login-standalone" value="standalone" data-bind="checked: loginMode" />
+                                <label class="form-check-label" for="login-standalone">
+                                    <b><i class="fa fa-sign-in"></i> Standalone <span class="text-muted fw-normal">(Dotnet Report login pages)</span></b>
+                                    <div class="small text-muted">Your application has no login of its own, or you want reporting behind a separate one. A NuGet package adds the pages and the sign-in.</div>
+                                    <div class="small mt-1"><span class="text-muted">Works with:</span> Dotnet Report Managed</div>
+                                </label>
+                            </div>
+                            <!-- ko if: loginMode() === 'standalone' -->
+                            <div class="mt-3 ps-4">
+                                <div class="alert alert-light border py-2 small mb-2" data-bind="visible: userSource() !== 'portal'">
+                                    <i class="fa fa-info-circle"></i> Standalone login signs users in with a password, so it needs the <b>Dotnet Report Managed</b> source above.
+                                    Application Code and SQL Query sources have no passwords to check.
+                                </div>
+                                <p class="text-muted small mb-1">The <code>DotNetReport.Login</code> package adds Login, Logout and Forgot Password pages to this application and signs users in against the Users tab.</p>
+                                <pre class="bg-light border rounded p-3 small mb-2">dotnet add package DotNetReport.Login
+
+// Program.cs
+builder.Services.AddDotNetReportLogin();   // Identity + cookie sign-in against your Dotnet Report users
+app.UseDotNetReportLogin();                // /Account/Login, /Account/Logout, /Account/ForgotPassword</pre>
+                                <p class="text-muted small mb-0">Then uncomment <code>[Authorize]</code> as above. <code>GetSettings()</code> is filled in for you from the signed-in user.</p>
+                            </div>
+                            <!-- /ko -->
+                        </div>
+                    </div>
+                    <div class="card mb-3" data-bind="css: { 'border-primary': loginMode() === 'sso' }">
+                        <div class="card-body py-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="loginMode" id="login-sso" value="sso" data-bind="checked: loginMode" />
+                                <label class="form-check-label" for="login-sso">
+                                    <b><i class="fa fa-key"></i> Single sign-on</b>
+                                    <div class="small text-muted">Your identity provider signs people in. No passwords are stored here.</div>
+                                    <div class="small mt-1"><span class="text-muted">Works with:</span> any source</div>
+                                </label>
+                            </div>
+                            <!-- ko if: loginMode() === 'sso' -->
+                            <div class="mt-3 ps-4">
+                                <p class="text-muted small mb-1">Sign in with your identity provider (Microsoft Entra ID, Okta, Google, or any OpenID Connect provider). Your provider issues the login; you map its claims:</p>
+                                <pre class="bg-light border rounded p-3 small mb-2">// Program.cs
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = "Cookies";
+    options.DefaultChallengeScheme = "oidc";
+})
+.AddCookie("Cookies")
+.AddOpenIdConnect("oidc", options =>
+{
+    options.Authority = "https://login.microsoftonline.com/&lt;tenant&gt;/v2.0";
+    options.ClientId = "&lt;client id&gt;";
+    options.ClientSecret = "&lt;client secret&gt;";
+    options.ResponseType = "code";
+    options.Scope.Add("email");
+});
+
+// GetSettings() in Controllers/DotNetReportApiController.cs
+settings.UserId          = User.FindFirst("preferred_username")?.Value ?? User.Identity.Name;
+settings.CurrentUserRole = User.Claims.Where(c => c.Type == "roles").Select(c => c.Value).ToList();
+settings.ClientId        = User.FindFirst("ClientId")?.Value;</pre>
+                                <p class="text-muted small mb-0">Then uncomment <code>[Authorize]</code> as above. Roles and tenants can still come from any source on the Users, Roles and Client Ids tabs.</p>
+                            </div>
+                            <!-- /ko -->
+                        </div>
+                    </div>
+*@
+                </div>
+            </div>
+        </div>
         <div role="tabpanel" class="tab-pane active" id="connection">
             <b>Manage Workspace</b>
             <p>
@@ -298,36 +697,35 @@
                 <button class="btn btn-sm btn-primary" data-bind="click: $root.loadFromDatabase, hidden: $root.customTableMode() || !$root.onlyApi()">
                     <span class="fa fa-database"></span> Load all Database Tables
                 </button>
-                <button class="btn btn-sm btn-primary" data-bind="click: $root.visualizeJoins"><span class="fa fa-arrows-h"></span> Visualize Joins</button>&nbsp;
-                <button class="btn btn-sm btn-primary"
-                        data-bind="click: function() { exportTablesJson(true) }, visible: $root.customTableMode">
-                    <span class="fa fa-download"></span> Export Custom Tables
-                </button>
-                <button class="btn btn-sm btn-primary"
-                        data-bind="click: function() { exportTablesJson(false) }, visible: !$root.customTableMode()">
-                    <span class="fa fa-download"></span> Export Tables/Views
-                </button>
-
-                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal" aria-haspopup="true" aria-expanded="false">
-                    <span class="fa fa-file"></span> Import Tables/Views
-                </button>
+                <button class="btn btn-sm btn-primary" data-bind="click: $root.visualizeJoins"><span class="fa fa-arrows-h"></span> Visualize Joins</button>
                 <button class="btn btn-sm btn-primary" title="Manage Categories" data-bs-toggle="modal" data-bs-target="#category-modal">
                     <span class="fa fa-server"></span> Manage Categories
                 </button>
-                <button class="btn btn-sm btn-primary" data-bind="click: function() { selectAll(false)},visible: !$root.customTableMode()">
-                     Select All Tables
-                </button>
-                <button class="btn btn-sm btn-primary" data-bind="click: function() { selectAll(true)}, visible: $root.customTableMode">
-                     Select All Custom Tables
-                </button>
-                <button class="btn btn-sm btn-primary" data-bind="click: function() { unselectAll(false)},visible: !$root.customTableMode()">
-                     UnSelect All Tables
-                </button>
-                <button class="btn btn-sm btn-primary" data-bind="click: function() { unselectAll(true)}, visible: $root.customTableMode">
-                     UnSelect All Custom Tables  
-                </button>
-                <button class="btn btn-sm btn-primary" data-bind="click: function() { $root.saveChanges($root.customTableMode()) }">
-                    <span class="fa fa-floppy-o"></span> Save All Tables
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="fa fa-exchange"></span> Import / Export
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="#" data-bind="click: function() { exportTablesJson(true) }, visible: $root.customTableMode">
+                                <span class="fa fa-download"></span> Export Custom Tables
+                            </a>
+                            <a class="dropdown-item" href="#" data-bind="click: function() { exportTablesJson(false) }, visible: !$root.customTableMode()">
+                                <span class="fa fa-download"></span> Export Tables/Views
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#uploadTablesFileModal">
+                                <span class="fa fa-upload"></span> Import Tables/Views
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                        data-bind="click: function() { toggleSelectAll($root.customTableMode()) },
+                            text: allSelected($root.customTableMode()) ? 'UnSelect All' : 'Select All'">Select All</button>
+                <button class="btn btn-sm btn-primary" title="Saves the tables that are checked" data-bind="click: function() { $root.saveChanges($root.customTableMode()) }">
+                    <span class="fa fa-floppy-o"></span> Save Selected Tables
                 </button>
             </div>
             <div class="clearfix"></div>
@@ -486,12 +884,12 @@
             <p>
                 Setup your Database Relations for Dotnet Report to produce dynamic queries
             </p>
-            <button class="btn btn-sm btn-primary" data-bind="click: AddAllRelations">Auto Add Joins</button>
-            <button class="btn btn-sm btn-primary" data-bind="click: AddJoin">Add new Join</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins">Save Joins</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: visualizeJoins">Visualize Joins</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: DeleteVisibleJoins" title="Delete filtered Joins">Delete Joins</button>&nbsp;
-            <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins" title="Export filtered Joins">Export Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: AddAllRelations"><span class="fa fa-magic"></span> Auto Add Joins</button>
+            <button class="btn btn-sm btn-primary" data-bind="click: AddJoin"><span class="fa fa-plus"></span> Add new Join</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: SaveJoins"><span class="fa fa-floppy-o"></span> Save Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: visualizeJoins"><span class="fa fa-arrows-h"></span> Visualize Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: DeleteVisibleJoins" title="Delete filtered Joins"><span class="fa fa-trash"></span> Delete Joins</button>&nbsp;
+            <button class="btn btn-sm btn-primary" data-bind="click: ExportJoins" title="Export filtered Joins"><span class="fa fa-download"></span> Export Joins</button>&nbsp;
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadJoinsFileModal" aria-haspopup="true" aria-expanded="false">
                 <span class="fa fa-upload"></span> Import Joins
             </button>
@@ -599,8 +997,9 @@
                         </div>
                     </div>
                 </div>
-                <div class="row mt-3">
-                    <div class="d-flex flex-row align-items-center col-md-12" data-bind="with: joinsPager">
+
+                <div class="row mt-3">                    
+                    <div class="d-flex flex-row align-items-center col-md-12" data-bind="with: joinsPager">                        
                         <div data-bind="template: 'pager-template', data: $data"></div>
                         <div class="text-muted small mt-0 pt-0" style="padding-left: 3px" data-bind="text: 'Total Records: ' + totalRecords()"></div>
                     </div>
@@ -626,7 +1025,7 @@
             <div class="row" data-bind="if: Procedures.savedProcedures().length > 0">
                 <!-- Left Panel for Stored Procedure Names -->
                 <div class="col-12 col-md-4 col-lg-3 border-end" style="height: 100vh; overflow-y: auto;">
-                    <div class="menu g-3" data-bind="foreach: Procedures.savedProcedures" ">
+                    <div class="menu g-3" data-bind="foreach: Procedures.savedProcedures"">
                         <div class="menu-category card">
                             <div class="card-header clearfix">
                                 <div class="pull-left">
@@ -725,7 +1124,7 @@
                             <button class="btn btn-sm btn-primary" data-bind="click: function() { exportFoldersReportJson() }">
                                 <span class="fa fa-download"></span> Export Selected Reports
                             </button>
-                        </div>
+                        </div>     
                         <div class="mb-2">
                             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadFileModal">
                                 <span class="fa fa-upload"></span> Import Reports
@@ -744,10 +1143,11 @@
                                 <div>
                                     <input type="checkbox" class="form-check-input"
                                            data-bind="checked: allReportsSelected">
-                                    <label>
+                                    <label data-bind="style: { paddingLeft: (depth * 20) + 'px' }">
                                         <a data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }">
                                             <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: folder"></span>
                                         </a>
+                                    <span class="text-muted small ms-2" data-bind="visible: depth > 0, text: folderPath"></span>
                                     </label>
                                 </div>
                             </div>
@@ -758,45 +1158,23 @@
                                 <ul class="list-group" data-bind="foreach: reports">
                                     <li class="list-group-item">
                                         <div class="row">
-                                            <div class="col-md-3 border-end">
+                                            <div class="col-md-6">
                                                 <div class="form-check">
                                                     <input class="form-check-input" type="checkbox" data-bind="checked: isSelected" />
                                                     <label class="list-group-item-heading">
-                                                        <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="font-size: 14pt; color: #808080"></span>
+                                                        <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="color: #808080"></span>
                                                         <span data-bind="text: reportName"></span>
                                                     </label>
                                                 </div>
-                                                <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
-                                                <div class="small" style="padding-top: 10px;">
-                                                    <b>Current Report Access</b><br />
-                                                    Manage by User <span class="badge text-bg-info text-white" data-bind="text: userId() ? userId() : 'Any User'"></span><br />
-                                                    View only by User <span class="badge text-bg-info text-white" data-bind="text: (viewOnlyUserId() ? viewOnlyUserId() : (userId() ? userId() : 'Any User'))"></span><br />
-                                                    <div data-bind="if: deleteOnlyUserId()">
-                                                        Delete only by User <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserId()"></span><br />
-                                                    </div>
-                                                    <div data-bind="if: userRole()">
-                                                        Manage by Role <span class="badge text-bg-info text-white" data-bind="text: userRole() ? userRole() : 'Any Role'"></span><br />
-                                                    </div>
-                                                    <div data-bind="if: viewOnlyUserRole()">
-                                                        View only by Role <span class="badge text-bg-info text-white" data-bind="text: viewOnlyUserRole() ? viewOnlyUserRole() : 'Any Role'"></span><br />
-                                                    </div>
-                                                    <div data-bind="if: deleteOnlyUserRole()">
-                                                        Delete only by Role <span class="badge text-bg-info text-white" data-bind="text: deleteOnlyUserRole() ? deleteOnlyUserRole() : 'Same as Manage'"></span><br />
-                                                    </div>
-                                                    <div>
-                                                        For Client <span class="badge text-bg-info text-white" data-bind="text: clientId() ? clientId() : 'All Clients'"></span><br />
-                                                    </div>
-                                                </div>
-                                                <br /><br />
-                                                <button class="btn btn-sm btn-primary" data-bind="click: function() { changeAccess(!changeAccess())}, text: !changeAccess() ? 'Change Access': 'Cancel Changing Access', hidden: changeAccess">Change Access</button>
+                                                <div class="small text-muted" data-bind="text: reportDescription"></div>
                                             </div>
-                                            <div data-bind="if: changeAccess" class="col-md-9">
-                                                <div style="padding-left: 10px;">
-                                                    <div data-bind="template: {name: 'manage-access-template', data: $root.manageAccess }"></div>
-                                                    <br /><br />
-                                                    <button class="btn btn-sm btn-primary" data-bind="click: saveAccessChanges">Save Access Changes</button>
-                                                    <button class="btn btn-sm btn-primary" data-bind="click: function() { changeAccess(!changeAccess())}, text: !changeAccess() ? 'Change Access': 'Cancel Changing Access'">Change Access</button>
+                                            <div class="col-md-5">
+                                                <div class="d-flex flex-wrap gap-1 align-items-center small">
+                                                    <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                                 </div>
+                                            </div>
+                                            <div class="col-md-1 text-end">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" title="Manage Access" data-bind="click: function() { $root.openAccessModal($data, false); }"><i class="fa fa-key"></i></button>
                                             </div>
                                         </div>
                                     </li>
@@ -813,47 +1191,44 @@
                         <div class="list-group-item">
                             <div class="d-flex justify-content-between">
                                 <div>
-                                    <a data-bs-toggle="collapse" data-bind="attr: {href: '#folderAccess-' + Id }">
+                                    <a data-bs-toggle="collapse" data-bind="attr: {href: '#folderAccess-' + Id }, style: { paddingLeft: ((Depth || 0) * 20) + 'px' }">
                                         <i class="fa fa-folder"></i>&nbsp;<span data-bind="text: FolderName"></span>
                                     </a>
+                                    <span class="text-muted small ms-2" data-bind="visible: (Depth || 0) > 0, text: FolderPath"></span>
                                 </div>
                             </div>
                             <div class="collapse" data-bind="attr: {id: 'folderAccess-' + Id }">
-                                <div class="row">
-                                    <div class="col-md-3 border-end">
-                                        <div class="small" style="padding-top: 10px;">
-                                            <b>Current Folder Access</b><br />
-                                            Manage by User <span class="badge text-bg-info text-white" data-bind="text: UserId()? UserId() : 'Any User'"></span><br />
-                                            View only by User <span class="badge text-bg-info text-white" data-bind="text: (ViewOnlyUserId() ? ViewOnlyUserId() : (UserId() ? UserId() : 'Any User'))"></span><br />
-                                            <div data-bind="if: DeleteOnlyUserId()">
-                                                Delete only by User <span class="badge text-bg-info text-white" data-bind="text: DeleteOnlyUserId()"></span><br />
-                                            </div>
-                                            <div data-bind="if: UserRoles()">
-                                                Manage by Role <span class="badge text-bg-info text-white" data-bind="text: UserRoles() ? UserRoles() : 'Any Role'"></span><br />
-                                            </div>
-                                            <div data-bind="if: ViewOnlyUserRoles()">
-                                                View only by Role <span class="badge text-bg-info text-white" data-bind="text: ViewOnlyUserRoles() ? ViewOnlyUserRoles() : 'Any Role'"></span><br />
-                                            </div>
-                                            <div data-bind="if: DeleteOnlyUserRoles()">
-                                                Delete only by Role <span class="badge text-bg-info text-white" data-bind="text: DeleteOnlyUserRoles() ? DeleteOnlyUserRoles() : 'Same as Manage'"></span><br />
-                                            </div>
-                                            <div>
-                                                For Client <span class="badge text-bg-info text-white" data-bind="text: ClientId() ? ClientId() : 'All Clients'"></span><br />
-                                            </div>
+                                <div class="row align-items-center py-2">
+                                    <div class="col-md-10">
+                                        <div class="d-flex flex-wrap gap-1 align-items-center small">
+                                            <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                         </div>
-                                        <br /><br />
-                                        <button class="btn btn-sm btn-primary" data-bind="click: function() { changeFolderAccess(!changeFolderAccess())}, text: !changeFolderAccess() ? 'Change Access': 'Cancel Changing Access', hidden: changeFolderAccess">Change Access</button>
                                     </div>
-                                    <div data-bind="if: changeFolderAccess" class="col-md-9">
-                                        <div style="padding-left: 10px;">
-                                            <div data-bind="template: {name: 'manage-access-template', data: $root.manageAccess }"></div>
-                                            <br /><br />
-                                            <button class="btn btn-sm btn-primary" data-bind="click: saveFolderAccessChanges">Save Access Changes</button>
-                                            <button class="btn btn-sm btn-primary" data-bind="click: function() { changeFolderAccess(!changeFolderAccess())}, text: !changeFolderAccess() ? 'Change Access': 'Cancel Changing Access'">Change Access</button>
-                                        </div>
+                                    <div class="col-md-2 text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Manage Access" data-bind="click: function() { $root.openAccessModal($data, true); }"><i class="fa fa-key"></i> Manage Access</button>
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal" id="setup-access-modal" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog modal-lg" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title"><i class="fa fa-key"></i> Manage Access <span class="text-muted ms-1" data-bind="text: accessTargetName"></span></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div data-bind="if: accessTarget()">
+                                <div data-bind="template: { name: 'manage-access-template', data: $root.manageAccess }"></div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" data-bind="click: saveAccessModal"><i class="fa fa-save"></i> Save Access</button>
                         </div>
                     </div>
                 </div>
@@ -965,11 +1340,46 @@
             </div>
         </div>
 
+        <div role="tabpanel" class="tab-pane" id="emailqueries" data-bind="with: emailQueries">
+            <div class="d-flex align-items-center mb-2">
+                <button class="btn btn-primary btn-sm" data-bind="click: addQuery"><i class="fa fa-plus"></i> Add Email List</button>
+                <span class="ms-3 text-muted small">Email lists for scheduled reports. Pick one when you schedule a report.</span>
+            </div>
+            <div class="alert alert-info py-2 small" data-bind="visible: queries().length === 0">No email lists yet.</div>
+            <table class="table table-striped table-sm" data-bind="visible: queries().length > 0">
+                <thead>
+                    <tr>
+                        <th style="width: 22%">Name</th>
+                        <th style="width: 28%">Description</th>
+                        <th style="width: 12%">Client</th>
+                        <th style="width: 28%">Query</th>
+                        <th style="width: 10%"></th>
+                    </tr>
+                </thead>
+                <tbody data-bind="foreach: queries">
+                    <tr>
+                        <td data-bind="text: name"></td>
+                        <td data-bind="text: description"></td>
+                        <td><span data-bind="text: clientId ? clientId : 'All Clients'"></span></td>
+                        <td><code class="small text-truncate d-inline-block" style="max-width: 320px;" data-bind="text: sqlQuery"></code></td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-light" title="Show the emails this list returns" data-bind="click: function() { $parent.previewQuery($data); }"><i class="fa fa-search"></i></button>
+                            <button class="btn btn-sm btn-light" title="Edit" data-bind="click: function() { $parent.editQuery($data); }"><i class="fa fa-pencil"></i></button>
+                            <button class="btn btn-sm btn-light text-danger" title="Delete" data-bind="click: function() { $parent.deleteQuery($data); }"><i class="fa fa-trash"></i></button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
         <div role="tabpanel" class="tab-pane" id="schedules">
             <b>Scheduled Reports</b>
             <p>
                 View Schedules setup for sending Reports and Dashboards
             </p>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#sentHistoryModal" data-bind="click: function() { loadSentHistory(1); }">
+                <span class="fa fa-history"></span> View Send History
+            </button>
             <hr />
 
             <div class="row">
@@ -977,49 +1387,42 @@
                     <div data-bind="visible: schedules().length === 0">
                         <i class="fa fa-exclamation-circle"></i> No scheduled Reports or Dashboards available.
                     </div>
-                    <div class="container-fluid" data-bind="if: schedules().length > 0">
-                        <div data-bind="foreach: schedules">
-                            <div class="row border-bottom py-2">
-                                <div class="col-12">
-                                    For <span class="text-muted" data-bind="text: DashboardId === 0 ? 'Report' : 'Dashboard'"></span>
-                                    <b><span data-bind="text: Name"></span></b>
-                                </div>
-                            </div>
-
-                            <!-- Inner schedule items -->
-                            <div class="row fw-bold bg-light py-2 d-none d-md-flex">
-                                <div class="col-md"><i class="fa fa-clock-o"></i> Schedule</div>
-                                <div class="col-md"><i class="fa fa-envelope"></i> Email To</div>
-                                <div class="col-md"><i class="fa fa-file"></i> Format</div>
-                                <div class="col-md"><i class="fa fa-history"></i> Last Run</div>
-                                <div class="col-md"><i class="fa fa-user"></i> User ID</div>
-                                <div class="col-md"><i class="fa fa-globe"></i> Time Zone</div>
-                                <div class="col-md"><i class="fa fa-cogs"></i> Actions</div>
-                            </div>
-
-                            <div data-bind="foreach: { data: Schedules, as: 'item' }">
-                                <div class="row border-bottom py-2 align-items-center">
-                                    <div class="col-md" data-bind="text: item.ScheduleDisplay"></div>
-                                    <div class="col-md" data-bind="text: item.EmailTo"></div>
-                                    <div class="col-md"
-                                         data-bind="if: item.Format && item.Format.trim().substring(0,1) === '{'">
-                                        <div data-bind="html: item.Format.slice(1,-1).split(',').join('<br>')"></div>
-                                    </div>
-                                    <div class="col-md"
-                                         data-bind="if: !item.Format || item.Format.trim().substring(0,1) !== '{'">
-                                        <div data-bind="text: item.Format"></div>
-                                    </div>
-                                    <div class="col-md" data-bind="text: item.LastRun"></div>
-                                    <div class="col-md" data-bind="text: item.UserId ? item.UserId : 'N/A'"></div>
-                                    <div class="col-md" data-bind="text: item.Timezone ? item.Timezone : 'N/A'"></div>
-                                    <div class="col-md">
-                                        <button class="btn btn-sm btn-danger" data-bind="click: $root.deleteSchedule">
+                    <div class="table-responsive" data-bind="if: schedules().length > 0">
+                        <table class="table table-sm align-middle mb-0 scheduled-reports-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th><i class="fa fa-file-text-o"></i> Report / Dashboard</th>
+                                    <th><i class="fa fa-clock-o"></i> Schedule</th>
+                                    <th><i class="fa fa-envelope"></i> Email To</th>
+                                    <th><i class="fa fa-file"></i> Format</th>
+                                    <th><i class="fa fa-filter"></i> Filter</th>
+                                    <th><i class="fa fa-history"></i> Last Run</th>
+                                    <th><i class="fa fa-user"></i> User ID</th>
+                                    <th><i class="fa fa-globe"></i> Time Zone</th>
+                                    <th><i class="fa fa-cogs"></i> Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="border-top" data-bind="foreach: scheduleRows">
+                                <tr>
+                                    <td class="align-middle border-end bg-light" data-bind="css: { 'border-top-0': !isFirst }">
+                                        <span class="fw-bold" data-bind="text: isFirst ? name : ''"></span>
+                                        <span class="badge" data-bind="visible: isFirst, css: isDashboard ? 'bg-info' : 'bg-secondary', text: isDashboard ? 'Dashboard' : 'Report'"></span>
+                                    </td>
+                                    <td data-bind="text: item.ScheduleDisplay"></td>
+                                    <td class="text-break" data-bind="text: $root.emailQueries.emailToDisplay(item)"></td>
+                                    <td data-bind="text: $root.formatDisplay(item.Format)"></td>
+                                    <td class="small text-muted" data-bind="text: item.FilterDisplay ? item.FilterDisplay : 'Report default filters'"></td>
+                                    <td data-bind="text: item.LastRun"></td>
+                                    <td data-bind="text: item.UserId ? item.UserId : 'N/A'"></td>
+                                    <td data-bind="text: item.Timezone ? item.Timezone : 'N/A'"></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-danger" data-bind="click: function() { $root.deleteSchedule(item); }">
                                             <i class="fa fa-trash"></i> Delete
                                         </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -1030,132 +1433,146 @@
             <b>Account Settings</b>
             <p>Configure advanced account options for all users.</p>
             <hr />
-            <div class="row mb-4">
-                <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <b>Account Level Settings</b>
+                </div>
+                <div class="card-body">
                     <div data-bind="with: settings">
                         <div class="row">
-                    <div class="col-md-6">
-                        <h6 class="mt-2 mb-2">Admin Options</h6>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="useClientIdInAdmin" data-bind="checked: useClientIdInAdmin">
-                            <label class="form-check-label" for="useClientIdInAdmin">Use Client ID in Admin mode</label>
-                            <small class="text-muted d-block">Enable this to respect client IDs even when in admin mode.</small>
-                        </div>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="useSqlBuilderInAdminMode" data-bind="checked: useSqlBuilderInAdminMode">
-                            <label class="form-check-label" for="useSqlBuilderInAdminMode">Use SQL Builder in Admin Mode</label>
-                            <small class="text-muted d-block">Allows SQL query builder access <b>only</b> in admin mode.</small>
-                        </div>
-                        <h6 class="mt-3 mb-2">Customization</h6>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="useSqlCustomField" data-bind="checked: useSqlCustomField">
-                            <label class="form-check-label" for="useSqlCustomField">Use SQL in Custom Field</label>
-                            <small class="text-muted d-block">Allows the use of SQL expressions in custom fields.</small>
-                        </div>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" data-bind="checked: showDesignerHints">
-                            <label class="form-check-label">Show Designer Tips &amp; Guidance</label>
-                            <small class="text-muted d-block">Display contextual tips and explanations throughout the report designer to help users understand available options.</small>
-                        </div>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" data-bind="checked: useAltPivot">
-                            <label class="form-check-label">Pivot with Drilldown</label>
-                            <small class="text-muted d-block">Use alternate Pivot method that doesn’t use SQL’s PIVOT.<br>Allows drilldown, but may be slower.</small>
-                        </div>
-                        <div class="form-check" data-bind="visible: isEnterprise">
-                            <input type="checkbox" class="form-check-input" data-bind="checked: useFunctions">
-                            <label class="form-check-label">Use Functions</label>
-                            <small class="text-muted d-block">
-                                Enable calculated functions for List reports only.<br>
-                                Available for Enterprise license users.
-                            </small>
-                        </div>
-                        <h6 class="mt-3 mb-2">Report Options</h6>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="allowUsersToCreateReports" data-bind="checked: allowUsersToCreateReports">
-                            <label class="form-check-label" for="allowUsersToCreateReports">Allow All Users to Create Reports</label>
-                            <small class="text-muted d-block">Permits users to generate and customize reports.</small>
-                        </div>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" data-bind="checked: showImportExport">
-                            <label class="form-check-label">Allow All Users to export/import reports</label>
-                            <small class="text-muted d-block">
-                                Allow non admin users to export and import Reports in the system.
-                            </small>
-                        </div>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" data-bind="checked: canCopyReport">
-                            <label class="form-check-label">Always allow users to copy reports</label>
-                            <small class="text-muted d-block">
-                                Allow users with View Only access to copy Reports in the system.
-                            </small>
-                        </div>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" data-bind="checked: showScheduling">
-                            <label class="form-check-label">Hide Report/Dashboard Scheduling</label>
-                            <small class="text-muted d-block">
-                                Removes scheduling in reports and dashboard, select only if you don't want to use scheduling feature.
-                            </small>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <h6 class="mt-2 mb-2">Folder Options</h6>
-                        <div class="form-check" data-bind="visible: false">
-                            <input type="checkbox" class="form-check-input" id="noFolders" data-bind="checked: noFolders">
-                            <label class="form-check-label" for="noFolders">No Folders</label>
-                            <small class="text-muted d-block">Disables the use of folders in the application.</small>
-                        </div>
-                        <div class="form-check" data-bind="visible: false">
-                            <input type="checkbox" class="form-check-input" id="noDefaultFolder" data-bind="checked: noDefaultFolder">
-                            <label class="form-check-label" for="noDefaultFolder">No Default Folder</label>
-                            <small class="text-muted d-block">Removes the Default folder.</small>
-                        </div>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" data-bind="checked: showEmptyFolders">
-                            <label class="form-check-label">Show Empty Folders</label>
-                            <small class="text-muted d-block">Will show empty folders for non admin users.</small>
-                        </div>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="allowUsersToManageFolders" data-bind="checked: allowUsersToManageFolders">
-                            <label class="form-check-label" for="allowUsersToManageFolders">Allow All Users to Manage Folders</label>
-                            <small class="text-muted d-block">Grants permission to organize and manage folders without admin mode.</small>
-                        </div>
-                        <h6 class="mt-3 mb-2">Export Options</h6>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" data-bind="checked: useAltPdf">
-                            <label class="form-check-label">PDF Export without Chromium</label>
-                            <small class="text-muted d-block">Use alternate PDF export method that doesn’t rely on Chromium.</small>
-                        </div>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" data-bind="checked: dontXmlExport">
-                            <label class="form-check-label">Hide XML Export option</label>
-                            <small class="text-muted d-block">Remove XML Export option.</small>
-                        </div>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" data-bind="checked: dontWordExport">
-                            <label class="form-check-label">Hide Word Export option</label>
-                            <small class="text-muted d-block">Remove Word Export option.</small>
-                        </div>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" data-bind="checked: showPageSize">
-                            <label class="form-check-label">Show Page Size on PDF & Word export</label>
-                            <small class="text-muted d-block">Display document dimensions in exported PDF & Word.</small>
-                        </div>
-
-                        <h6 class="mt-3 mb-2">AI Assistant <span class="badge bg-warning text-dark" style="font-size: 10px;">BETA</span></h6>
-                        <div class="mb-2">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" id="aiEnabledSwitch"
-                                       data-bind="checked: aiEnabled">
-                                <label class="form-check-label" for="aiEnabledSwitch">Enable AI Report Assistant</label>
+                            <div class="col-md-6">
+                                <h6 class="mt-2 mb-2">Admin Options</h6>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="useClientIdInAdmin" data-bind="checked: useClientIdInAdmin">
+                                    <label class="form-check-label" for="useClientIdInAdmin">Use Client ID in Admin mode</label>
+                                    <small class="text-muted d-block">Enable this to respect client IDs even when in admin mode.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="useSqlBuilderInAdminMode" data-bind="checked: useSqlBuilderInAdminMode">
+                                    <label class="form-check-label" for="useSqlBuilderInAdminMode">Use SQL Builder in Admin Mode</label>
+                                    <small class="text-muted d-block">Allows SQL query builder access <b>only</b> in admin mode.</small>
+                                </div>
+                                <h6 class="mt-3 mb-2">Customization</h6>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="useSqlCustomField" data-bind="checked: useSqlCustomField">
+                                    <label class="form-check-label" for="useSqlCustomField">Use SQL in Custom Field</label>
+                                    <small class="text-muted d-block">Allows the use of SQL expressions in custom fields.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showDesignerHints">
+                                    <label class="form-check-label">Show Designer Tips &amp; Guidance</label>
+                                    <small class="text-muted d-block">Display contextual tips and explanations throughout the report designer to help users understand available options.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: useAltPivot">
+                                    <label class="form-check-label">Pivot with Drilldown</label>
+                                    <small class="text-muted d-block">Use alternate Pivot method that doesn’t use SQL’s PIVOT.<br>Allows drilldown, but may be slower.</small>
+                                </div>
+                                <div class="form-check" data-bind="visible: isEnterprise">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: useFunctions">
+                                    <label class="form-check-label">Use Functions</label>
+                                    <small class="text-muted d-block">
+                                        Enable calculated functions for List reports only.<br>
+                                        Available for Enterprise license users.
+                                    </small>
+                                </div>
+                                <div class="mb-2 mt-2">
+                                    <label class="form-label mb-1" for="defaultDateFormatSelect">Default Date Format</label>
+                                    <select class="form-select form-select-sm" id="defaultDateFormatSelect" style="max-width: 220px;"
+                                            data-bind="options: dateFormatOptions, value: defaultDateFormat"></select>
+                                    <small class="text-muted d-block">Date format used by all date pickers when a field doesn't override it. e.g. <em>New Zealand</em> uses <code>dd/mm/yyyy</code>.</small>
+                                </div>
+                                <h6 class="mt-3 mb-2">Report Options</h6>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="allowUsersToCreateReports" data-bind="checked: allowUsersToCreateReports">
+                                    <label class="form-check-label" for="allowUsersToCreateReports">Allow All Users to Create Reports</label>
+                                    <small class="text-muted d-block">Permits users to generate and customize reports.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="allowUsersToCreateDashboards" data-bind="checked: allowUsersToCreateDashboards">
+                                    <label class="form-check-label" for="allowUsersToCreateDashboards">Allow All Users to Create Dashboards</label>
+                                    <small class="text-muted d-block">Permits users to generate and customize dashboards.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showImportExport">
+                                    <label class="form-check-label">Allow All Users to export/import reports</label>
+                                    <small class="text-muted d-block">
+                                        Allow non admin users to export and import Reports in the system.
+                                    </small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: canCopyReport">
+                                    <label class="form-check-label">Always allow users to copy reports</label>
+                                    <small class="text-muted d-block">
+                                        Allow users with View Only access to copy Reports in the system.
+                                    </small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showScheduling">
+                                    <label class="form-check-label">Hide Report/Dashboard Scheduling</label>
+                                    <small class="text-muted d-block">
+                                        Removes scheduling in reports and dashboard, select only if you don't want to use scheduling feature.
+                                    </small>
+                                </div>
                             </div>
-                            <small class="text-muted d-block">When enabled, an AI-powered assistant will be available in the report designer to help build reports using natural language.</small>
+                            <div class="col-md-6">
+                                <h6 class="mt-2 mb-2">Folder Options</h6>
+                                <div class="form-check" data-bind="visible: false">
+                                    <input type="checkbox" class="form-check-input" id="noFolders" data-bind="checked: noFolders">
+                                    <label class="form-check-label" for="noFolders">No Folders</label>
+                                    <small class="text-muted d-block">Disables the use of folders in the application.</small>
+                                </div>
+                                <div class="form-check" data-bind="visible: false">
+                                    <input type="checkbox" class="form-check-input" id="noDefaultFolder" data-bind="checked: noDefaultFolder">
+                                    <label class="form-check-label" for="noDefaultFolder">No Default Folder</label>
+                                    <small class="text-muted d-block">Removes the Default folder.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showEmptyFolders">
+                                    <label class="form-check-label">Show Empty Folders</label>
+                                    <small class="text-muted d-block">Will show empty folders for non admin users.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="allowUsersToManageFolders" data-bind="checked: allowUsersToManageFolders">
+                                    <label class="form-check-label" for="allowUsersToManageFolders">Allow All Users to Manage Folders</label>
+                                    <small class="text-muted d-block">Grants permission to organize and manage folders without admin mode.</small>
+                                </div>
+                                <h6 class="mt-3 mb-2">Export Options</h6>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: useAltPdf">
+                                    <label class="form-check-label">PDF Export without Chromium</label>
+                                    <small class="text-muted d-block">Use alternate PDF export method that doesn’t rely on Chromium.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: dontXmlExport">
+                                    <label class="form-check-label">Hide XML Export option</label>
+                                    <small class="text-muted d-block">Remove XML Export option.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: dontWordExport">
+                                    <label class="form-check-label">Hide Word Export option</label>
+                                    <small class="text-muted d-block">Remove Word Export option.</small>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" data-bind="checked: showPageSize">
+                                    <label class="form-check-label">Show Page Size on PDF & Word export</label>
+                                    <small class="text-muted d-block">Display document dimensions in exported PDF & Word.</small>
+                                </div>
+
+                                <h6 class="mt-3 mb-2">AI Assistant <span class="badge bg-warning text-dark" style="font-size: 10px;">BETA</span></h6>
+                                <div class="mb-2">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="aiEnabledSwitch"
+                                               data-bind="checked: aiEnabled">
+                                        <label class="form-check-label" for="aiEnabledSwitch">Enable AI Report Assistant</label>
+                                    </div>
+                                    <small class="text-muted d-block">When enabled, an AI-powered assistant will be available in the report designer to help build reports using natural language.</small>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-                <div class="mt-3">
-                    <button type="button" id="saveAppSettings" class="btn btn-primary" data-bind="click: saveAppSettings">Save Account Settings</button>
-                </div>
+                        <div class="mt-3">
+                            <button type="button" id="saveAppSettings" class="btn btn-primary" data-bind="click: saveAppSettings">Save</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1550,7 +1967,8 @@
                         <button class="btn btn-secondary" title="Manage Role Access" data-bs-toggle="modal" data-bs-target="#role-access-modal" data-bind="click: $root.selectAllowedRoles">
                             <i class="fa fa-user"></i>Manage Role Access
                         </button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-bind="click: function(){$root.saveColumn()}">Done</button>
+                        @* <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-bind="click: function(){$root.saveColumn()}">Done</button> *@
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
                     </div>
                 </div>
             </div>
@@ -1758,66 +2176,66 @@
     </div>
 </div>
 
-<div class="modal" id="role-access-modal" role="dialog" tabindex="-2">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content" data-bind="with: editAllowedRoles">
-            <div class="modal-header">
-                <h4 class="modal-title">Manage Access by Roles</h4>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Choose User Roles that will have Access</p>
-                <p class="small">Note: All Users will have access if no restricted roles are setup</p>
-                <div data-bind="if: $root.allRoles().length === 0">
-                    <div class="alert alert-warning">
-                        <strong>No roles available.</strong> Please add roles first.
+    <div class="modal" id="role-access-modal" role="dialog" tabindex="-2">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content" data-bind="with: editAllowedRoles">
+                <div class="modal-header">
+                    <h4 class="modal-title">Manage Access by Roles</h4>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Choose User Roles that will have Access</p>
+                    <p class="small">Note: All Users will have access if no restricted roles are setup</p>
+                    <div data-bind="if: $root.allRoles().length === 0">
+                        <div class="alert alert-warning">
+                            <strong>No roles available.</strong> Please add roles first.
+                        </div>
+                    </div>
+                    <div data-bind="if: $root.allRoles().length > 0">
+                        <div class="list-group" data-bind="foreach: $root.allRoles">
+                            <div class="list-group-item" style="padding: 2px 10px;">
+                                <label>
+                                    <input type="checkbox"
+                                           data-bind="value: $data,
+                                      checked: $root.editAllowedRoles().AllowedRoles" />
+                                    <span data-bind="text: $data"></span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div data-bind="if: $root.allRoles().length > 0">
-                    <div class="list-group" data-bind="foreach: $root.allRoles">
-                        <div class="list-group-item" style="padding: 2px 10px;">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal" id="category-manage-modal" role="dialog" tabindex="-2">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content" data-bind="with: manageCategories">
+                <div class="modal-header">
+                    <b class="modal-title">Manage Categories for <span data-bind="text: TableName"></span></b>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div data-bind="visble: $root.Categories().lenth == 0">
+                        No categories have been set up yet.
+                    </div>
+                    <div class="list-group" data-bind="foreach: $root.Categories">
+                        <div class="checkbox list-group-item" style="padding-top: 2px; padding-bottom: 2px;">
                             <label>
-                                <input type="checkbox"
-                                       data-bind="value: $data,
-                                      checked: $root.editAllowedRoles().AllowedRoles" />
-                                <span data-bind="text: $data"></span>
+                                <input type="checkbox" data-bind="checked: $parent.Categories, checkedValue: $data" />
+                                <span data-bind="text: Name"></span> <!-- Display category name -->
                             </label>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
-<div class="modal" id="category-manage-modal" role="dialog" tabindex="-2">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content" data-bind="with: manageCategories">
-            <div class="modal-header">
-                <b class="modal-title">Manage Categories for <span data-bind="text: TableName"></span></b>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div data-bind="visble: $root.Categories().lenth == 0">
-                    No categories have been set up yet.
-                </div>
-                <div class="list-group" data-bind="foreach: $root.Categories">
-                    <div class="checkbox list-group-item" style="padding-top: 2px; padding-bottom: 2px;">
-                        <label>
-                            <input type="checkbox" data-bind="checked: $parent.Categories, checkedValue: $data" />
-                            <span data-bind="text: Name"></span> <!-- Display category name -->
-                        </label>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
-            </div>
-        </div>
-    </div>
-</div>
 
 
 <div class="modal" id="category-modal" role="dialog" tabindex="-2">
@@ -2038,7 +2456,6 @@
         </div>
     </div>
 </div>
-
 
 <div class="modal" id="connection-setup-modal" tabindex="-1" aria-labelledby="connectionSetupLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -2372,4 +2789,193 @@
     </div>
 </div>
 
+<div class="modal" id="sentHistoryModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa fa-history"></i> Schedule Send History</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-2 align-items-end mb-3 border-bottom pb-2">
+                    <div class="col-sm-3">
+                        <label class="form-label small mb-0">From</label>
+                        <input type="date" class="form-control form-control-sm" data-bind="value: sentHistoryStartDate" />
+                    </div>
+                    <div class="col-sm-3">
+                        <label class="form-label small mb-0">To</label>
+                        <input type="date" class="form-control form-control-sm" data-bind="value: sentHistoryEndDate" />
+                    </div>
+                    <div class="col-sm-auto">
+                        <button class="btn btn-sm btn-primary" data-bind="click: function() { loadSentHistory(1); }, enable: !sentHistoryLoading()">Search</button>
+                        <button class="btn btn-sm btn-secondary" data-bind="click: function() { sentHistoryStartDate(''); sentHistoryEndDate(''); loadSentHistory(1); }, enable: !sentHistoryLoading()">Clear</button>
+                    </div>
+                </div>
+                <div data-bind="visible: sentHistoryLoading() && sentHistory().length === 0" class="text-center py-3 text-muted">
+                    <i class="fa fa-spinner fa-spin"></i> Loading...
+                </div>
+                <div data-bind="visible: !sentHistoryLoading() && sentHistory().length === 0" class="text-center py-3 text-muted">
+                    <i class="fa fa-inbox"></i> No history for this range.
+                </div>
+                <div data-bind="visible: sentHistory().length > 0">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>When</th>
+                                <th>Type</th>
+                                <th>Name</th>
+                                <th>Sent To</th>
+                                <th>Format</th>
+                                <th>Result</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody data-bind="foreach: sentHistory">
+                            <tr>
+                                <td><small data-bind="text: created"></small></td>
+                                <td><span class="badge bg-secondary" data-bind="text: itemType"></span></td>
+                                <td data-bind="text: itemName || ('#' + (itemId || ''))"></td>
+                                <td><small data-bind="text: sentTo"></small></td>
+                                <td data-bind="text: format"></td>
+                                <td>
+                                    <span data-bind="css: isError ? 'badge bg-danger' : (result === 'Triggered' ? 'badge bg-info' : 'badge bg-success'), text: result"></span>
+                                </td>
+                                <td><small class="text-muted" data-bind="text: message"></small></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <small class="text-muted">
+                            Page <span data-bind="text: sentHistoryPage"></span> of <span data-bind="text: sentHistoryTotalPages"></span>
+                            (<span data-bind="text: sentHistoryTotal"></span> total)
+                        </small>
+                        <div>
+                            <button class="btn btn-sm btn-outline-secondary" data-bind="click: function() { loadSentHistory(sentHistoryPage() - 1); }, enable: sentHistoryPage() > 1 && !sentHistoryLoading()">
+                                <i class="fa fa-chevron-left"></i> Prev
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" data-bind="click: function() { loadSentHistory(sentHistoryPage() + 1); }, enable: sentHistoryPage() < sentHistoryTotalPages() && !sentHistoryLoading()">
+                                Next <i class="fa fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bind="click: function() { loadSentHistory(sentHistoryPage()); }">
+                    <span class="fa fa-refresh"></span> Refresh
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 
+
+
+<div class="modal" id="email-query-modal" role="dialog" tabindex="-1" data-bind="with: emailQueries">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" data-bind="text: current().id() > 0 ? 'Edit Email List' : 'Add Email List'"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body needs-validation" data-bind="with: current">
+                <div class="mb-3 form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-control" name="emailQueryName" data-bind="textInput: name" placeholder="e.g. Site Managers" required />
+                    <div class="invalid-feedback">Name is required.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-control" data-bind="value: description" placeholder="Optional" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Client Id</label>
+                    <input type="text" class="form-control" data-bind="value: clientId" placeholder="Leave blank to make this available to all clients" />
+                </div>
+                <div class="mb-2 form-group">
+                    <label class="form-label">SQL Query</label>
+                    <textarea class="form-control" rows="8" style="font-family: monospace;" name="emailQuerySql" data-bind="textInput: sqlQuery" placeholder="SELECT Email FROM Users WHERE IsActive = 1" required></textarea>
+                    <div class="invalid-feedback">SQL Query is required.</div>
+                    <div class="form-text">Read only SELECT returning one row per email, with an <code>Email</code> column.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light btn-sm me-auto" data-bind="click: previewCurrentQuery"
+                        title="Run the query above and show the emails it returns">
+                    <i class="fa fa-search"></i> Preview Emails
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-sm" data-bind="click: saveQuery">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script type="text/html" id="users-roles-sql-source">
+    <!-- ko if: $parent.userSource() === 'sql' -->
+    <div class="mb-3">
+        <div class="d-flex align-items-center mb-2">
+            <button class="btn btn-primary btn-sm" data-bind="visible: savedId() === 0, click: function() { $parent.editSqlSource($data); }">
+                <i class="fa fa-plus"></i> Add <span data-bind="text: title"></span>
+            </button>
+            <span class="ms-3 text-muted small" data-bind="text: hint"></span>
+        </div>
+        <div class="alert alert-info py-2 small" data-bind="visible: savedId() === 0">
+            No <span data-bind="text: title"></span> yet.
+        </div>
+        <table class="table table-striped table-sm" data-bind="visible: savedId() > 0">
+            <thead>
+                <tr>
+                    <th style="width: 22%">Name</th>
+                    <th style="width: 68%">Query</th>
+                    <th style="width: 10%"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td data-bind="text: title"></td>
+                    <td><code class="small text-truncate d-inline-block" style="max-width: 520px;" data-bind="text: sqlQuery"></code></td>
+                    <td class="text-end text-nowrap">
+                        <button class="btn btn-sm btn-light" title="Show the rows this query returns" data-bind="click: function() { $parent.previewSqlSource($data); }"><i class="fa fa-search"></i></button>
+                        <button class="btn btn-sm btn-light" title="Edit" data-bind="click: function() { $parent.editSqlSource($data); }"><i class="fa fa-pencil"></i></button>
+                        <button class="btn btn-sm btn-light text-danger" title="Delete" data-bind="click: function() { $parent.deleteSqlSource($data); }"><i class="fa fa-trash"></i></button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <!-- /ko -->
+</script>
+
+<div class="modal" id="users-roles-sql-modal" role="dialog" tabindex="-1" data-bind="with: usersRoles">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><span data-bind="text: currentSql().savedId() > 0 ? 'Edit' : 'Add'"></span> <span data-bind="text: currentSql().title"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body needs-validation" data-bind="with: currentSql">
+                <div class="mb-2 form-group">
+                    <label class="form-label">SQL Query</label>
+                    <textarea class="form-control" rows="10" style="font-family: monospace;" name="usersRolesSql"
+                        data-bind="textInput: draft, attr: { placeholder: placeholder }" required></textarea>
+                    <div class="invalid-feedback">SQL Query is required.</div>
+                    <div class="form-text">Read only SELECT. <span data-bind="text: hint"></span></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light btn-sm me-auto" data-bind="click: previewCurrentSql"
+                    title="Run the query above and show the rows it returns">
+                    <i class="fa fa-search"></i> Preview
+                </button>
+                <button type="button" class="btn btn-light btn-sm" data-bind="click: beautifyCurrentSql" title="Format the SQL above">
+                    <i class="fa fa-magic"></i> Beautify Sql
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-sm" data-bind="click: saveSqlSource">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
