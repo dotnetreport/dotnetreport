@@ -526,11 +526,19 @@ namespace ReportBuilder.Web.Models
 
         public DataTable ExecuteSql(string sql)
         {
+            if (string.IsNullOrWhiteSpace(sql) || sql.TrimEnd(';', ' ', '\r', '\n', '\t').Contains(";") ||
+                sql.Contains("--") || sql.Contains("/*"))
+            {
+                throw new ArgumentException("Invalid SQL statement.", nameof(sql));
+            }
+
             var dt = new DataTable();
             using (var conn = new SqlConnection(DbConnection))
             {
                 conn.Open();
-                var command = new SqlCommand(sql, conn);
+                var command = conn.CreateCommand();
+                command.CommandType = CommandType.Text;
+                command.CommandText = sql;
                 var adapter = new SqlDataAdapter(command);
 
                 adapter.Fill(dt);
