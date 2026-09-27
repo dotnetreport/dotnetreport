@@ -7970,17 +7970,7 @@ var reportViewModel = function (options) {
 				r.Column.fieldLabel = col.fieldLabel
 
 				r.formattedVal = ko.computed(function () {
-					function localeFor(name) {
-						switch (name) {
-							case 'United Kingdom': return 'en-GB';
-							case 'New Zealand': return 'en-NZ';
-							case 'France': return 'fr-FR';
-							case 'German': return 'de-DE';
-							case 'Spanish': return 'es-ES';
-							case 'Chinese': return 'zh-CN';
-							default: return 'en-US';
-						}
-					}
+					var localeFor = self.dateLocaleFor;
 					var ff = col.fieldFormat ? col.fieldFormat() : null;
 					var ft = col.fieldType;
 					var _parsedDate = self.safeParseDate(r.Value);
@@ -9434,6 +9424,7 @@ var reportViewModel = function (options) {
 		showXAxisLabel: true,
 		showYAxisLabel: true,
 		showSmallValuesOnLabel: false,
+		fillEmptyDates: false,
 		annotations : {
 			alwaysOutside: true,
 			textStyle: {
@@ -9567,6 +9558,107 @@ var reportViewModel = function (options) {
 		var colors = self.chartOptions().seriesColors.filter(c => c !== color);
 		self.chartOptions(Object.assign({}, self.chartOptions(), { seriesColors: colors }));
 		self.updateChart();
+	};
+
+	self.dateLocaleFor = function (name) {
+		switch (name) {
+			case 'United Kingdom': return 'en-GB';
+			case 'New Zealand': return 'en-NZ';
+			case 'France': return 'fr-FR';
+			case 'German': return 'de-DE';
+			case 'Spanish': return 'es-ES';
+			case 'Chinese': return 'zh-CN';
+			default: return 'en-US';
+		}
+	};
+
+	// Format a date the way a result cell of this column is formatted (same rules as processReportResult)
+	self.formatDateLikeColumn = function (date, col) {
+		var ff = col.fieldFormat ? col.fieldFormat() : null;
+		var explicitDateFormat = self.dateFormatTypes.indexOf(ff) >= 0;
+		var globalDefaultName = (self.appSettings && self.appSettings.defaultDateFormat) || 'United States';
+		if (explicitDateFormat && col.dateFormat() === 'Custom' && col.customDateFormat()) return self.formatDate(date, col.customDateFormat());
+		var loc = self.dateLocaleFor(explicitDateFormat ? (col.dateFormat() || globalDefaultName) : globalDefaultName);
+		var fmt = explicitDateFormat ? ff : (col.fieldType === 'Time' ? 'Time' : 'Date');
+		if (fmt === 'Time') return date.toLocaleTimeString(loc, { hour: 'numeric', minute: 'numeric', second: 'numeric' });
+		if (fmt === 'Date and Time') return date.toLocaleDateString(loc, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
+		return date.toLocaleDateString(loc, { year: 'numeric', month: 'numeric', day: 'numeric' });
+	};
+
+	self.fillChartDateGaps = function (data, reportData) {
+		var col = reportData.Columns[0];
+		if (!col || data.rows.length < 2) return null;
+		var agg = (self.SelectedFields()[0] && self.SelectedFields()[0].selectedAggregate()) || '';
+		var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+		var rawByLabel = {};
+		_.forEach(reportData.Rows, function (row, i) { rawByLabel[row.Items[0].FormattedValue || ''] = { value: row.Items[0].Value, index: i }; });
+		function raw(label) { return rawByLabel[label] ? rawByLabel[label].value : label; }
+
+		var mode;
+		if (agg === 'Group by Year') {
+			mode = { key: function (v) { var y = parseInt(v, 10); return isNaN(y) ? null : y; }, next: function (k) { return k + 1; }, label: function (k) { return String(k); } };
+		} else if (agg === 'Group by Month') {
+			mode = {
+				key: function (v) { var i = _.findIndex(months, function (m) { return m.toLowerCase() === String(v).trim().toLowerCase(); }); return i < 0 ? null : i; },
+				next: function (k) { return k + 1; }, label: function (k) { return months[k]; }
+			};
+		} else if (agg === 'Group by Month/Year') {
+			var numeric = /^\d{1,2}\/\d{4}$/.test(String(raw(data.rows[0][0])).trim());   // 08/2026 (MySQL, Postgres) or Aug 2026 (SQL Server)
+			mode = {
+				key: function (v) {
+					var t = String(v).trim(), m = t.match(/^(\d{1,2})\/(\d{4})$/) || t.match(/^([A-Za-z]{3})[a-z]* (\d{4})$/);
+					if (!m) return null;
+					var month = /^\d/.test(m[1]) ? parseInt(m[1], 10) - 1 : _.findIndex(months, function (x) { return x.substr(0, 3).toLowerCase() === m[1].toLowerCase(); });
+					return month < 0 ? null : parseInt(m[2], 10) * 12 + month;
+				},
+				next: function (k) { return k + 1; },
+				label: function (k) { var y = Math.floor(k / 12), m = k % 12; return numeric ? ((m < 9 ? '0' : '') + (m + 1) + '/' + y) : months[m].substr(0, 3) + ' ' + y; }
+			};
+		} else {
+			// plain dates and Group by Day: detect the spacing from the values
+			var dates = _.map(data.rows, function (r) { return self.safeParseDate(raw(r[0])); });
+			if (col.IsNumeric || _.some(dates, function (d) { return !d; })) return null;
+			if (_.some(dates, function (d) { return d.getMinutes() || d.getSeconds(); })) return null;   // minute-level data, leave it
+			var sorted = _.sortBy(dates, function (d) { return d.getTime(); });
+			var unit = 'day';
+			if (_.some(dates, function (d) { return d.getHours(); })) unit = 'hour';
+			else if (_.every(dates, function (d) { return d.getDate() === 1; })) unit = _.every(dates, function (d) { return d.getMonth() === 0; }) ? 'year' : 'month';
+			else if (_.every(sorted, function (d, i) { return i === 0 || Math.round((d - sorted[i - 1]) / 86400000) % 7 === 0; })) unit = 'week';
+			mode = {
+				key: function (v) { var d = self.safeParseDate(v); return d ? d.getTime() : null; },
+				next: function (k) {
+					var n = new Date(k);
+					if (unit === 'hour') n.setHours(n.getHours() + 1);
+					else if (unit === 'day') n.setDate(n.getDate() + 1);
+					else if (unit === 'week') n.setDate(n.getDate() + 7);
+					else if (unit === 'month') n.setMonth(n.getMonth() + 1);
+					else n.setFullYear(n.getFullYear() + 1);
+					return n.getTime();
+				},
+				label: function (k) {
+					var text = self.formatDateLikeColumn(new Date(k), col);
+					return unit === 'hour' && text.indexOf(':') < 0 ? new Date(k).toLocaleString() : text;
+				}
+			};
+		}
+
+		var byKey = {}, keys = [];
+		for (var i = 0; i < data.rows.length; i++) {
+			var k = mode.key(raw(data.rows[i][0]));
+			if (k === null) return null;                        // not a date axis after all
+			byKey[k] = { row: data.rows[i], index: rawByLabel[data.rows[i][0]] ? rawByLabel[data.rows[i][0]].index : i };
+			keys.push(k);
+		}
+		var template = data.rows[0];
+		var rows = [], map = [];
+		for (var key = _.min(keys), last = _.max(keys); key <= last; key = mode.next(key)) {
+			if (rows.length > 2000) return null;                // too many points to be useful
+			if (byKey[key]) { rows.push(byKey[key].row); map.push(byKey[key].index); continue; }
+			rows.push(_.map(template, function (v, j) { return j === 0 ? mode.label(key) : (typeof v === 'number' ? 0 : ''); }));
+			map.push(-1);
+		}
+		data.rows = rows;
+		return map;
 	};
 
 	self.updateChart = function () {
@@ -9940,6 +10032,10 @@ var reportViewModel = function (options) {
 		});
 
 		data.rows = rowArray;
+		var chartRowMap = null;
+		if (self.chartOptions().fillEmptyDates && ['Line', 'Bar', 'Combo'].indexOf(self.ReportType()) >= 0 && !isLatLongMap) {
+			chartRowMap = self.fillChartDateGaps(data, reportData);
+		}
 
 		// Set chart options
 		var chartOptions = self.chartOptions();
@@ -10618,9 +10714,10 @@ var reportViewModel = function (options) {
 		if (self.ReportType() != 'Treemap' && self.ReportType() != 'Radar' && self.ReportType() != 'Polar') {
 			chart.off('click');
 			chart.on('click', function (params) {
-				if (params && params.dataIndex != null) {
+				var rowIndex = params && params.dataIndex != null ? (chartRowMap ? chartRowMap[params.dataIndex] : params.dataIndex) : -1;
+				if (rowIndex >= 0) {
 					self.ChartDrillDownData(null);
-					self.ReportResult().ReportData().Rows[params.dataIndex].expand();
+					self.ReportResult().ReportData().Rows[rowIndex].expand();
 					$("#drilldownModal").modal('show');
 				}
 			});
