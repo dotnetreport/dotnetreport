@@ -3313,7 +3313,9 @@ namespace ReportBuilder.Web.Models
         {
             var isCurrency = false;
             var isNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
-            var formatColumn = columns?.FirstOrDefault(x => dc.ColumnName.StartsWith(x.fieldName)) ?? new ReportHeaderColumn();
+            var formatColumn = columns?.FirstOrDefault(x => x.fieldName == dc.ColumnName)
+                ?? columns?.Where(x => !string.IsNullOrEmpty(x.fieldName) && dc.ColumnName.StartsWith(x.fieldName)).OrderByDescending(x => x.fieldName.Length).FirstOrDefault()
+                ?? new ReportHeaderColumn();
             string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
             try
             {
@@ -3494,7 +3496,7 @@ namespace ReportBuilder.Web.Models
 
                     DataColumn target = dt.Columns.Contains(col.fieldName)
                         ? dt.Columns[col.fieldName]
-                        : dt.Columns.Cast<DataColumn>().FirstOrDefault(x => x.ColumnName.StartsWith(col.fieldName));
+                        : dt.Columns.Cast<DataColumn>().FirstOrDefault(x => x.ColumnName.StartsWith(col.fieldName) && !columns.Any(c => c.fieldName == x.ColumnName));
                     if (target == null) continue;
 
                     if (col.hideStoredProcColumn)
