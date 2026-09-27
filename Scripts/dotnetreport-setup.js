@@ -3053,6 +3053,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 				}
 				if (e.Columns) {
 					_.each(e.Columns, function (col) {
+						if (!col.ForeignJoin) col.ForeignJoin = 'Inner'; 
 						if (!col.ForeignKey) {
 							col.ForeignTable = null;
 							col.ForeignKeyField = null;
