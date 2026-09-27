@@ -836,14 +836,14 @@
                 <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give Global access"></span>
             </div>
         </div>
-        <div class="alert alert-info">
-            <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;User level rights override Role level rights. No selection for a rule implies report is available to all.
+        <div class="alert alert-info py-1 px-2 small mb-2">
+            <span class="fa fa-lightbulb-o"></span>&nbsp;If no users or roles are selected, everyone has access. Once any user or role is selected, only the selected users and roles have access. User level rights override Role level rights.
         </div>
 
         <div class="row small">
             <div class="col-md-6">
                 <span class="clickable" data-bind="click: toggleManageUsers"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showManageUsers(), 'fa-chevron-right': !showManageUsers() }"></i> <b>Manage by User</b> (allow edit)</span>
-                <div data-bind="template: { name: 'access-selected-pills', data: { list: users, open: showManageUsers } }"></div>
+                <div data-bind="template: { name: 'access-selected-pills', data: { list: users, open: showManageUsers, userList: true } }"></div>
                 <div class="row container-fluid" data-bind="visible: showManageUsers">
                     <!-- ko if: groupedUsers().length > 0 -->
                     <!-- ko foreach: groupedUsers -->
@@ -882,7 +882,7 @@
                 </div>
                 <br />
                 <span class="clickable" data-bind="click: toggleViewUsers"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showViewUsers(), 'fa-chevron-right': !showViewUsers() }"></i> <b>View only by User</b> (no edit/delete)</span>
-                <div data-bind="template: { name: 'access-selected-pills', data: { list: viewOnlyUsers, open: showViewUsers } }"></div>
+                <div data-bind="template: { name: 'access-selected-pills', data: { list: viewOnlyUsers, open: showViewUsers, userList: true } }"></div>
                 <div class="row container-fluid" data-bind="visible: showViewUsers">
                     <!-- ko if: groupedViewOnlyUsers().length > 0 -->
                     <!-- ko foreach: groupedViewOnlyUsers -->
@@ -922,7 +922,7 @@
                 <br />
                 <div data-bind="ifnot: isDashboard">
                     <span class="clickable" data-bind="click: toggleDeleteUsers"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showDeleteUsers(), 'fa-chevron-right': !showDeleteUsers() }"></i> <b>Delete by User</b> (allow delete)</span>
-                    <div data-bind="template: { name: 'access-selected-pills', data: { list: deleteOnlyUsers, open: showDeleteUsers } }"></div>
+                    <div data-bind="template: { name: 'access-selected-pills', data: { list: deleteOnlyUsers, open: showDeleteUsers, userList: true } }"></div>
                     <div class="row container-fluid" data-bind="visible: showDeleteUsers">
                     <!-- ko if: groupedDeleteOnlyUsers().length > 0 -->
                     <!-- ko foreach: groupedDeleteOnlyUsers -->
@@ -1029,7 +1029,8 @@
             <button type="button" class="btn btn-sm btn-link text-white p-0 ms-2 lh-1" title="Remove" data-bind="click: function(){ selected(false); }"><i class="fa fa-times"></i></button>
         </span>
         <!-- /ko -->
-        <span class="text-muted small" data-bind="visible: !_.some(list(), function (x) { return x.selected(); })"><i class="fa fa-globe"></i> Everyone, not restricted</span>
+        <span class="text-muted small" data-bind="visible: !_.some(list(), function (x) { return x.selected(); }) && !($data.userList && $parent.isUserRestricted())"><i class="fa fa-globe"></i> Everyone, not restricted</span>
+        <span class="text-muted small" data-bind="visible: !_.some(list(), function (x) { return x.selected(); }) && $data.userList && $parent.isUserRestricted()"><i class="fa fa-lock"></i> Only selected users have access</span>
     </div>
     <!-- /ko -->
 </script>
