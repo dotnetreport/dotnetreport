@@ -6467,6 +6467,20 @@ var reportViewModel = function (options) {
 			return;
 		}
 		var copyfield = ko.toJS(field);
+		copyfield.aggregateFunction = copyfield.selectedAggregate;
+		copyfield.fieldSettings = {
+			dateFormat: copyfield.dateFormat,
+			customDateFormat: copyfield.customDateFormat,
+			currencyFormat: copyfield.currencyFormat,
+			fieldLabel2: copyfield.fieldLabel2,
+			drillDataFormat: copyfield.drillDataFormat,
+			seriesType: copyfield.seriesType,
+			formulaType: copyfield.formulaType,
+			functionConfig: copyfield.functionConfig,
+			customSqlField: copyfield.customSqlField,
+			outerGroup: copyfield.outerGroup,
+			totalRowAggregate: copyfield.totalRowAggregate
+		};
 		copyfield.fieldName = "Copy - " + copyfield.fieldName;
 		var duplicatedField = self.setupField(copyfield);
 		self.SelectedFields.push(duplicatedField);
