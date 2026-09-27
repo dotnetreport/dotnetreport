@@ -105,6 +105,7 @@
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
         <select required multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, lookupSearch: $parent.SearchLookupList, options: $parent.LookupList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ValueIn"></select>
+        <button type="button" class="btn btn-link btn-sm p-0" data-bind="click: $parent.SelectAllLookup, visible: $parent.LookupList().length > 0 && $parent.ValueIn().length < $parent.LookupList().length">Select all</button>
         <!-- /ko -->
         <!-- /ko -->
     </div>
@@ -1155,7 +1156,7 @@
                                         optionsText: 'selectedFieldName',
                                         optionsCaption: 'Please Choose',
                                         value: Field,
-                                        attr: {required: Field()==null?'required':false},
+                                        attr: {required: Field()==null?'required':false, title: Field() ? ko.unwrap(Field().selectedFieldName) : ''},
                                         disable: Field() && Field().forced"></select>
                                 </div>
                             </div>

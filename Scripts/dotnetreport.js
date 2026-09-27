@@ -849,6 +849,13 @@ function filterGroupViewModel(args) {
 				return runLookupSearch(lookupSqlInfo, lookupList, token, keep);
 			},
 			SearchParentList: function (token) { return runLookupSearch(parentSqlInfo, parentList, token, filter.ParentIn()); },
+			SelectAllLookup: function () {
+				var key = filter.IsConditionalFilter ? 'text' : 'id';
+				var current = filter.ValueIn() || [];
+				var seen = {};
+				_.forEach(current, function (v) { seen[String(v)] = true; });
+				filter.ValueIn(current.concat(_.filter(_.map(lookupList(), key), function (v) { return !seen[String(v)]; })));
+			},
 			ParentIn: ko.observableArray(parentIn),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			EmailListColumn: ko.observable(e.EmailListColumn || ''),
@@ -7529,7 +7536,7 @@ var reportViewModel = function (options) {
 				col.decimalPlacesDigit = col.decimalPlaces ? col.decimalPlaces() : null;
 				col.fieldFormating = col.fieldFormat ? col.fieldFormat() : null;
 				col.IsPivotField = e.IsPivotField ;
-				if (skipColDetails !== true) self.columnDetails.push(ko.toJS(col));
+				if (skipColDetails !== true) self.columnDetails.push(col);
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
 				e.currencyFormat = col.currencyFormat || ko.observable();
@@ -9026,10 +9033,13 @@ var reportViewModel = function (options) {
 		return _.map(_.orderBy(self.expandSqls(), 'index'), function (x) { return x.sql; });
 	});
 
-	self.getColumnDetails = ko.computed(function () {
+	self.getColumnDetails = ko.pureComputed(function () {
 		var cleaned = ko.toJS(self.columnDetails());
 
 		cleaned.forEach(col => {
+			if (col.currencyFormat !== undefined) col.currencySymbol = col.currencyFormat || null;
+			if (col.decimalPlaces !== undefined) col.decimalPlacesDigit = col.decimalPlaces;
+			if (col.fieldFormat !== undefined) col.fieldFormating = col.fieldFormat || null;
 			if (col.fieldCondtionalFormats) {
 				col.fieldCondtionalFormats.forEach(fmt => {
 					if (fmt.filter && fmt.filter.Filters) {
