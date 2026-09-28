@@ -1755,6 +1755,12 @@ var reportViewModel = function (options) {
 	self.panels = new DesignerViewModel();
 	self.selectMode = ko.observable(false);
 
+	self.newReportJoinCondition = function (fieldName, joinFieldName) {
+		return { fieldName: ko.observable(fieldName || ''), joinFieldName: ko.observable(joinFieldName || '') };
+	};
+	self.addReportJoinCondition = function (join) { join.conditions.push(self.newReportJoinCondition('', '')); };
+	self.removeReportJoinCondition = function (join, c) { join.conditions.remove(c); };
+
 	self.swapJoinDirection = function (join) {
 		var swapped = {
 			tableId: join.joinedTableId,
@@ -1766,7 +1772,11 @@ var reportViewModel = function (options) {
 			joinType: join.joinType,
 			joinOrder: join.joinOrder,
 			isForeignKey: join.isForeignKey,
-			fieldId: join.fieldId
+			fieldId: join.fieldId,
+			tableFields: join.joinedTableFields,
+			joinedTableFields: join.tableFields,
+			globalConditions: _.map(join.globalConditions || [], function (g) { return { fieldName: g.joinFieldName, joinFieldName: g.fieldName, removed: g.removed }; }),
+			conditions: ko.observableArray(_.map(join.conditions ? join.conditions() : [], function (c) { return self.newReportJoinCondition(c.joinFieldName(), c.fieldName()); }))
 		};
 
 		var all = self.detectedJoins();
@@ -1862,9 +1872,33 @@ var reportViewModel = function (options) {
 					joinFieldName = existingOverride.joinFieldName || r.JoinFieldName;
 				}
 
+				var sameAsRelation = tableId === r.TableId;
+				var sameCondition = function (saved, g) {
+					var f = saved.tableId == tableId ? saved.fieldName : saved.joinFieldName;
+					var jf = saved.tableId == tableId ? saved.joinFieldName : saved.fieldName;
+					return (f || '').toLowerCase() === (g.fieldName || '').toLowerCase() && (jf || '').toLowerCase() === (g.joinFieldName || '').toLowerCase();
+				};
+				var globalConditions = [];
+				var withConditions = r.JoinConditions ? r : _.find(result, function (o) {
+					var eq = function (a, b) { return (a || '').toLowerCase() === (b || '').toLowerCase(); };
+					return o.JoinConditions && ((o.TableId === r.TableId && o.JoinedTableId === r.JoinedTableId && eq(o.FieldName, r.FieldName) && eq(o.JoinFieldName, r.JoinFieldName))
+						|| (o.TableId === r.JoinedTableId && o.JoinedTableId === r.TableId && eq(o.FieldName, r.JoinFieldName) && eq(o.JoinFieldName, r.FieldName)));
+				});
+				try { globalConditions = JSON.parse((withConditions && withConditions.JoinConditions) || '[]') || []; } catch (e) { }
+				var savedConditions = existingOverride && existingOverride.conditions ? existingOverride.conditions : [];
 				joins.push({
 					tableId: tableId,
 					joinedTableId: joinedTableId,
+					tableFields: (sameAsRelation ? r.TableFields : r.JoinedTableFields) || [],
+					joinedTableFields: (sameAsRelation ? r.JoinedTableFields : r.TableFields) || [],
+					globalConditions: _.map(globalConditions, function (c) {
+						var g = c.TableId == tableId ? { fieldName: c.FieldName, joinFieldName: c.JoinFieldName } : { fieldName: c.JoinFieldName, joinFieldName: c.FieldName };
+						g.removed = ko.observable(!!(existingOverride && existingOverride.replaceConditions) && !_.some(savedConditions, function (s) { return sameCondition(s, g); }));
+						return g;
+					}),
+					conditions: ko.observableArray(_.map(_.filter(savedConditions, function (s) {
+						return !_.some(globalConditions, function (c) { return sameCondition(s, c.TableId == tableId ? { fieldName: c.FieldName, joinFieldName: c.JoinFieldName } : { fieldName: c.JoinFieldName, joinFieldName: c.FieldName }); });
+					}), function (c) { return c.tableId == tableId ? self.newReportJoinCondition(c.fieldName, c.joinFieldName) : self.newReportJoinCondition(c.joinFieldName, c.fieldName); })),
 					tableName: tableName,
 					joinedTableName: joinedTableName,
 					joinType: ko.observable(existingOverride ? existingOverride.joinType : r.JoinType),
@@ -1946,6 +1980,15 @@ var reportViewModel = function (options) {
 			};
 			if (j.isForeignKey && j.fieldId) {
 				obj.fieldId = j.fieldId;
+			}
+			if (!j.isForeignKey && j.conditions) {
+				var added = _.filter(j.conditions(), function (c) { return c.fieldName() && c.joinFieldName(); });
+				var kept = _.filter(j.globalConditions || [], function (g) { return !g.removed(); });
+				if (added.length || kept.length < (j.globalConditions || []).length) {
+					obj.replaceConditions = true;
+					obj.conditions = _.map(kept, function (g) { return { tableId: j.tableId, fieldName: g.fieldName, joinedTableId: j.joinedTableId, joinFieldName: g.joinFieldName }; })
+						.concat(_.map(added, function (c) { return { tableId: j.tableId, fieldName: c.fieldName(), joinedTableId: j.joinedTableId, joinFieldName: c.joinFieldName() }; }));
+				}
 			}
 			return obj;
 		});

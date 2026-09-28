@@ -1092,8 +1092,28 @@ settings.ClientId        = User.FindFirst("ClientId")?.Value;</pre>
                                       title="New record added or imported, not saved yet">
                                     <i class="fa fa-warning"></i> New
                                 </span>
+                                <button class="btn btn-outline-secondary btn-sm me-1" title="Add another condition to this join (AND)" data-bind="click: addCondition">+ AND</button>
                                 <button class="btn btn-secondary btn-sm" data-bind="click: DeleteJoin">Delete</button>
                             </div>
+                            <!-- ko foreach: Conditions -->
+                            <div class="col-12">
+                                <div class="row align-items-center mt-1">
+                                    <div class="col-md-1" style="max-width: 40px;"></div>
+                                    <div class="col-md-2 text-end small text-muted fw-bold">AND</div>
+                                    <div class="col-md-2" data-bind="with: $parent.JoinTable">
+                                        <select class="form-select form-select-sm" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', optionsCaption: 'Choose field', value: $parent.FieldName"></select>
+                                    </div>
+                                    <div class="col-md-1 text-center">=</div>
+                                    <div class="col-md-2 small text-muted" data-bind="text: $parent.OtherTable() ? $parent.OtherTable().DisplayName() : ''"></div>
+                                    <div class="col-md-2" data-bind="with: $parent.OtherTable">
+                                        <select class="form-select form-select-sm" data-bind="options: availableColumns, optionsText: 'DisplayName', optionsValue: 'ColumnName', optionsCaption: 'Choose field', value: $parent.JoinFieldName"></select>
+                                    </div>
+                                    <div class="col-md-2 text-end">
+                                        <button class="btn btn-link btn-sm text-danger p-0" title="Remove this condition" data-bind="click: $parent.removeCondition"><i class="fa fa-times"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- /ko -->
                         </div>
                     </div>
                 </div>
@@ -1877,8 +1897,8 @@ settings.ClientId        = User.FindFirst("ClientId")?.Value;</pre>
                             <td><input type="checkbox" class="form-check-input" data-bind="checked: add, enable: join" /></td>
                             <td data-bind="text: from"></td>
                             <td><i class="fa fa-long-arrow-right"></i></td>
-                            <td data-bind="text: to"></td>
-                            <td><span class="badge" data-bind="text: status, css: status === 'New' ? 'bg-warning text-dark' : (status === 'Already exists' ? 'bg-secondary' : 'bg-light text-dark border')"></span></td>
+                            <td><span data-bind="text: to"></span> <span class="small text-muted" data-bind="text: conditions"></span></td>
+                            <td><span class="badge" data-bind="text: status, css: status === 'New' || status === 'Add AND conditions' ? 'bg-warning text-dark' : (status === 'Already exists' ? 'bg-secondary' : 'bg-light text-dark border')"></span></td>
                         </tr>
                     </tbody>
                 </table>

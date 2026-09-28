@@ -4431,6 +4431,43 @@
                         </div>
                         <div class="col-2" data-bind="text: joinedTableName"></div>
                         <div class="col-2"><code data-bind="text: joinFieldName"></code></div>
+                        <!-- ko ifnot: isForeignKey -->
+                        <div class="col-12">
+                            <!-- ko foreach: globalConditions -->
+                            <div class="row align-items-center mt-1 small" data-bind="css: { 'text-decoration-line-through text-muted': removed }" title="Additional condition from the Relations setup">
+                                <div class="col-3 text-end text-muted fw-bold">AND</div>
+                                <div class="col-3"><code data-bind="text: fieldName"></code></div>
+                                <div class="col-1 text-center">=</div>
+                                <div class="col-3"><code data-bind="text: joinFieldName"></code> <span class="badge bg-light text-muted border ms-1">global</span></div>
+                                <div class="col-2">
+                                    <button class="btn btn-link btn-sm text-danger p-0" title="Don't use this condition in this report" data-bind="visible: !removed(), click: function () { removed(true); }"><i class="fa fa-times"></i></button>
+                                    <button class="btn btn-link btn-sm p-0" title="Use this condition again" data-bind="visible: removed, click: function () { removed(false); }">restore</button>
+                                </div>
+                            </div>
+                            <!-- /ko -->
+                            <!-- ko foreach: conditions -->
+                            <div class="row align-items-center mt-1">
+                                <div class="col-3 text-end small text-muted fw-bold">AND</div>
+                                <div class="col-3">
+                                    <select class="form-select form-select-sm" data-bind="options: $parent.tableFields, optionsCaption: 'Choose field', value: fieldName"></select>
+                                </div>
+                                <div class="col-1 text-center">=</div>
+                                <div class="col-3">
+                                    <select class="form-select form-select-sm" data-bind="options: $parent.joinedTableFields, optionsCaption: 'Choose field', value: joinFieldName"></select>
+                                </div>
+                                <div class="col-2">
+                                    <button class="btn btn-link btn-sm text-danger p-0" title="Remove this condition" data-bind="click: function () { $parents[1].removeReportJoinCondition($parent, $data); }"><i class="fa fa-times"></i></button>
+                                </div>
+                            </div>
+                            <!-- /ko -->
+                            <div class="row mt-1">
+                                <div class="col-3"></div>
+                                <div class="col-3">
+                                    <button class="btn btn-outline-secondary btn-sm" title="Add another condition to this join for this report (AND)" data-bind="click: function () { $parent.addReportJoinCondition($data); }">+ AND</button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- /ko -->
                     </div>
                 </div>
                 <!-- /ko -->

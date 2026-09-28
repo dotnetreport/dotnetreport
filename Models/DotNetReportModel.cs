@@ -189,6 +189,7 @@ namespace ReportBuilder.Web.Models
         public string JoinedSchemaName { get; set; }
         public string JoinedTableName { get; set; }
         public string JoinedColumnName { get; set; }
+        public string ConstraintName { get; set; }
     }
 
     public class RelationModel
@@ -6666,7 +6667,8 @@ namespace ReportBuilder.Web.Models
                 list.Add(new ForeignKeyModel
                 {
                     SchemaName = r[0].ToString(), TableName = r[1].ToString(), ColumnName = r[2].ToString(),
-                    JoinedSchemaName = r[3].ToString(), JoinedTableName = r[4].ToString(), JoinedColumnName = r[5].ToString()
+                    JoinedSchemaName = r[3].ToString(), JoinedTableName = r[4].ToString(), JoinedColumnName = r[5].ToString(),
+                    ConstraintName = dt.Columns.Count > 6 ? r[6].ToString() : ""
                 });
             }
             return list;
@@ -7094,14 +7096,16 @@ namespace ReportBuilder.Web.Models
         public async Task<List<ForeignKeyModel>> GetForeignKeys(string dataConnectKey = null)
         {
             var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
-            var sql = @"SELECT s1.name, t1.name, c1.name, s2.name, t2.name, c2.name
+            var sql = @"SELECT s1.name, t1.name, c1.name, s2.name, t2.name, c2.name, fk.name
                 FROM sys.foreign_key_columns fkc
+                JOIN sys.foreign_keys fk ON fk.object_id = fkc.constraint_object_id
                 JOIN sys.tables t1 ON t1.object_id = fkc.parent_object_id
                 JOIN sys.schemas s1 ON s1.schema_id = t1.schema_id
                 JOIN sys.columns c1 ON c1.object_id = fkc.parent_object_id AND c1.column_id = fkc.parent_column_id
                 JOIN sys.tables t2 ON t2.object_id = fkc.referenced_object_id
                 JOIN sys.schemas s2 ON s2.schema_id = t2.schema_id
-                JOIN sys.columns c2 ON c2.object_id = fkc.referenced_object_id AND c2.column_id = fkc.referenced_column_id";
+                JOIN sys.columns c2 ON c2.object_id = fkc.referenced_object_id AND c2.column_id = fkc.referenced_column_id
+                ORDER BY fk.name, fkc.constraint_column_id";
             return DotNetReportHelper.MapForeignKeys(ExecuteQuery(connString, sql));
         }
 
