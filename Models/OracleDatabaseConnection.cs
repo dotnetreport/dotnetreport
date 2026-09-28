@@ -146,11 +146,12 @@ namespace ReportBuilder.Web.Models
         public async Task<List<ForeignKeyModel>> GetForeignKeys(string dataConnectKey = null)
         {
             var connString = await DotNetReportHelper.GetConnectionString(DotNetReportHelper.GetConnection(dataConnectKey), false);
-            var sql = @"SELECT NULL, a.TABLE_NAME, a.COLUMN_NAME, NULL, r.TABLE_NAME, r.COLUMN_NAME
+            var sql = @"SELECT NULL, a.TABLE_NAME, a.COLUMN_NAME, NULL, r.TABLE_NAME, r.COLUMN_NAME, c.CONSTRAINT_NAME
                 FROM USER_CONSTRAINTS c
                 JOIN USER_CONS_COLUMNS a ON a.CONSTRAINT_NAME = c.CONSTRAINT_NAME
                 JOIN USER_CONS_COLUMNS r ON r.CONSTRAINT_NAME = c.R_CONSTRAINT_NAME AND r.POSITION = a.POSITION
-                WHERE c.CONSTRAINT_TYPE = 'R'";
+                WHERE c.CONSTRAINT_TYPE = 'R'
+                ORDER BY c.CONSTRAINT_NAME, a.POSITION";
             return DotNetReportHelper.MapForeignKeys(ExecuteQuery(connString, sql));
         }
 
