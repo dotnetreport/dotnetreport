@@ -164,6 +164,11 @@ namespace ReportBuilder.Web.Models
             return FieldTypes.Varchar;
         }
 
+        public Task<List<ForeignKeyModel>> GetForeignKeys(string connString, string dataConnectKey = null)
+        {
+            return Task.FromResult(new List<ForeignKeyModel>()); // no catalog query for this provider
+        }
+
         public async Task<List<TableViewModel>> GetTables(string connString, string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();

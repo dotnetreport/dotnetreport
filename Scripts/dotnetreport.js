@@ -522,7 +522,7 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings, apiUrl, previewEma
 			SelectedDays: self.selectedDays().join(","),
 			SelectedMonths: self.selectedMonths().join(","),
 			SelectedDates: self.selectedOption() == 'once' ? self.selectedDate() : self.selectedDates().join(","),
-			SelectedHour: self.selectedHour(),
+			SelectedHour: (self.selectedHour() || '12').toString(),
 			SelectedMinute: self.selectedMinute(),
 			SelectedAmPm: self.selectedAmPm(),
 			EmailTo: self.emailTo(),
@@ -849,6 +849,13 @@ function filterGroupViewModel(args) {
 				return runLookupSearch(lookupSqlInfo, lookupList, token, keep);
 			},
 			SearchParentList: function (token) { return runLookupSearch(parentSqlInfo, parentList, token, filter.ParentIn()); },
+			SelectAllLookup: function () {
+				var key = filter.IsConditionalFilter ? 'text' : 'id';
+				var current = filter.ValueIn() || [];
+				var seen = {};
+				_.forEach(current, function (v) { seen[String(v)] = true; });
+				filter.ValueIn(current.concat(_.filter(_.map(lookupList(), key), function (v) { return !seen[String(v)]; })));
+			},
 			ParentIn: ko.observableArray(parentIn),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			EmailListColumn: ko.observable(e.EmailListColumn || ''),
@@ -909,13 +916,15 @@ function filterGroupViewModel(args) {
 			});
 		}
 
-		function loadLookupList(fieldId, dataFilters) {
+		function loadLookupList(fieldId, dataFilters, parentValues) {
 			if (printMode === true) return;
+			var model = { fieldId: fieldId, addToken: true };
+			if (parentValues && parentValues.length > 0) model.parentFilterValues = JSON.stringify(parentValues);
 			ajaxcall({
 				url: args.options.apiUrl,
 				data: {
 					method: "/ReportApi/GetLookupList",
-					model: JSON.stringify({ fieldId: fieldId, dataFilters: dataFilters, addToken: true })
+					model: JSON.stringify(model)
 				},
 				noBlocking: args.parent.ReportMode()=='dashboard'
 			}).done(function (result) {
@@ -969,13 +978,7 @@ function filterGroupViewModel(args) {
 				if (newField.hasForeignParentKey) {
 
 					filter.ParentIn.subscribe(function (newValue) {
-						if (newValue && newValue.length > 0) {
-							var df = Object.assign({}, args.options.dataFilters || {});
-							df[newField.foreignParentApplyTo] = newValue.join();
-							loadLookupList(newField.fieldId, df);
-						} else {
-							loadLookupList(newField.fieldId, args.options.dataFilters);
-						}
+						loadLookupList(newField.fieldId, args.options.dataFilters, newValue);
 					});
 
 					var existingParentFilter = self.GetValuesInFilterGroupForFieldAndTable(newField.foreignParentTable, newField.foreignParentKeyField);
@@ -1752,6 +1755,12 @@ var reportViewModel = function (options) {
 	self.panels = new DesignerViewModel();
 	self.selectMode = ko.observable(false);
 
+	self.newReportJoinCondition = function (fieldName, joinFieldName) {
+		return { fieldName: ko.observable(fieldName || ''), joinFieldName: ko.observable(joinFieldName || '') };
+	};
+	self.addReportJoinCondition = function (join) { join.conditions.push(self.newReportJoinCondition('', '')); };
+	self.removeReportJoinCondition = function (join, c) { join.conditions.remove(c); };
+
 	self.swapJoinDirection = function (join) {
 		var swapped = {
 			tableId: join.joinedTableId,
@@ -1763,7 +1772,11 @@ var reportViewModel = function (options) {
 			joinType: join.joinType,
 			joinOrder: join.joinOrder,
 			isForeignKey: join.isForeignKey,
-			fieldId: join.fieldId
+			fieldId: join.fieldId,
+			tableFields: join.joinedTableFields,
+			joinedTableFields: join.tableFields,
+			globalConditions: _.map(join.globalConditions || [], function (g) { return { fieldName: g.joinFieldName, joinFieldName: g.fieldName, removed: g.removed }; }),
+			conditions: ko.observableArray(_.map(join.conditions ? join.conditions() : [], function (c) { return self.newReportJoinCondition(c.joinFieldName(), c.fieldName()); }))
 		};
 
 		var all = self.detectedJoins();
@@ -1859,9 +1872,33 @@ var reportViewModel = function (options) {
 					joinFieldName = existingOverride.joinFieldName || r.JoinFieldName;
 				}
 
+				var sameAsRelation = tableId === r.TableId;
+				var sameCondition = function (saved, g) {
+					var f = saved.tableId == tableId ? saved.fieldName : saved.joinFieldName;
+					var jf = saved.tableId == tableId ? saved.joinFieldName : saved.fieldName;
+					return (f || '').toLowerCase() === (g.fieldName || '').toLowerCase() && (jf || '').toLowerCase() === (g.joinFieldName || '').toLowerCase();
+				};
+				var globalConditions = [];
+				var withConditions = r.JoinConditions ? r : _.find(result, function (o) {
+					var eq = function (a, b) { return (a || '').toLowerCase() === (b || '').toLowerCase(); };
+					return o.JoinConditions && ((o.TableId === r.TableId && o.JoinedTableId === r.JoinedTableId && eq(o.FieldName, r.FieldName) && eq(o.JoinFieldName, r.JoinFieldName))
+						|| (o.TableId === r.JoinedTableId && o.JoinedTableId === r.TableId && eq(o.FieldName, r.JoinFieldName) && eq(o.JoinFieldName, r.FieldName)));
+				});
+				try { globalConditions = JSON.parse((withConditions && withConditions.JoinConditions) || '[]') || []; } catch (e) { }
+				var savedConditions = existingOverride && existingOverride.conditions ? existingOverride.conditions : [];
 				joins.push({
 					tableId: tableId,
 					joinedTableId: joinedTableId,
+					tableFields: (sameAsRelation ? r.TableFields : r.JoinedTableFields) || [],
+					joinedTableFields: (sameAsRelation ? r.JoinedTableFields : r.TableFields) || [],
+					globalConditions: _.map(globalConditions, function (c) {
+						var g = c.TableId == tableId ? { fieldName: c.FieldName, joinFieldName: c.JoinFieldName } : { fieldName: c.JoinFieldName, joinFieldName: c.FieldName };
+						g.removed = ko.observable(!!(existingOverride && existingOverride.replaceConditions) && !_.some(savedConditions, function (s) { return sameCondition(s, g); }));
+						return g;
+					}),
+					conditions: ko.observableArray(_.map(_.filter(savedConditions, function (s) {
+						return !_.some(globalConditions, function (c) { return sameCondition(s, c.TableId == tableId ? { fieldName: c.FieldName, joinFieldName: c.JoinFieldName } : { fieldName: c.JoinFieldName, joinFieldName: c.FieldName }); });
+					}), function (c) { return c.tableId == tableId ? self.newReportJoinCondition(c.fieldName, c.joinFieldName) : self.newReportJoinCondition(c.joinFieldName, c.fieldName); })),
 					tableName: tableName,
 					joinedTableName: joinedTableName,
 					joinType: ko.observable(existingOverride ? existingOverride.joinType : r.JoinType),
@@ -1943,6 +1980,15 @@ var reportViewModel = function (options) {
 			};
 			if (j.isForeignKey && j.fieldId) {
 				obj.fieldId = j.fieldId;
+			}
+			if (!j.isForeignKey && j.conditions) {
+				var added = _.filter(j.conditions(), function (c) { return c.fieldName() && c.joinFieldName(); });
+				var kept = _.filter(j.globalConditions || [], function (g) { return !g.removed(); });
+				if (added.length || kept.length < (j.globalConditions || []).length) {
+					obj.replaceConditions = true;
+					obj.conditions = _.map(kept, function (g) { return { tableId: j.tableId, fieldName: g.fieldName, joinedTableId: j.joinedTableId, joinFieldName: g.joinFieldName }; })
+						.concat(_.map(added, function (c) { return { tableId: j.tableId, fieldName: c.fieldName(), joinedTableId: j.joinedTableId, joinFieldName: c.joinFieldName() }; }));
+				}
 			}
 			return obj;
 		});
@@ -6471,6 +6517,20 @@ var reportViewModel = function (options) {
 			return;
 		}
 		var copyfield = ko.toJS(field);
+		copyfield.aggregateFunction = copyfield.selectedAggregate;
+		copyfield.fieldSettings = {
+			dateFormat: copyfield.dateFormat,
+			customDateFormat: copyfield.customDateFormat,
+			currencyFormat: copyfield.currencyFormat,
+			fieldLabel2: copyfield.fieldLabel2,
+			drillDataFormat: copyfield.drillDataFormat,
+			seriesType: copyfield.seriesType,
+			formulaType: copyfield.formulaType,
+			functionConfig: copyfield.functionConfig,
+			customSqlField: copyfield.customSqlField,
+			outerGroup: copyfield.outerGroup,
+			totalRowAggregate: copyfield.totalRowAggregate
+		};
 		copyfield.fieldName = "Copy - " + copyfield.fieldName;
 		var duplicatedField = self.setupField(copyfield);
 		self.SelectedFields.push(duplicatedField);
@@ -7519,7 +7579,7 @@ var reportViewModel = function (options) {
 				col.decimalPlacesDigit = col.decimalPlaces ? col.decimalPlaces() : null;
 				col.fieldFormating = col.fieldFormat ? col.fieldFormat() : null;
 				col.IsPivotField = e.IsPivotField ;
-				if (skipColDetails !== true) self.columnDetails.push(ko.toJS(col));
+				if (skipColDetails !== true) self.columnDetails.push(col);
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
 				e.currencyFormat = col.currencyFormat || ko.observable();
@@ -7974,17 +8034,7 @@ var reportViewModel = function (options) {
 				r.Column.fieldLabel = col.fieldLabel
 
 				r.formattedVal = ko.computed(function () {
-					function localeFor(name) {
-						switch (name) {
-							case 'United Kingdom': return 'en-GB';
-							case 'New Zealand': return 'en-NZ';
-							case 'France': return 'fr-FR';
-							case 'German': return 'de-DE';
-							case 'Spanish': return 'es-ES';
-							case 'Chinese': return 'zh-CN';
-							default: return 'en-US';
-						}
-					}
+					var localeFor = self.dateLocaleFor;
 					var ff = col.fieldFormat ? col.fieldFormat() : null;
 					var ft = col.fieldType;
 					var _parsedDate = self.safeParseDate(r.Value);
@@ -9026,10 +9076,13 @@ var reportViewModel = function (options) {
 		return _.map(_.orderBy(self.expandSqls(), 'index'), function (x) { return x.sql; });
 	});
 
-	self.getColumnDetails = ko.computed(function () {
+	self.getColumnDetails = ko.pureComputed(function () {
 		var cleaned = ko.toJS(self.columnDetails());
 
 		cleaned.forEach(col => {
+			if (col.currencyFormat !== undefined) col.currencySymbol = col.currencyFormat || null;
+			if (col.decimalPlaces !== undefined) col.decimalPlacesDigit = col.decimalPlaces;
+			if (col.fieldFormat !== undefined) col.fieldFormating = col.fieldFormat || null;
 			if (col.fieldCondtionalFormats) {
 				col.fieldCondtionalFormats.forEach(fmt => {
 					if (fmt.filter && fmt.filter.Filters) {
@@ -9438,6 +9491,7 @@ var reportViewModel = function (options) {
 		showXAxisLabel: true,
 		showYAxisLabel: true,
 		showSmallValuesOnLabel: false,
+		fillEmptyDates: false,
 		annotations : {
 			alwaysOutside: true,
 			textStyle: {
@@ -9571,6 +9625,107 @@ var reportViewModel = function (options) {
 		var colors = self.chartOptions().seriesColors.filter(c => c !== color);
 		self.chartOptions(Object.assign({}, self.chartOptions(), { seriesColors: colors }));
 		self.updateChart();
+	};
+
+	self.dateLocaleFor = function (name) {
+		switch (name) {
+			case 'United Kingdom': return 'en-GB';
+			case 'New Zealand': return 'en-NZ';
+			case 'France': return 'fr-FR';
+			case 'German': return 'de-DE';
+			case 'Spanish': return 'es-ES';
+			case 'Chinese': return 'zh-CN';
+			default: return 'en-US';
+		}
+	};
+
+	// Format a date the way a result cell of this column is formatted (same rules as processReportResult)
+	self.formatDateLikeColumn = function (date, col) {
+		var ff = col.fieldFormat ? col.fieldFormat() : null;
+		var explicitDateFormat = self.dateFormatTypes.indexOf(ff) >= 0;
+		var globalDefaultName = (self.appSettings && self.appSettings.defaultDateFormat) || 'United States';
+		if (explicitDateFormat && col.dateFormat() === 'Custom' && col.customDateFormat()) return self.formatDate(date, col.customDateFormat());
+		var loc = self.dateLocaleFor(explicitDateFormat ? (col.dateFormat() || globalDefaultName) : globalDefaultName);
+		var fmt = explicitDateFormat ? ff : (col.fieldType === 'Time' ? 'Time' : 'Date');
+		if (fmt === 'Time') return date.toLocaleTimeString(loc, { hour: 'numeric', minute: 'numeric', second: 'numeric' });
+		if (fmt === 'Date and Time') return date.toLocaleDateString(loc, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
+		return date.toLocaleDateString(loc, { year: 'numeric', month: 'numeric', day: 'numeric' });
+	};
+
+	self.fillChartDateGaps = function (data, reportData) {
+		var col = reportData.Columns[0];
+		if (!col || data.rows.length < 2) return null;
+		var agg = (self.SelectedFields()[0] && self.SelectedFields()[0].selectedAggregate()) || '';
+		var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+		var rawByLabel = {};
+		_.forEach(reportData.Rows, function (row, i) { rawByLabel[row.Items[0].FormattedValue || ''] = { value: row.Items[0].Value, index: i }; });
+		function raw(label) { return rawByLabel[label] ? rawByLabel[label].value : label; }
+
+		var mode;
+		if (agg === 'Group by Year') {
+			mode = { key: function (v) { var y = parseInt(v, 10); return isNaN(y) ? null : y; }, next: function (k) { return k + 1; }, label: function (k) { return String(k); } };
+		} else if (agg === 'Group by Month') {
+			mode = {
+				key: function (v) { var i = _.findIndex(months, function (m) { return m.toLowerCase() === String(v).trim().toLowerCase(); }); return i < 0 ? null : i; },
+				next: function (k) { return k + 1; }, label: function (k) { return months[k]; }
+			};
+		} else if (agg === 'Group by Month/Year') {
+			var numeric = /^\d{1,2}\/\d{4}$/.test(String(raw(data.rows[0][0])).trim());   // 08/2026 (MySQL, Postgres) or Aug 2026 (SQL Server)
+			mode = {
+				key: function (v) {
+					var t = String(v).trim(), m = t.match(/^(\d{1,2})\/(\d{4})$/) || t.match(/^([A-Za-z]{3})[a-z]* (\d{4})$/);
+					if (!m) return null;
+					var month = /^\d/.test(m[1]) ? parseInt(m[1], 10) - 1 : _.findIndex(months, function (x) { return x.substr(0, 3).toLowerCase() === m[1].toLowerCase(); });
+					return month < 0 ? null : parseInt(m[2], 10) * 12 + month;
+				},
+				next: function (k) { return k + 1; },
+				label: function (k) { var y = Math.floor(k / 12), m = k % 12; return numeric ? ((m < 9 ? '0' : '') + (m + 1) + '/' + y) : months[m].substr(0, 3) + ' ' + y; }
+			};
+		} else {
+			// plain dates and Group by Day: detect the spacing from the values
+			var dates = _.map(data.rows, function (r) { return self.safeParseDate(raw(r[0])); });
+			if (col.IsNumeric || _.some(dates, function (d) { return !d; })) return null;
+			if (_.some(dates, function (d) { return d.getMinutes() || d.getSeconds(); })) return null;   // minute-level data, leave it
+			var sorted = _.sortBy(dates, function (d) { return d.getTime(); });
+			var unit = 'day';
+			if (_.some(dates, function (d) { return d.getHours(); })) unit = 'hour';
+			else if (_.every(dates, function (d) { return d.getDate() === 1; })) unit = _.every(dates, function (d) { return d.getMonth() === 0; }) ? 'year' : 'month';
+			else if (_.every(sorted, function (d, i) { return i === 0 || Math.round((d - sorted[i - 1]) / 86400000) % 7 === 0; })) unit = 'week';
+			mode = {
+				key: function (v) { var d = self.safeParseDate(v); return d ? d.getTime() : null; },
+				next: function (k) {
+					var n = new Date(k);
+					if (unit === 'hour') n.setHours(n.getHours() + 1);
+					else if (unit === 'day') n.setDate(n.getDate() + 1);
+					else if (unit === 'week') n.setDate(n.getDate() + 7);
+					else if (unit === 'month') n.setMonth(n.getMonth() + 1);
+					else n.setFullYear(n.getFullYear() + 1);
+					return n.getTime();
+				},
+				label: function (k) {
+					var text = self.formatDateLikeColumn(new Date(k), col);
+					return unit === 'hour' && text.indexOf(':') < 0 ? new Date(k).toLocaleString() : text;
+				}
+			};
+		}
+
+		var byKey = {}, keys = [];
+		for (var i = 0; i < data.rows.length; i++) {
+			var k = mode.key(raw(data.rows[i][0]));
+			if (k === null) return null;                        // not a date axis after all
+			byKey[k] = { row: data.rows[i], index: rawByLabel[data.rows[i][0]] ? rawByLabel[data.rows[i][0]].index : i };
+			keys.push(k);
+		}
+		var template = data.rows[0];
+		var rows = [], map = [];
+		for (var key = _.min(keys), last = _.max(keys); key <= last; key = mode.next(key)) {
+			if (rows.length > 2000) return null;                // too many points to be useful
+			if (byKey[key]) { rows.push(byKey[key].row); map.push(byKey[key].index); continue; }
+			rows.push(_.map(template, function (v, j) { return j === 0 ? mode.label(key) : (typeof v === 'number' ? 0 : ''); }));
+			map.push(-1);
+		}
+		data.rows = rows;
+		return map;
 	};
 
 	self.updateChart = function () {
@@ -9944,6 +10099,10 @@ var reportViewModel = function (options) {
 		});
 
 		data.rows = rowArray;
+		var chartRowMap = null;
+		if (self.chartOptions().fillEmptyDates && ['Line', 'Bar', 'Combo'].indexOf(self.ReportType()) >= 0 && !isLatLongMap) {
+			chartRowMap = self.fillChartDateGaps(data, reportData);
+		}
 
 		// Set chart options
 		var chartOptions = self.chartOptions();
@@ -10622,9 +10781,10 @@ var reportViewModel = function (options) {
 		if (self.ReportType() != 'Treemap' && self.ReportType() != 'Radar' && self.ReportType() != 'Polar') {
 			chart.off('click');
 			chart.on('click', function (params) {
-				if (params && params.dataIndex != null) {
+				var rowIndex = params && params.dataIndex != null ? (chartRowMap ? chartRowMap[params.dataIndex] : params.dataIndex) : -1;
+				if (rowIndex >= 0) {
 					self.ChartDrillDownData(null);
-					self.ReportResult().ReportData().Rows[params.dataIndex].expand();
+					self.ReportResult().ReportData().Rows[rowIndex].expand();
 					$("#drilldownModal").modal('show');
 				}
 			});

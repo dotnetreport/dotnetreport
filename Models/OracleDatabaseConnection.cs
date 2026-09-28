@@ -143,6 +143,17 @@ namespace ReportBuilder.Web.Models
             return FieldTypes.Varchar;
         }
 
+        public Task<List<ForeignKeyModel>> GetForeignKeys(string connString, string dataConnectKey = null)
+        {
+            var sql = @"SELECT NULL, a.TABLE_NAME, a.COLUMN_NAME, NULL, r.TABLE_NAME, r.COLUMN_NAME, c.CONSTRAINT_NAME
+                FROM USER_CONSTRAINTS c
+                JOIN USER_CONS_COLUMNS a ON a.CONSTRAINT_NAME = c.CONSTRAINT_NAME
+                JOIN USER_CONS_COLUMNS r ON r.CONSTRAINT_NAME = c.R_CONSTRAINT_NAME AND r.POSITION = a.POSITION
+                WHERE c.CONSTRAINT_TYPE = 'R'
+                ORDER BY c.CONSTRAINT_NAME, a.POSITION";
+            return Task.FromResult(DotNetReportHelper.MapForeignKeys(ExecuteQuery(connString, sql)));
+        }
+
         public async Task<List<TableViewModel>> GetTables(string connString, string type = "TABLE", string? accountKey = null, string? dataConnectKey = null)
         {
             var tables = new List<TableViewModel>();

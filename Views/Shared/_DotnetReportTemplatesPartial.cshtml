@@ -105,6 +105,7 @@
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
         <select required multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, lookupSearch: $parent.SearchLookupList, options: $parent.LookupList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ValueIn"></select>
+        <button type="button" class="btn btn-link btn-sm p-0" data-bind="click: $parent.SelectAllLookup, visible: $parent.LookupList().length > 0 && $parent.ValueIn().length < $parent.LookupList().length">Select all</button>
         <!-- /ko -->
         <!-- /ko -->
     </div>
@@ -835,14 +836,14 @@
                 <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give Global access"></span>
             </div>
         </div>
-        <div class="alert alert-info">
-            <span class="fa fa-lightbulb-o fa-2x"></span>&nbsp;User level rights override Role level rights. No selection for a rule implies report is available to all.
+        <div class="alert alert-info py-1 px-2 small mb-2">
+            <span class="fa fa-lightbulb-o"></span>&nbsp;If no users or roles are selected, everyone has access. Once any user or role is selected, only the selected users and roles have access. User level rights override Role level rights.
         </div>
 
         <div class="row small">
             <div class="col-md-6">
                 <span class="clickable" data-bind="click: toggleManageUsers"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showManageUsers(), 'fa-chevron-right': !showManageUsers() }"></i> <b>Manage by User</b> (allow edit)</span>
-                <div data-bind="template: { name: 'access-selected-pills', data: { list: users, open: showManageUsers } }"></div>
+                <div data-bind="template: { name: 'access-selected-pills', data: { list: users, open: showManageUsers, userList: true } }"></div>
                 <div class="row container-fluid" data-bind="visible: showManageUsers">
                     <!-- ko if: groupedUsers().length > 0 -->
                     <!-- ko foreach: groupedUsers -->
@@ -881,7 +882,7 @@
                 </div>
                 <br />
                 <span class="clickable" data-bind="click: toggleViewUsers"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showViewUsers(), 'fa-chevron-right': !showViewUsers() }"></i> <b>View only by User</b> (no edit/delete)</span>
-                <div data-bind="template: { name: 'access-selected-pills', data: { list: viewOnlyUsers, open: showViewUsers } }"></div>
+                <div data-bind="template: { name: 'access-selected-pills', data: { list: viewOnlyUsers, open: showViewUsers, userList: true } }"></div>
                 <div class="row container-fluid" data-bind="visible: showViewUsers">
                     <!-- ko if: groupedViewOnlyUsers().length > 0 -->
                     <!-- ko foreach: groupedViewOnlyUsers -->
@@ -921,7 +922,7 @@
                 <br />
                 <div data-bind="ifnot: isDashboard">
                     <span class="clickable" data-bind="click: toggleDeleteUsers"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showDeleteUsers(), 'fa-chevron-right': !showDeleteUsers() }"></i> <b>Delete by User</b> (allow delete)</span>
-                    <div data-bind="template: { name: 'access-selected-pills', data: { list: deleteOnlyUsers, open: showDeleteUsers } }"></div>
+                    <div data-bind="template: { name: 'access-selected-pills', data: { list: deleteOnlyUsers, open: showDeleteUsers, userList: true } }"></div>
                     <div class="row container-fluid" data-bind="visible: showDeleteUsers">
                     <!-- ko if: groupedDeleteOnlyUsers().length > 0 -->
                     <!-- ko foreach: groupedDeleteOnlyUsers -->
@@ -1028,7 +1029,8 @@
             <button type="button" class="btn btn-sm btn-link text-white p-0 ms-2 lh-1" title="Remove" data-bind="click: function(){ selected(false); }"><i class="fa fa-times"></i></button>
         </span>
         <!-- /ko -->
-        <span class="text-muted small" data-bind="visible: !_.some(list(), function (x) { return x.selected(); })"><i class="fa fa-globe"></i> Everyone, not restricted</span>
+        <span class="text-muted small" data-bind="visible: !_.some(list(), function (x) { return x.selected(); }) && !($data.userList && $parent.isUserRestricted())"><i class="fa fa-globe"></i> Everyone, not restricted</span>
+        <span class="text-muted small" data-bind="visible: !_.some(list(), function (x) { return x.selected(); }) && $data.userList && $parent.isUserRestricted()"><i class="fa fa-lock"></i> Only selected users have access</span>
     </div>
     <!-- /ko -->
 </script>
@@ -1155,7 +1157,7 @@
                                         optionsText: 'selectedFieldName',
                                         optionsCaption: 'Please Choose',
                                         value: Field,
-                                        attr: {required: Field()==null?'required':false},
+                                        attr: {required: Field()==null?'required':false, title: Field() ? ko.unwrap(Field().selectedFieldName) : ''},
                                         disable: Field() && Field().forced"></select>
                                 </div>
                             </div>
@@ -3827,6 +3829,10 @@
                             <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showSmallValuesOnLabel, event: { change: updateChart }">
                             <label class="form-check-label">Show Small Values On Label</label>
                         </div>
+                        <div class="form-check form-switch small mb-1" data-bind="visible: ['Line', 'Bar', 'Combo'].indexOf(ReportType()) >= 0" title="Add the missing days (or hours, weeks, months, years) between the first and last date as zero points">
+                            <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().fillEmptyDates, event: { change: updateChart }">
+                            <label class="form-check-label">Show Dates with No Data</label>
+                        </div>
                         <div class="form-group small mb-1">
                             <label class="form-label">Y-Axis Format</label>
                             <select class="form-select form-select-sm" data-bind="value: chartOptions().yAxisFormat, event: { change: function() { updateYAxisFormat(); updateChart(); } }">
@@ -4444,6 +4450,43 @@
                         </div>
                         <div class="col-2" data-bind="text: joinedTableName"></div>
                         <div class="col-2"><code data-bind="text: joinFieldName"></code></div>
+                        <!-- ko ifnot: isForeignKey -->
+                        <div class="col-12">
+                            <!-- ko foreach: globalConditions -->
+                            <div class="row align-items-center mt-1 small" data-bind="css: { 'text-decoration-line-through text-muted': removed }" title="Additional condition from the Relations setup">
+                                <div class="col-3 text-end text-muted fw-bold">AND</div>
+                                <div class="col-3"><code data-bind="text: fieldName"></code></div>
+                                <div class="col-1 text-center">=</div>
+                                <div class="col-3"><code data-bind="text: joinFieldName"></code> <span class="badge bg-light text-muted border ms-1">global</span></div>
+                                <div class="col-2">
+                                    <button class="btn btn-link btn-sm text-danger p-0" title="Don't use this condition in this report" data-bind="visible: !removed(), click: function () { removed(true); }"><i class="fa fa-times"></i></button>
+                                    <button class="btn btn-link btn-sm p-0" title="Use this condition again" data-bind="visible: removed, click: function () { removed(false); }">restore</button>
+                                </div>
+                            </div>
+                            <!-- /ko -->
+                            <!-- ko foreach: conditions -->
+                            <div class="row align-items-center mt-1">
+                                <div class="col-3 text-end small text-muted fw-bold">AND</div>
+                                <div class="col-3">
+                                    <select class="form-select form-select-sm" data-bind="options: $parent.tableFields, optionsCaption: 'Choose field', value: fieldName"></select>
+                                </div>
+                                <div class="col-1 text-center">=</div>
+                                <div class="col-3">
+                                    <select class="form-select form-select-sm" data-bind="options: $parent.joinedTableFields, optionsCaption: 'Choose field', value: joinFieldName"></select>
+                                </div>
+                                <div class="col-2">
+                                    <button class="btn btn-link btn-sm text-danger p-0" title="Remove this condition" data-bind="click: function () { $parents[1].removeReportJoinCondition($parent, $data); }"><i class="fa fa-times"></i></button>
+                                </div>
+                            </div>
+                            <!-- /ko -->
+                            <div class="row mt-1">
+                                <div class="col-3"></div>
+                                <div class="col-3">
+                                    <button class="btn btn-outline-secondary btn-sm" title="Add another condition to this join for this report (AND)" data-bind="click: function () { $parent.addReportJoinCondition($data); }">+ AND</button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- /ko -->
                     </div>
                 </div>
                 <!-- /ko -->
