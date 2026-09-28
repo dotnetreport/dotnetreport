@@ -4,10 +4,13 @@
 
 var manageViewModel = function (options) {
 	var self = this;
-	self.keys = {
-		AccountApiKey: options.model.AccountApiKey,
-		DatabaseApiKey: options.model.DatabaseApiKey
-	};
+	self.keys = {};
+	// Define as non-enumerable so the raw API keys do not show up in
+	// console.log()/JSON.stringify() dumps of the view model or get
+	// scraped in bulk; direct, intentional access (self.keys.AccountApiKey)
+	// used by existing AJAX calls continues to work unchanged.
+	Object.defineProperty(self.keys, 'AccountApiKey', { value: options.model.AccountApiKey, enumerable: false, configurable: false });
+	Object.defineProperty(self.keys, 'DatabaseApiKey', { value: options.model.DatabaseApiKey, enumerable: false, configurable: false });
 
 	window.currentUserId = options.currentUserId;
 	self.previewData = ko.observable();
