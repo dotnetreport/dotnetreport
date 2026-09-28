@@ -23,6 +23,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<Content Update="wwwroot\css\themes\**;wwwroot\css\dotnetreport-rm.css;wwwroot\css\monotony.min.css;wwwroot\css\theme.min.css;wwwroot\img\casestudies\**;wwwroot\img\illustrations\**;wwwroot\img\kb\**;wwwroot\img\dnreport-logo.png;wwwroot\js\dist\**;wwwroot\lib\site\**;wwwroot\fonts.zip">
+			<CopyToPublishDirectory>Never</CopyToPublishDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
 	  <PackageReference Include="AngleSharp" Version="1.8.2" />
 	  <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.30" />
 	  <PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />

@@ -1,5 +1,4 @@
 ﻿@model ReportBuilder.Web.Models.DotNetReportPrintModel
-@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Env
 @{
     Layout = "";
 }
@@ -18,17 +17,7 @@
     <link href="~/lib/summernote/summernote-bs5.min.css" rel="stylesheet" />
     <link href="~/lib/select2/css/select2.min.css" rel="stylesheet" />
     <link href="~/lib/leaflet/leaflet.css" rel="stylesheet" />
-    @{
-        var dotnetCssDir = System.IO.Path.Combine(Env.WebRootPath ?? "", "css");
-        var dotnetcssFiles = System.IO.Directory.Exists(dotnetCssDir)
-            ? System.IO.Directory.GetFiles(dotnetCssDir, "dotnetreport*.css").Select(f => System.IO.Path.GetFileName(f)).ToList()
-            : new List<string> { "dotnetreport.css" };
-        if (!dotnetcssFiles.Any()) { dotnetcssFiles = new List<string> { "dotnetreport.css" }; }
-    }
-    @foreach (var file in dotnetcssFiles)
-    {
-        <link href="~/css/@file?v=6.0.0" rel="stylesheet" />
-    }
+    <link href="~/css/dotnetreport.css?v=6.0.0" rel="stylesheet" />
     <style type="text/css">
         .report-view {
         margin: 0 0px 0 0px;

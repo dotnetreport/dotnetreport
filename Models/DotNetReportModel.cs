@@ -4322,16 +4322,8 @@ namespace ReportBuilder.Web.Models
                 var cssDir = searchDirs.FirstOrDefault(Directory.Exists);
                 if (cssDir != null)
                 {
-                    var matchingFiles = Directory.GetFiles(cssDir, "dotnetreport*.css")
-                        .OrderBy(f => f);
-                    foreach (var file in matchingFiles)
-                    {
-                        try
-                        {
-                            css.AppendLine(File.ReadAllText(file));
-                        }
-                        catch {}
-                    }
+                    var baseCss = Path.Combine(cssDir, "dotnetreport.css");
+                    if (File.Exists(baseCss)) css.AppendLine(File.ReadAllText(baseCss));
                 }
             }
             catch { }
@@ -5857,9 +5849,24 @@ namespace ReportBuilder.Web.Models
         {
             var executablePath = DotNetReportHelper.StaticConfig?.GetValue<string>("dotNetReport:chromiumPath");
 
+            var isElectron = Environment.GetEnvironmentVariable("ELECTRON_APP") == "true";
+            if (isElectron && (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath)))
+            {
+                executablePath = new[]
+                {
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Microsoft", "Edge", "Application", "msedge.exe"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Microsoft", "Edge", "Application", "msedge.exe"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Google", "Chrome", "Application", "chrome.exe"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Google", "Chrome", "Application", "chrome.exe"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Google", "Chrome", "Application", "chrome.exe")
+                }.FirstOrDefault(File.Exists);
+            }
+
             if (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath))
             {
-                var installPath = Path.Combine(AppContext.BaseDirectory, "App_Data", "local-chromium");
+                var installPath = isElectron
+                    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DotNetReport", "local-chromium")
+                    : Path.Combine(AppContext.BaseDirectory, "App_Data", "local-chromium");
                 var fetcher = new BrowserFetcher(new BrowserFetcherOptions { Path = installPath });
                 var installed = await fetcher.DownloadAsync();
                 executablePath = installed.GetExecutablePath();
@@ -6057,7 +6064,9 @@ namespace ReportBuilder.Web.Models
 
                 int height = await page.EvaluateExpressionAsync<int>("document.body.offsetHeight");
                 int width = Convert.ToInt32(await page.EvaluateExpressionAsync<decimal>("$('table').width()"));
-                pdfFile = Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
+                pdfFile = Environment.GetEnvironmentVariable("ELECTRON_APP") == "true"
+                    ? Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.pdf")
+                    : Path.Combine(AppContext.BaseDirectory, $"App_Data\\{reportName}.pdf");
 
                 // Read header/footer "include on every page" settings from the loaded print page
                 bool headerEveryPage = false;
