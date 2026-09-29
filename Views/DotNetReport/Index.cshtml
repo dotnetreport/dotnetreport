@@ -1095,7 +1095,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 </div>
                                 <div class="report-canvas" data-bind="hidden: DontExecuteOnRun() && !reportRan()">
                                     <div class="report-container bg-light">
-                                           <div class="report-inner" data-bind="style: { backgroundColor: tableSettings().backColor || (ReportResult() && ReportResult().ReportData() && ReportResult().ReportData().BackColor ? ReportResult().ReportData().BackColor() : '#fff') }">
+                                           <div class="report-inner" data-bind="style: { backgroundColor: (ReportResult() && ReportResult().ReportData() && ReportResult().ReportData().BackColor ? ReportResult().ReportData().BackColor() : '') || pageBackColor() || '#fff' }">
                                             <div data-bind="if: $root.CanEdit() && ReportType()!='Html' && ReportType()!='Single'">
                                                 <div data-bind="template: 'chart-settings', data: $data"></div>
                                             </div>

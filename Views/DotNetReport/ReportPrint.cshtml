@@ -203,9 +203,17 @@
 
         <div data-bind="foreach: outerGroupData">
             <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
+            <!-- ko ifnot: $data.bands -->
             <br />
             <h6 style="font-weight: normal; page-break-after: avoid; break-after: avoid;" data-bind="html: display"></h6>
             <div class="" style="padding-top: 5px;"></div>
+            <!-- /ko -->
+            <!-- ko foreach: $data.bands || [] -->
+            <div class="dr-nested-band" data-bind="attr: { style: 'padding: 6px 8px; ' + vm.bandCss(depth) + (pageBreak ? ' break-before: page; page-break-before: always;' : '') + ' page-break-after: avoid; break-after: avoid;', title: label }">
+                <span data-bind="text: vm.bandText($data)"></span>
+            </div>
+            <!-- /ko -->
+            <div data-bind="visible: $data.bands" style="padding-top: 4px;"></div>
 
             <!-- ko if: $parents[1].ReportType() != 'Single'-->
             <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div>

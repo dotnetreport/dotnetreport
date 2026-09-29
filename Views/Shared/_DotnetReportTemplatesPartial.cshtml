@@ -455,7 +455,17 @@
             <input type="color" class="dr-swatch ms-1" title="Border color" data-bind="value: borderColor, valueUpdate: 'input', visible: border() != 'none'" />
         </div>
         <!-- /ko -->
+        <!-- ko if: typeof $data.labelOption === 'function' -->
+        <div class="field-quick-row">
+            <span class="field-quick-label">Label</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Show the field label before the value" data-bind="click: function () { labelOption(!labelOption()); }, css: { active: labelOption }"><i class="fa fa-tag"></i></button>
+            <span class="small text-muted" data-bind="text: labelOption() ? 'Label - Value' : 'Value only'"></span>
+        </div>
+        <!-- /ko -->
         <div class="dr-format-footer">
+            <!-- ko if: more -->
+            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="More field settings" data-bind="click: more"><i class="fa fa-cog"></i></button>
+            <!-- /ko -->
             <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Reset to default" data-bind="click: reset"><i class="fa fa-undo"></i></button>
         </div>
     </div>
@@ -723,9 +733,20 @@
 
     <div data-bind="foreach: outerGroupData">
         <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
+        <!-- ko ifnot: $data.bands -->
         <br />
         <h6 style="font-weight: normal;" data-bind="html: display"></h6>
         <div class="" style="padding-top: 5px;"></div>
+        <!-- /ko -->
+        <!-- ko foreach: $data.bands || [] -->
+        <div class="dr-nested-band" data-bind="attr: { style: 'padding: 6px 8px; ' + vm.bandCss(depth) + (pageBreak ? ' break-before: page; page-break-before: always;' : ''), title: label }">
+            <span data-bind="text: vm.bandText($data)"></span>
+            <!-- ko if: vm.CanEdit() -->
+            <a href="#" class="dr-band-edit" style="float: right; color: inherit;" title="Format group heading" data-bind="click: function (d, e) { vm.editBandStyle(d, e); }, clickBubble: false"><i class="fa fa-pencil"></i></a>
+            <!-- /ko -->
+        </div>
+        <!-- /ko -->
+        <div data-bind="visible: $data.bands" style="padding-top: 4px;"></div>
 
         <!-- ko if: $parents[1].ReportType() != 'Single'-->
         <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div>
@@ -1536,7 +1557,7 @@
                 </div>
                 <div class="dr-fo-row">
                     <label></label>
-                    <div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" data-bind="checked: outerGroup" /><label class="form-check-label small">Outer Group <span class="text-muted">- use this field as a group heading</span></label></div>
+                    <div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" data-bind="checked: outerGroup" /><label class="form-check-label small">Outer Group <span class="text-muted">- use this field as a group heading</span></label></div><div class="form-check form-switch mb-0 mt-1 ms-4" data-bind="visible: outerGroup"><input class="form-check-input" type="checkbox" data-bind="checked: outerGroupShowLabel" /><label class="form-check-label small">Show field label in the group heading <span class="text-muted">(Label - Value)</span></label></div>
                 </div>
                 <div class="dr-fo-row" data-bind="visible: $parents[1].IncludeSubTotal()">
                     <label></label>
@@ -2293,6 +2314,25 @@
                             <input type="checkbox" data-bind="checked: subTotalPerGroup" />
                             Sub Total Per Group
                         </label>
+                    </div>
+                </div>
+                <div data-bind="visible: hasOuterGroupFields()" style="margin-top: 4px; margin-bottom: 4px;">
+                    <div>Outer Group Layout</div>
+                    <div style="padding-left: 20px;">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" data-bind="checked: outerGroupLayout" value="separate" />
+                            <label class="form-check-label" title="One table per group, with all group values listed above it">Separate Tables</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" data-bind="checked: outerGroupLayout" value="nested" />
+                            <label class="form-check-label" title="A heading for each group level, with a table under the last one">Nested Tables</label>
+                        </div>
+                        <div class="checkbox" data-bind="visible: outerGroupLayout() == 'nested'" style="margin-top: 2px;">
+                            <label>
+                                <input type="checkbox" data-bind="checked: outerGroupPageBreak" />
+                                Page break before each group
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div class="checkbox" data-bind="visible: hasPivotColumn()">

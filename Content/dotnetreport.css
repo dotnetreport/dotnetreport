@@ -2660,6 +2660,8 @@ body.dark-mode .more-chart-preview-svg { background: #1a1f2e; border-color: #2d3
 body.dark-mode .ai-assistant-panel .card-body { background: #161b27; }
 body.dark-mode .ai-assistant-panel .ai-msg-bubble.bg-light { background-color: #1a2035 !important; color: #cdd6e0; }
 
+.dr-nested-band .dr-band-edit { visibility: hidden; opacity: 0.8; }
+.dr-nested-band:hover .dr-band-edit { visibility: visible; }
 .dr-header-edit { visibility: hidden; opacity: 0.7; }
 tr:hover > th > .dr-header-edit { visibility: visible; }
 .dr-color-unset::-webkit-color-swatch { background: linear-gradient(to top right, transparent calc(50% - 1px), #dc3545 50%, transparent calc(50% + 1px)), #fff !important; }

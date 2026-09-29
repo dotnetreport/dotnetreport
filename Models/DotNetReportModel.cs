@@ -467,6 +467,7 @@ namespace ReportBuilder.Web.Models
         public string headerFontColor { get; set; }
         public string headerBackColor { get; set; }
         public string headerAlign { get; set; }
+        public bool? outerGroupShowLabel { get; set; }
         public string fontColor { get; set; }
         public string backColor { get; set; }
         public string fieldWidth { get; set; }
@@ -2846,6 +2847,9 @@ namespace ReportBuilder.Web.Models
             bool subTotalPerGroup = false,
             bool isFilterDetail = false,
             bool isexpanded = false,
+            bool nestedLayout = false,
+            bool pageBreakPerGroup = false,
+            List<NestedBandStyle> bandStyles = null,
             NestedBandStyle headerStyle = null)
         {
             var outerGroupColumns = columns?
@@ -3006,7 +3010,7 @@ namespace ReportBuilder.Web.Models
                 currentRow++;
             }
 
-            if (loadHeader)
+            if (loadHeader && !nestedLayout)
                 WriteHeaderRow();
 
             {
@@ -3086,6 +3090,85 @@ namespace ReportBuilder.Web.Models
                 currentRow++;
             }
 
+            if (nestedLayout)
+            {
+                var styles = bandStyles != null && bandStyles.Count > 0 ? bandStyles : NestedBandStyle.Defaults();
+                System.Drawing.Color? ParseColor(string hex)
+                {
+                    if (string.IsNullOrWhiteSpace(hex)) return null;
+                    try { return ColorTranslator.FromHtml(hex); } catch { return null; }
+                }
+
+                void WriteBand(int depth, string value)
+                {
+                    var style = styles[Math.Min(depth, styles.Count - 1)];
+                    var labelColumn = outerGroupColumns[depth];
+                    if (columns?.FirstOrDefault(c => c.fieldName == labelColumn)?.outerGroupShowLabel != false)
+                        value = (outerGroupLabels.ContainsKey(labelColumn) ? outerGroupLabels[labelColumn] : labelColumn) + " - " + value;
+                    var band = ws.Cells[currentRow, colstart, currentRow, colstart + Math.Max(nonGroupColCount, 1) - 1];
+                    if (nonGroupColCount > 1) band.Merge = true;
+                    ws.Cells[currentRow, colstart].Value = value;
+                    band.Style.Font.Bold = style.bold;
+                    band.Style.HorizontalAlignment = style.align == "center" ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Center
+                        : style.align == "right" ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Right
+                        : OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+                    var back = ParseColor(style.backColor);
+                    if (back.HasValue)
+                    {
+                        band.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                        band.Style.Fill.BackgroundColor.SetColor(back.Value);
+                    }
+                    var font = ParseColor(style.fontColor);
+                    if (font.HasValue) band.Style.Font.Color.SetColor(font.Value);
+                    if (style.border == "thin" || style.border == "thick")
+                    {
+                        var borderStyle = style.border == "thick" ? OfficeOpenXml.Style.ExcelBorderStyle.Medium : OfficeOpenXml.Style.ExcelBorderStyle.Thin;
+                        band.Style.Border.BorderAround(borderStyle, ParseColor(style.borderColor) ?? System.Drawing.Color.Black);
+                    }
+                    if (depth == 0) band.Style.Font.Size = 12;
+                    currentRow++;
+                }
+
+                void WriteLevel(List<DataRow> rows, int depth)
+                {
+                    if (depth >= outerGroupColumns.Count)
+                    {
+                        if (loadHeader) WriteHeaderRow();
+                        var detailNames = nonGroupDtColumns.Select(c => c.ColumnName).ToList();
+                        int detailIndex = 0;
+                        foreach (var row in rows)
+                        {
+                            int colIndex = colstart;
+                            foreach (var dc in nonGroupDtColumns)
+                            {
+                                ws.Cells[currentRow, colIndex].Value = row[dc];
+                                colIndex++;
+                            }
+                            StyleDataRow(currentRow, detailNames, detailIndex++);
+                            allRows.Add(row);
+                            currentRow++;
+                        }
+                        return;
+                    }
+                    var groupColumn = outerGroupColumns[depth];
+                    var firstBucket = true;
+                    foreach (var bucket in rows.GroupBy(r => r[groupColumn]?.ToString() ?? ""))
+                    {
+                        if (pageBreakPerGroup && depth == 0 && !firstBucket)
+                            ws.Row(currentRow - 1).PageBreak = true;
+                        firstBucket = false;
+                        WriteBand(depth, bucket.Key);
+                        WriteLevel(bucket.ToList(), depth + 1);
+                    }
+                }
+
+                WriteLevel(dt.AsEnumerable().ToList(), 0);
+                if (includeGrandTotal && allRows.Any())
+                    WriteSubTotalRow(allRows, true);
+                ApplyColumnWidths(ws, colstart, dt.Columns.Count, columns);
+                return;
+            }
+
             foreach (var row in sortedRows)
             {
                 string groupKey = string.Join("|", outerGroupColumns.Select(gc => row[gc]?.ToString() ?? ""));
@@ -3100,7 +3183,9 @@ namespace ReportBuilder.Web.Models
                     currentRow++;
 
                     // Write group label row above the group's data rows (merged, highlighted)
-                    string groupLabel = string.Join("  |  ", outerGroupColumns.Select(gc => $"{(outerGroupLabels.ContainsKey(gc) ? outerGroupLabels[gc] : gc)} - {row[gc]?.ToString() ?? ""}"));
+                    string groupLabel = string.Join("  |  ", outerGroupColumns.Select(gc => columns?.FirstOrDefault(c => c.fieldName == gc)?.outerGroupShowLabel == false
+                        ? (row[gc]?.ToString() ?? "")
+                        : $"{(outerGroupLabels.ContainsKey(gc) ? outerGroupLabels[gc] : gc)} - {row[gc]?.ToString() ?? ""}"));
                     ws.Cells[currentRow, colstart].Value = groupLabel;
                     ws.Cells[currentRow, colstart].Style.Font.Bold = true;
                     ws.Cells[currentRow, colstart].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
@@ -3136,7 +3221,7 @@ namespace ReportBuilder.Web.Models
 
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,bool hasSubreports =false,
                 string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null, bool isSubReport = false, bool subTotalPerGroup = false, string totalRowFormat = "row", string filterDetailsText = null,
-                Func<int, int, bool, Task<string>> linkedReportResolver = null, NestedBandStyle headerStyle = null, bool hideReportName = false)
+                Func<int, int, bool, Task<string>> linkedReportResolver = null, string outerGroupLayout = null, bool outerGroupPageBreak = false, List<NestedBandStyle> bandStyles = null, NestedBandStyle headerStyle = null, bool hideReportName = false)
         {
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
@@ -3207,7 +3292,7 @@ namespace ReportBuilder.Web.Models
 
                 bool isTableMode = includeSubtotal && totalRowFormat == "table";
                 bool includeGrandTotal = includeSubtotal && !isTableMode;
-                WriteGroupedExcel(dt, ws, rowstart, colstart, columns, includeSubtotal, includeGrandTotal, true, chartData, isSubReport, subTotalPerGroup, isFilterDetail, allExpanded, headerStyle: headerStyle);
+                WriteGroupedExcel(dt, ws, rowstart, colstart, columns, includeSubtotal, includeGrandTotal, true, chartData, isSubReport, subTotalPerGroup, isFilterDetail, allExpanded, nestedLayout: outerGroupLayout == "nested", pageBreakPerGroup: outerGroupPageBreak, bandStyles: bandStyles, headerStyle: headerStyle);
                 // ---- NEW: embed linked sub-reports directly under each parent row, drilldown-style ----
                 if (hasSubreports && linkedReportResolver != null && dt.Rows.Count > 0 && columns?.Count > 0)
                 {
@@ -6924,6 +7009,13 @@ namespace ReportBuilder.Web.Models
         public string altRowFontColor { get; set; }
         public string rowBackColor { get; set; }
         public string rowFontColor { get; set; }
+
+        public static List<NestedBandStyle> Defaults() => new List<NestedBandStyle>
+        {
+            new NestedBandStyle { backColor = "#1f4e79", fontColor = "#ffffff", align = "center" },
+            new NestedBandStyle { backColor = "#dbe9f6", fontColor = "#000000", align = "center" },
+            new NestedBandStyle { align = "left" }
+        };
     }
 
     public static class DatabaseConnectionFactory
