@@ -466,6 +466,7 @@ namespace ReportBuilder.Web.Models
         public LinkFieldItem LinkFieldItem { get; set; }
         public string headerFontColor { get; set; }
         public string headerBackColor { get; set; }
+        public string headerAlign { get; set; }
         public string fontColor { get; set; }
         public string backColor { get; set; }
         public string fieldWidth { get; set; }
@@ -2844,7 +2845,8 @@ namespace ReportBuilder.Web.Models
             bool isSubReport,
             bool subTotalPerGroup = false,
             bool isFilterDetail = false,
-            bool isexpanded = false)
+            bool isexpanded = false,
+            NestedBandStyle headerStyle = null)
         {
             var outerGroupColumns = columns?
                 .Where(c => c.aggregateFunction == "Outer Group" || c.outerGroup)
@@ -2858,9 +2860,119 @@ namespace ReportBuilder.Web.Models
                 .ToDictionary(g => g.Key, g => string.IsNullOrEmpty(g.First().fieldLabel) ? g.Key : g.First().fieldLabel)
                 ?? new Dictionary<string, string>();
 
+            OfficeOpenXml.Style.ExcelHorizontalAlignment? TableRowAlign()
+            {
+                switch (headerStyle?.rowAlign)
+                {
+                    case "left": return OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+                    case "center": return OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
+                    case "right": return OfficeOpenXml.Style.ExcelHorizontalAlignment.Right;
+                    default: return null;
+                }
+            }
+
+            void StyleDataRow(int row, List<string> columnNames, int index)
+            {
+                if (headerStyle == null || columnNames == null) return;
+                System.Drawing.Color? Parse(string hex)
+                {
+                    if (string.IsNullOrWhiteSpace(hex)) return null;
+                    try { return ColorTranslator.FromHtml(hex); } catch { return null; }
+                }
+                var altBack = (index % 2 == 1 ? Parse(headerStyle.altRowBackColor) : null) ?? Parse(headerStyle.rowBackColor);
+                var altFont = (index % 2 == 1 ? Parse(headerStyle.altRowFontColor) : null) ?? Parse(headerStyle.rowFontColor);
+                bool border = headerStyle.rowBorder == "thin" || headerStyle.rowBorder == "thick";
+                var borderStyle = headerStyle.rowBorder == "thick" ? OfficeOpenXml.Style.ExcelBorderStyle.Medium : OfficeOpenXml.Style.ExcelBorderStyle.Thin;
+                var borderColor = Parse(headerStyle.rowBorderColor) ?? System.Drawing.Color.Black;
+                if (!altBack.HasValue && !altFont.HasValue && !border) return;
+                for (int k = 0; k < columnNames.Count; k++)
+                {
+                    var cell = ws.Cells[row, colstart + k];
+                    var fc = columns?.FirstOrDefault(c => c.fieldName == columnNames[k]);
+                    if (altBack.HasValue && (string.IsNullOrEmpty(fc?.backColor) || fc.backColor == headerStyle.rowBackColor))
+                    {
+                        cell.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                        cell.Style.Fill.BackgroundColor.SetColor(altBack.Value);
+                    }
+                    if (altFont.HasValue && (string.IsNullOrEmpty(fc?.fontColor) || fc.fontColor == headerStyle.rowFontColor))
+                        cell.Style.Font.Color.SetColor(altFont.Value);
+                    if (border)
+                    {
+                        foreach (var edge in new[] { cell.Style.Border.Top, cell.Style.Border.Bottom, cell.Style.Border.Left, cell.Style.Border.Right })
+                        {
+                            edge.Style = borderStyle;
+                            edge.Color.SetColor(borderColor);
+                        }
+                    }
+                }
+            }
+
+            void ApplyHeaderStyle(int row, List<string> columnNames)
+            {
+                if (columnNames == null || columnNames.Count == 0) return;
+                for (int h = 0; h < columnNames.Count; h++)
+                {
+                    var hc = columns?.FirstOrDefault(c => c.fieldName == columnNames[h]);
+                    var ha = hc?.headerAlign?.ToLower();
+                    if (ha == "left" || ha == "center" || ha == "right")
+                        ws.Cells[row, colstart + h].Style.HorizontalAlignment = ha == "center" ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Center
+                            : ha == "right" ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Right
+                            : OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+                }
+                if (headerStyle == null) return;
+                System.Drawing.Color? ParseHeaderColor(string hex)
+                {
+                    if (string.IsNullOrWhiteSpace(hex)) return null;
+                    try { return ColorTranslator.FromHtml(hex); } catch { return null; }
+                }
+                var tableBack = ParseHeaderColor(headerStyle.backColor);
+                var tableFont = ParseHeaderColor(headerStyle.fontColor);
+                var borderColor = ParseHeaderColor(headerStyle.borderColor) ?? System.Drawing.Color.Black;
+                bool hasBorder = headerStyle.border == "thin" || headerStyle.border == "thick";
+                var borderStyle = headerStyle.border == "thick" ? OfficeOpenXml.Style.ExcelBorderStyle.Medium : OfficeOpenXml.Style.ExcelBorderStyle.Thin;
+                for (int k = 0; k < columnNames.Count; k++)
+                {
+                    var cell = ws.Cells[row, colstart + k];
+                    var fc = columns?.FirstOrDefault(c => c.fieldName == columnNames[k]);
+                    bool columnAlign = (!string.IsNullOrEmpty(fc?.fieldAlign) && fc.fieldAlign != "Auto") || !string.IsNullOrEmpty(fc?.headerAlign);
+                    if (!columnAlign && (headerStyle.align == "left" || headerStyle.align == "center" || headerStyle.align == "right"))
+                        cell.Style.HorizontalAlignment = headerStyle.align == "center" ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Center
+                            : headerStyle.align == "right" ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Right
+                            : OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+                    if (tableBack.HasValue && string.IsNullOrEmpty(fc?.headerBackColor))
+                    {
+                        cell.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                        cell.Style.Fill.BackgroundColor.SetColor(tableBack.Value);
+                    }
+                    if (tableFont.HasValue && string.IsNullOrEmpty(fc?.headerFontColor))
+                        cell.Style.Font.Color.SetColor(tableFont.Value);
+                    if (hasBorder)
+                    {
+                        foreach (var edge in new[] { cell.Style.Border.Top, cell.Style.Border.Bottom, cell.Style.Border.Left, cell.Style.Border.Right })
+                        {
+                            edge.Style = borderStyle;
+                            edge.Color.SetColor(borderColor);
+                        }
+                    }
+                }
+            }
+
             if (!outerGroupColumns.Any())
             {
                 FormatExcelSheet(dt, ws, rowstart, colstart, columns, includeGrandTotal, loadHeader, chartData, isexpanded, isSubReport, isFilterDetail);
+                if (TableRowAlign().HasValue)
+                {
+                    for (int k = 0; k < dt.Columns.Count; k++)
+                    {
+                        var fc = columns?.FirstOrDefault(c => c.fieldName == dt.Columns[k].ColumnName);
+                        if (string.IsNullOrEmpty(fc?.fieldAlign) || fc.fieldAlign == "Auto")
+                            ws.Column(colstart + k).Style.HorizontalAlignment = TableRowAlign().Value;
+                    }
+                }
+                var plainNames = dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
+                if (loadHeader) ApplyHeaderStyle(rowstart, plainNames);
+                for (int r = 0; r < dt.Rows.Count; r++)
+                    StyleDataRow(rowstart + (loadHeader ? 1 : 0) + r, plainNames, r);
                 return;
             }
 
@@ -2872,7 +2984,7 @@ namespace ReportBuilder.Web.Models
             int nonGroupColCount = nonGroupDtColumns.Count;
             int currentRow = rowstart;
 
-            if (loadHeader)
+            void WriteHeaderRow()
             {
                 int colIdx = colstart;
                 foreach (var dc in nonGroupDtColumns)
@@ -2890,8 +3002,12 @@ namespace ReportBuilder.Web.Models
                     }
                     colIdx++;
                 }
+                ApplyHeaderStyle(currentRow, nonGroupDtColumns.Select(c => c.ColumnName).ToList());
                 currentRow++;
             }
+
+            if (loadHeader)
+                WriteHeaderRow();
 
             {
                 int colIdx = colstart;
@@ -2915,6 +3031,9 @@ namespace ReportBuilder.Web.Models
                         : fc?.fieldAlign == "Center"
                             ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Center
                             : OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+
+                    if ((string.IsNullOrEmpty(fc?.fieldAlign) || fc.fieldAlign == "Auto") && TableRowAlign().HasValue)
+                        ws.Column(colIdx).Style.HorizontalAlignment = TableRowAlign().Value;
 
                     colIdx++;
                 }
@@ -2996,6 +3115,7 @@ namespace ReportBuilder.Web.Models
                     ws.Cells[currentRow, colIndex].Value = row[dc];
                     colIndex++;
                 }
+                StyleDataRow(currentRow, nonGroupDtColumns.Select(c => c.ColumnName).ToList(), groupRows.Count);
 
                 groupRows.Add(row);
                 allRows.Add(row);
@@ -3016,7 +3136,7 @@ namespace ReportBuilder.Web.Models
 
         public static async Task<byte[]> GetExcelFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,bool hasSubreports =false,
                 string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, List<ReportHeaderColumn> onlyAndGroupInDetailColumns = null, bool isSubReport = false, bool subTotalPerGroup = false, string totalRowFormat = "row", string filterDetailsText = null,
-                Func<int, int, bool, Task<string>> linkedReportResolver = null)
+                Func<int, int, bool, Task<string>> linkedReportResolver = null, NestedBandStyle headerStyle = null, bool hideReportName = false)
         {
             var connectionString = DotNetReportHelper.GetConnectionString(connectKey);
             IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(dbtype);
@@ -3063,10 +3183,13 @@ namespace ReportBuilder.Web.Models
                 int rowend = rowstart;
                 int colend = dt.Columns.Count;
 
-                ws.Cells[rowstart, colstart, rowend, colend].Merge = true;
-                ws.Cells[rowstart, colstart, rowend, colend].Value = reportName;
-                ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Bold = true;
-                ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Size = 14;
+                if (!hideReportName)
+                {
+                    ws.Cells[rowstart, colstart, rowend, colend].Merge = true;
+                    ws.Cells[rowstart, colstart, rowend, colend].Value = reportName;
+                    ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Bold = true;
+                    ws.Cells[rowstart, colstart, rowend, colend].Style.Font.Size = 14;
+                }
 
                 if (!string.IsNullOrEmpty(filterDetailsText))
                 {
@@ -3084,7 +3207,7 @@ namespace ReportBuilder.Web.Models
 
                 bool isTableMode = includeSubtotal && totalRowFormat == "table";
                 bool includeGrandTotal = includeSubtotal && !isTableMode;
-                WriteGroupedExcel(dt, ws, rowstart, colstart, columns, includeSubtotal, includeGrandTotal, true, chartData, isSubReport, subTotalPerGroup, isFilterDetail, allExpanded);
+                WriteGroupedExcel(dt, ws, rowstart, colstart, columns, includeSubtotal, includeGrandTotal, true, chartData, isSubReport, subTotalPerGroup, isFilterDetail, allExpanded, headerStyle: headerStyle);
                 // ---- NEW: embed linked sub-reports directly under each parent row, drilldown-style ----
                 if (hasSubreports && linkedReportResolver != null && dt.Rows.Count > 0 && columns?.Count > 0)
                 {
@@ -6784,6 +6907,23 @@ namespace ReportBuilder.Web.Models
         public string backendApiUrl { get; set; } = "";
         public string timeZone { get; set; } = "";
         public string appThemes { get; set; } = "";
+    }
+
+    public class NestedBandStyle
+    {
+        public string backColor { get; set; }
+        public string fontColor { get; set; }
+        public string border { get; set; } = "none";
+        public string borderColor { get; set; }
+        public string align { get; set; } = "left";
+        public bool bold { get; set; } = true;
+        public string rowAlign { get; set; }
+        public string rowBorder { get; set; }
+        public string rowBorderColor { get; set; }
+        public string altRowBackColor { get; set; }
+        public string altRowFontColor { get; set; }
+        public string rowBackColor { get; set; }
+        public string rowFontColor { get; set; }
     }
 
     public static class DatabaseConnectionFactory

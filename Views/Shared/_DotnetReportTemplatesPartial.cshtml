@@ -161,7 +161,10 @@
 
 <script type="text/html" id="report-column-header">
     <!-- ko foreach: Columns -->
-    <th data-bind="attr: { id: !IsPivotField ? fieldId : 'pivot--' + fieldName }, style: {'text-align': fieldAlign() ? fieldAlign() : (IsNumeric ? 'right' : 'left'), 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
+    <th data-bind="attr: { id: !IsPivotField ? fieldId : 'pivot--' + fieldName }, style: {'text-align': ko.unwrap($data.headerAlign) || (fieldAlign() && fieldAlign() !== 'Auto' ? fieldAlign() : '') || ($parent.headerStyle && $parent.headerStyle.align()) || (IsNumeric ? 'right' : 'left'), 'background-color': ko.unwrap(headerBackColor) || ($parent.headerStyle ? $parent.headerStyle.backColor() : ''), 'border-top': $parent.headerBorderCss ? $parent.headerBorderCss() : '', 'border-bottom': $parent.headerBorderCss ? $parent.headerBorderCss() : '', 'border-left': $parent.headerBorderCss ? $parent.headerBorderCss() : '', 'border-right': ($parent.headerBorderCss && $parent.headerBorderCss()) || '1px solid' }, hidden: outerGroup" style="border-right: 1px solid;">
+        <!-- ko if: $parent.openHeaderStyle && $parent.canFormatTable() && $index() === $parent.lastHeaderIndex() -->
+        <a href="#" class="dr-header-edit" style="float: right; color: inherit; padding-left: 4px;" title="Format table" data-bind="click: function (d, e) { $parent.openHeaderStyle(e); }, clickBubble: false"><i class="fa fa-pencil"></i></a>
+        <!-- /ko -->
 
         <!-- ko if: !$parent.IsDrillDown() && !$parent.IsSubReport() -->
         <div class="pull-left" style="padding-right: 5px;">
@@ -217,10 +220,10 @@
         <!-- /ko -->
         <div data-bind="style: {'width': fieldWidth}">
             <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
-            <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
+            <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': ko.unwrap(headerFontColor) || ($parent.headerStyle ? $parent.headerStyle.fontColor() : ''), 'font-weight': (headerFontBold() || ($parent.headerStyle && $parent.headerStyle.bold())) ? 'bold' : 'normal'}"></span>
             <!-- /ko -->
             <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
-            <a href="" data-bind="click: function(){ if (!IsPivotField) { $parents[pagerIndex($parents)].changeSort(SqlField); } }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
+            <a href="" data-bind="click: function(){ if (!IsPivotField) { $parents[pagerIndex($parents)].changeSort(SqlField); } }, style: {'color': ko.unwrap(headerFontColor) || ($parent.headerStyle ? $parent.headerStyle.fontColor() : ''), 'font-weight': (headerFontBold() || ($parent.headerStyle && $parent.headerStyle.bold())) ? 'bold' : 'normal'}">
                 <span data-bind="text: $parent.IsDrillDown() && fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName)"></span>
                 <span data-bind="text: $parents[pagerIndex($parents)].pager.sortColumn() === SqlField ? ($parents[pagerIndex($parents)].pager.sortDescending() ? '&#9660;' : '&#9650;') : ''"></span>
             </a>
@@ -371,7 +374,7 @@
 </script>
 <script type="text/html" id="report-column">
     <!-- ko foreach: Items -->
-    <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')}">
+    <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? ($data.cellBack ? $data.cellBack($data, $parentContext.$index ? $parentContext.$index() : 0) : backColor()), 'color': _fontColor ?? ($data.cellFont ? $data.cellFont($data, $parentContext.$index ? $parentContext.$index() : 0) : fontColor()), 'border': $data.rowBorderCss ? $data.rowBorderCss() : '', 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': (fieldAlign() && fieldAlign() !== 'Auto' ? fieldAlign() : '') || ($data.rowAlign ? $data.rowAlign() : '') || (Column.IsNumeric ? 'right' : 'left')}">
         <div data-bind="style: {'width': fieldWidth }, css: { 'text-wrap': fieldWidth }">
             <!-- ko if: LinkTo-->
             <!-- ko if: $data._runLinkedReportInPlace -->
@@ -419,6 +422,43 @@
 
     </div>
 
+</script>
+
+<script type="text/html" id="format-style-popup">
+    <div class="dr-format-panel field-quick-menu border shadow-sm bg-light" data-bind="style: { top: top + 'px', left: left + 'px' }">
+        <div class="dr-format-title">
+            <span data-bind="text: title"></span>
+            <button type="button" class="btn-close" title="Close" data-bind="click: close"></button>
+        </div>
+        <!-- ko with: style -->
+        <div class="field-quick-row">
+            <span class="field-quick-label">Fill</span>
+            <input type="color" class="dr-swatch" title="Back color" data-bind="value: backColor, valueUpdate: 'input', css: { 'dr-color-unset': !backColor() }" />
+            <span class="field-quick-label text-end" style="width: 34px;">Text</span>
+            <input type="color" class="dr-swatch" title="Font color" data-bind="value: fontColor, valueUpdate: 'input', css: { 'dr-color-unset': !fontColor() }" />
+            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn ms-1" title="Bold" data-bind="click: function () { bold(!bold()); }, css: { active: bold }"><i class="fa fa-bold"></i></button>
+        </div>
+        <div class="field-quick-row">
+            <span class="field-quick-label">Align</span>
+            <!-- ko foreach: $parent.alignOptions -->
+            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" data-bind="attr: { title: 'Align ' + text }, click: function () { $parent.align(value); }, css: { active: $parent.align() === value }">
+                <!-- ko if: icon --><i class="fa" data-bind="css: icon"></i><!-- /ko -->
+                <!-- ko ifnot: icon --><span style="font-size: 10px;">Auto</span><!-- /ko -->
+            </button>
+            <!-- /ko -->
+        </div>
+        <div class="field-quick-row">
+            <span class="field-quick-label">Border</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="No border" data-bind="click: function () { border('none'); }, css: { active: border() === 'none' }"><i class="fa fa-ban"></i></button>
+            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Thin border" data-bind="click: function () { border('thin'); }, css: { active: border() === 'thin' }"><i class="fa fa-square-o"></i></button>
+            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Thick border" data-bind="click: function () { border('thick'); }, css: { active: border() === 'thick' }"><i class="fa fa-square-o" style="-webkit-text-stroke: 1.2px;"></i></button>
+            <input type="color" class="dr-swatch ms-1" title="Border color" data-bind="value: borderColor, valueUpdate: 'input', visible: border() != 'none'" />
+        </div>
+        <!-- /ko -->
+        <div class="dr-format-footer">
+            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Reset to default" data-bind="click: reset"><i class="fa fa-undo"></i></button>
+        </div>
+    </div>
 </script>
 
 <script type="text/html" id="report-table">
@@ -679,7 +719,7 @@
             </li>
         </ul>
     </div>
-    <div class="clear-fix"></div>
+    <div class="clear-fix" style="clear: both;"></div>
 
     <div data-bind="foreach: outerGroupData">
         <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
@@ -1447,272 +1487,115 @@
 </script>
 
 <script type="text/html" id="report-field-options">
-    <div class="modal-dialog" style="max-width: 750px;">
+    <div class="modal-dialog dr-field-options" style="max-width: 640px;">
         <div class="modal-content" data-bind="with: editFieldOptions">
-            <div class="modal-header">
-                <h5 class="modal-title"><span data-bind="text: fieldName"></span> - Setup Additional Field Options</h5>
+            <div class="modal-header py-2">
+                <h6 class="modal-title mb-0"><span data-bind="text: fieldName"></span> <span class="text-muted fw-normal">Field Options</span></h6>
             </div>
             <div class="modal-body needs-validation">
-                <div class="card card-body">
-                    <b>Column Format Settings</b>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-md-5 control-label">Pick Data Format</label>
-                        <div class="col-sm-7 col-md-7">
-                            <select class="form-select" data-bind="options: ['Days', 'Hours', 'Minutes', 'Seconds'].indexOf(fieldFormat()) >= 0 ? ['Days', 'Hours', 'Minutes', 'Seconds'] : $parents[1].fieldFormatTypes, value: fieldFormat"></select>
-                        </div>
+                <div class="dr-fo-section">Format</div>
+                <div class="dr-fo-row">
+                    <label>Data Format</label>
+                    <div><select class="form-select form-select-sm" data-bind="options: ['Days', 'Hours', 'Minutes', 'Seconds'].indexOf(fieldFormat()) >= 0 ? ['Days', 'Hours', 'Minutes', 'Seconds'] : $parents[1].fieldFormatTypes, value: fieldFormat"></select></div>
+                </div>
+                <div class="dr-fo-row" data-bind="visible: $parents[1].decimalFormatTypes.indexOf($data.fieldFormat())>=0">
+                    <label>Decimal Places</label>
+                    <div><input type="number" class="form-control form-control-sm" data-bind="value: decimalPlaces" /></div>
+                </div>
+                <div class="dr-fo-row" data-bind="visible: fieldFormat()=='Currency'">
+                    <label>Currency Format</label>
+                    <div><select class="form-select form-select-sm" required data-bind="options: $parents[1].currencyFormats, optionsText: 'display', optionsValue: 'value', value: currencyFormat"></select></div>
+                </div>
+                <div class="dr-fo-row" data-bind="visible: fieldFormat()=='Date'">
+                    <label>Date Format</label>
+                    <div><select class="form-select form-select-sm" data-bind="options: $parents[1].dateFormats, value: dateFormat"></select></div>
+                </div>
+                <div class="dr-fo-row" data-bind="visible: selectedAggregate()=='Pivot' && fieldFormat()=='Date'">
+                    <label>Pivot Drilldown Date</label>
+                    <div><select class="form-select form-select-sm" data-bind="options: ['', 'Day', 'Month', 'Year', 'Month/Year'], value: drillDataFormat"></select></div>
+                </div>
+                <div class="dr-fo-row" data-bind="visible: fieldFormat()=='Date' && dateFormat()==='Custom'">
+                    <label>Custom Date Format</label>
+                    <div><div class="input-group input-group-sm"><input type="text" class="form-control" data-bind="value: customDateFormat" placeholder="dd/MM/yyyy" /><button type="button" class="btn btn-outline-secondary" tabindex="-1" data-bind="bsPopover: { trigger: 'focus', placement: 'bottom', html: true, title: 'Date Format Tokens', content: '<table class=\'table table-sm table-borderless mb-0\' style=\'font-size:12px\'><tr><td colspan=\'2\' class=\'fw-bold text-primary border-bottom pb-1\'>Day</td></tr><tr><td><code>d</code></td><td>1, 2 … 31</td></tr><tr><td><code>dd</code></td><td>01, 02 … 31</td></tr><tr><td><code>ddd</code></td><td>Mon, Tue …</td></tr><tr><td><code>dddd</code></td><td>Monday, Tuesday …</td></tr><tr><td colspan=\'2\' class=\'fw-bold text-primary border-bottom pb-1 pt-2\'>Month</td></tr><tr><td><code>M</code></td><td>1, 2 … 12</td></tr><tr><td><code>MM</code></td><td>01, 02 … 12</td></tr><tr><td><code>MMM</code></td><td>Jan, Feb …</td></tr><tr><td><code>MMMM</code></td><td>January, February …</td></tr><tr><td colspan=\'2\' class=\'fw-bold text-primary border-bottom pb-1 pt-2\'>Year</td></tr><tr><td><code>yy</code></td><td>26, 27 …</td></tr><tr><td><code>yyyy</code></td><td>2026, 2027 …</td></tr><tr><td colspan=\'2\' class=\'fw-bold text-primary border-bottom pb-1 pt-2\'>Time</td></tr><tr><td><code>h</code></td><td>1–12 (12hr)</td></tr><tr><td><code>hh</code></td><td>01–12 (12hr)</td></tr><tr><td><code>H</code></td><td>0–23 (24hr)</td></tr><tr><td><code>HH</code></td><td>00–23 (24hr)</td></tr><tr><td><code>mm</code></td><td>Minutes (00–59)</td></tr><tr><td><code>ss</code></td><td>Seconds (00–59)</td></tr><tr><td><code>tt</code></td><td>AM / PM</td></tr></table><div class=\'text-muted mt-1\' style=\'font-size:11px\'><b>Examples:</b> dd/MM/yyyy • MMM dd, yyyy • yyyy-MM-dd HH:mm</div>' }"><i class="fa fa-question-circle"></i></button></div></div>
+                </div>
+                <div class="dr-fo-row">
+                    <label>Column Label</label>
+                    <div><input type="text" class="form-control form-control-sm" data-bind="value: fieldLabel" /></div>
+                </div>
+                <div class="dr-fo-row">
+                    <label>Inner Column Label</label>
+                    <div><input type="text" class="form-control form-control-sm" data-bind="value: fieldLabel2" /></div>
+                </div>
+                <div class="dr-fo-row">
+                    <label>Alignment</label>
+                    <div><div class="field-quick-row"><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Align Auto" data-bind="click: function () { fieldAlign('Auto'); }, css: { active: !fieldAlign() || fieldAlign() === 'Auto' }"><span style="font-size: 10px;">Auto</span></button><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Align Left" data-bind="click: function () { fieldAlign('Left'); }, css: { active: fieldAlign() === 'Left' }"><i class="fa fa-align-left"></i></button><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Align Center" data-bind="click: function () { fieldAlign('Center'); }, css: { active: fieldAlign() === 'Center' }"><i class="fa fa-align-center"></i></button><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Align Right" data-bind="click: function () { fieldAlign('Right'); }, css: { active: fieldAlign() === 'Right' }"><i class="fa fa-align-right"></i></button></div></div>
+                </div>
+                <div class="dr-fo-row">
+                    <label>Width</label>
+                    <div><input type="text" class="form-control form-control-sm" placeholder="Auto" data-bind="value: fieldWidth" /></div>
+                </div>
+                <div class="dr-fo-row">
+                    <label></label>
+                    <div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" data-bind="checked: outerGroup" /><label class="form-check-label small">Outer Group <span class="text-muted">- use this field as a group heading</span></label></div>
+                </div>
+                <div class="dr-fo-row" data-bind="visible: $parents[1].IncludeSubTotal()">
+                    <label></label>
+                    <div class="d-flex align-items-center gap-2"><div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" data-bind="checked: dontSubTotal" /><label class="form-check-label small">Don't Show In Total Row</label></div><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Apply to all columns" data-bind="click: function () { applyAllDontSubTotal(!applyAllDontSubTotal()); }, css: { active: applyAllDontSubTotal }"><span class="fa" data-bind="css: applyAllDontSubTotal() ? 'fa-check' : 'fa-clone'"></span></button></div>
+                </div>
+                <div class="dr-fo-row" data-bind="visible: $parents[1].IncludeSubTotal() && !dontSubTotal()">
+                    <label>Total Row Aggregate</label>
+                    <div><div class="d-flex align-items-center gap-2"><select class="form-select form-select-sm" data-bind="options: totalRowAggregateOptions, value: totalRowAggregate"></select><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Apply to all columns" data-bind="click: function () { applyAllTotalRowAggregate(!applyAllTotalRowAggregate()); }, css: { active: applyAllTotalRowAggregate }"><span class="fa" data-bind="css: applyAllTotalRowAggregate() ? 'fa-check' : 'fa-clone'"></span></button></div></div>
+                </div>
+                <div data-bind="visible: $parent.ReportType() != 'Html'">
+                    <div class="dr-fo-section">Header</div>
+                    <div class="dr-fo-style">
+                        <span class="dr-fo-style-label">Header</span>
+                        <div class="dr-fo-style-item"><span class="field-quick-label">Text</span><input type="color" class="dr-swatch" title="Header text color" data-bind="value: headerFontColor, valueUpdate: 'input', css: { 'dr-color-unset': !headerFontColor() }" /><input type="text" class="form-control form-control-sm dr-hex" placeholder="#hex" data-bind="value: headerFontColor" /><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Apply to all columns" data-bind="click: function () { applyAllHeaderFontColor(!applyAllHeaderFontColor()); }, css: { active: applyAllHeaderFontColor }"><span class="fa" data-bind="css: applyAllHeaderFontColor() ? 'fa-check' : 'fa-clone'"></span></button></div>
+                        <div class="dr-fo-style-item"><span class="field-quick-label">Fill</span><input type="color" class="dr-swatch" title="Header fill color" data-bind="value: headerBackColor, valueUpdate: 'input', css: { 'dr-color-unset': !headerBackColor() }" /><input type="text" class="form-control form-control-sm dr-hex" placeholder="#hex" data-bind="value: headerBackColor" /><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Apply to all columns" data-bind="click: function () { applyAllHeaderBackColor(!applyAllHeaderBackColor()); }, css: { active: applyAllHeaderBackColor }"><span class="fa" data-bind="css: applyAllHeaderBackColor() ? 'fa-check' : 'fa-clone'"></span></button></div>
+                        <div class="dr-fo-style-item"><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Bold" data-bind="click: function () { headerFontBold(!headerFontBold()); }, css: { active: headerFontBold }"><i class="fa fa-bold"></i></button><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Apply to all columns" data-bind="click: function () { applyAllHeaderBold(!applyAllHeaderBold()); }, css: { active: applyAllHeaderBold }"><span class="fa" data-bind="css: applyAllHeaderBold() ? 'fa-check' : 'fa-clone'"></span></button></div>
                     </div>
-                    <div class="form-group row" data-bind="visible: $parents[1].decimalFormatTypes.indexOf($data.fieldFormat())>=0">
-                        <label class="col-sm-5 col-md-5 control-label">Pick Decimal Places</label>
-                        <div class="col-sm-7 col-md-7">
-                            <input type="number" class="form-control" data-bind="value: decimalPlaces" placeholder="" />
-                        </div>
-                    </div>
-                    <div class="form-group row" data-bind="visible: fieldFormat()=='Currency'">
-                        <label class="col-sm-5 col-md-5 control-label">Pick Currency Format</label>
-                        <div class="col-sm-7 col-md-7">
-                            <select class="form-select" required data-bind="options: $parents[1].currencyFormats, optionsText: 'display',optionsValue: 'value', value: currencyFormat"></select>
-                        </div>
-                    </div>
-                    <div class="form-group row" data-bind="visible: fieldFormat()=='Date'">
-                        <label class="col-sm-5 col-md-5 control-label">Pick Date Format</label>
-                        <div class="col-sm-7 col-md-7">
-                            <select class="form-select" data-bind="options: $parents[1].dateFormats, value: dateFormat"></select>
-                        </div>
-                    </div>
-                    <div class="form-group row" data-bind="visible:selectedAggregate()=='Pivot' && fieldFormat()=='Date'">
-                        <label class="col-sm-5 col-md-5 control-label">Pivot Drilldown Date Format</label>
-                        <div class="col-sm-7 col-md-7">
-                            <select class="form-select" data-bind="options: ['', 'Day', 'Month', 'Year', 'Month/Year'], value: drillDataFormat"></select>
-                        </div>
-                    </div>
-
-                    <div class="form-group row" data-bind="visible: fieldFormat()=='Date' && dateFormat()==='Custom'">
-                        <label class="col-sm-5 col-md-5 control-label">Enter Custom Date Format</label>
-                        <div class="col-sm-7 col-md-7">
-                        <div class="input-group">
-                                <input type="text" class="form-control" data-bind="value: customDateFormat" placeholder="dd/MM/yyyy" />
-                                <button type="button" class="btn btn-outline-secondary" tabindex="-1"
-                                        data-bind="bsPopover: { trigger: 'focus', placement: 'bottom', html: true, title: 'Date Format Tokens', content: '<table class=\'table table-sm table-borderless mb-0\' style=\'font-size:12px\'><tr><td colspan=\'2\' class=\'fw-bold text-primary border-bottom pb-1\'>Day</td></tr><tr><td><code>d</code></td><td>1, 2 … 31</td></tr><tr><td><code>dd</code></td><td>01, 02 … 31</td></tr><tr><td><code>ddd</code></td><td>Mon, Tue …</td></tr><tr><td><code>dddd</code></td><td>Monday, Tuesday …</td></tr><tr><td colspan=\'2\' class=\'fw-bold text-primary border-bottom pb-1 pt-2\'>Month</td></tr><tr><td><code>M</code></td><td>1, 2 … 12</td></tr><tr><td><code>MM</code></td><td>01, 02 … 12</td></tr><tr><td><code>MMM</code></td><td>Jan, Feb …</td></tr><tr><td><code>MMMM</code></td><td>January, February …</td></tr><tr><td colspan=\'2\' class=\'fw-bold text-primary border-bottom pb-1 pt-2\'>Year</td></tr><tr><td><code>yy</code></td><td>26, 27 …</td></tr><tr><td><code>yyyy</code></td><td>2026, 2027 …</td></tr><tr><td colspan=\'2\' class=\'fw-bold text-primary border-bottom pb-1 pt-2\'>Time</td></tr><tr><td><code>h</code></td><td>1–12 (12hr)</td></tr><tr><td><code>hh</code></td><td>01–12 (12hr)</td></tr><tr><td><code>H</code></td><td>0–23 (24hr)</td></tr><tr><td><code>HH</code></td><td>00–23 (24hr)</td></tr><tr><td><code>mm</code></td><td>Minutes (00–59)</td></tr><tr><td><code>ss</code></td><td>Seconds (00–59)</td></tr><tr><td><code>tt</code></td><td>AM / PM</td></tr></table><div class=\'text-muted mt-1\' style=\'font-size:11px\'><b>Examples:</b> dd/MM/yyyy • MMM dd, yyyy • yyyy-MM-dd HH:mm</div>' }">
-                                  <i class="fa fa-question-circle"></i>
-                                </button>
-                            </div>
-                    </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-md-5 control-label">Choose Column Label</label>
-                        <div class="col-sm-7 col-md-7">
-                            <input type="text" class="form-control" data-bind="value: fieldLabel" />
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-md-5 control-label">Inner Column Label</label>
-                        <div class="col-sm-7 col-md-7">
-                            <input type="text" class="form-control" data-bind="value: fieldLabel2" />
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-md-5 control-label">Choose Text Alignment</label>
-                        <div class="col-sm-7 col-md-7">
-                            <select class="form-select" data-bind="options: $parents[1].fieldAlignments, value: fieldAlign"></select>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <label class="col-sm-5 col-md-5 control-label">Choose Width (leave blank for auto)</label>
-                        <div class="col-sm-7 col-md-7">
-                            <input type="text" class="form-control" data-bind="value: fieldWidth" />
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <div class="col-sm-12">
-                            <div class="checkbox pull-left" >
-                                <label>
-                                    <input type="checkbox" data-bind="checked: outerGroup" />
-                                    <b>Outer Group</b> - Use this field as a group heading
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group row" data-bind="visible: $parents[1].IncludeSubTotal()">
-                        <div class="col-sm-12 d-flex align-items-center">
-                            <div class="checkbox">
-                                <label>
-                                    <input type="checkbox" data-bind="checked: dontSubTotal" />
-                                    <b>Don't Show In Total Row</b>
-                                </label>
-                            </div>
-                            <button class="btn btn-sm btn-secondary ms-2" title="Apply to all columns" data-bind="click: function(){ applyAllDontSubTotal(!applyAllDontSubTotal()); }">
-                                <span class="fa" data-bind="css: applyAllDontSubTotal() ? 'fa-check' : 'fa-paste'"></span>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="form-group row" data-bind="visible: $parents[1].IncludeSubTotal() && !dontSubTotal()">
-                        <label class="col-sm-5 col-md-5 control-label">Total Row Aggregate</label>
-                        <div class="col-sm-7 col-md-7 d-flex align-items-center">
-                            <select class="form-select" data-bind="options: totalRowAggregateOptions, value: totalRowAggregate"></select>
-                            <button class="btn btn-sm btn-secondary ms-2" title="Apply to all columns" data-bind="click: function(){ applyAllTotalRowAggregate(!applyAllTotalRowAggregate()); }">
-                                <span class="fa" data-bind="css: applyAllTotalRowAggregate() ? 'fa-check' : 'fa-paste'"></span>
-                            </button>
-                        </div>
+                    <div class="dr-fo-style">
+                        <div class="dr-fo-style-item"><span class="field-quick-label">Align</span><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Align Auto" data-bind="click: function () { headerAlign(''); }, css: { active: !headerAlign() }"><span style="font-size: 10px;">Auto</span></button><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Align Left" data-bind="click: function () { headerAlign('Left'); }, css: { active: headerAlign() === 'Left' }"><i class="fa fa-align-left"></i></button><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Align Center" data-bind="click: function () { headerAlign('Center'); }, css: { active: headerAlign() === 'Center' }"><i class="fa fa-align-center"></i></button><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Align Right" data-bind="click: function () { headerAlign('Right'); }, css: { active: headerAlign() === 'Right' }"><i class="fa fa-align-right"></i></button><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Apply to all columns" data-bind="click: function () { applyAllHeaderAlign(!applyAllHeaderAlign()); }, css: { active: applyAllHeaderAlign }"><span class="fa" data-bind="css: applyAllHeaderAlign() ? 'fa-check' : 'fa-clone'"></span></button></div>
                     </div>
                 </div>
-                <br />
-                <div data-bind="visible:$parent.ReportType() !='Html'">
-                <div class="card card-body">
-                    <div class="form-row align-items-center">
-                        <div class="col-auto">
-                            <b>Header Settings</b>
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col">
-                            <div class="mb-3">
-                                <label class="form-label">Pick Text Color</label>
-                                <div class="d-flex">
-                                    <input type="color" style="width: 50px; height: 38px;" class="form-control me-2" data-bind="value: headerFontColor" />
-                                    <input type="text" style="width: 100px" class="form-control me-2" data-bind="value: headerFontColor" />
-                                    <button class="btn btn-sm btn-secondary" title="Apply to all columns" data-bind="click: function(){applyAllHeaderFontColor(!applyAllHeaderFontColor()); }">
-                                        <span class="fa" data-bind="css: applyAllHeaderFontColor() ? 'fa-check' : 'fa-paste'"></span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col">
-                            <div class="mb-3">
-                                <label class="form-label">Pick Background Color</label>
-                                <div class="d-flex">
-                                    <input type="color" style="width: 50px; height: 38px;" class="form-control me-2" data-bind="value: headerBackColor" />
-                                    <input type="text" style="width: 100px" class="form-control me-2" data-bind="value: headerBackColor" />
-                                    <button class="btn btn-sm btn-secondary" title="Apply to all columns" data-bind="click: function(){applyAllHeaderBackColor(!applyAllHeaderBackColor()); }">
-                                        <span class="fa" data-bind="css: applyAllHeaderBackColor() ? 'fa-check' : 'fa-paste'"></span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col d-flex align-items-center">
-                            <div class="form-check me-3">
-                                <input class="form-check-input" type="checkbox" data-bind="checked: headerFontBold" id="headerFontBoldCheckbox">
-                                <label class="form-check-label" for="headerFontBoldCheckbox">
-                                    Bold Text
-                                </label>
-                            </div>
-                            <button class="btn btn-sm btn-secondary" title="Apply to all columns" data-bind="click: function(){applyAllHeaderBold(!applyAllHeaderBold()); }">
-                                <span class="fa" data-bind="css: applyAllHeaderBold() ? 'fa-check' : 'fa-paste'"></span>
-                            </button>
-                        </div>
-                    </div>
+                <div class="dr-fo-section">Cells</div>
+                <div class="dr-fo-style">
+                    <span class="dr-fo-style-label">Cells</span>
+                    <div class="dr-fo-style-item"><span class="field-quick-label">Text</span><input type="color" class="dr-swatch" title="Cells text color" data-bind="value: fontColor, valueUpdate: 'input', css: { 'dr-color-unset': !fontColor() }" /><input type="text" class="form-control form-control-sm dr-hex" placeholder="#hex" data-bind="value: fontColor" /><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Apply to all columns" data-bind="click: function () { applyAllFontColor(!applyAllFontColor()); }, css: { active: applyAllFontColor }"><span class="fa" data-bind="css: applyAllFontColor() ? 'fa-check' : 'fa-clone'"></span></button></div>
+                    <div class="dr-fo-style-item"><span class="field-quick-label">Fill</span><input type="color" class="dr-swatch" title="Cells fill color" data-bind="value: backColor, valueUpdate: 'input', css: { 'dr-color-unset': !backColor() }" /><input type="text" class="form-control form-control-sm dr-hex" placeholder="#hex" data-bind="value: backColor" /><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Apply to all columns" data-bind="click: function () { applyAllBackColor(!applyAllBackColor()); }, css: { active: applyAllBackColor }"><span class="fa" data-bind="css: applyAllBackColor() ? 'fa-check' : 'fa-clone'"></span></button></div>
+                    <div class="dr-fo-style-item"><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Bold" data-bind="click: function () { fontBold(!fontBold()); }, css: { active: fontBold }"><i class="fa fa-bold"></i></button><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Apply to all columns" data-bind="click: function () { applyAllBold(!applyAllBold()); }, css: { active: applyAllBold }"><span class="fa" data-bind="css: applyAllBold() ? 'fa-check' : 'fa-clone'"></span></button></div>
                 </div>
-                <br />
+                <div class="dr-fo-section d-flex align-items-center justify-content-between">
+                    <span>Conditional Formatting</span>
+                    <button type="button" class="btn btn-sm btn-outline-primary py-0" data-bind="click: function() { addConditionalFormatSetting(null) }"><i class="fa fa-plus"></i> Add Rule</button>
                 </div>
-                <div class="card card-body">
-                    <div class="form-row align-items-center">
-                        <div class="col-auto">
-                            <b>Text Settings</b>
+                <div data-bind="foreach: fieldCondtionalFormats">
+                    <div class="dr-fo-rule">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <span class="small fw-semibold">Rule <span data-bind="text: $index()+1"></span></span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Remove rule" data-bind="click: $parent.removeSetting"><i class="fa fa-trash"></i></button>
                         </div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col">
-                            <div class="mb-3">
-                                <label class="form-label">Pick Text Color</label>
-                                <div class="d-flex">
-                                    <input type="color" style="width: 50px; height: 38px;" class="form-control me-2" data-bind="value: fontColor" />
-                                    <input type="text" style="width: 100px;" class="form-control me-2" data-bind="value: fontColor" />
-                                    <button class="btn btn-sm btn-secondary" title="Apply to all columns" data-bind="click: function(){applyAllFontColor(!applyAllFontColor()); }">
-                                        <span class="fa" data-bind="css: applyAllFontColor() ? 'fa-check' : 'fa-paste'"></span>
-                                    </button>
-                                </div>
-                            </div>
+                        <div class="dr-fo-style">
+                            <span class="dr-fo-style-label">Style</span>
+                            <div class="dr-fo-style-item"><span class="field-quick-label">Text</span><input type="color" class="dr-swatch" title="Style text color" data-bind="value: fontColor, valueUpdate: 'input', css: { 'dr-color-unset': !fontColor() }" /><input type="text" class="form-control form-control-sm dr-hex" placeholder="#hex" data-bind="value: fontColor" /></div>
+                            <div class="dr-fo-style-item"><span class="field-quick-label">Fill</span><input type="color" class="dr-swatch" title="Style fill color" data-bind="value: backColor, valueUpdate: 'input', css: { 'dr-color-unset': !backColor() }" /><input type="text" class="form-control form-control-sm dr-hex" placeholder="#hex" data-bind="value: backColor" /></div>
+                            <div class="dr-fo-style-item"><button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Bold" data-bind="click: function () { fontBold(!fontBold()); }, css: { active: fontBold }"><i class="fa fa-bold"></i></button></div>
                         </div>
-                        <div class="col">
-                            <div class="mb-3">
-                                <label class="form-label">Pick Background Color</label>
-                                <div class="d-flex">
-                                    <input type="color" style="width: 50px; height: 38px;" class="form-control me-2" data-bind="value: backColor" />
-                                    <input type="text" style="width: 100px;" class="form-control me-2" data-bind="value: backColor" />
-                                    <button class="btn btn-sm btn-secondary" title="Apply to all columns" data-bind="click: function(){applyAllBackColor(!applyAllBackColor()); }">
-                                        <span class="fa" data-bind="css: applyAllBackColor() ? 'fa-check' : 'fa-paste'"></span>
-                                    </button>
-                                </div>
+                        <div class="dr-fo-cond" data-bind="foreach: filter.Filters">
+                            <span class="field-quick-label">When value</span>
+                            <div data-bind="with: Field" class="dr-fo-cond-op">
+                                <select class="form-select form-select-sm" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
                             </div>
-                        </div>
-                        <div class="col d-flex align-items-center">
-                            <div class="form-check me-3">
-                                <input class="form-check-input" type="checkbox" data-bind="checked: fontBold" id="fontBoldCheckbox">
-                                <label class="form-check-label" for="fontBoldCheckbox">
-                                    Bold Text
-                                </label>
-                            </div>
-                            <button class="btn btn-sm btn-secondary" title="Apply to all columns" data-bind="click: function(){applyAllBold(!applyAllBold()); }">
-                                <span class="fa" data-bind="css: applyAllBold() ? 'fa-check' : 'fa-paste'"></span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="padded-div">
-                    <button class="btn btn-sm btn-primary" data-bind="click: function() {addConditionalFormatSetting(null)}">Add Conditional Formatting</button>
-                </div>
-                <div data-bind="foreach: fieldCondtionalFormats" style="padding-left: 40px;">
-                    <div class="card card-body">
-                        <div class="row m-2">
-                            <div class="col d-flex justify-content-start">
-                                <b>Conditional Format #<span data-bind="text: $index()+1"></span></b>
-                            </div>
-                            <div class="col d-flex justify-content-end">
-                                <button class="btn btn-sm btn-secondary" data-bind="click: $parent.removeSetting">Remove</button>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <div class="col">
-                                <div class="mb-3">
-                                    <label class="form-label">Pick Text Color</label>
-                                    <div class="d-flex">
-                                        <input type="color" style="width: 50px; height: 38px;" class="form-control me-2" data-bind="value: fontColor" />
-                                        <input type="text" style="width: 100px;" class="form-control me-2" data-bind="value: fontColor" />
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col">
-                                <div class="mb-3">
-                                    <label class="form-label">Pick Background Color</label>
-                                    <div class="d-flex">
-                                        <input type="color" style="width: 50px; height: 38px;" class="form-control me-2" data-bind="value: backColor" />
-                                        <input type="text" style="width: 100px;" class="form-control me-2" data-bind="value: backColor" />
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col d-flex align-items-center">
-                                <div class="form-check me-3">
-                                    <input class="form-check-input" type="checkbox" data-bind="checked: fontBold" id="fontBoldCheckbox">
-                                    <label class="form-check-label" for="fontBoldCheckbox">
-                                        Bold Text
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row m-2" data-bind="foreach: filter.Filters">
-                            <div class="col-md-2">
-                                Value
-                            </div>
-                            <div class="col-md-4">
-                                <div data-bind="with: Field">
-                                    <div class="form-group">
-                                        <select class="form-select" style="width: 100%;" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div data-bind="with: Field" data-parentprefix="C">
-                                    <div data-bind="template: 'report-filter', data: $data"></div>
-                                </div>
+                            <div data-bind="with: Field" data-parentprefix="C" class="dr-fo-cond-val">
+                                <div data-bind="template: 'report-filter', data: $data"></div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <br />
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-danger" data-bind="click: cancelFieldOptions">Cancel</button>
-                <button type="button" class="btn btn-primary" data-bind="click: saveFieldOptions">Save Changes</button>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bind="click: cancelFieldOptions">Cancel</button>
+                <button type="button" class="btn btn-sm btn-primary" data-bind="click: saveFieldOptions">Save Changes</button>
             </div>
         </div>
     </div>
@@ -2493,6 +2376,12 @@
                     Include Filter Details on Report
                 </label>
             </div>
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" data-bind="checked: HideReportName" />
+                    Hide Report Name
+                </label>
+            </div>
             <div class="form-group row">
                 <div class="checkbox col-md-5">
                     <label>
@@ -3138,7 +3027,7 @@
         <div class="modal-content" style="display: flex; flex-direction: column; height: 100%;">
             <div class="modal-header">
                 <h5 class="modal-title" id="myModalLabel">
-                    <a title="Need help setting up a report?" target="_blank" href="https://dotnetreport.com/blogs/docs/designing-reports"><span class="fa fa-question-circle"></span></a>
+                    <a title="Need help setting up a report?" target="_blank" href="https://dotnetreport.com/docs/#first-report"><span class="fa fa-question-circle"></span></a>
                     <!-- ko if: editingSubReportParentId() -->
                     <i class="fa fa-link"></i> Editing Sub Report
                     <!-- /ko -->
@@ -3678,19 +3567,19 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" data-bind="visible: adminMode, click: RunReportSqlPreview">
+            <div class="modal-footer py-2">
+                <button class="btn btn-sm btn-outline-secondary me-auto" type="button" data-bind="visible: adminMode, click: RunReportSqlPreview">
                     <i class="fa fa-code"></i> Preview Report Code
                 </button>
-                <button class="btn btn-outline-secondary" type="button" data-bind="visible: !SaveReport() || !ReportID(), click: startOverReport" title="Clear everything and start a new report">
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bind="visible: !SaveReport() || !ReportID(), click: startOverReport" title="Clear everything and start a new report">
                     <i class="fa fa-refresh"></i> Start Over
                 </button>
-                <a href="#" class="btn btn-danger" data-bind="click: cancelCreateReport">Cancel editing Report</a>
-                <button class="btn btn-primary" type="button" data-bind="visible: SaveReport() && canSaveCurrentReport(), click: SaveWithoutRun, disable: savingReport() || savingAndRunning()" style="padding-right: 10px;">
+                <a href="#" class="btn btn-sm btn-outline-secondary" title="Cancel editing report" data-bind="click: cancelCreateReport">Cancel</a>
+                <button class="btn btn-sm btn-outline-primary" type="button" data-bind="visible: SaveReport() && canSaveCurrentReport(), click: SaveWithoutRun, disable: savingReport() || savingAndRunning()">
                     <!-- ko if: savingReport() --><span class="fa fa-spinner fa-spin me-1"></span>Saving...<!-- /ko -->
                     <!-- ko ifnot: savingReport() -->Save Report<!-- /ko -->
                 </button>
-                <button class="btn btn-primary" type="button" data-bind="click: SaveAndRunReport, visible: !editingSubReportParentId(), disable: savingReport() || savingAndRunning()">
+                <button class="btn btn-sm btn-primary" type="button" data-bind="click: SaveAndRunReport, visible: !editingSubReportParentId(), disable: savingReport() || savingAndRunning()">
                     <!-- ko if: savingAndRunning() --><span class="fa fa-spinner fa-spin me-1"></span>Saving...<!-- /ko -->
                     <!-- ko ifnot: savingAndRunning() --><!-- ko text: SaveReport() && canSaveCurrentReport()? 'Save & Run Report': 'Run Report' --><!-- /ko --><!-- /ko -->
                 </button>
@@ -3858,83 +3747,68 @@
 
                 <div class="tab-pane fade"
                      data-bind="attr: { id: 'tableTab-' + ReportID() }, css: { 'show active': !(ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line') }">
-                    <div class="form-group row">
-                        <div class="mb-2 col-6">
-                            <label class="form-label small">Header Back Color</label><br />
-                            <input type="color" class="color-picker"
-                                   data-bind="attr: { id: 'tbl-color-picker-' + ReportID()} , value: tableSettings().headerBackColor, event: { change: updateTable }"/>
+                    <div class="field-quick-menu dr-format-tab">
+                        <div class="dr-format-section">Header</div>
+                        <div class="field-quick-row">
+                            <span class="field-quick-label">Fill</span>
+                            <input type="color" class="dr-swatch" title="Back color" data-bind="value: headerStyle.backColor, valueUpdate: 'input', css: { 'dr-color-unset': !headerStyle.backColor() }" />
+                            <span class="field-quick-label text-end" style="width: 34px;">Text</span>
+                            <input type="color" class="dr-swatch" title="Font color" data-bind="value: headerStyle.fontColor, valueUpdate: 'input', css: { 'dr-color-unset': !headerStyle.fontColor() }" />
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn ms-1" title="Bold" data-bind="click: function () { headerStyle.bold(!headerStyle.bold()); }, css: { active: headerStyle.bold }"><i class="fa fa-bold"></i></button>
                         </div>
-                        <div class="mb-2 col-6">
-                            <label class="form-label small">Header Font Color</label><br />
-                            <input type="color" class="color-picker"
-                                   data-bind="attr: { id: 'tbl-color-picker-' + ReportID()} ,value: tableSettings().headerFontColor, event: { change: updateTable }"/>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <div class="mb-2 col-6">
-                            <label class="form-label small">Row Back Color</label><br />
-                            <input type="color" class="color-picker"
-                                   data-bind="attr: { id: 'tbl-color-picker-' + ReportID()} ,value: tableSettings().rowBackColor, event: { change: updateTable }"/>
-                        </div>
-                        <div class="mb-2 col-6">
-                            <label class="form-label small">Row Font Color</label><br />
-                            <input type="color" class="color-picker"
-                                   data-bind="attr: { id: 'tbl-color-picker-' + ReportID()} ,value: tableSettings().rowFontColor, event: { change: updateTable }"/>
-                        </div>
-                    </div>
-                    <div class="form-group row" style="display: none;">
-                        <div class="mb-2 col-6">
-                            <label class="form-label small">Alt Row Back Color</label><br />
-                            <input type="color" class="color-picker"
-                                   data-bind="value: tableSettings().altRowBackColor, event: { change: updateTable }"/>
-                        </div>
-                        <div class="mb-2 col-6">
-                            <label class="form-label small">Alt Row Font Color</label>
-                            <input type="color" class="color-picker"
-                                   data-bind="value: tableSettings().altRowFontColor, event: { change: updateTable }"/>
-                        </div>
-                    </div>
-                    <div class="form-group mb-2" style="display: none;">
-                        <label class="form-label small">Borders</label>
-                        <div class="btn-group d-flex flex-wrap">
-                            <button type="button" class="btn btn-light btn-sm flex-fill"
-                                    data-bind="click: function(){ tableSettings().border('none'); updateTable(); }, css: { active: tableSettings().border === 'none' }">None</button>
-                            <button type="button" class="btn btn-light btn-sm flex-fill"
-                                    data-bind="click: function(){ tableSettings().border('all'); updateTable(); }, css: { active: tableSettings().border === 'all' }">All</button>
-                            <button type="button" class="btn btn-light btn-sm flex-fill"
-                                    data-bind="click: function(){ tableSettings().border('outer'); updateTable(); }, css: { active: tableSettings().border === 'outer' }">Outside</button>
-                            <button type="button" class="btn btn-light btn-sm flex-fill"
-                                    data-bind="click: function(){ tableSettings().border('inner'); updateTable(); }, css: { active: tableSettings().border === 'inner' }">Inside</button>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <div class="mb-2 col-6" style="display: none;">
-                            <label class="form-label small">Border Color</label>
-                            <input type="color" class="color-picker"
-                               data-bind="value: tableSettings().borderColor, event: { change: updateTable }"/>
-                        </div>
-                         <div class="mb-2 col-6">
-                            <label class="form-label small">Back Color</label><br />
-                            <input type="color" class="color-picker"
-                               data-bind="attr: { id: 'tbl-color-picker-' + ReportID()},value: tableSettings().backColor, event: { change: updateTable }"/>
-                        </div>
-                        <div class="mb-2 col-6 d-flex align-items-end">
-                            <button class="btn btn-sm small"
-                                    data-bind="click: copyTableFormat"
-                                    title="Copy Format">
-                                <i class="fa fa-copy"></i>
+                        <div class="field-quick-row">
+                            <span class="field-quick-label">Align</span>
+                            <!-- ko foreach: [{ text: 'Auto', value: '', icon: '' }, { text: 'Left', value: 'left', icon: 'fa-align-left' }, { text: 'Center', value: 'center', icon: 'fa-align-center' }, { text: 'Right', value: 'right', icon: 'fa-align-right' }] -->
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" data-bind="attr: { title: 'Align ' + text }, click: function () { $parent.headerStyle.align(value); }, css: { active: $parent.headerStyle.align() === value }">
+                                <!-- ko if: icon --><i class="fa" data-bind="css: icon"></i><!-- /ko -->
+                                <!-- ko ifnot: icon --><span style="font-size: 10px;">Auto</span><!-- /ko -->
                             </button>
-                            <button class="btn btn-sm small"
-                                    data-bind="click: pasteTableFormat"
-                                    title="Paste Format">
-                                <i class="fa fa-paste"></i>
-                            </button>
-                            <button class="btn btn-sm small" data-bind="click: clearTableSettings"
-                                title="Clear">
-                                <i class="fa fa-close"></i>
-                            </button>
+                            <!-- /ko -->
                         </div>
-                    </div>                    
+                        <div class="field-quick-row">
+                            <span class="field-quick-label">Border</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="No border" data-bind="click: function () { headerStyle.border('none'); }, css: { active: headerStyle.border() === 'none' }"><i class="fa fa-ban"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Thin border" data-bind="click: function () { headerStyle.border('thin'); }, css: { active: headerStyle.border() === 'thin' }"><i class="fa fa-square-o"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Thick border" data-bind="click: function () { headerStyle.border('thick'); }, css: { active: headerStyle.border() === 'thick' }"><i class="fa fa-square-o" style="-webkit-text-stroke: 1.2px;"></i></button>
+                            <input type="color" class="dr-swatch ms-1" title="Border color" data-bind="value: headerStyle.borderColor, valueUpdate: 'input', visible: headerStyle.border() != 'none'" />
+                        </div>
+                        <div class="dr-format-section">Rows</div>
+                        <div class="field-quick-row">
+                            <span class="field-quick-label">Fill</span>
+                            <input type="color" class="dr-swatch" title="Row back color" data-bind="value: rowBackColor, valueUpdate: 'input', css: { 'dr-color-unset': !rowBackColor() }" />
+                            <span class="field-quick-label text-end" style="width: 34px;">Text</span>
+                            <input type="color" class="dr-swatch" title="Row font color" data-bind="value: rowFontColor, valueUpdate: 'input', css: { 'dr-color-unset': !rowFontColor() }" />
+                        </div>
+                        <div class="field-quick-row">
+                            <span class="field-quick-label">Align</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Align Auto" data-bind="click: function () { rowAlign(''); }, css: { active: !rowAlign() }"><span style="font-size: 10px;">Auto</span></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Align Left" data-bind="click: function () { rowAlign('left'); }, css: { active: rowAlign() === 'left' }"><i class="fa fa-align-left"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Align Center" data-bind="click: function () { rowAlign('center'); }, css: { active: rowAlign() === 'center' }"><i class="fa fa-align-center"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Align Right" data-bind="click: function () { rowAlign('right'); }, css: { active: rowAlign() === 'right' }"><i class="fa fa-align-right"></i></button>
+                        </div>
+                        <div class="field-quick-row">
+                            <span class="field-quick-label">Alt Row</span>
+                            <input type="color" class="dr-swatch" title="Alternate row fill" data-bind="value: altRowBackColor, valueUpdate: 'input', css: { 'dr-color-unset': !altRowBackColor() }" />
+                            <span class="field-quick-label text-end" style="width: 34px;">Text</span>
+                            <input type="color" class="dr-swatch" title="Alternate row text" data-bind="value: altRowFontColor, valueUpdate: 'input', css: { 'dr-color-unset': !altRowFontColor() }" />
+                        </div>
+                        <div class="field-quick-row">
+                            <span class="field-quick-label">Border</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="No border" data-bind="click: function () { rowBorder('none'); }, css: { active: rowBorder() === 'none' }"><i class="fa fa-ban"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Thin border" data-bind="click: function () { rowBorder('thin'); }, css: { active: rowBorder() === 'thin' }"><i class="fa fa-square-o"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Thick border" data-bind="click: function () { rowBorder('thick'); }, css: { active: rowBorder() === 'thick' }"><i class="fa fa-square-o" style="-webkit-text-stroke: 1.2px;"></i></button>
+                            <input type="color" class="dr-swatch ms-1" title="Row border color" data-bind="value: rowBorderColor, valueUpdate: 'input', visible: rowBorder() != 'none'" />
+                        </div>
+                        <div class="field-quick-row">
+                            <span class="field-quick-label">Page</span>
+                            <input type="color" class="dr-swatch" title="Background color" data-bind="value: pageBackColor, valueUpdate: 'input', css: { 'dr-color-unset': !pageBackColor() }" />
+                        </div>
+                        <div class="dr-format-footer">
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" data-bind="click: copyTableFormat" title="Copy format"><i class="fa fa-copy"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" data-bind="click: pasteTableFormat" title="Paste format"><i class="fa fa-paste"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" data-bind="click: clearTableSettings" title="Clear formatting"><i class="fa fa-eraser"></i></button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

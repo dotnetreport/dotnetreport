@@ -1675,6 +1675,168 @@ var reportViewModel = function (options) {
 	self.IncludeSubTotal = ko.observable(false);
 	self.totalRowFormat = ko.observable('row');
 	self.subTotalPerGroup = ko.observable(false);
+	self.markFormatDirty = function () {
+		if (self._suppressReportChanged || self.executingReport || self.isExporting) return;
+		if (self.ReportMode && self.ReportMode() && self.ReportMode().indexOf('export-') == 0) return;
+		self.isDirty(true);
+	};
+	self.bandStylePopup = ko.observable(null);
+	self.headerStyle = {
+		backColor: ko.observable(''),
+		fontColor: ko.observable(''),
+		border: ko.observable('none'),
+		borderColor: ko.observable(''),
+		align: ko.observable(''),
+		bold: ko.observable(false)
+	};
+	self._loadingHeaderStyle = false;
+	self.rowAlign = ko.observable('');
+	self.rowBorder = ko.observable('none');
+	self.rowBorderColor = ko.observable('');
+	self.altRowBackColor = ko.observable('');
+	self.altRowFontColor = ko.observable('');
+	self.rowBackColor = ko.observable('');
+	self.rowFontColor = ko.observable('');
+	self.pageBackColor = ko.observable('');
+	self.rowBackColor.subscribe(function (v) {
+		if (self._loadingHeaderStyle) return;
+		self.tableSettings().rowBackColor = v || null;
+		self.markFormatDirty();
+	});
+	self.rowFontColor.subscribe(function (v) {
+		if (self._loadingHeaderStyle) return;
+		self.tableSettings().rowFontColor = v || null;
+		self.markFormatDirty();
+	});
+	self.pageBackColor.subscribe(function (v) {
+		if (self._loadingHeaderStyle) return;
+		self.tableSettings().backColor = v || null;
+		var data = self.ReportResult && self.ReportResult() ? self.ReportResult().ReportData() : null;
+		if (data && data.BackColor) data.BackColor(v || null);
+		self.markFormatDirty();
+	});
+	self.HideReportName = ko.observable(false);
+	self.HideReportName.subscribe(function () { self.markFormatDirty(); });
+	_.forEach(['rowBorder', 'rowBorderColor', 'altRowBackColor', 'altRowFontColor'], function (key) {
+		self[key].subscribe(function (v) {
+			if (self._loadingHeaderStyle) return;
+			self.tableSettings()[key] = v && v !== 'none' ? v : null;
+			self.markFormatDirty();
+		});
+	});
+	self.rowBorderCss = function () {
+		var width = self.rowBorder() === 'thick' ? '2px' : self.rowBorder() === 'thin' ? '1px' : '';
+		return width ? width + ' solid ' + (self.rowBorderColor() || '#000000') : '';
+	};
+	self.cellBack = function (item, index) {
+		var own = ko.unwrap(item.backColor);
+		var table = self.rowBackColor();
+		if (own && own !== table) return own;
+		var alt = self.altRowBackColor();
+		return (alt && index % 2 === 1 ? alt : table) || '';
+	};
+	self.cellFont = function (item, index) {
+		var own = ko.unwrap(item.fontColor);
+		var table = self.rowFontColor();
+		if (own && own !== table) return own;
+		var alt = self.altRowFontColor();
+		return (alt && index % 2 === 1 ? alt : table) || '';
+	};
+	self.rowAlign.subscribe(function (v) {
+		if (self._loadingHeaderStyle) return;
+		self.tableSettings().rowAlign = v || null;
+		self.markFormatDirty();
+	});
+	var onHeaderChange = function (apply) {
+		return function (v) {
+			if (self._loadingHeaderStyle) return;
+			apply(v);
+			self.markFormatDirty();
+		};
+	};
+	self.headerStyle.backColor.subscribe(onHeaderChange(function (v) {
+		self.tableSettings().headerBackColor = v || null;
+	}));
+	self.headerStyle.fontColor.subscribe(onHeaderChange(function (v) {
+		self.tableSettings().headerFontColor = v || null;
+	}));
+	self.headerStyle.bold.subscribe(onHeaderChange(function (v) {
+		self.tableSettings().headerBold = v;
+	}));
+	self.headerStyle.align.subscribe(onHeaderChange(function (v) { self.tableSettings().headerAlign = v || null; }));
+	self.headerStyle.border.subscribe(onHeaderChange(function (v) { self.tableSettings().headerBorder = v; }));
+	self.headerStyle.borderColor.subscribe(onHeaderChange(function (v) { self.tableSettings().headerBorderColor = v || null; }));
+	self.loadHeaderStyle = function () {
+		var ts = self.tableSettings() || {};
+		self._loadingHeaderStyle = true;
+		self.headerStyle.backColor(ts.headerBackColor || '');
+		self.headerStyle.fontColor(ts.headerFontColor || '');
+		self.headerStyle.bold(ts.headerBold === true);
+		self.headerStyle.align(ts.headerAlign || '');
+		self.headerStyle.border(ts.headerBorder || 'none');
+		self.headerStyle.borderColor(ts.headerBorderColor || '');
+		self.rowAlign(ts.rowAlign || '');
+		self.rowBorder(ts.rowBorder || 'none');
+		self.rowBorderColor(ts.rowBorderColor || '');
+		self.altRowBackColor(ts.altRowBackColor || '');
+		self.altRowFontColor(ts.altRowFontColor || '');
+		self.rowBackColor(ts.rowBackColor || '');
+		self.rowFontColor(ts.rowFontColor || '');
+		self.pageBackColor(ts.backColor || '');
+		self._loadingHeaderStyle = false;
+	};
+	self.headerBorderCss = function () {
+		var h = self.headerStyle;
+		var width = h.border() === 'thick' ? '2px' : h.border() === 'thin' ? '1px' : '';
+		return width ? width + ' solid ' + (h.borderColor() || '#000000') : '';
+	};
+	self.openStylePopup = function (title, style, event, reset, allowAuto) {
+		var target = event && event.currentTarget ? $(event.currentTarget).closest('td, th')[0] : null;
+		var rect = target ? target.getBoundingClientRect() : { bottom: 100, right: 400 };
+		var alignOptions = [{ text: 'Left', value: 'left', icon: 'fa-align-left' }, { text: 'Center', value: 'center', icon: 'fa-align-center' }, { text: 'Right', value: 'right', icon: 'fa-align-right' }];
+		if (allowAuto) alignOptions.unshift({ text: 'Auto', value: '', icon: '' });
+		var width = 264;
+		var left = Math.min(rect.right - width, window.innerWidth - width - 8);
+		self.bandStylePopup({
+			title: title,
+			style: style,
+			alignOptions: alignOptions,
+			top: rect.bottom + window.scrollY + 6,
+			left: Math.max(8, left) + window.scrollX,
+			reset: reset,
+			close: function () { self.bandStylePopup(null); }
+		});
+	};
+	self.openHeaderStyle = function (event) {
+		self.openStylePopup('Column Headers', self.headerStyle, event, function () {
+			self.headerStyle.backColor(''); self.headerStyle.fontColor(''); self.headerStyle.bold(false);
+			self.headerStyle.align(''); self.headerStyle.border('none'); self.headerStyle.borderColor('');
+		}, true);
+	};
+	self._closeStylePopupOnOutsideClick = function (e) {
+		var host = self._stylePopupHost;
+		if (!host || !self.bandStylePopup()) return;
+		if (host.contains(e.target) || $(e.target).closest('.dr-header-edit').length) return;
+		self.bandStylePopup(null);
+	};
+	self._closeStylePopupOnScroll = function (e) {
+		if (!self.bandStylePopup() || e.target === document || (self._stylePopupHost && self._stylePopupHost.contains(e.target))) return;
+		self.bandStylePopup(null);
+	};
+	self.bandStylePopup.subscribe(function (popup) {
+		var host = self._stylePopupHost;
+		if (host) { ko.cleanNode(host); host.innerHTML = ''; }
+		document.removeEventListener('mousedown', self._closeStylePopupOnOutsideClick, true);
+		document.removeEventListener('scroll', self._closeStylePopupOnScroll, true);
+		if (!popup) return;
+		if (!host) {
+			host = self._stylePopupHost = document.createElement('div');
+			document.body.appendChild(host);
+		}
+		ko.renderTemplate('format-style-popup', popup, {}, host, 'replaceChildren');
+		document.addEventListener('mousedown', self._closeStylePopupOnOutsideClick, true);
+		document.addEventListener('scroll', self._closeStylePopupOnScroll, true);
+	});
 	self.IncludeColumnTotal = ko.observable(false);
 	self.ShowUniqueRecords = ko.observable(false);
 	self.ShowExpandOption = ko.observable(false);
@@ -4447,7 +4609,7 @@ var reportViewModel = function (options) {
 				"change",
 				"input, select, .form-select, .form-control, .btn, .list-group-item",
 				function (e) {
-					if ($(e.target).closest('.subreport-inline-container, [data-bind*="subreport-content"]').length) return;
+					if ($(e.target).closest('.subreport-inline-container, [data-bind*="subreport-content"]').length) return; if ($(e.target).closest('.dr-format-tab, .dr-format-panel').length) return;
 					self.reportChanged();
 				}
 			);
@@ -4471,7 +4633,7 @@ var reportViewModel = function (options) {
 					var activeId = options.reportWizard.data('report-id');
 					if (activeId != null && activeId != (self.ReportID() || 0)) return;
 				}
-				if ($(e.target).closest('.subreport-inline-container, [data-bind*="subreport-content"]').length) return;
+				if ($(e.target).closest('.subreport-inline-container, [data-bind*="subreport-content"]').length) return; if ($(e.target).closest('.dr-format-tab, .dr-format-panel').length) return;
 				self.reportChanged();
 			}
 		);
@@ -4487,7 +4649,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.setupSettingsDirtyCheck = function () {
-		var setingsTabs = $('#chartTab-' + self.ReportID() + ', #tableTab-' + self.ReportID() + ', #kpiTab-' + self.ReportID());
+		var setingsTabs = $('#chartTab-' + self.ReportID() + ', #kpiTab-' + self.ReportID());
 
 		setingsTabs 
 			.off("change click", "input, select, .form-select, .form-control, .btn, .list-group-item")
@@ -7010,6 +7172,7 @@ var reportViewModel = function (options) {
 				customJoins: ko.toJS(self.customJoins()),
 				customJoinsBaseTableId: self.baseTableIdOverride(),
 				ShowFilterDetails: self.ShowFilterDetails(),
+				HideReportName: self.HideReportName(),
 				ReportHeaderId: self.ReportHeaderId() || 0,
 				UseCustomReportHeader: self.UseCustomReportHeader(),
 				CustomReportHeaderHtml: self.UseCustomReportHeader() ? encodeURIComponent(self.customReportHeaderHtml() || '') : '',
@@ -7071,7 +7234,8 @@ var reportViewModel = function (options) {
 						functionConfig: x.functionConfig,
 						customSqlField: x.customSqlField,
 						outerGroup: x.outerGroup(),
-						totalRowAggregate: x.totalRowAggregate()
+						totalRowAggregate: x.totalRowAggregate(),
+						headerAlign: x.headerAlign ? x.headerAlign() : ''
 					}),
 					DrillDataFormat: effectiveDrillDataFormat,
 					FieldAlign: x.fieldAlign(),
@@ -7606,6 +7770,7 @@ var reportViewModel = function (options) {
 				e.drillDataFormat = col.drillDataFormat || ko.observable();
 				e.seriesType = col.seriesType || ko.observable();
 				e.headerFontBold = col.headerFontBold || ko.observable();
+				e.headerAlign = col.headerAlign || ko.observable('');
 				e.headerFontColor = col.headerFontColor || ko.observable();
 				e.headerBackColor = col.headerBackColor || ko.observable();
 				e.fieldId = col.fieldId;
@@ -8102,6 +8267,10 @@ var reportViewModel = function (options) {
 				col = col || {};
 				r.backColor = col.backColor;
 				r.fieldAlign = col.fieldAlign;
+				r.rowAlign = self.rowAlign;
+				r.cellBack = self.cellBack;
+				r.cellFont = self.cellFont;
+				r.rowBorderCss = self.rowBorderCss;
 				r.fieldWidth = col.fieldWidth;
 				r.fontBold = col.fontBold;
 				r.fontColor = col.fontColor;
@@ -8453,6 +8622,13 @@ var reportViewModel = function (options) {
 			result.ReportData.CurrencySymbol = ko.observable(self.kpiSettings()?.currencySymbol());
 		} else {
 			result.ReportData.BackColor = ko.observable(self.tableSettings().backColor);
+			result.ReportData.canFormatTable = function () { return self.CanEdit(); };
+			result.ReportData.openHeaderStyle = function (event) { self.openHeaderStyle(event); };
+			result.ReportData.headerStyle = self.headerStyle;
+			result.ReportData.headerBorderCss = self.headerBorderCss;
+			result.ReportData.lastHeaderIndex = function () {
+				return _.findLastIndex(result.ReportData.Columns, function (c) { return !ko.unwrap(c.outerGroup); });
+			};
 		}
 		var lastOuterGroupKey = null;
 		var outerGroupPlaceholderKeys = [];
@@ -8962,14 +9138,17 @@ var reportViewModel = function (options) {
 						let leftBorder = '';
 						if (isFirstTotal) leftBorder = 'border-left:2px solid;';
 
+						const ownAlign = item.fieldAlign() && item.fieldAlign() !== 'Auto' ? item.fieldAlign() : '';
+						const rowBorderCss = self.rowBorderCss();
 						let tdStyle = `
 							style="
-								background-color:${item._backColor ?? item.backColor()};
-								color:${item._fontColor ?? item.fontColor()};
+								background-color:${item._backColor ?? (self.cellBack(item, rowIndex) || '')};
+								color:${item._fontColor ?? (self.cellFont(item, rowIndex) || '')};
 								font-weight:${isTotalCell ? 'bold' : (item.fontBold() || item._fontBold) ? 'bold' : 'normal'};
-								text-align:${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')};
+								text-align:${ownAlign || self.rowAlign() || (item.Column.IsNumeric ? 'right' : 'left')};
 								width:${ko.unwrap(item.fieldWidth())};
 								text-wrap:${ko.unwrap(item.fieldWidth()) ? 'wrap' : 'nowrap'};
+								${rowBorderCss ? 'border:' + rowBorderCss + ';' : ''}
 								${leftBorder}
 							"
 						`;
@@ -8996,8 +9175,24 @@ var reportViewModel = function (options) {
 
 		reportResult.ReportData(result.ReportData);
 
+		if (self._renderTableWatcher) {
+			self._renderTableWatcher.dispose();
+			self._renderTableWatcher = null;
+		}
 		if (self.useRenderTable()) {
 			renderTable(result.ReportData.Rows, result.ReportData.Columns.length);
+			self._renderTableWatcher = ko.computed(function () {
+				_.forEach(result.ReportData.Columns, function (c) {
+					ko.unwrap(c.fieldAlign); ko.unwrap(c.backColor); ko.unwrap(c.fontColor); ko.unwrap(c.fontBold); ko.unwrap(c.fieldWidth);
+				});
+				self.rowAlign(); self.rowBorder(); self.rowBorderColor(); self.altRowBackColor(); self.altRowFontColor(); self.rowBackColor(); self.rowFontColor(); self.tableSettings();
+				return {};
+			}).extend({ rateLimit: 50 });
+			self._renderTableWatcher.subscribe(function () {
+				if (self.useRenderTable() && self.ReportResult().ReportData() === result.ReportData) {
+					renderTable(result.ReportData.Rows, result.ReportData.Columns.length);
+				}
+			});
 		}
 
 		self.pager.totalRecords(result.Pager.TotalRecords);
@@ -9647,6 +9842,15 @@ var reportViewModel = function (options) {
 		self.tableSettings().borderColor = null;
 		self.tableSettings().backColor = null;
 		self.ReportResult()?.ReportData()?.BackColor(null);
+		self.tableSettings().headerAlign = null;
+		self.tableSettings().headerBorder = null;
+		self.tableSettings().headerBorderColor = null;
+		self.tableSettings().headerBold = null;
+		self.tableSettings().rowAlign = null;
+		self.tableSettings().rowBorder = null;
+		self.tableSettings().rowBorderColor = null;
+		self.loadHeaderStyle();
+		self.markFormatDirty();
 		let inputs = document.querySelectorAll('#tbl-color-picker-' + self.ReportID());
 		inputs.forEach(function (inp) {
 			inp.value = null;   
@@ -9661,6 +9865,8 @@ var reportViewModel = function (options) {
 		if (window.copiedTableFormat) {
 			self.tableSettings(window.copiedTableFormat);
 			self.updateTable(true);
+			self.loadHeaderStyle();
+			self.markFormatDirty();
 			toastr.success("Table format pasted!");
 		} else {
 			toastr.error("No table format copied yet.");
@@ -9674,39 +9880,15 @@ var reportViewModel = function (options) {
 	};
 	self.updateTable = function (clear) {
 		let setting = self.tableSettings();
+		if (arguments[1] && arguments[1].type) self.markFormatDirty();
 
 		_.forEach(self.SelectedFields(), function (f) {
-			if (setting.headerBackColor || clear === true) f.headerBackColor(setting.headerBackColor);
-			if (setting.headerFontColor || clear === true) f.headerFontColor(setting.headerFontColor);
-			if (setting.rowBackColor || clear === true) f.backColor(setting.rowBackColor);
-			if (setting.rowFontColor || clear === true) f.fontColor(setting.rowFontColor);
+			if (clear === true) f.headerBackColor(null);
+			if (clear === true) f.headerFontColor(null);
+			if (clear === true) f.backColor(null);
+			if (clear === true) f.fontColor(null);
 		});
 
-		let tableId = self.ReportID();
-
-		let header = document.getElementById('report-table-head' + tableId);
-		let body = document.getElementById('report-table-body' + tableId);
-
-		if (!header && !body) return;
-
-		let headerBack = setting.headerBackColor || "";
-		let headerFont = setting.headerFontColor || "";
-		let rowBack = setting.rowBackColor || "";
-		let rowFont = setting.rowFontColor || "";
-
-		if (header) {
-			header.querySelectorAll("th").forEach(th => {
-				if (clear === true || headerBack) th.style.backgroundColor = headerBack;
-				if (clear === true || headerFont) th.style.color = headerFont;
-			});
-		}
-
-		if (body) {
-			body.querySelectorAll("td").forEach(td => {
-				if (clear === true || rowBack) td.style.backgroundColor = rowBack;
-				if (clear === true || rowFont) td.style.color = rowFont;
-			});
-		}
 		if (setting.backColor) {
 			var result = self.ReportResult().ReportData();
 			result.BackColor(setting.backColor);
@@ -11082,6 +11264,7 @@ var reportViewModel = function (options) {
 		e.headerBackColor = ko.observable(e.headerBackColor);
 		e.fontBold = ko.observable(e.fontBold);
 		e.headerFontBold = ko.observable(e.headerFontBold);
+		e.headerAlign = ko.observable(e.fieldSettings.headerAlign || '');
 		e.fieldWidth = ko.observable(e.fieldWidth);
 		e.fieldConditionOp = ko.observable(e.fieldConditionOp);
 		e.fieldConditionVal = e.fieldConditionVal && Array.isArray(e.fieldConditionVal) ? e.fieldConditionVal : JSON.parse(e.fieldConditionVal || '[]');
@@ -11110,6 +11293,7 @@ var reportViewModel = function (options) {
 		e.applyAllBackColor = ko.observable(false);
 		e.applyAllBold = ko.observable(false);
 		e.applyAllHeaderBold = ko.observable(false);
+		e.applyAllHeaderAlign = ko.observable(false);
 		e.applyAllDontSubTotal = ko.observable(false);
 		e.applyAllTotalRowAggregate = ko.observable(false);
 		e.addConditionalFormatSetting = function (f) {
@@ -11204,6 +11388,7 @@ var reportViewModel = function (options) {
 				headerBackColor: e.headerBackColor(),
 				fontBold: e.fontBold(),
 				headerFontBold: e.headerFontBold(),
+				headerAlign: e.headerAlign(),
 				fieldWidth: e.fieldWidth(),
 				fieldConditionOp: e.fieldConditionOp(),
 				fieldConditionVal: e.fieldConditionVal,
@@ -11236,6 +11421,7 @@ var reportViewModel = function (options) {
 				if (e.applyAllBackColor()) f.backColor(e.backColor());
 				if (e.applyAllBold()) f.fontBold(e.fontBold());
 				if (e.applyAllHeaderBold()) f.headerFontBold(e.headerFontBold());
+				if (e.applyAllHeaderAlign() && f.headerAlign) f.headerAlign(e.headerAlign());
 				if (e.applyAllDontSubTotal()) f.dontSubTotal(e.dontSubTotal());
 				if (e.applyAllTotalRowAggregate()) f.totalRowAggregate(e.totalRowAggregate());
 			});
@@ -11275,6 +11461,7 @@ var reportViewModel = function (options) {
 			e.headerBackColor(self.currentFieldOptions.headerBackColor);
 			e.fontBold(self.currentFieldOptions.fontBold);
 			e.headerFontBold(self.currentFieldOptions.headerFontBold);
+			e.headerAlign(self.currentFieldOptions.headerAlign || '');
 			e.fieldWidth(self.currentFieldOptions.fieldWidth);
 			e.fieldConditionOp(self.currentFieldOptions.fieldConditionOp);
 			e.fieldConditionVal = self.currentFieldOptions.fieldConditionVal;
@@ -11358,6 +11545,7 @@ var reportViewModel = function (options) {
 		self.bypassSpecificIds(bdf && bdf !== "/all/" ? bdf.split(",").filter(Boolean) : []);
 		self.DontExecuteOnRun(reportSettings.DontExecuteOnRun === true ? true : false);
 		self.ShowFilterDetails(reportSettings.ShowFilterDetails === true ? true : false);
+		self.HideReportName(reportSettings.HideReportName === true);
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
 		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
 		self.pieChartDonut(reportSettings.pieChartDonut === true ? true : false);
@@ -11372,6 +11560,7 @@ var reportViewModel = function (options) {
 		};
 		if (reportSettings.chartOptions) self.chartOptions(reportSettings.chartOptions);
 		if (reportSettings.tableSettings) self.tableSettings(reportSettings.tableSettings);
+		self.loadHeaderStyle();
 		if (reportSettings.kpiSettings && Object.keys(reportSettings.kpiSettings).length > 0) {
 			var kpisetting = reportSettings.kpiSettings;
 			self.kpiSettings().fontSize(kpisetting.fontSize);
@@ -12575,6 +12764,16 @@ var reportViewModel = function (options) {
 			includeColumnTotal: self.IncludeColumnTotal(),
 			subTotalPerGroup: self.subTotalPerGroup(),
 			totalRowFormat: self.totalRowFormat(),
+			headerStyle: JSON.stringify(_.assign(ko.toJS(self.headerStyle), {
+				rowAlign: self.rowAlign(),
+				rowBorder: self.rowBorder(),
+				rowBorderColor: self.rowBorderColor(),
+				altRowBackColor: self.altRowBackColor(),
+				altRowFontColor: self.altRowFontColor(),
+				rowBackColor: self.rowBackColor(),
+				rowFontColor: self.rowFontColor()
+			})),
+			hideReportName: self.HideReportName(),
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
