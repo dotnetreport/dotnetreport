@@ -7658,6 +7658,8 @@ var reportViewModel = function (options) {
 					col.setupFieldOptions();
 				}
 
+				var existingOuterGroup = !skipColDetails ? _.find(self.OuterGroupColumns(), { fieldId: e.fieldId }) : null;
+				if (existingOuterGroup) existingOuterGroup.fieldIndex = e.colIndex;
 				if (col._outerGroup || (col.selectedAggregate && col.selectedAggregate() == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId}))) {
 					e.outerGroup(false);
 					e.toggleOuterGroup();
@@ -7779,7 +7781,58 @@ var reportViewModel = function (options) {
 			return txt.value;
 		}
 
-		function processRow(row, columns, subreportsRan, outerGroupIndicesToSuppress) {
+		function splitOuterGroupTemplate(body, keys) {
+			var cacheKey = keys.join('\u0001') + '\u0002' + body;
+			if (self._outerGroupTemplateCache && self._outerGroupTemplateCache.key === cacheKey) return self._outerGroupTemplateCache.value;
+			var serialize = function (node) {
+				var d = document.createElement('div');
+				d.appendChild(node.cloneNode(true));
+				return decodeHtmlEntities(d.innerHTML);
+			};
+			var wrap = function (node, inner, edge) {
+				var d = document.createElement('div');
+				var shell = node.cloneNode(false);
+				if (edge === 'before') { shell.style.marginBottom = '0'; inner = inner.replace(/(\s| |<br\s*\/?>)+$/i, ''); }
+				if (edge === 'after') { shell.style.marginTop = '0'; inner = inner.replace(/^(\s| |<br\s*\/?>)+/i, ''); }
+				d.appendChild(shell);
+				var outer = decodeHtmlEntities(d.innerHTML);
+				var close = outer.lastIndexOf('</');
+				return close >= 0 ? outer.substring(0, close) + inner + outer.substring(close) : outer + inner;
+			};
+			var split = function (nodes, key) {
+				var parts = nodes.map(serialize);
+				var k = -1;
+				parts.forEach(function (x, i) { if (x.indexOf(key) >= 0) k = i; });
+				if (k < 0) return null;
+				var node = nodes[k];
+				var tail = parts[k].substring(parts[k].lastIndexOf(key) + key.length);
+				if (node.nodeType === 1 && node.childNodes.length && tail.indexOf('{{') >= 0) {
+					var inner = split(Array.prototype.slice.call(node.childNodes), key);
+					if (inner) return [parts.slice(0, k).join('') + wrap(node, inner[0], 'before'), wrap(node, inner[1], 'after') + parts.slice(k + 1).join('')];
+				}
+				return [parts.slice(0, k + 1).join(''), parts.slice(k + 1).join('')];
+			};
+			var holder = document.createElement('div');
+			var rest = body.replace(/(\s*<p[^>]*>(\s| |&nbsp;|<br\s*\/?>)*<\/p>)+\s*$/i, ''), sections = [];
+			_.forEach(keys, function (k) {
+				holder.innerHTML = rest;
+				var r = split(Array.prototype.slice.call(holder.childNodes), '{{' + k + '}}');
+				if (r) { sections.push(r[0]); rest = r[1]; } else sections.push('');
+			});
+			var value = { sections: sections, detail: rest, groupOpen: '', rowTemplate: null, groupClose: '' };
+			if (rest.indexOf('html-report-table-standard') >= 0) {
+				var m = rest.match(/(<table[\s\S]*?<thead[\s\S]*?<\/thead>\s*<tbody>)([\s\S]*?)(<\/tbody>\s*<\/table>)/i);
+				if (m) {
+					value.groupOpen = rest.substring(0, m.index) + m[1];
+					value.rowTemplate = m[2];
+					value.groupClose = m[3] + rest.substring(m.index + m[0].length);
+				}
+			}
+			self._outerGroupTemplateCache = { key: cacheKey, value: value };
+			return value;
+		}
+
+		function processRow(row, columns, subreportsRan, outerGroupIndicesToSuppress, outerGroupLevel) {
 			let fullHtml = decodeHtmlEntities(self.reportHtml());
 			let header = "", body = fullHtml, footer = "";
 
@@ -7791,8 +7844,28 @@ var reportViewModel = function (options) {
 				body = parts[0];
 				footer = parts.length > 1 ? parts[1] : "";
 
+				var outerGroupHandled = false;
+				if (outerGroupLevel != null && outerGroupPlaceholderKeys.length > 0
+					&& body.indexOf('html-report-table-grouped') < 0 && body.indexOf('html-report-table-transposed') < 0) {
+					var ogTpl = splitOuterGroupTemplate(body, outerGroupPlaceholderKeys);
+					var startsGroup = outerGroupLevel < ogTpl.sections.length;
+					var ogOut = '';
+					if (ogTpl.rowTemplate !== null && startsGroup && !row.__isFirstRow) ogOut += ogTpl.groupClose;
+					for (var ogI = outerGroupLevel; ogI < ogTpl.sections.length; ogI++) ogOut += ogTpl.sections[ogI];
+					if (ogTpl.rowTemplate !== null) {
+						if (startsGroup) ogOut += ogTpl.groupOpen;
+						ogOut += ogTpl.rowTemplate;
+						if (row.__isLastRow) ogOut += ogTpl.groupClose;
+					} else {
+						ogOut += ogTpl.detail;
+					}
+					body = ogOut;
+					outerGroupHandled = true;
+				}
 				// detect standard table
-				if (body.indexOf("html-report-table-standard") >= 0) {
+				if (outerGroupHandled) {
+				}
+				else if (body.indexOf("html-report-table-standard") >= 0) {
 					let match = body.match(/(<table[\s\S]*?<thead[\s\S]*?<\/thead>\s*<tbody>)([\s\S]*?)(<\/tbody>\s*<\/table>)/i);
 					if (match) {
 						const tableHeader = match[1];
@@ -7822,17 +7895,23 @@ var reportViewModel = function (options) {
 						var groupHeaderTrs = [];
 						var dataTrs = [];
 
+						var changedGroupHeaderTrs = [];
 						allTrs.forEach(function (tr) {
 							var isHeader = false;
+							var trLevel = -1;
 							if (outerGroupPlaceholderKeys.length > 0) {
-								isHeader = outerGroupPlaceholderKeys.some(function (ph) {
-									return tr.indexOf('{{'+ ph + '}}') >= 0;
+								outerGroupPlaceholderKeys.forEach(function (ph, level) {
+									if (tr.indexOf('{{' + ph + '}}') >= 0) trLevel = level;
 								});
+								isHeader = trLevel >= 0;
 							}
 							if (!isHeader) {
 								isHeader = /class="[^"]*html-report-group-header/.test(tr);
 							}
-							if (isHeader) groupHeaderTrs.push(tr);
+							if (isHeader) {
+								groupHeaderTrs.push(tr);
+								if (outerGroupLevel == null || trLevel < 0 || trLevel >= outerGroupLevel) changedGroupHeaderTrs.push(tr);
+							}
 							else dataTrs.push(tr);
 						});
 
@@ -7843,7 +7922,7 @@ var reportViewModel = function (options) {
 							body = gTableTop + groupRows + dataRow + gTableBot;
 						} else if (!outerGroupIndicesToSuppress) {
 							// First row of a new group
-							body = '<!-- outer-group-break -->' + groupRows + dataRow;
+							body = '<!-- outer-group-break -->' + changedGroupHeaderTrs.join('') + dataRow;
 						} else {
 							// Continuation of same group
 							body = dataRow;
@@ -7878,7 +7957,7 @@ var reportViewModel = function (options) {
 				// Outer-group template splitting:
 				// For non-first rows of a group, strip everything up to and including
 				// the last outer-group placeholder so only the inner-row portion renders.
-				if (outerGroupIndicesToSuppress && outerGroupPlaceholderKeys.length > 0
+				if (!outerGroupHandled && outerGroupIndicesToSuppress && outerGroupPlaceholderKeys.length > 0
 					&& fullHtml.indexOf('html-report-table-standard') < 0
 					&& fullHtml.indexOf('html-report-table-transposed') < 0
 					&& fullHtml.indexOf('html-report-table-grouped') < 0) {
@@ -8411,6 +8490,23 @@ var reportViewModel = function (options) {
 			_fhParts = _fhRest.split("{{footerbreak}}");
 			htmlFooter = _fhParts.length > 1 ? _fhParts[1] : "";
 		}
+		var outerGroupLevelCols = self.ReportType() == 'Html' ? _.sortBy(self.OuterGroupColumns(), 'fieldIndex') : [];
+		var lastOuterGroupValues = null;
+		if (outerGroupLevelCols.length > 0) {
+			var groupedRows = [];
+			var groupRowsByLevel = function (list, depth) {
+				if (depth >= outerGroupLevelCols.length) { _.forEach(list, function (r) { groupedRows.push(r); }); return; }
+				var idxCol = outerGroupLevelCols[depth].fieldIndex, buckets = [], byValue = {};
+				_.forEach(list, function (r) {
+					var key = '$' + (r.Items[idxCol] ? r.Items[idxCol].FormattedValue : '');
+					if (!byValue[key]) { byValue[key] = []; buckets.push(byValue[key]); }
+					byValue[key].push(r);
+				});
+				_.forEach(buckets, function (b) { groupRowsByLevel(b, depth + 1); });
+			};
+			groupRowsByLevel(result.ReportData.Rows, 0);
+			result.ReportData.Rows = groupedRows;
+		}
 		_.forEach(result.ReportData.Rows, function (e, idx) {
 			e.DrillDownData = ko.observable(null);
 			e.pager = new pagerViewModel({ pageSize: self.DefaultPageSize() });
@@ -8556,6 +8652,7 @@ var reportViewModel = function (options) {
 				return e.subReportsRan().filter(function (sr) { return !sr._isInline; });
 			});
 			var outerGroupIndicesToSuppress = null;
+			var outerGroupLevel = null;
 			if (self.ReportType() == 'Html' && self.OuterGroupColumns().length > 0) {
 				var outerGroupCols = self.OuterGroupColumns();
 				var groupKey = outerGroupCols.map(function(gc) {
@@ -8565,15 +8662,24 @@ var reportViewModel = function (options) {
 					outerGroupIndicesToSuppress = new Set(outerGroupCols.map(function(gc) { return gc.fieldIndex; }));
 				}
 				lastOuterGroupKey = groupKey;
+				var levelValues = outerGroupLevelCols.map(function (gc) { return e.Items[gc.fieldIndex] ? e.Items[gc.fieldIndex].FormattedValue : ''; });
+				outerGroupLevel = 0;
+				if (lastOuterGroupValues) {
+					outerGroupLevel = levelValues.length;
+					for (var lv = 0; lv < levelValues.length; lv++) {
+						if (levelValues[lv] !== lastOuterGroupValues[lv]) { outerGroupLevel = lv; break; }
+					}
+				}
+				lastOuterGroupValues = levelValues;
 			}
 			e.Items.__isFirstRow = idx === 0;
 			e.Items.__isLastRow = idx === result.ReportData.Rows.length - 1;
-			e.renderedHtml = processRow(e.Items, result.ReportData.Columns, subReportsRanUnsorted, outerGroupIndicesToSuppress);
+			e.renderedHtml = processRow(e.Items, result.ReportData.Columns, subReportsRanUnsorted, outerGroupIndicesToSuppress, outerGroupLevel);
 		});
 
 		if (result.ReportData.Rows.length > 0 && self.ReportType() == 'Html') {
 			let first = result.ReportData.Rows[0];
-			if (first.renderedHtml && first.renderedHtml.indexOf("html-report-table-standard") >= 0) {
+			if (first.renderedHtml && first.renderedHtml.indexOf("html-report-table-standard") >= 0 && self.OuterGroupColumns().length === 0) {
 				let match = first.renderedHtml.match(/(<table[\s\S]*?<thead[\s\S]*?<\/thead>\s*<tbody>)([\s\S]*?)(<\/tbody>\s*<\/table>)/i);
 				if (match) {
 					const tableHeader = match[1];
