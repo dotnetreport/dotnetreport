@@ -2834,3 +2834,10 @@ tr:hover > th > .dr-header-edit { visibility: visible; }
 .dr-report-title { position: relative; display: inline-block; padding-right: 24px; }
 .dr-report-title .dr-title-hide { position: absolute; top: 4px; right: 0; visibility: hidden; color: #6c757d; font-size: 14px; }
 .dr-report-title:hover .dr-title-hide { visibility: visible; }
+
+/* Report slicers */
+.dr-slicer-bar { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-bottom: 10px; }
+.dr-slicer .btn { font-size: 12px; padding: 3px 10px; }
+.dr-slicer .btn.active { background-color: #0d6efd; border-color: #0d6efd; color: #fff; }
+.dr-slicer-picker { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
+.dr-slicer-picker .btn { font-size: 11px; padding: 1px 8px; }

@@ -707,6 +707,24 @@
 
 
 <script type="text/html" id="report-template">
+    <!-- ko if: $parent.hasSlicers && $parent.hasSlicers() -->
+    <div class="dr-slicer-bar">
+        <!-- ko foreach: $parent.dateSlicerFilters() -->
+        <div class="btn-group btn-group-sm dr-slicer" role="group" data-bind="attr: { title: Field() ? ko.unwrap(Field().fieldLabel) || Field().fieldName : '' }">
+            <!-- ko foreach: slicerOptions -->
+            <button type="button" class="btn btn-outline-secondary" data-bind="text: $data, css: { active: $parent.Operator() === 'range' && $parent.Value() === $data }, click: function () { $parent.applySlicer($data); }"></button>
+            <!-- /ko -->
+        </div>
+        <!-- /ko -->
+        <!-- ko foreach: $parent.groupSlicerFields() -->
+        <div class="btn-group btn-group-sm dr-slicer" role="group" data-bind="attr: { title: (ko.unwrap(fieldLabel) || fieldName) + ' grouping' }">
+            <!-- ko foreach: visibleGroupSlicerOptions -->
+            <button type="button" class="btn btn-outline-secondary" data-bind="text: $data.replace('Group by ', ''), css: { active: $parent.selectedAggregate() === $data }, click: function () { $parent.applyGroupSlicer($data); }"></button>
+            <!-- /ko -->
+        </div>
+        <!-- /ko -->
+    </div>
+    <!-- /ko -->
     <div class="report-chart" data-bind="attr: {id: 'chart_div_' + $parent.ReportID()}, visible: $parent.isChart"></div>
     <!-- ko if: $parent.ReportType() == 'Pivot' -->
     <div data-bind="template: {name: 'report-pivot', data: $data }"></div>
@@ -1253,6 +1271,17 @@
                                 <button class="btn btn-sm btn-secondary" data-bind="click: $parentContext.$parent.AddSeries.bind($data)">Add Comparison</button>
                                 <!--/ko -->
                                 <!--/ko -->
+                                <!-- ko if: Field() && ['Date', 'DateTime'].indexOf(Field().fieldType) >= 0 && $data.hasOwnProperty('slicer') -->
+                                <div class="form-check form-switch small mt-1 mb-0">
+                                    <input class="form-check-input" type="checkbox" data-bind="checked: slicer" />
+                                    <label class="form-check-label">Show as slicer on the report <span class="text-muted">(up to 5 options)</span></label>
+                                </div>
+                                <!-- ko if: slicer -->
+                                <div class="dr-slicer-picker" data-bind="foreach: slicerChoices">
+                                    <button type="button" class="btn btn-sm" data-bind="text: $data, css: { 'btn-primary': $parent.slicerOptions.indexOf($data) >= 0, 'btn-outline-secondary': $parent.slicerOptions.indexOf($data) < 0 }, click: function () { $parent.toggleSlicerOption($data); }"></button>
+                                </div>
+                                <!-- /ko -->
+                                <!-- /ko -->
                                 <span data-bind="visible: Field() && Field().forced" class="badge bg-info">Required Filter</span>
                             </div>
                             <div class="col-md-1">
@@ -1518,6 +1547,15 @@
                 <div class="dr-fo-row">
                     <label>Data Format</label>
                     <div><select class="form-select form-select-sm" data-bind="options: ['Days', 'Hours', 'Minutes', 'Seconds'].indexOf(fieldFormat()) >= 0 ? ['Days', 'Hours', 'Minutes', 'Seconds'] : $parents[1].fieldFormatTypes, value: fieldFormat"></select></div>
+                </div>
+                <div class="dr-fo-row" data-bind="visible: ['Date', 'DateTime'].indexOf(fieldType) >= 0 && (selectedAggregate() || '').indexOf('Group by') === 0">
+                    <label>Grouping Slicer</label>
+                    <div>
+                        <div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" data-bind="checked: groupSlicer" /><label class="form-check-label small">Let users switch the grouping from the report</label></div>
+                        <div class="dr-slicer-picker" data-bind="visible: groupSlicer, foreach: groupSlicerChoices">
+                            <button type="button" class="btn btn-sm" data-bind="text: $data.replace('Group by ', ''), css: { 'btn-primary': $parent.groupSlicerOptions.indexOf($data) >= 0, 'btn-outline-secondary': $parent.groupSlicerOptions.indexOf($data) < 0 }, click: function () { $parent.toggleGroupSlicerOption($data); }"></button>
+                        </div>
+                    </div>
                 </div>
                 <div class="dr-fo-row" data-bind="visible: $parents[1].decimalFormatTypes.indexOf($data.fieldFormat())>=0">
                     <label>Decimal Places</label>
@@ -2052,6 +2090,9 @@
                         </div>
                     </div>
 
+                    <div style="padding-right: 10px;" data-bind="if: $data.groupSlicer && ['Date', 'DateTime'].indexOf(fieldType) >= 0 && (selectedAggregate() || '').indexOf('Group by') === 0">
+                        <span class="fa fa-sliders" style="cursor: pointer;" title="Show a date grouping slicer on the report" data-bind="click: function () { groupSlicer(!groupSlicer()); }, css: { 'text-primary': groupSlicer() }"></span>
+                    </div>
                     <div  style="padding-right: 10px;" data-bind="ifnot: $parent.useStoredProc">
                         <span class="fa fa-trash-o" title="Cannot Delete Required Filter" data-bind="visible: forceFilterForTable"></span>
                         <span class="fa fa-trash" style="cursor: pointer;" aria-hidden="true" title="Delete this Field" data-bind="click: $parent.RemoveField, hidden: forceFilterForTable"></span>
@@ -3279,18 +3320,6 @@
                                 </div>
                             </div>
 
-                            <!-- Data -->
-                            <div class="card mb-1 designer-panel">
-                                <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-dataPanel')}" style="cursor:pointer;">
-                                    <i class="fa fa-database"></i> Available Data
-                                    <i class="hint-tip fa fa-info-circle text-info ms-1" data-bind="visible: showHints()" data-bs-toggle="tooltip" title="<b>1. Pick a Table</b> from the dropdown &mdash; this is your data source.<br><b>2. Check fields</b> to add them to your report.<br><b>3. Join Tables:</b> If you need data from multiple tables, select additional tables and they&rsquo;ll be auto-joined if relationships exist.<br><b>Dynamic vs Stored Proc:</b> Dynamic builds SQL from your selections; Stored Proc calls a predefined database procedure."></i>
-                                    <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-dataPanel')}"></i>
-                                </div>
-                                <div class="card-body p-2" data-bind="visible: !panels.isCollapsed('lp-dataPanel')">
-                                    <div data-bind="template: 'designer-choose-data'"></div>
-                                </div>
-                            </div>
-
                             <!-- Visualization -->
                             <div class="card mb-1 designer-panel">
                                 <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-vizPanel')}" style="cursor:pointer;">
@@ -3303,6 +3332,18 @@
                                 </div>
                             </div>
 
+                            <!-- Data -->
+                            <div class="card mb-1 designer-panel">
+                                <div class="card-header p-2" data-bind="click: function(){ panels.togglePanel('lp-dataPanel'); if (panels.isCollapsed('lp-dataPanel') && panels.isCollapsed('lp-selectedPanel')) panels.togglePanel('lp-selectedPanel'); }" style="cursor:pointer;">
+                                    <i class="fa fa-database"></i> Available Data
+                                    <i class="hint-tip fa fa-info-circle text-info ms-1" data-bind="visible: showHints()" data-bs-toggle="tooltip" title="<b>1. Pick a Table</b> from the dropdown &mdash; this is your data source.<br><b>2. Check fields</b> to add them to your report.<br><b>3. Join Tables:</b> If you need data from multiple tables, select additional tables and they&rsquo;ll be auto-joined if relationships exist.<br><b>Dynamic vs Stored Proc:</b> Dynamic builds SQL from your selections; Stored Proc calls a predefined database procedure."></i>
+                                    <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-dataPanel')}"></i>
+                                </div>
+                                <div class="card-body p-2" data-bind="visible: !panels.isCollapsed('lp-dataPanel')">
+                                    <div data-bind="template: 'designer-choose-data'"></div>
+                                </div>
+                            </div>
+
                             <!-- Selected Data -->
                             <div class="card mb-1 designer-panel">
                                 <div class="card-header p-2" data-bind="click: function(){panels.togglePanel('lp-selectedPanel')}" style="cursor:pointer;">
@@ -3312,6 +3353,11 @@
                                     <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-selectedPanel')}"></i>
                                 </div>
                                 <div class="card-body p-2 designer-auto-update" data-bind="visible: !panels.isCollapsed('lp-selectedPanel')" style="max-height: 300px; overflow-y: auto;">
+                                    <div class="mb-2" data-bind="hidden: useStoredProc() || isFormulaField()">
+                                        <div data-bind="with: textQuery.searchFields">
+                                            <select class="form-control" data-bind="select2: {dropdownParent: $('#choose-data-design'), placeholder: 'Search for a Data Field...', ajax: { url: url, dataType: 'json', data: query, processResults: processResults, headers: headers }, minimumInputLength: 2, allowClear: true }, value: selectedOption"></select>
+                                        </div>
+                                    </div>
                                     <div data-bind="template: 'designer-selected-data'"></div>
                                 </div>
                             </div>

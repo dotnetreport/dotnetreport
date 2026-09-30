@@ -744,6 +744,12 @@ function DesignerViewModel() {
 	};
 }
 
+var drDateSlicerChoices = ['Today', 'Yesterday', 'This Week', 'Last Week', 'This Month', 'Last Month', 'Last 30 Days', 'This Year', 'Last Year', 'This Week To Date', 'This Month To Date', 'This Year To Date'];
+var drDateSlicerDefaults = ['This Month', 'Last Month', 'Last 30 Days', 'This Year', 'Last Year'];
+var drGroupSlicerChoices = ['Group by Day', 'Group by Week', 'Group by Month', 'Group by Year', 'Group by Month/Year'];
+var drGroupSlicerDefaults = ['Group by Day', 'Group by Week', 'Group by Month', 'Group by Year'];
+var drSlicerMax = 5;
+
 function filterGroupViewModel(args) {
 	args = args || {};
 	var self = this;
@@ -871,6 +877,29 @@ function filterGroupViewModel(args) {
 		};
 
 		filter.useEmailListColumn.subscribe(function (on) { if (!on) filter.EmailListColumn(''); });
+
+		var reportVm = args.parent;
+		var savedSlicer = reportVm && reportVm._dateSlicerConfig && e.FieldId
+			? _.find(reportVm._dateSlicerConfig, function (c) { return c.fieldId == e.FieldId; }) : null;
+		filter.slicer = ko.observable(!!savedSlicer);
+		filter.slicerOptions = ko.observableArray(savedSlicer && savedSlicer.options && savedSlicer.options.length
+			? savedSlicer.options.slice(0, drSlicerMax) : drDateSlicerDefaults.slice());
+		filter.slicerChoices = drDateSlicerChoices;
+		filter.toggleSlicerOption = function (option) {
+			if (filter.slicerOptions.indexOf(option) >= 0) {
+				filter.slicerOptions.remove(option);
+			} else if (filter.slicerOptions().length >= drSlicerMax) {
+				toastr.warning('Choose up to ' + drSlicerMax + ' options');
+			} else {
+				var order = drDateSlicerChoices;
+				filter.slicerOptions(_.sortBy(filter.slicerOptions().concat([option]), function (x) { return order.indexOf(x); }));
+			}
+		};
+		filter.applySlicer = function (option) {
+			if (reportVm && reportVm.applyDateSlicer) reportVm.applyDateSlicer(filter, option);
+		};
+		filter.slicer.subscribe(function () { if (reportVm && reportVm.markFormatDirty) reportVm.markFormatDirty(); });
+		filter.slicerOptions.subscribe(function () { if (reportVm && reportVm.markFormatDirty) reportVm.markFormatDirty(); });
 
 		//filter.Operator.subscribe(function () {
 		//	filter.Value(null);
@@ -1739,6 +1768,48 @@ var reportViewModel = function (options) {
 		self.markFormatDirty();
 	});
 	self.HideReportName = ko.observable(false);
+	self._dateSlicerConfig = [];
+	self.allFilters = function () {
+		var list = [];
+		var walk = function (groups) {
+			_.forEach(groups, function (g) {
+				_.forEach(g.Filters(), function (f) { list.push(f); });
+				if (g.FilterGroups) walk(g.FilterGroups());
+			});
+		};
+		walk(self.FilterGroups ? self.FilterGroups() : []);
+		return list;
+	};
+	self.dateSlicerFilters = ko.pureComputed(function () {
+		return _.filter(self.allFilters(), function (f) {
+			var field = f.Field();
+			return f.slicer && f.slicer() && field && ['Date', 'DateTime'].indexOf(field.fieldType) >= 0;
+		});
+	});
+	self.groupSlicerFields = ko.pureComputed(function () {
+		return _.filter(self.SelectedFields ? self.SelectedFields() : [], function (f) {
+			return f.groupSlicer && f.groupSlicer() && ['Date', 'DateTime'].indexOf(f.fieldType) >= 0 && f.selectedAggregate && (f.selectedAggregate() || '').indexOf('Group by') === 0 && f.visibleGroupSlicerOptions().length > 0;
+		});
+	});
+	self.groupSlicerLabel = function (option) {
+		return option.replace('Group by ', '');
+	};
+	self.hasSlicers = ko.pureComputed(function () {
+		return self.dateSlicerFilters().length > 0 || self.groupSlicerFields().length > 0;
+	});
+	self.runWithoutSaving = function () {
+		var wasSaving = self.SaveReport();
+		self.SaveReport(false);
+		var run = self.RunReport(false, true);
+		if (run && run.always) run.always(function () { self.SaveReport(wasSaving); });
+		else self.SaveReport(wasSaving);
+	};
+	self.applyDateSlicer = function (filter, option) {
+		filter.Operator('range');
+		filter.Value(option);
+		if (filter.Apply) filter.Apply(true);
+		self.runWithoutSaving();
+	};
 	self.HideReportName.subscribe(function () { self.markFormatDirty(); });
 	_.forEach(['rowBorder', 'rowBorderColor', 'altRowBackColor', 'altRowFontColor'], function (key) {
 		self[key].subscribe(function (v) {
@@ -7285,6 +7356,7 @@ var reportViewModel = function (options) {
 				customJoinsBaseTableId: self.baseTableIdOverride(),
 				ShowFilterDetails: self.ShowFilterDetails(),
 				HideReportName: self.HideReportName(),
+				dateSlicers: _.map(self.dateSlicerFilters(), function (f) { return { fieldId: f.Field().fieldId, options: f.slicerOptions() }; }),
 				ReportHeaderId: self.ReportHeaderId() || 0,
 				UseCustomReportHeader: self.UseCustomReportHeader(),
 				CustomReportHeaderHtml: self.UseCustomReportHeader() ? encodeURIComponent(self.customReportHeaderHtml() || '') : '',
@@ -7347,6 +7419,8 @@ var reportViewModel = function (options) {
 						customSqlField: x.customSqlField,
 						outerGroup: x.outerGroup(),
 						outerGroupShowLabel: x.outerGroupShowLabel ? x.outerGroupShowLabel() : true,
+						groupSlicer: x.groupSlicer ? x.groupSlicer() : false,
+						groupSlicerOptions: x.groupSlicerOptions ? x.groupSlicerOptions() : [],
 						totalRowAggregate: x.totalRowAggregate(),
 						headerAlign: x.headerAlign ? x.headerAlign() : ''
 					}),
@@ -11391,6 +11465,33 @@ var reportViewModel = function (options) {
 		e._outerGroup = e.fieldSettings.outerGroup
 		e.outerGroup = ko.observable(e.fieldSettings.outerGroup == true);
 		e.outerGroupShowLabel = ko.observable(e.fieldSettings.outerGroupShowLabel !== false);
+		e.groupSlicer = ko.observable(e.fieldSettings.groupSlicer === true);
+		e.groupSlicerOptions = ko.observableArray(e.fieldSettings.groupSlicerOptions && e.fieldSettings.groupSlicerOptions.length
+			? e.fieldSettings.groupSlicerOptions.slice(0, drSlicerMax) : drGroupSlicerDefaults.slice());
+		e.groupSlicerChoices = ko.pureComputed(function () {
+			var available = e.fieldAggregateWithDrilldown || e.fieldAggregate || [];
+			return _.filter(drGroupSlicerChoices, function (x) { return available.indexOf(x) >= 0; });
+		});
+		e.visibleGroupSlicerOptions = ko.pureComputed(function () {
+			var choices = e.groupSlicerChoices();
+			return _.filter(e.groupSlicerOptions(), function (x) { return choices.indexOf(x) >= 0; });
+		});
+		e.toggleGroupSlicerOption = function (option) {
+			if (e.groupSlicerOptions.indexOf(option) >= 0) {
+				e.groupSlicerOptions.remove(option);
+			} else if (e.groupSlicerOptions().length >= drSlicerMax) {
+				toastr.warning('Choose up to ' + drSlicerMax + ' options');
+			} else {
+				e.groupSlicerOptions(_.sortBy(e.groupSlicerOptions().concat([option]), function (x) { return drGroupSlicerChoices.indexOf(x); }));
+			}
+		};
+		e.applyGroupSlicer = function (option) {
+			if (!e.selectedAggregate || e.selectedAggregate() === option) return;
+			e.selectedAggregate(option);
+			self.runWithoutSaving();
+		};
+		e.groupSlicer.subscribe(function () { self.markFormatDirty(); });
+		e.groupSlicerOptions.subscribe(function () { self.markFormatDirty(); });
 		e.totalRowAggregate = ko.observable(e.fieldSettings.totalRowAggregate || 'Sum');
 		var _numericFormats = ['Int', 'Decimal', 'Currency', 'Double', 'Integer', 'Number', 'Days', 'Hours', 'Minutes', 'Seconds'];
 		e.totalRowAggregateOptions = ko.computed(function () {
@@ -11507,6 +11608,8 @@ var reportViewModel = function (options) {
 				headerFontBold: e.headerFontBold(),
 				headerAlign: e.headerAlign(),
 				outerGroupShowLabel: e.outerGroupShowLabel(),
+				groupSlicer: e.groupSlicer(),
+				groupSlicerOptions: e.groupSlicerOptions().slice(),
 				fieldWidth: e.fieldWidth(),
 				fieldConditionOp: e.fieldConditionOp(),
 				fieldConditionVal: e.fieldConditionVal,
@@ -11581,6 +11684,8 @@ var reportViewModel = function (options) {
 			e.headerFontBold(self.currentFieldOptions.headerFontBold);
 			e.headerAlign(self.currentFieldOptions.headerAlign || '');
 			e.outerGroupShowLabel(self.currentFieldOptions.outerGroupShowLabel !== false);
+			e.groupSlicer(self.currentFieldOptions.groupSlicer === true);
+			e.groupSlicerOptions(self.currentFieldOptions.groupSlicerOptions || drGroupSlicerDefaults.slice());
 			e.fieldWidth(self.currentFieldOptions.fieldWidth);
 			e.fieldConditionOp(self.currentFieldOptions.fieldConditionOp);
 			e.fieldConditionVal = self.currentFieldOptions.fieldConditionVal;
@@ -11665,6 +11770,7 @@ var reportViewModel = function (options) {
 		self.DontExecuteOnRun(reportSettings.DontExecuteOnRun === true ? true : false);
 		self.ShowFilterDetails(reportSettings.ShowFilterDetails === true ? true : false);
 		self.HideReportName(reportSettings.HideReportName === true);
+		self._dateSlicerConfig = reportSettings.dateSlicers || [];
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
 		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
 		self.pieChartDonut(reportSettings.pieChartDonut === true ? true : false);
