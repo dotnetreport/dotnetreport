@@ -468,6 +468,8 @@ namespace ReportBuilder.Web.Models
         public string headerBackColor { get; set; }
         public string headerAlign { get; set; }
         public bool? outerGroupShowLabel { get; set; }
+        public bool? fontBold { get; set; }
+        public bool? headerFontBold { get; set; }
         public string fontColor { get; set; }
         public string backColor { get; set; }
         public string fieldWidth { get; set; }
@@ -3044,7 +3046,7 @@ namespace ReportBuilder.Web.Models
             }
 
             var sortedRows = dt.AsEnumerable()
-                .OrderBy(r => string.Join("|", outerGroupColumns.Select(gc => r[gc]?.ToString() ?? "")))
+                .OrderBy(r => string.Join("|", outerGroupColumns.Select(gc => r[gc]?.ToString()?.Trim() ?? "")))
                 .ToList();
 
             string lastGroupKey = null;
@@ -3152,7 +3154,7 @@ namespace ReportBuilder.Web.Models
                     }
                     var groupColumn = outerGroupColumns[depth];
                     var firstBucket = true;
-                    foreach (var bucket in rows.GroupBy(r => r[groupColumn]?.ToString() ?? ""))
+                    foreach (var bucket in rows.GroupBy(r => r[groupColumn]?.ToString()?.Trim() ?? ""))
                     {
                         if (pageBreakPerGroup && depth == 0 && !firstBucket)
                             ws.Row(currentRow - 1).PageBreak = true;
@@ -3171,7 +3173,7 @@ namespace ReportBuilder.Web.Models
 
             foreach (var row in sortedRows)
             {
-                string groupKey = string.Join("|", outerGroupColumns.Select(gc => row[gc]?.ToString() ?? ""));
+                string groupKey = string.Join("|", outerGroupColumns.Select(gc => row[gc]?.ToString()?.Trim() ?? ""));
                 bool isNewGroup = groupKey != lastGroupKey;
 
                 if (isNewGroup)
@@ -3184,8 +3186,8 @@ namespace ReportBuilder.Web.Models
 
                     // Write group label row above the group's data rows (merged, highlighted)
                     string groupLabel = string.Join("  |  ", outerGroupColumns.Select(gc => columns?.FirstOrDefault(c => c.fieldName == gc)?.outerGroupShowLabel == false
-                        ? (row[gc]?.ToString() ?? "")
-                        : $"{(outerGroupLabels.ContainsKey(gc) ? outerGroupLabels[gc] : gc)} - {row[gc]?.ToString() ?? ""}"));
+                        ? (row[gc]?.ToString()?.Trim() ?? "")
+                        : $"{(outerGroupLabels.ContainsKey(gc) ? outerGroupLabels[gc] : gc)} - {row[gc]?.ToString()?.Trim() ?? ""}"));
                     ws.Cells[currentRow, colstart].Value = groupLabel;
                     ws.Cells[currentRow, colstart].Style.Font.Bold = true;
                     ws.Cells[currentRow, colstart].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
@@ -4510,7 +4512,8 @@ namespace ReportBuilder.Web.Models
         public static async Task<byte[]> GetWordFile(string reportSql, string connectKey, string reportName, string chartData = null, bool allExpanded = false,
             string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "", string filterDetailsText = null,
             string headerHtml = null, string footerHtml = null, bool headerEveryPage = false, bool footerEveryPage = false, string currentUserName = null, string currentUserRoles = null,
-            string customHtml = null)
+            string customHtml = null, NestedBandStyle headerStyle = null, bool hideReportName = false,
+            string outerGroupLayout = null, bool outerGroupPageBreak = false, List<NestedBandStyle> bandStyles = null)
         {
             bool hasCustomHtml = !string.IsNullOrWhiteSpace(customHtml);
             // Only fetch tabular data when we are not rendering a custom HTML report.
@@ -4604,7 +4607,7 @@ namespace ReportBuilder.Web.Models
                         Bold = new Bold(),
                     }, new Text(reportName)));
                     header.ParagraphProperties = new ParagraphProperties(new Justification() { Val = JustificationValues.Center });
-                    body.AppendChild(header);
+                    if (!hideReportName) body.AppendChild(header);
 
                     // Add filter details if present
                     if (!string.IsNullOrEmpty(filterDetailsText))
@@ -4647,6 +4650,203 @@ namespace ReportBuilder.Web.Models
                         body.AppendChild(new AltChunk() { Id = altBodyRelId });
                         body.AppendChild(new Paragraph());
                     }
+                    // Outer groups: a heading (or nested heading rows) above one table per group
+                    else if (dt.Rows.Count > 0 && (columns?.Any(c => (c.aggregateFunction == "Outer Group" || c.outerGroup) && dt.Columns.Contains(c.fieldName)) ?? false))
+                    {
+                        var groupNames = columns.Where(c => (c.aggregateFunction == "Outer Group" || c.outerGroup) && dt.Columns.Contains(c.fieldName))
+                            .Select(c => c.fieldName).Distinct().OrderBy(n => dt.Columns[n].Ordinal).ToList();
+                        var detailColumns = dt.Columns.Cast<DataColumn>().Where(c => !groupNames.Contains(c.ColumnName)).ToList();
+                        var groupLabels = groupNames.ToDictionary(n => n, n =>
+                        {
+                            var gc = columns.First(c => c.fieldName == n);
+                            return string.IsNullOrEmpty(gc.fieldLabel) ? n : gc.fieldLabel;
+                        });
+                        bool ShowGroupLabel(string n) => columns.FirstOrDefault(c => c.fieldName == n)?.outerGroupShowLabel != false;
+                        string GroupValue(string n, DataRow r) => r[n]?.ToString()?.Trim() ?? "";
+                        ReportHeaderColumn ColumnFor(DataColumn dc) => columns.FirstOrDefault(c => c.fieldName == dc.ColumnName);
+
+                        var groupWidths = new int[detailColumns.Count];
+                        for (int k = 0; k < detailColumns.Count; k++)
+                        {
+                            var hc = ColumnFor(detailColumns[k]);
+                            groupWidths[k] = EstimateTextWidth(string.IsNullOrEmpty(hc?.fieldLabel) ? detailColumns[k].ColumnName : hc.fieldLabel);
+                            for (int sr = 0; sr < Math.Min(dt.Rows.Count, 200); sr++)
+                            {
+                                var sample = dt.Rows[sr][detailColumns[k]]?.ToString() ?? "";
+                                if (sample.Length > 40) sample = sample.Substring(0, 40);
+                                groupWidths[k] = Math.Max(groupWidths[k], EstimateTextWidth(sample));
+                            }
+                            groupWidths[k] = Math.Min(Math.Max(groupWidths[k] + 120, 700), 4320);
+                        }
+                        FitColumnWidthsToPage(groupWidths, pageSize, pageOrientation);
+                        var headingStyles = bandStyles != null && bandStyles.Count > 0 ? bandStyles : NestedBandStyle.Defaults();
+                        var groupRowFill = WordHex(headerStyle?.rowBackColor);
+                        var groupRowFont = WordHex(headerStyle?.rowFontColor);
+                        var groupAltFill = WordHex(headerStyle?.altRowBackColor);
+                        var groupAltFont = WordHex(headerStyle?.altRowFontColor);
+
+                        Paragraph CellParagraph(string text, string color, bool bold, JustificationValues? align, string size)
+                        {
+                            var rp = new RunProperties();
+                            if (bold) rp.Append(new Bold());
+                            if (color != null) rp.Append(new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = color });
+                            rp.Append(new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = size });
+                            var pp = new ParagraphProperties(
+                                new SpacingBetweenLines() { Before = "20", After = "20", Line = "220", LineRule = LineSpacingRuleValues.Auto },
+                                new Indentation() { Left = "40", Right = "40" });
+                            if (align.HasValue) pp.Append(new Justification() { Val = align.Value });
+                            return new Paragraph(pp, new Run(rp, new Text(text ?? "") { Space = SpaceProcessingModeValues.Preserve }));
+                        }
+
+                        Table BuildGroupTable(List<DataRow> rows, List<(int depth, string text)> headings)
+                        {
+                            var groupTable = new Table();
+                            groupTable.AppendChild(new TableProperties(
+                                new Justification() { Val = JustificationValues.Center },
+                                new TableBorders(
+                                    new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
+                                    new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
+                                    new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
+                                    new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
+                                    new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
+                                    new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" }),
+                                new TableLayout() { Type = TableLayoutValues.Fixed }));
+                            var grid = new TableGrid();
+                            foreach (var gw in groupWidths) grid.Append(new GridColumn() { Width = gw.ToString() });
+                            groupTable.AppendChild(grid);
+
+                            foreach (var heading in headings)
+                            {
+                                var hs = headingStyles[Math.Min(heading.depth, headingStyles.Count - 1)];
+                                var headingCell = new TableCell(
+                                    new TableCellProperties(
+                                        new TableCellWidth() { Width = groupWidths.Sum().ToString(), Type = TableWidthUnitValues.Dxa },
+                                        new GridSpan() { Val = groupWidths.Length }),
+                                    CellParagraph(heading.text, WordHex(hs.fontColor), hs.bold, WordAlign(hs.align), heading.depth == 0 ? "20" : "16"));
+                                StyleWordCell(headingCell, WordHex(hs.backColor), hs.border, hs.borderColor);
+                                groupTable.AppendChild(new TableRow(headingCell));
+                            }
+
+                            var groupHeaderRow = new TableRow();
+                            foreach (var dc in detailColumns)
+                            {
+                                var hc = ColumnFor(dc);
+                                var headerAlign = WordAlign(hc?.headerAlign)
+                                    ?? (hc?.fieldAlign != "Auto" ? WordAlign(hc?.fieldAlign) : null)
+                                    ?? WordAlign(headerStyle?.align);
+                                var headerCell = new TableCell(CellParagraph(string.IsNullOrEmpty(hc?.fieldLabel) ? dc.ColumnName : hc.fieldLabel,
+                                    WordHex(hc?.headerFontColor) ?? WordHex(headerStyle?.fontColor) ?? "156082", true, headerAlign, "16"));
+                                StyleWordCell(headerCell, WordHex(hc?.headerBackColor) ?? WordHex(headerStyle?.backColor), headerStyle?.border, headerStyle?.borderColor);
+                                groupHeaderRow.AppendChild(headerCell);
+                            }
+                            ApplyCellWidths(groupHeaderRow, groupWidths);
+                            groupTable.AppendChild(groupHeaderRow);
+
+                            var groupTotals = new decimal[detailColumns.Count];
+                            for (int ri = 0; ri < rows.Count; ri++)
+                            {
+                                bool alt = ri % 2 == 1;
+                                var dataRow = new TableRow();
+                                for (int k = 0; k < detailColumns.Count; k++)
+                                {
+                                    var dc = detailColumns[k];
+                                    var value = rows[ri][dc.ColumnName].ToString();
+                                    var fc = GetColumnFormatting(dc, columns, ref value);
+                                    if (includeSubtotal && fc.isNumeric && !(fc?.dontSubTotal ?? false))
+                                    {
+                                        try { groupTotals[k] += Convert.ToDecimal(rows[ri][dc.ColumnName]); } catch { }
+                                    }
+                                    var ownFill = WordHex(fc?.backColor);
+                                    var ownFont = WordHex(fc?.fontColor);
+                                    var fill = ownFill != null && ownFill != groupRowFill ? ownFill : ((alt ? groupAltFill : null) ?? groupRowFill);
+                                    var font = ownFont != null && ownFont != groupRowFont ? ownFont : ((alt ? groupAltFont : null) ?? groupRowFont);
+                                    var align = (fc?.fieldAlign != "Auto" ? WordAlign(fc?.fieldAlign) : null)
+                                        ?? WordAlign(headerStyle?.rowAlign)
+                                        ?? (fc?.isNumeric == true ? JustificationValues.Right : (JustificationValues?)null);
+                                    var dataCell = new TableCell(CellParagraph(value, font, fc?.fontBold == true, align, "16"));
+                                    StyleWordCell(dataCell, fill, headerStyle?.rowBorder, headerStyle?.rowBorderColor);
+                                    dataRow.AppendChild(dataCell);
+                                }
+                                ApplyCellWidths(dataRow, groupWidths);
+                                groupTable.AppendChild(dataRow);
+                            }
+
+                            if (includeSubtotal)
+                            {
+                                var totalRow = new TableRow();
+                                for (int k = 0; k < detailColumns.Count; k++)
+                                {
+                                    var value = groupTotals[k].ToString();
+                                    var fc = GetColumnFormatting(detailColumns[k], columns, ref value);
+                                    bool show = fc?.isNumeric == true && !(fc?.dontSubTotal ?? false);
+                                    totalRow.AppendChild(new TableCell(CellParagraph(show ? value : " ", null, true, show ? JustificationValues.Right : (JustificationValues?)null, "16")));
+                                }
+                                ApplyCellWidths(totalRow, groupWidths);
+                                groupTable.AppendChild(totalRow);
+                            }
+                            return groupTable;
+                        }
+
+                        bool firstGroupTable = true;
+                        void AddGroupTable(Table groupTable, bool pageBreak)
+                        {
+                            if (!firstGroupTable || pageBreak)
+                            {
+                                var spacer = new Paragraph();
+                                if (pageBreak) spacer.ParagraphProperties = new ParagraphProperties(new PageBreakBefore());
+                                body.AppendChild(spacer);
+                            }
+                            body.AppendChild(groupTable);
+                            firstGroupTable = false;
+                        }
+
+                        if (outerGroupLayout == "nested")
+                        {
+                            var pendingHeadings = new List<(int depth, string text)>();
+                            bool pendingBreak = false;
+                            void WalkGroups(List<DataRow> rows, int depth)
+                            {
+                                if (depth >= groupNames.Count)
+                                {
+                                    AddGroupTable(BuildGroupTable(rows, pendingHeadings.ToList()), pendingBreak);
+                                    pendingHeadings.Clear();
+                                    pendingBreak = false;
+                                    return;
+                                }
+                                var name = groupNames[depth];
+                                bool firstBucket = true;
+                                foreach (var bucket in rows.GroupBy(r => GroupValue(name, r)))
+                                {
+                                    if (outerGroupPageBreak && depth == 0 && !firstBucket) pendingBreak = true;
+                                    firstBucket = false;
+                                    pendingHeadings.Add((depth, ShowGroupLabel(name) ? groupLabels[name] + " - " + bucket.Key : bucket.Key));
+                                    WalkGroups(bucket.ToList(), depth + 1);
+                                }
+                            }
+                            WalkGroups(dt.AsEnumerable().ToList(), 0);
+                        }
+                        else
+                        {
+                            foreach (var group in dt.AsEnumerable().GroupBy(r => string.Join("\u0001", groupNames.Select(n => GroupValue(n, r)))))
+                            {
+                                var first = group.First();
+                                if (!firstGroupTable) body.AppendChild(new Paragraph());
+                                var heading = new Paragraph(new ParagraphProperties(new KeepNext(), new SpacingBetweenLines() { Before = "120", After = "60" }));
+                                for (int gi = 0; gi < groupNames.Count; gi++)
+                                {
+                                    var name = groupNames[gi];
+                                    if (gi > 0) heading.Append(new Run(new Break()));
+                                    if (ShowGroupLabel(name))
+                                        heading.Append(new Run(new RunProperties(new Bold()), new Text(groupLabels[name] + " - ") { Space = SpaceProcessingModeValues.Preserve }));
+                                    heading.Append(new Run(new Text(GroupValue(name, first)) { Space = SpaceProcessingModeValues.Preserve }));
+                                }
+                                body.AppendChild(heading);
+                                body.AppendChild(BuildGroupTable(group.ToList(), new List<(int depth, string text)>()));
+                                firstGroupTable = false;
+                            }
+                        }
+                        body.AppendChild(new Paragraph());
+                    }
                     // Add data in table format
                     else if (dt.Rows.Count > 0)
                     {
@@ -4675,18 +4875,27 @@ namespace ReportBuilder.Web.Models
                                 ? columns[column.Ordinal].fieldLabel
                                 : column.ColumnName;
                             maxColumnWidths[column.Ordinal] = EstimateTextWidth(headerText);
+                            var headerColumn = columns?.FirstOrDefault(c => c.fieldName == column.ColumnName)
+                                ?? (columns != null && columns.Count > column.Ordinal ? columns[column.Ordinal] : null);
+                            var headerFont = WordHex(headerColumn?.headerFontColor) ?? WordHex(headerStyle?.fontColor) ?? "156082";
+                            var headerFill = WordHex(headerColumn?.headerBackColor) ?? WordHex(headerStyle?.backColor);
+                            var headerAlign = WordAlign(headerColumn?.headerAlign)
+                                ?? (headerColumn?.fieldAlign != "Auto" ? WordAlign(headerColumn?.fieldAlign) : null)
+                                ?? WordAlign(headerStyle?.align);
                             RunProperties runProperties = new RunProperties(
                                 new Bold(),
-                                new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "16" }, // 8pt
-                                new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = "156082" }
+                                new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = headerFont },
+                                new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "16" } // 8pt
                             );
                             Run run = new Run(runProperties, new Text(headerText));
                             ParagraphProperties paragraphProperties = new ParagraphProperties(
                                 new SpacingBetweenLines() { Before = "20", After = "20", Line = "220", LineRule = LineSpacingRuleValues.Auto },
                                 new Indentation() { Left = "40", Right = "40" }
                             );
+                            if (headerAlign.HasValue) paragraphProperties.Append(new Justification() { Val = headerAlign.Value });
                             Paragraph paragraph = new Paragraph(paragraphProperties, run);
                             TableCell cell = new TableCell(paragraph);
+                            StyleWordCell(cell, headerFill, headerStyle?.border, headerStyle?.borderColor);
                             headerRow.AppendChild(cell);
                         }
                         // Header text alone underestimates a column, so sample the data too.
@@ -4812,9 +5021,15 @@ namespace ReportBuilder.Web.Models
                             }
                         }
                         // Add data rows
+                        var tableRowFill = WordHex(headerStyle?.rowBackColor);
+                        var tableRowFont = WordHex(headerStyle?.rowFontColor);
+                        var altRowFill = WordHex(headerStyle?.altRowBackColor);
+                        var altRowFont = WordHex(headerStyle?.altRowFontColor);
+                        int wordRowIndex = 0;
                         foreach (DataRow row in dt.Rows)
                         {
                             var i = 0;
+                            bool altRow = wordRowIndex++ % 2 == 1;
                             TableRow dataRow = new TableRow();
                             foreach (DataColumn column in dt.Columns)
                             {
@@ -4827,16 +5042,26 @@ namespace ReportBuilder.Web.Models
                                         subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
                                     }
                                 }
-                                RunProperties dataRunProps = new RunProperties(
-                                    new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "16" } // 8pt
-                                );
+                                var ownFill = WordHex(formatColumn?.backColor);
+                                var ownFont = WordHex(formatColumn?.fontColor);
+                                var cellFill = ownFill != null && ownFill != tableRowFill ? ownFill : ((altRow ? altRowFill : null) ?? tableRowFill);
+                                var cellFont = ownFont != null && ownFont != tableRowFont ? ownFont : ((altRow ? altRowFont : null) ?? tableRowFont);
+                                var cellAlign = (formatColumn?.fieldAlign != "Auto" ? WordAlign(formatColumn?.fieldAlign) : null)
+                                    ?? WordAlign(headerStyle?.rowAlign)
+                                    ?? (formatColumn?.isNumeric == true ? JustificationValues.Right : (JustificationValues?)null);
+                                RunProperties dataRunProps = new RunProperties();
+                                if (formatColumn?.fontBold == true) dataRunProps.Append(new Bold());
+                                if (cellFont != null) dataRunProps.Append(new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = cellFont });
+                                dataRunProps.Append(new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "16" }); // 8pt
                                 Run run = new Run(dataRunProps, new Text(value));
                                 ParagraphProperties paragraphProperties = new ParagraphProperties(
                                     new SpacingBetweenLines() { Before = "20", After = "20", Line = "220", LineRule = LineSpacingRuleValues.Auto },
                                     new Indentation() { Left = "40", Right = "40" }
                                 );
+                                if (cellAlign.HasValue) paragraphProperties.Append(new Justification() { Val = cellAlign.Value });
                                 Paragraph paragraph = new Paragraph(paragraphProperties, run);
                                 TableCell cell = new TableCell(paragraph);
+                                StyleWordCell(cell, cellFill, headerStyle?.rowBorder, headerStyle?.rowBorderColor);
                                 dataRow.AppendChild(cell);
                                 i++;
                             }
@@ -5963,6 +6188,45 @@ namespace ReportBuilder.Web.Models
             }
         }
 
+        private static string WordHex(string color)
+        {
+            if (string.IsNullOrWhiteSpace(color)) return null;
+            var c = color.Trim().TrimStart('#');
+            if (c.Length == 3) c = string.Concat(c.Select(ch => new string(ch, 2)));
+            return c.Length == 6 && c.All(Uri.IsHexDigit) ? c.ToUpperInvariant() : null;
+        }
+
+        private static JustificationValues? WordAlign(string align)
+        {
+            switch (align?.Trim().ToLowerInvariant())
+            {
+                case "left": return JustificationValues.Left;
+                case "center": return JustificationValues.Center;
+                case "right": return JustificationValues.Right;
+                default: return null;
+            }
+        }
+
+        private static void StyleWordCell(TableCell cell, string fill, string border, string borderColor)
+        {
+            bool hasBorder = border == "thin" || border == "thick";
+            if (fill == null && !hasBorder) return;
+            var tcPr = cell.GetFirstChild<TableCellProperties>();
+            if (tcPr == null) { tcPr = new TableCellProperties(); cell.InsertAt(tcPr, 0); }
+            if (hasBorder)
+            {
+                uint size = border == "thick" ? 12u : 4u;
+                var color = WordHex(borderColor) ?? "000000";
+                tcPr.Append(new TableCellBorders(
+                    new TopBorder { Val = BorderValues.Single, Size = size, Color = color },
+                    new LeftBorder { Val = BorderValues.Single, Size = size, Color = color },
+                    new BottomBorder { Val = BorderValues.Single, Size = size, Color = color },
+                    new RightBorder { Val = BorderValues.Single, Size = size, Color = color }));
+            }
+            if (fill != null)
+                tcPr.Append(new Shading { Val = ShadingPatternValues.Clear, Color = "auto", Fill = fill });
+        }
+
         private static void ApplyCellWidths(TableRow row, int[] widths)
         {
             var i = 0;
@@ -5971,7 +6235,7 @@ namespace ReportBuilder.Web.Models
                 if (i >= widths.Length) break;
                 var tcPr = cell.GetFirstChild<TableCellProperties>();
                 if (tcPr == null) { tcPr = new TableCellProperties(); cell.InsertAt(tcPr, 0); }
-                tcPr.Append(new TableCellWidth() { Width = widths[i].ToString(), Type = TableWidthUnitValues.Dxa });
+                tcPr.PrependChild(new TableCellWidth() { Width = widths[i].ToString(), Type = TableWidthUnitValues.Dxa });
                 i++;
             }
         }

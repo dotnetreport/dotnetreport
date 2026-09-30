@@ -1743,7 +1743,12 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string currentUserName = null,
             [FromForm] string currentUserRoles = null,
             [FromForm] string customHtml = null,
-            [FromForm] string defaultDateFormat = null)
+            [FromForm] string defaultDateFormat = null,
+            [FromForm] string headerStyle = null,
+            [FromForm] bool hideReportName = false,
+            [FromForm] string outerGroupLayout = null,
+            [FromForm] bool outerGroupPageBreak = false,
+            [FromForm] string outerGroupBandStyles = null)
         {
             GetSettings(); // must be called directly here so CurrentDataFilters flows to RunReportApiCall
             reportSql = HttpUtility.HtmlDecode(reportSql);
@@ -1759,7 +1764,11 @@ namespace ReportBuilder.Web.Controllers
                 footerEveryPage: footerEveryPage,
                 currentUserName: currentUserName,
                 currentUserRoles: currentUserRoles,
-                customHtml: !string.IsNullOrEmpty(customHtml) ? HttpUtility.UrlDecode(customHtml) : null);
+                customHtml: !string.IsNullOrEmpty(customHtml) ? HttpUtility.UrlDecode(customHtml) : null,
+                headerStyle: string.IsNullOrEmpty(headerStyle) ? null : Newtonsoft.Json.JsonConvert.DeserializeObject<NestedBandStyle>(headerStyle),
+                hideReportName: hideReportName,
+                outerGroupLayout: outerGroupLayout, outerGroupPageBreak: outerGroupPageBreak,
+                bandStyles: string.IsNullOrEmpty(outerGroupBandStyles) ? null : Newtonsoft.Json.JsonConvert.DeserializeObject<List<NestedBandStyle>>(outerGroupBandStyles));
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             return File(word, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", reportName + ".docx");

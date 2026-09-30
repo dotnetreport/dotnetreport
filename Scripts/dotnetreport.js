@@ -1747,6 +1747,17 @@ var reportViewModel = function (options) {
 			self.markFormatDirty();
 		});
 	});
+	self.getTableStyleJson = function () {
+		return JSON.stringify(_.assign(ko.toJS(self.headerStyle), {
+			rowAlign: self.rowAlign(),
+			rowBorder: self.rowBorder(),
+			rowBorderColor: self.rowBorderColor(),
+			altRowBackColor: self.altRowBackColor(),
+			altRowFontColor: self.altRowFontColor(),
+			rowBackColor: self.rowBackColor(),
+			rowFontColor: self.rowFontColor()
+		}));
+	};
 	self.rowBorderCss = function () {
 		var width = self.rowBorder() === 'thick' ? '2px' : self.rowBorder() === 'thin' ? '1px' : '';
 		return width ? width + ' solid ' + (self.rowBorderColor() || '#000000') : '';
@@ -12878,15 +12889,7 @@ var reportViewModel = function (options) {
 			outerGroupLayout: self.outerGroupLayout(),
 			outerGroupPageBreak: self.outerGroupPageBreak(),
 			outerGroupBandStyles: JSON.stringify(ko.toJS(self.outerGroupBandStyles())),
-			headerStyle: JSON.stringify(_.assign(ko.toJS(self.headerStyle), {
-				rowAlign: self.rowAlign(),
-				rowBorder: self.rowBorder(),
-				rowBorderColor: self.rowBorderColor(),
-				altRowBackColor: self.altRowBackColor(),
-				altRowFontColor: self.altRowFontColor(),
-				rowBackColor: self.rowBackColor(),
-				rowFontColor: self.rowFontColor()
-			})),
+			headerStyle: self.getTableStyleJson(),
 			hideReportName: self.HideReportName(),
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
@@ -12955,6 +12958,11 @@ var reportViewModel = function (options) {
 
 	self.downloadWord = function (pageSize, pageOrientation) {
 		var data = self.getExportJson(pageSize, pageOrientation);
+		data.headerStyle = self.getTableStyleJson();
+		data.hideReportName = self.HideReportName();
+		data.outerGroupLayout = self.outerGroupLayout();
+		data.outerGroupPageBreak = self.outerGroupPageBreak();
+		data.outerGroupBandStyles = JSON.stringify(ko.toJS(self.outerGroupBandStyles()));
 		if (self.ReportType() == 'Html') {
 			data.customHtml = encodeURIComponent(self.getRenderedHtmlOutput() || '');
 		}
