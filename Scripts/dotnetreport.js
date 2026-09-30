@@ -888,17 +888,80 @@ function filterGroupViewModel(args) {
 		filter.toggleSlicerOption = function (option) {
 			if (filter.slicerOptions.indexOf(option) >= 0) {
 				filter.slicerOptions.remove(option);
-			} else if (filter.slicerOptions().length >= drSlicerMax) {
-				toastr.warning('Choose up to ' + drSlicerMax + ' options');
 			} else {
 				var order = drDateSlicerChoices;
-				filter.slicerOptions(_.sortBy(filter.slicerOptions().concat([option]), function (x) { return order.indexOf(x); }));
+				var kept = filter.slicerOptions().length >= drSlicerMax ? filter.slicerOptions().slice(1) : filter.slicerOptions();
+				filter.slicerOptions(_.sortBy(kept.concat([option]), function (x) { return order.indexOf(x); }));
 			}
 		};
 		filter.applySlicer = function (option) {
 			if (reportVm && reportVm.applyDateSlicer) reportVm.applyDateSlicer(filter, option);
 		};
-		filter.slicer.subscribe(function () { if (reportVm && reportVm.markFormatDirty) reportVm.markFormatDirty(); });
+		filter.slicer.subscribe(function (on) {
+			if (on && reportVm && reportVm.allFilters) {
+				_.forEach(reportVm.allFilters(), function (other) {
+					if (other !== filter && other.slicer && other.slicer()) other.slicer(false);
+				});
+			}
+			if (reportVm && reportVm.markFormatDirty) reportVm.markFormatDirty();
+		});
+		filter.editing = ko.observable(!e.FieldId && !e.FilterSettings);
+		filter.fieldText = function () {
+			var f = filter.Field();
+			return f ? (ko.unwrap(f.selectedFieldName) || f.fieldName) : 'Choose a field';
+		};
+		filter.operatorText = function () {
+			var op = filter.Operator() || '';
+			var names = { 'range': 'is', 'not equal': 'is not', 'in': 'is any of', 'not in': 'is none of', 'between': 'is between' };
+			return names[op] || op;
+		};
+		filter.hasValue = function () {
+			var op = filter.Operator() || '';
+			if (/blank|null|^all$|^none$|default/.test(op)) return true;
+			if (op === 'in' || op === 'not in') return filter.ValueIn().length > 0 || !!filter.Value();
+			if (op === 'between') return !!filter.Value() && !!filter.Value2();
+			return filter.Value() != null && filter.Value() !== '';
+		};
+		filter.valueText = function () {
+			var op = filter.Operator() || '';
+			if (/blank|null|^all$|^none$/.test(op)) return '';
+			if (op === 'in' || op === 'not in') {
+				var vals = filter.ValueIn();
+				if (!vals.length) return filter.Value() || 'not set';
+				var list = filter.LookupList ? ko.unwrap(filter.LookupList) || [] : [];
+				var texts = _.map(vals, function (v) {
+					var hit = _.find(list, function (x) { return String(x.id) === String(v); });
+					return hit ? hit.text : v;
+				});
+				return texts.length > 3 ? texts.slice(0, 3).join(', ') + ' +' + (texts.length - 3) + ' more' : texts.join(', ');
+			}
+			if (op === 'between') return (filter.Value() || '?') + ' and ' + (filter.Value2() || '?');
+			if (op === 'range' && /Today [+-]/.test(filter.Value() || '')) return filter.Value() + ' ' + (filter.Value2() || '?') + ' days';
+			return filter.Value() != null && filter.Value() !== '' ? filter.Value() : 'not set';
+		};
+		filter.tryFinishEditing = function () {
+			var rows = $('[data-filter-id="' + filter.uiId + '"]');
+			var row = rows.filter(':visible').length ? rows.filter(':visible') : rows;
+			var ok = !!filter.Field();
+			row.find('.dr-filter-editor').find('input, select').each(function () {
+				var valid = reportVm && reportVm.isInputValid ? reportVm.isInputValid(this) : true;
+				$(this).toggleClass('is-invalid', !valid);
+				if (!valid) ok = false;
+			});
+			if (ok) filter.editing(false);
+		};
+		var closeOnOutsideClick = function (event) {
+			var rows = document.querySelectorAll('[data-filter-id="' + filter.uiId + '"]');
+			if (!rows.length || _.some(rows, function (row) { return row.contains(event.target); })) return;
+			if ($(event.target).closest('.select2-container, .select2-dropdown, .ui-datepicker, .datepicker, .ui-autocomplete, .tribute-container, .dr-format-panel, .popover').length) return;
+			filter.tryFinishEditing();
+		};
+		var watchOutsideClicks = function (on) {
+			document.removeEventListener('mousedown', closeOnOutsideClick, true);
+			if (on) document.addEventListener('mousedown', closeOnOutsideClick, true);
+		};
+		filter.editing.subscribe(watchOutsideClicks);
+		watchOutsideClicks(filter.editing());
 		filter.slicerOptions.subscribe(function () { if (reportVm && reportVm.markFormatDirty) reportVm.markFormatDirty(); });
 
 		//filter.Operator.subscribe(function () {
@@ -1127,6 +1190,12 @@ function filterGroupViewModel(args) {
 		filter.compareTo = ko.computed(function () {
 			return field() ? _.filter(args.parent.AdditionalSeries(), function (x) { return x.Field().fieldId == field().fieldId; }) : [];
 		});
+		filter.removeSeries = function (series) {
+			if (args.parent && args.parent.RemoveSeries) args.parent.RemoveSeries(series);
+		};
+		filter.compareText = function () {
+			return _.map(filter.compareTo(), function (c) { return ko.unwrap(c.Value); }).join(', ');
+		};
 
 		self.Filters.push(filter);
 		addingFilter = false;
@@ -1134,6 +1203,9 @@ function filterGroupViewModel(args) {
 	};
 
 	self.RemoveFilter = function (filter) {
+		if (filter.compareTo && args.parent && args.parent.AdditionalSeries) {
+			_.forEach(filter.compareTo().slice(), function (series) { args.parent.AdditionalSeries.remove(series); });
+		}
 		self.Filters.remove(filter);
 		if (args.parent && typeof args.parent.reportChanged == 'function') args.parent.reportChanged();
 	};
@@ -1784,7 +1856,7 @@ var reportViewModel = function (options) {
 		return _.filter(self.allFilters(), function (f) {
 			var field = f.Field();
 			return f.slicer && f.slicer() && field && ['Date', 'DateTime'].indexOf(field.fieldType) >= 0;
-		});
+		}).slice(0, 1);
 	});
 	self.groupSlicerFields = ko.pureComputed(function () {
 		return _.filter(self.SelectedFields ? self.SelectedFields() : [], function (f) {
@@ -11479,10 +11551,9 @@ var reportViewModel = function (options) {
 		e.toggleGroupSlicerOption = function (option) {
 			if (e.groupSlicerOptions.indexOf(option) >= 0) {
 				e.groupSlicerOptions.remove(option);
-			} else if (e.groupSlicerOptions().length >= drSlicerMax) {
-				toastr.warning('Choose up to ' + drSlicerMax + ' options');
 			} else {
-				e.groupSlicerOptions(_.sortBy(e.groupSlicerOptions().concat([option]), function (x) { return drGroupSlicerChoices.indexOf(x); }));
+				var kept = e.groupSlicerOptions().length >= drSlicerMax ? e.groupSlicerOptions().slice(1) : e.groupSlicerOptions();
+				e.groupSlicerOptions(_.sortBy(kept.concat([option]), function (x) { return drGroupSlicerChoices.indexOf(x); }));
 			}
 		};
 		e.applyGroupSlicer = function (option) {
@@ -12482,6 +12553,9 @@ var reportViewModel = function (options) {
 		}
 
 		var curInputs = containerSelector.find(selector);
+		if (validateCustomOnly !== true) {
+			curInputs = curInputs.add(containerSelector.find('.dr-filter-editor').find('input, select'));
+		}
 
 		if (!self.isModalOpen() && !self.activeDesign()) {
 			curInputs = $("#filter-panel-" + self.ReportID()).find("input, select");
@@ -12494,6 +12568,11 @@ var reportViewModel = function (options) {
 				isValid = false;
 				$(".needs-validation").addClass("was-validated");
 				$(curInputs[i]).addClass("is-invalid");
+				var filterRow = $(curInputs[i]).closest('.dr-filter-row');
+				if (filterRow.length) {
+					var filterData = ko.dataFor(filterRow[0]);
+					if (filterData && filterData.editing) filterData.editing(true);
+				}
 				if (!firstInvalid) firstInvalid = curInputs[i];
 			}
 		}

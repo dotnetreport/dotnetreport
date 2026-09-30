@@ -2841,3 +2841,34 @@ tr:hover > th > .dr-header-edit { visibility: visible; }
 .dr-slicer .btn.active { background-color: #0d6efd; border-color: #0d6efd; color: #fff; }
 .dr-slicer-picker { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
 .dr-slicer-picker .btn { font-size: 11px; padding: 1px 8px; }
+
+/* Designer filters: toggles and pills */
+.dr-filter-toggles { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; margin: 4px 0 10px; }
+.dr-filter-editor { display: contents; }
+.dr-filter-pill-line { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 2px 0; }
+.dr-filter-andor { font-size: 11px; font-weight: 600; text-transform: uppercase; color: #6c757d; cursor: pointer; padding: 0 4px; }
+.dr-filter-andor:hover { color: #0d6efd; }
+.dr-filter-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border: 1px solid #ced4da; border-radius: 999px; background: #f8f9fa; font-size: 12px; cursor: pointer; max-width: 100%; }
+.dr-filter-pill:hover { border-color: #0d6efd; background: #eef4ff; }
+.dr-filter-pill-field { font-weight: 600; }
+.dr-filter-pill-op { color: #6c757d; }
+.dr-filter-pill-value { color: #0d6efd; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; }
+.dr-filter-pill-empty { border-color: #dc3545; }
+.dr-filter-pill-empty .dr-filter-pill-value { color: #dc3545; }
+.dr-filter-pill-edit { font-size: 10px; color: #adb5bd; }
+.dr-filter-pill-flag { font-size: 11px; color: #198754; }
+
+/* Designer filter groups */
+.dr-filters .rules-list { padding-left: 0; }
+.dr-filters .rules-list > ::before, .dr-filters .rules-list > ::after { display: none; }
+.dr-filters .rule-container { border: 0; padding: 0; margin: 0; }
+.dr-filters .rules-group-container.dr-filter-group-root { border: 0; padding: 0; margin: 0; }
+.dr-filters .rules-group-container.dr-filter-group { border: 1px solid #e3e8ef; border-left: 3px solid #0d6efd; border-radius: 6px; background: #f8fafc; padding: 8px 10px; margin: 8px 0; }
+.dr-filter-group-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.dr-andor-toggle { display: inline-flex; border: 1px solid #ced4da; border-radius: 999px; overflow: hidden; }
+.dr-andor-toggle button { border: 0; background: #fff; font-size: 11px; font-weight: 600; padding: 2px 10px; color: #6c757d; }
+.dr-andor-toggle button.active { background: #0d6efd; color: #fff; }
+.dr-filter-table { margin-bottom: 4px; }
+.dr-filter-table > tbody > tr > td { background: transparent; box-shadow: none; padding: 3px 0; }
+.dr-filter-row-editing > td { background: #f1f5fb !important; border-radius: 6px; padding: 6px !important; }
+.dr-filter-add { display: flex; gap: 6px; margin-top: 4px; }

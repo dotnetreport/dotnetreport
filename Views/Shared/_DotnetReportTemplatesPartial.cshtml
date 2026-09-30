@@ -1124,33 +1124,36 @@
         </span>
     </div>
 </script>
-<script type="text/html" id="filter-group">
-    <div class="query-builder form-inline" data-bind="foreach: FilterGroups">
-        <div class="rules-group-container">
-            <div class="rules-group-header" data-bind="attr: {parentdivid: generateUniqueId()}">
-                <div data-bind="visible: !isRoot">
-                    <div class="pull-left">
-                        <div class="btn-group btn-group-toggle btn-group-sm" data-bs-toggle="buttons" role="group">
-                            <label class="btn btn-light active" style="margin-right: 0px;">
-                                <input type="radio" data-bind="attr: { name: 'andOrGroup-' + $element.closest('.rules-group-header').getAttribute('parentdivid') }, checked: AndOr" value="And" /> And
-                            </label>
-                            <label class="btn btn-light active">
-                                <input type="radio" data-bind="attr: { name: 'andOrGroup-' + $element.closest('.rules-group-header').getAttribute('parentdivid') }, checked: AndOr" value="Or" /> Or
-                            </label>
-                        </div>
-                    </div>
-                    <div class="pull-right">
-                        <button class="btn btn-sm btn-secondary" data-bind="click: $parent.RemoveFilterGroup, visible: !isRoot">Remove Group</button>&nbsp;
-                    </div>
-                </div>
-                <div data-bind="visible: isRoot">
-                    <div class="pull-left padded-div">
-                        <label> &nbsp;Filter Conditions</label>
-                    </div>
-                </div>
-                <div class="clearfix"></div>
-            </div>
+<script type="text/html" id="filter-settings-toggles">
+    <div class="dr-filter-toggles">
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" data-bind="checked: DontExecuteOnRun" />
+            <label class="form-check-label">Wait for filters before running</label>
+        </div>
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" data-bind="checked: ShowFilterDetails" />
+            <label class="form-check-label">Show filter details on the report</label>
+        </div>
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" data-bind="checked: EditFiltersOnReport" />
+            <label class="form-check-label">Let users change and save filters on the report</label>
+        </div>
+    </div>
+</script>
 
+<script type="text/html" id="filter-group">
+    <div class="query-builder form-inline dr-filters" data-bind="foreach: FilterGroups">
+        <div class="rules-group-container" data-bind="css: { 'dr-filter-group-root': isRoot, 'dr-filter-group': !isRoot }">
+            <!-- ko ifnot: isRoot -->
+            <div class="dr-filter-group-header">
+                <div class="dr-andor-toggle" role="group" title="How this group combines with the filters before it">
+                    <button type="button" data-bind="css: { active: AndOr() === 'And' }, click: function () { AndOr('And'); }">And</button>
+                    <button type="button" data-bind="css: { active: AndOr() === 'Or' }, click: function () { AndOr('Or'); }">Or</button>
+                </div>
+                <span class="small text-muted">Group</span>
+                <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-auto" title="Remove group" data-bind="click: $parent.RemoveFilterGroup"><i class="fa fa-trash"></i></button>
+            </div>
+            <!-- /ko -->
             <div class="rules-group-body" data-bind="template: {name: 'filter-inner'}"></div>
         </div>
     </div>
@@ -1206,21 +1209,25 @@
 <script type="text/html" id="filter-inner">
     <div class="rules-list">
         <div class="rule-container" data-bind="visible: Filters().length>0">
-            <table class="table table-striped table-hover table-borderless">
-                <thead>
-                    <tr>
-                        <th class="row">
-                            <div class="col-md-1"></div>
-                            <div class="col-md-4">Field</div>
-                            <div class="col-md-2"></div>
-                            <div class="col-md-4">Filter</div>
-                            <div class="col-md-1"></div>
-                        </th>
-                    </tr>
-                </thead>
+            <table class="table table-borderless dr-filter-table">
                 <tbody data-bind="foreach: Filters">
-                    <tr class="rule-container">
+                    <tr class="rule-container dr-filter-row" data-bind="attr: { 'data-filter-id': uiId }, css: { 'dr-filter-row-editing': editing }">
                         <td class="row">
+                            <div class="col-12 dr-filter-pill-line" data-bind="visible: !editing()">
+                                <span class="dr-filter-andor" title="Click to switch between And and Or" data-bind="visible: $index() > 0, text: AndOr, click: function () { AndOr(AndOr() === 'And' ? 'Or' : 'And'); }"></span>
+                                <span class="dr-filter-pill" tabindex="0" title="Click to edit this filter" data-bind="click: function () { editing(true); }, css: { 'dr-filter-pill-empty': !hasValue() }">
+                                    <span class="dr-filter-pill-field" data-bind="text: fieldText()"></span>
+                                    <span class="dr-filter-pill-op" data-bind="text: operatorText()"></span>
+                                    <span class="dr-filter-pill-value" data-bind="text: valueText()"></span>
+                                    <span class="dr-filter-pill-op" data-bind="visible: compareTo().length > 0, text: 'vs ' + compareText()"></span>
+                                    <i class="fa fa-pencil dr-filter-pill-edit"></i>
+                                </span>
+                                <span class="badge bg-info" data-bind="visible: Field() && Field().forced">Required</span>
+                                <span class="dr-filter-pill-flag" title="Users can change this filter on the report" data-bind="visible: Field() && Field().filterOnFly && Field().filterOnFly()"><i class="fa fa-filter"></i></span>
+                                <span class="dr-filter-pill-flag" title="Shown as a slicer on the report" data-bind="visible: $data.slicer && slicer()"><i class="fa fa-sliders"></i></span>
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-1" title="Remove" data-bind="click: $parent.RemoveFilter, hidden: Field() && Field().forced"><i class="fa fa-trash"></i></button>
+                            </div>
+                            <div class="dr-filter-editor" data-bind="visible: editing">
                             <div class="col-md-1">
                                 <select data-bind="value: AndOr, visible: $index()>0" class="form-select">
                                     <option>And</option>
@@ -1299,14 +1306,16 @@
                                 </div>
 
                             </div>
+                            </div>
                         </td>
                     </tr>
+                    <!-- ko if: editing -->
                     <!-- ko foreach: compareTo -->
-                    <tr>
+                    <tr data-bind="attr: { 'data-filter-id': $parent.uiId }">
                         <td class="row">
                             <div class="col-md-6">&nbsp;</div>
                             <div class="col-md-2">
-                                <span style="text-align: right"><button class="btn btn-sm" data-bind="click: $parents[2].RemoveSeries"><span class="fa fa-trash-o"></span></button></span>
+                                <span style="text-align: right"><button type="button" class="btn btn-sm btn-link text-danger p-0" title="Remove comparison" data-bind="click: function () { $parent.removeSeries($data); }"><span class="fa fa-trash"></span></button></span>
                                 <span class="muted">Compare to</span>
                             </div>
                             <div class="col-md-4">
@@ -1315,15 +1324,16 @@
                         </td>
                     </tr>
                     <!-- /ko -->
+                    <!-- /ko -->
                 </tbody>
             </table>
         </div>
 
         <div class="rule-container">
             <div data-bind="template: {name: 'filter-group'}"></div>
-            <div>
-                <button class="btn btn-sm btn-outline-secondary" data-bind="click: AddFilter">Add Filter</button>
-                <button class="btn btn-sm btn-outline-secondary" data-bind="click: AddFilterGroup">Add Filter Group</button>
+            <div class="dr-filter-add">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bind="click: AddFilter"><i class="fa fa-plus"></i> Add Filter</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bind="click: AddFilterGroup"><i class="fa fa-plus"></i> Add Group</button>
             </div>
         </div>
     </div>
@@ -2447,18 +2457,6 @@
             <!-- /ko -->
             <div class="checkbox">
                 <label>
-                    <input type="checkbox" data-bind="checked: DontExecuteOnRun" />
-                    Wait to Select Filters before Running Report
-                </label>
-            </div>
-            <div class="checkbox">
-                <label>
-                    <input type="checkbox" data-bind="checked: ShowFilterDetails" />
-                    Include Filter Details on Report
-                </label>
-            </div>
-            <div class="checkbox">
-                <label>
                     <input type="checkbox" data-bind="checked: HideReportName" />
                     Hide Report Name
                 </label>
@@ -3395,14 +3393,9 @@
                                     <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-filtersPanel')}"></i>
                                 </div>
                                 <div class="card-body p-2 designer-auto-update" data-bind="visible: !panels.isCollapsed('lp-filtersPanel')" style="max-height: 300px; overflow-y: auto;">
+                                    <div data-bind="template: 'filter-settings-toggles'"></div>
                                     <div data-bind="visible: useStoredProc"><div data-bind="template: {name: 'filter-parameters'}"></div></div>
                                     <div data-bind="visible: !useStoredProc()"><div data-bind="template: {name: 'filter-group'}"></div></div>
-                                    <div class="checkbox">
-                                        <label>
-                                            <input type="checkbox" data-bind="checked: EditFiltersOnReport" />
-                                            Allow setting up and saving filters on Report
-                                        </label>
-                                    </div>
                                 </div>
                             </div>
 
@@ -3554,18 +3547,13 @@
                             <br />
                             <div class="card card-body">
                                 <h5><span class="fa fa-filter"></span>&nbsp;Choose Filters</h5>
+                                <div data-bind="template: 'filter-settings-toggles'"></div>
                                 <div class="row" style="padding: 10px 10px; overflow-x: auto;">
                                     <div data-bind="visible: useStoredProc" class="col-md-12">
                                         <div data-bind="template: {name: 'filter-parameters'}"></div>
                                     </div>
                                     <div data-bind="visible: !useStoredProc()" class="col-md-12">
                                         <div data-bind="template: {name: 'filter-group'}"></div>
-                                    </div>
-                                    <div class="checkbox col-12">
-                                        <label>
-                                            <input type="checkbox" data-bind="checked: EditFiltersOnReport" />
-                                            Allow setting up and saving filters on Report
-                                        </label>
                                     </div>
                                     <br />
                                 </div>
