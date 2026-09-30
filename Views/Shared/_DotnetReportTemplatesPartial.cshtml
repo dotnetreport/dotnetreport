@@ -166,10 +166,10 @@
         <a href="#" class="dr-header-edit" style="float: right; color: inherit; padding-left: 4px;" title="Format table" data-bind="click: function (d, e) { $parent.openHeaderStyle(e); }, clickBubble: false"><i class="fa fa-pencil"></i></a>
         <!-- /ko -->
 
-        <!-- ko if: !$parent.IsDrillDown() && !$parent.IsSubReport() -->
+        <!-- ko if: !$parent.IsDrillDown() && !$parent.IsSubReport() && (!$parent.canFormatTable || $parent.canFormatTable()) -->
         <div class="pull-left" style="padding-right: 5px;">
-            <div class="dropup">
-                <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
+            <div class="dropdown">
+                <a href="#" data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-haspopup="false" aria-expanded="false">
                     <span class="fa fa-ellipsis-v sortable" title="Drag to reorder"></span>
                 </a>
                 <ul data-bind="visible: !IsPivotField" class="dropdown-menu field-quick-menu" style="z-index: 1001; min-width: 170px;">
@@ -203,6 +203,14 @@
                             </button>
                         </div>
                     </li>
+                    <!-- ko if: $parent.aggregateOptionsFor && $parent.aggregateOptionsFor($data).length > 0 -->
+                    <li class="dropdown-item small px-2 py-1">
+                        <div class="field-quick-row">
+                            <span class="field-quick-label">Group</span>
+                            <select class="form-select form-select-sm" style="width: 130px; font-size: 12px; padding-top: 2px; padding-bottom: 2px;" data-bind="options: $parent.aggregateOptionsFor($data), value: $parent.aggregateFor($data), event: { change: function (d, e) { $parent.changeAggregate($data, e.target.value); } }"></select>
+                        </div>
+                    </li>
+                    <!-- /ko -->
                     <li><hr class="dropdown-divider my-1"></li>
                     <li class="dropdown-item small" data-bind="visible: !IsNumeric">
                         <a href="#" data-bind="click: toggleOuterGroup">
@@ -735,7 +743,7 @@
     <!-- /ko -->
 
     <!-- ko if: $parent.ReportType() != 'Pivot' && $parent.ReportType() != 'Html' && (!$parent.isChart() || $parent.ShowDataWithGraph()) -->
-    <div class="pull-right" data-bind="if: $parent.OuterGroupColumns().length > 0">
+    <div class="pull-right" data-bind="if: $parent.OuterGroupColumns().length > 0 && (!$parent.CanEdit || $parent.CanEdit())">
         <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
             Manage Groups <span class="fa fa-ellipsis-v"></span>
         </a>

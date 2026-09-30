@@ -1869,18 +1869,24 @@ var reportViewModel = function (options) {
 	self.hasSlicers = ko.pureComputed(function () {
 		return self.dateSlicerFilters().length > 0 || self.groupSlicerFields().length > 0;
 	});
-	self.runWithoutSaving = function () {
+	self.runWithoutSaving = function (keepDirty) {
 		var wasSaving = self.SaveReport();
 		self.SaveReport(false);
+		if (keepDirty !== undefined) self.isDirty(keepDirty);
 		var run = self.RunReport(false, true);
-		if (run && run.always) run.always(function () { self.SaveReport(wasSaving); });
-		else self.SaveReport(wasSaving);
+		var restore = function () {
+			self.SaveReport(wasSaving);
+			if (keepDirty !== undefined) self.isDirty(keepDirty);
+		};
+		if (run && run.always) run.always(restore);
+		else restore();
 	};
 	self.applyDateSlicer = function (filter, option) {
+		var wasDirty = self.isDirty();
 		filter.Operator('range');
 		filter.Value(option);
 		if (filter.Apply) filter.Apply(true);
-		self.runWithoutSaving();
+		self.runWithoutSaving(wasDirty);
 	};
 	self.HideReportName.subscribe(function () { self.markFormatDirty(); });
 	_.forEach(['rowBorder', 'rowBorderColor', 'altRowBackColor', 'altRowFontColor'], function (key) {
@@ -8888,6 +8894,26 @@ var reportViewModel = function (options) {
 			result.ReportData.openHeaderStyle = function (event) { self.openHeaderStyle(event); };
 			result.ReportData.headerStyle = self.headerStyle;
 			result.ReportData.headerBorderCss = self.headerBorderCss;
+			var fieldForColumn = function (col) {
+				return _.find(self.SelectedFields(), function (f) { return col.fieldId && f.fieldId === col.fieldId; })
+					|| _.find(self.SelectedFields(), function (f) { return f.fieldName === col.fieldName; });
+			};
+			result.ReportData.aggregateOptionsFor = function (col) {
+				if (!self.AggregateReport() || self.useStoredProc() || !self.CanEdit()) return [];
+				var field = fieldForColumn(col);
+				return field && field.fieldAggregate ? field.fieldAggregate : [];
+			};
+			result.ReportData.aggregateFor = function (col) {
+				var field = fieldForColumn(col);
+				return field && field.selectedAggregate ? field.selectedAggregate() : '';
+			};
+			result.ReportData.changeAggregate = function (col, value) {
+				var field = fieldForColumn(col);
+				if (!field || !field.selectedAggregate || field.selectedAggregate() === value) return;
+				field.selectedAggregate(value);
+				self.markFormatDirty();
+				self.runWithoutSaving();
+			};
 			result.ReportData.lastHeaderIndex = function () {
 				return _.findLastIndex(result.ReportData.Columns, function (c) { return !ko.unwrap(c.outerGroup); });
 			};
@@ -11558,8 +11584,9 @@ var reportViewModel = function (options) {
 		};
 		e.applyGroupSlicer = function (option) {
 			if (!e.selectedAggregate || e.selectedAggregate() === option) return;
+			var wasDirty = self.isDirty();
 			e.selectedAggregate(option);
-			self.runWithoutSaving();
+			self.runWithoutSaving(wasDirty);
 		};
 		e.groupSlicer.subscribe(function () { self.markFormatDirty(); });
 		e.groupSlicerOptions.subscribe(function () { self.markFormatDirty(); });
@@ -11762,6 +11789,12 @@ var reportViewModel = function (options) {
 			e.fieldConditionVal = self.currentFieldOptions.fieldConditionVal;
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('hide');
 		}
+
+		_.forEach(['fieldAlign', 'fieldFormat', 'fieldLabel', 'fieldLabel2', 'decimalPlaces', 'currencyFormat', 'dateFormat', 'customDateFormat',
+			'fontColor', 'backColor', 'headerFontColor', 'headerBackColor', 'fontBold', 'headerFontBold', 'headerAlign', 'fieldWidth',
+			'outerGroup', 'outerGroupShowLabel', 'dontSubTotal', 'totalRowAggregate'], function (key) {
+			if (ko.isObservable(e[key])) e[key].subscribe(function () { self.markFormatDirty(); });
+		});
 
 		return e;
 	};

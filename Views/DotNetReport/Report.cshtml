@@ -274,7 +274,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                             <div class="report-canvas">
                                 <div class="report-container">
                                     <div class="report-inner">
-                                        <div data-bind="template: 'chart-settings', data: $data"></div>
+                                        <div data-bind="if: CanEdit() && ReportType() != 'Html' && ReportType() != 'Single'"><div data-bind="template: 'chart-settings', data: $data"></div></div>
                                         <div data-bind="visible: UseReportHeader">
                                             <div id="report-header" width="900" height="120" data-bind="html: headerDesigner.headerHtml"></div>
                                         </div>
