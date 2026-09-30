@@ -761,7 +761,12 @@
         <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
         <!-- ko ifnot: $data.bands -->
         <br />
-        <h6 style="font-weight: normal;" data-bind="html: display"></h6>
+        <div class="dr-group-heading" data-bind="attr: { style: $parents[1].groupHeadingCss ? $parents[1].groupHeadingCss() : '' }">
+            <h6 class="mb-0" data-bind="html: display"></h6>
+            <!-- ko if: $parents[1].CanEdit && $parents[1].CanEdit() && $parents[1].editGroupHeadingStyle -->
+            <a href="#" class="dr-band-edit" style="color: inherit;" title="Format group heading" data-bind="click: function (d, e) { $parents[1].editGroupHeadingStyle(d, e); }, clickBubble: false"><i class="fa fa-pencil"></i></a>
+            <!-- /ko -->
+        </div>
         <div class="" style="padding-top: 5px;"></div>
         <!-- /ko -->
         <!-- ko foreach: $data.bands || [] -->
@@ -1184,31 +1189,33 @@
             </a>
         </div>
         <div data-bind="attr: {id: 'filter-panel-' + ReportID() }, css: {collpased: !DontExecuteOnRun(), collapse: !DontExecuteOnRun()}" class="card-body">
-            <div>
+            <div class="dr-fly-filters">
                 <!-- ko foreach: FlyFilters -->
-                <div class="row">
-                    <div class="col-sm-5 col-xs-4">
-                        <div data-bind="with: Field" class="checkbox">
-                            <div class="checkbox">
-                                <label>
-                                    <input type="checkbox" title="Apply this filter" data-bind="checked: $parent.Apply, disabled: forced" /> <span data-bind="text: selectedFilterName"></span>
-                                </label>
+                <div class="dr-fly-row" data-bind="attr: { 'data-fly-filter-id': uiId }, css: { 'dr-fly-row-editing': flyEditing }">
+                    <div class="dr-filter-pill-line">
+                        <input type="checkbox" class="form-check-input mt-0" title="Apply this filter" data-bind="checked: Apply, disable: Field() && Field().forced, event: { change: function () { $parent.ExecuteReport(); } }" />
+                        <span class="dr-filter-pill" tabindex="0" title="Click to change this filter" data-bind="click: function () { openFlyEditor($parent.ExecuteReport); }, css: { 'dr-filter-pill-empty': Apply() && !hasValue(), 'dr-filter-pill-off': !Apply() }">
+                            <span class="dr-filter-pill-field" data-bind="text: flyFieldText()"></span>
+                            <span class="dr-filter-pill-op" data-bind="text: operatorText()"></span>
+                            <span class="dr-filter-pill-value" data-bind="text: valueText()"></span>
+                            <i class="fa fa-pencil dr-filter-pill-edit"></i>
+                        </span>
+                    </div>
+                    <div class="dr-fly-editor" data-bind="visible: flyEditing">
+                        <div class="d-flex flex-wrap align-items-start gap-2" data-bind="if: Apply">
+                            <div data-bind="with: Field" style="min-width: 150px;">
+                                <select class="form-select form-select-sm" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
                             </div>
-                        </div>
-                    </div>
-                    <div data-bind="with: Field" class="col-sm-2 col-xs-3">
-                        <div class="form-group" data-bind="if: $parent.Apply">
-                            <select class="form-select" data-bind="options: fieldFilter, value: $parent.Operator" required></select>
-                        </div>
-                    </div>
-                    <div data-bind="with: Field" class="col-sm-5 col-xs-5">
-                        <div data-bind="if: $parent.Apply" data-parentprefix="F" >
-                            <div data-bind="template: 'report-filter', data: $data"></div>
+                            <div data-bind="with: Field" data-parentprefix="F" style="flex: 1; min-width: 220px;">
+                                <div data-bind="template: 'report-filter', data: $data"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <!-- /ko -->
-                <button class="btn btn-primary" data-bind="click: ExecuteReport">Run</button>
+                <!-- ko if: DontExecuteOnRun() && !(typeof reportRan === 'function' && reportRan()) -->
+                <div><button class="btn btn-sm btn-primary" data-bind="click: ExecuteReport">Run</button></div>
+                <!-- /ko -->
             </div>
         </div>
     </div>

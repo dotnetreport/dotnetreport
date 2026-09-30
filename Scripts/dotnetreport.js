@@ -750,6 +750,106 @@ var drGroupSlicerChoices = ['Group by Day', 'Group by Week', 'Group by Month', '
 var drGroupSlicerDefaults = ['Group by Day', 'Group by Week', 'Group by Month', 'Group by Year'];
 var drSlicerMax = 5;
 
+function drClearValueOnOperatorChange(filter) {
+	var kind = function (op) {
+		if (op === 'range') return 'range';
+		if (op === 'in' || op === 'not in') return 'list';
+		return 'value';
+	};
+	var previous = filter.Operator();
+	filter.Operator.subscribe(function (op) {
+		var changed = kind(op) !== kind(previous);
+		previous = op;
+		if (!changed) return;
+		filter.Value(null);
+		if (filter.Value2) filter.Value2(null);
+		if (filter.fmtValue) filter.fmtValue(null);
+		if (filter.fmtValue2) filter.fmtValue2(null);
+		if (filter.ValueIn) filter.ValueIn([]);
+	});
+}
+
+function drFilterSummary(filter) {
+	filter.fieldText = function () {
+		var f = filter.Field();
+		return f ? (ko.unwrap(f.selectedFieldName) || f.fieldName) : 'Choose a field';
+	};
+	filter.operatorText = function () {
+		var op = filter.Operator() || '';
+		return op === 'range' ? 'is' : op;
+	};
+	filter.hasValue = function () {
+		var op = filter.Operator() || '';
+		if (/blank|null|^all$|^none$|default/.test(op)) return true;
+		if (op === 'in' || op === 'not in') return filter.ValueIn().length > 0 || !!filter.Value();
+		if (op === 'between') return !!filter.Value() && !!filter.Value2();
+		return filter.Value() != null && filter.Value() !== '';
+	};
+	filter.valueText = function () {
+		var op = filter.Operator() || '';
+		if (/blank|null|^all$|^none$/.test(op)) return '';
+		if (op === 'in' || op === 'not in') {
+			var vals = filter.ValueIn();
+			if (!vals.length) return filter.Value() || 'not set';
+			var list = filter.LookupList ? ko.unwrap(filter.LookupList) || [] : [];
+			var texts = _.map(vals, function (v) {
+				var hit = _.find(list, function (x) { return String(x.id) === String(v); });
+				return hit ? hit.text : v;
+			});
+			return texts.length > 3 ? texts.slice(0, 3).join(', ') + ' +' + (texts.length - 3) + ' more' : texts.join(', ');
+		}
+		if (op === 'between') return (filter.Value() || '?') + ' and ' + (filter.Value2() || '?');
+		if (op === 'range' && /Today [+-]/.test(filter.Value() || '')) return filter.Value() + ' ' + (filter.Value2() || '?') + ' days';
+		if (filter.Value() == null || filter.Value() === '') return 'not set';
+		var options = filter.LookupList ? ko.unwrap(filter.LookupList) || [] : [];
+		var match = _.find(options, function (x) { return String(x.id) === String(filter.Value()); });
+		return match ? match.text : filter.Value();
+	};
+}
+
+function drFlyPill(filter, reportVm) {
+	if (!filter.uiId) filter.uiId = generateUniqueId();
+	if (!filter.valueText) drFilterSummary(filter);
+	filter.flyEditing = ko.observable(false);
+	var flySnapshot = null, flyRunner = null;
+	var flyState = function () {
+		return JSON.stringify([filter.Operator(), filter.Value(), filter.Value2(), filter.ValueIn(), filter.Apply(), filter.Valuetime(), filter.Valuetime2()]);
+	};
+	filter.flyFieldText = function () {
+		var f = filter.Field();
+		return f ? (ko.unwrap(f.selectedFilterName) || filter.fieldText()) : '';
+	};
+	filter.openFlyEditor = function (runner) {
+		flyRunner = runner;
+		flySnapshot = flyState();
+		if (!filter.Apply()) filter.Apply(true);
+		filter.flyEditing(true);
+	};
+	filter.tryCloseFlyEditor = function () {
+		var rows = $('[data-fly-filter-id="' + filter.uiId + '"]');
+		var row = rows.filter(':visible').length ? rows.filter(':visible') : rows;
+		var ok = true;
+		row.find('.dr-fly-editor').find('input, select').each(function () {
+			var valid = reportVm && reportVm.isInputValid ? reportVm.isInputValid(this) : true;
+			$(this).toggleClass('is-invalid', !valid);
+			if (!valid) ok = false;
+		});
+		if (!ok) return;
+		filter.flyEditing(false);
+		if (flyState() !== flySnapshot && typeof flyRunner === 'function') flyRunner();
+	};
+	var closeFlyOnOutsideClick = function (event) {
+		var rows = document.querySelectorAll('[data-fly-filter-id="' + filter.uiId + '"]');
+		if (!rows.length || _.some(rows, function (row) { return row.contains(event.target); })) return;
+		if ($(event.target).closest('.select2-container, .select2-dropdown, .ui-datepicker, .datepicker, .ui-autocomplete, .tribute-container, .popover').length) return;
+		filter.tryCloseFlyEditor();
+	};
+	filter.flyEditing.subscribe(function (on) {
+		document.removeEventListener('mousedown', closeFlyOnOutsideClick, true);
+		if (on) document.addEventListener('mousedown', closeFlyOnOutsideClick, true);
+	});
+}
+
 function filterGroupViewModel(args) {
 	args = args || {};
 	var self = this;
@@ -906,39 +1006,8 @@ function filterGroupViewModel(args) {
 			if (reportVm && reportVm.markFormatDirty) reportVm.markFormatDirty();
 		});
 		filter.editing = ko.observable(!e.FieldId && !e.FilterSettings);
-		filter.fieldText = function () {
-			var f = filter.Field();
-			return f ? (ko.unwrap(f.selectedFieldName) || f.fieldName) : 'Choose a field';
-		};
-		filter.operatorText = function () {
-			var op = filter.Operator() || '';
-			var names = { 'range': 'is', 'not equal': 'is not', 'in': 'is any of', 'not in': 'is none of', 'between': 'is between' };
-			return names[op] || op;
-		};
-		filter.hasValue = function () {
-			var op = filter.Operator() || '';
-			if (/blank|null|^all$|^none$|default/.test(op)) return true;
-			if (op === 'in' || op === 'not in') return filter.ValueIn().length > 0 || !!filter.Value();
-			if (op === 'between') return !!filter.Value() && !!filter.Value2();
-			return filter.Value() != null && filter.Value() !== '';
-		};
-		filter.valueText = function () {
-			var op = filter.Operator() || '';
-			if (/blank|null|^all$|^none$/.test(op)) return '';
-			if (op === 'in' || op === 'not in') {
-				var vals = filter.ValueIn();
-				if (!vals.length) return filter.Value() || 'not set';
-				var list = filter.LookupList ? ko.unwrap(filter.LookupList) || [] : [];
-				var texts = _.map(vals, function (v) {
-					var hit = _.find(list, function (x) { return String(x.id) === String(v); });
-					return hit ? hit.text : v;
-				});
-				return texts.length > 3 ? texts.slice(0, 3).join(', ') + ' +' + (texts.length - 3) + ' more' : texts.join(', ');
-			}
-			if (op === 'between') return (filter.Value() || '?') + ' and ' + (filter.Value2() || '?');
-			if (op === 'range' && /Today [+-]/.test(filter.Value() || '')) return filter.Value() + ' ' + (filter.Value2() || '?') + ' days';
-			return filter.Value() != null && filter.Value() !== '' ? filter.Value() : 'not set';
-		};
+		drFilterSummary(filter);
+		drClearValueOnOperatorChange(filter);
 		filter.tryFinishEditing = function () {
 			var rows = $('[data-filter-id="' + filter.uiId + '"]');
 			var row = rows.filter(':visible').length ? rows.filter(':visible') : rows;
@@ -962,6 +1031,8 @@ function filterGroupViewModel(args) {
 		};
 		filter.editing.subscribe(watchOutsideClicks);
 		watchOutsideClicks(filter.editing());
+
+		drFlyPill(filter, reportVm);
 		filter.slicerOptions.subscribe(function () { if (reportVm && reportVm.markFormatDirty) reportVm.markFormatDirty(); });
 
 		//filter.Operator.subscribe(function () {
@@ -1974,7 +2045,7 @@ var reportViewModel = function (options) {
 		return width ? width + ' solid ' + (h.borderColor() || '#000000') : '';
 	};
 	self.openStylePopup = function (title, style, event, reset, allowAuto, extra) {
-		var target = event && event.currentTarget ? $(event.currentTarget).closest('td, th, .dr-nested-band')[0] : null;
+		var target = event && event.currentTarget ? $(event.currentTarget).closest('td, th, .dr-nested-band, .dr-group-heading')[0] : null;
 		var rect = target ? target.getBoundingClientRect() : { bottom: 100, right: 400 };
 		var alignOptions = [{ text: 'Left', value: 'left', icon: 'fa-align-left' }, { text: 'Center', value: 'center', icon: 'fa-align-center' }, { text: 'Right', value: 'right', icon: 'fa-align-right' }];
 		if (allowAuto) alignOptions.unshift({ text: 'Auto', value: '', icon: '' });
@@ -2022,6 +2093,29 @@ var reportViewModel = function (options) {
 		document.addEventListener('scroll', self._closeStylePopupOnScroll, true);
 	});
 	self.outerGroupBandStyles = ko.observableArray(_.map(self.defaultBandStyles(), self.makeBandStyle));
+	self.defaultGroupHeadingStyle = { backColor: '', fontColor: '', border: 'none', borderColor: '', align: 'left', bold: false };
+	self.groupHeadingStyle = self.makeBandStyle(self.defaultGroupHeadingStyle);
+	self.setGroupHeadingStyle = function (x) {
+		var d = x || self.defaultGroupHeadingStyle, h = self.groupHeadingStyle;
+		h.backColor(d.backColor || ''); h.fontColor(d.fontColor || ''); h.border(d.border || 'none');
+		h.borderColor(d.borderColor || ''); h.align(d.align || 'left'); h.bold(d.bold === true);
+	};
+	self.groupHeadingCss = function () {
+		var x = self.groupHeadingStyle;
+		var width = x.border() === 'thick' ? '2px' : x.border() === 'thin' ? '1px' : '';
+		return 'background-color: ' + (x.backColor() || 'transparent') + '; color: ' + (x.fontColor() || 'inherit') + '; font-weight: ' + (x.bold() ? '600' : 'normal') +
+			'; text-align: ' + x.align() + ';' + (x.backColor() || width ? ' padding: 4px 8px;' : '') +
+			(width ? ' border: ' + width + ' solid ' + (x.borderColor() || '#000000') + ';' : '');
+	};
+	self.editGroupHeadingStyle = function (data, event) {
+		var first = self.OuterGroupColumns()[0];
+		var field = first ? (_.find(self.SelectedFields(), function (f) { return first.fieldId && f.fieldId === first.fieldId; })
+			|| _.find(self.SelectedFields(), function (f) { return f.fieldName === first.fieldName; })) : null;
+		self.openStylePopup('Group Heading', self.groupHeadingStyle, event, function () { self.setGroupHeadingStyle(); }, false, {
+			labelOption: first && first.showLabel ? first.showLabel : undefined,
+			more: field && field.setupFieldOptions ? function () { self.bandStylePopup(null); field.setupFieldOptions(); } : null
+		});
+	};
 	self.bandStyleFor = function (depth) {
 		var list = self.outerGroupBandStyles();
 		return list[Math.min(depth, list.length - 1)];
@@ -7430,6 +7524,7 @@ var reportViewModel = function (options) {
 				outerGroupLayout: self.outerGroupLayout(),
 				outerGroupPageBreak: self.outerGroupPageBreak(),
 				outerGroupBandStyles: ko.toJS(self.outerGroupBandStyles()),
+				outerGroupHeadingStyle: ko.toJS(self.groupHeadingStyle),
 				customJoins: ko.toJS(self.customJoins()),
 				customJoinsBaseTableId: self.baseTableIdOverride(),
 				ShowFilterDetails: self.ShowFilterDetails(),
@@ -7652,7 +7747,7 @@ var reportViewModel = function (options) {
 		var saveAlertFlag = false;
 		if (!importJson) {
 			self.TotalSeries(self.AdditionalSeries().length);
-			if (self.TotalSeries() > 0 && !saveOnly && self.ReportMode() != 'dashboard' && !self.activeDesign()) self.ReportMode('start');
+			if (self.TotalSeries() > 0 && !saveOnly && self.ReportMode() != 'dashboard' && self.ReportMode() != 'execute' && !self.activeDesign()) self.ReportMode('start');
 
 
 			if (self.ReportType() == 'Single') {
@@ -8016,6 +8111,7 @@ var reportViewModel = function (options) {
 				e.customDateFormat = col.customDateFormat || ko.observable();
 				e.fieldLabel2 = col.fieldLabel2 || ko.observable();
 				e.fieldAlign = col.fieldAlign || ko.observable();
+				e.groupAggregate = col.selectedAggregate || null;
 				e.fieldConditionOp = col.fieldConditionOp || ko.observable();
 				e.fieldConditionVal = col.fieldConditionVal || [];
 				e.fieldFormat = col.fieldFormat || ko.observable();
@@ -8060,41 +8156,51 @@ var reportViewModel = function (options) {
 					e.outerGroup(!e.outerGroup());			
 				}
 
-				e.outerGroup.subscribe(function (newValue) {
-					if (newValue) {
-						if (!self.OuterGroupColumns().find(x => x.fieldId == col.fieldId)) {
-							self.OuterGroupColumns.push({
-								fieldId: col.fieldId,
-								fieldName: col.fieldName,
-								fieldLabel: col.fieldLabel,
-								showLabel: e.outerGroupShowLabel,
-								fieldIndex: e.colIndex,
-								rowData: _.uniq(_.map(result.ReportData.Rows, function (r) {
-									return r.Items[e.colIndex].FormattedValue;
-								})).sort(),
-								remove: function () {
-									e.outerGroup(false);
-									self.OuterGroupColumns.remove(this);
-								}
-							});
+				var registerOuterGroup = function () {
+					if (self.OuterGroupColumns().find(x => x.fieldId == col.fieldId)) return;
+					self.OuterGroupColumns.push({
+						fieldId: col.fieldId,
+						fieldName: col.fieldName,
+						fieldLabel: col.fieldLabel,
+						showLabel: e.outerGroupShowLabel,
+						fieldIndex: e.colIndex,
+						rowData: _.uniq(_.map(result.ReportData.Rows, function (r) {
+							return r.Items[e.colIndex].FormattedValue;
+						})).sort(),
+						remove: function () {
+							col._outerGroup = false;
+							if (col.selectedAggregate && col.selectedAggregate() === 'Outer Group') col.selectedAggregate('Group');
+							self.OuterGroupColumns.remove(this);
+							if (e.outerGroup()) e.outerGroup(false);
 						}
-					} else {
-						const entry = self.OuterGroupColumns().find(x => x.fieldId === col.fieldId);
-						if (entry && typeof entry.remove === "function") {
-							entry.remove();
+					});
+				};
+				if (!skipColDetails) {
+					if (col._outerGroupSubscription) col._outerGroupSubscription.dispose();
+					col._outerGroupSubscription = e.outerGroup.subscribe(function (newValue) {
+						if (newValue) {
+							registerOuterGroup();
+						} else {
+							const entry = self.OuterGroupColumns().find(x => x.fieldId === col.fieldId);
+							if (entry && typeof entry.remove === "function") entry.remove();
 						}
-					}
-				});
+					});
+				}
 
 				e.setupFieldOptions = function () {
 					col.setupFieldOptions();
 				}
 
 				var existingOuterGroup = !skipColDetails ? _.find(self.OuterGroupColumns(), { fieldId: e.fieldId }) : null;
-				if (existingOuterGroup) existingOuterGroup.fieldIndex = e.colIndex;
-				if (col._outerGroup || (col.selectedAggregate && col.selectedAggregate() == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId}))) {
-					e.outerGroup(false);
-					e.toggleOuterGroup();
+				if (existingOuterGroup) {
+					existingOuterGroup.fieldIndex = e.colIndex;
+					existingOuterGroup.rowData = _.uniq(_.map(result.ReportData.Rows, function (r) { return r.Items[e.colIndex].FormattedValue; })).sort();
+				}
+				var wantsOuterGroup = (ko.isObservable(col.outerGroup) ? col.outerGroup() : !!col._outerGroup)
+					|| (col.selectedAggregate && col.selectedAggregate() == 'Outer Group');
+				if (!skipColDetails && wantsOuterGroup) {
+					if (!e.outerGroup()) e.outerGroup(true);
+					else registerOuterGroup();
 				}
 			});
 		}
@@ -8561,7 +8667,9 @@ var reportViewModel = function (options) {
 					var resolvedDateFormatName = explicitDateFormat ? (col.dateFormat() || globalDefaultName) : globalDefaultName;
 					var dtFormat = localeFor(resolvedDateFormatName);
 
-					if (explicitDateFormat || autoDateField) {
+					var groupAggregate = col.groupAggregate ? ko.unwrap(col.groupAggregate) : '';
+					var dateGroupedAway = ['Group by Week', 'Group by Month', 'Group by Year', 'Group by Month/Year'].indexOf(groupAggregate) >= 0;
+					if ((explicitDateFormat || autoDateField) && !dateGroupedAway) {
 						if (_parsedDate) {
 							if (explicitDateFormat && col.dateFormat() === 'Custom' && col.customDateFormat()) {
 								r.FormattedValue = self.formatDate(r.Value, col.customDateFormat());
@@ -11908,6 +12016,7 @@ var reportViewModel = function (options) {
 		self.outerGroupLayout(reportSettings.outerGroupLayout || 'separate');
 		self.outerGroupPageBreak(reportSettings.outerGroupPageBreak === true);
 		self.outerGroupBandStyles(_.map(reportSettings.outerGroupBandStyles && reportSettings.outerGroupBandStyles.length ? reportSettings.outerGroupBandStyles : self.defaultBandStyles(), self.makeBandStyle));
+		self.setGroupHeadingStyle(reportSettings.outerGroupHeadingStyle);
 		self.noHeaderRow(reportSettings.noHeaderRow);
 		self.noDashboardBorders(reportSettings.noDashboardBorders);
 		self.showPriorInKpi(reportSettings.showPriorInKpi);
@@ -12605,6 +12714,11 @@ var reportViewModel = function (options) {
 				if (filterRow.length) {
 					var filterData = ko.dataFor(filterRow[0]);
 					if (filterData && filterData.editing) filterData.editing(true);
+				}
+				var flyRow = $(curInputs[i]).closest('.dr-fly-row');
+				if (flyRow.length) {
+					var flyData = ko.dataFor(flyRow[0]);
+					if (flyData && flyData.flyEditing) flyData.flyEditing(true);
 				}
 				if (!firstInvalid) firstInvalid = curInputs[i];
 			}
@@ -14588,6 +14702,8 @@ var dashboardViewModel = function (options) {
 									Valuetime: ko.observable(f.Valuetime()),
 									Valuetime2: ko.observable(f.Valuetime2()),
 								};
+								drFlyPill(filter, self);
+								drClearValueOnOperatorChange(filter);
 								self.FlyFilters.push(filter);
 
 								if (f.Field().hasForeignKey) {

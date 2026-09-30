@@ -2872,3 +2872,18 @@ tr:hover > th > .dr-header-edit { visibility: visible; }
 .dr-filter-table > tbody > tr > td { background: transparent; box-shadow: none; padding: 3px 0; }
 .dr-filter-row-editing > td { background: #f1f5fb !important; border-radius: 6px; padding: 6px !important; }
 .dr-filter-add { display: flex; gap: 6px; margin-top: 4px; }
+
+/* Report page filters as pills */
+.dr-fly-filters { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.dr-fly-row { max-width: 720px; }
+.dr-fly-editor > div > div:last-child { max-width: 420px; }
+.dr-fly-row { border-radius: 6px; }
+.dr-fly-row-editing { background: #f1f5fb; padding: 6px 8px; }
+.dr-fly-editor { margin-top: 6px; }
+.dr-filter-pill-off { opacity: 0.55; }
+
+/* Separate-tables group heading */
+.dr-group-heading { display: flex; align-items: center; gap: 8px; border-radius: 4px; }
+.dr-group-heading h6 { flex: 1; font-weight: inherit; color: inherit; text-align: inherit; }
+.dr-group-heading .dr-band-edit { visibility: hidden; opacity: 0.8; }
+.dr-group-heading:hover .dr-band-edit { visibility: visible; }

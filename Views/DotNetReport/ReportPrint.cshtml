@@ -193,7 +193,7 @@
             <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
             <!-- ko ifnot: $data.bands -->
             <br />
-            <h6 style="font-weight: normal; page-break-after: avoid; break-after: avoid;" data-bind="html: display"></h6>
+            <div class="dr-group-heading" style="page-break-after: avoid; break-after: avoid;" data-bind="attr: { style: 'page-break-after: avoid; break-after: avoid; ' + ($parents[1].groupHeadingCss ? $parents[1].groupHeadingCss() : '') }"><h6 class="mb-0" data-bind="html: display"></h6></div>
             <div class="" style="padding-top: 5px;"></div>
             <!-- /ko -->
             <!-- ko foreach: $data.bands || [] -->
