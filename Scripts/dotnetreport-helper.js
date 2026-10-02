@@ -962,6 +962,7 @@ var manageAccess = function (options) {
         viewOnlyUserRoles: ko.observableArray(buildList(options.userRoles)),
         deleteOnlyUsers: ko.observableArray(buildList(options.users)),
         deleteOnlyUserRoles: ko.observableArray(buildList(options.userRoles)),
+        isUserRestricted: function () { return _.some([this.users, this.viewOnlyUsers, this.deleteOnlyUsers], function (l) { return _.some(l(), function (x) { return x.selected(); }); }); },
         showManageUsers: ko.observable(false),
         showViewUsers: ko.observable(false),
         showDeleteUsers: ko.observable(false),

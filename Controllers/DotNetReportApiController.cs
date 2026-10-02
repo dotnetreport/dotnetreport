@@ -1,4 +1,5 @@
-﻿using ReportBuilder.Web.Models;
+﻿using DocumentFormat.OpenXml.EMMA;
+using ReportBuilder.Web.Models;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -1496,6 +1497,31 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
+        public class DatabaseRelationsCall
+        {
+            public string accountKey { get; set; }
+            public string dataConnectKey { get; set; }
+        }
+
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<JsonResult> GetDatabaseRelations(DatabaseRelationsCall data)
+        {
+            try
+            {
+                var settings = GetSettings();
+                if (!settings.CanUseAdminMode) throw new Exception("Not Authorized to access this Resource");
+
+                IDatabaseConnection databaseConnection = DatabaseConnectionFactory.GetConnection(DotNetReportHelper.dbtype);
+                return Json(await databaseConnection.GetForeignKeys(data.dataConnectKey), JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = 500;
+                return Json(new { ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
         private class checkAccessModel {
             public bool hasAccess { get; set; }
             public string access { get; set; }
@@ -1574,7 +1600,12 @@ namespace ReportBuilder.Web.Controllers
             bool subTotalPerGroup = false,
             string totalRowFormat = "row",
             string filterDetailsText = null,
-            string defaultDateFormat = null)
+            string defaultDateFormat = null,
+            string outerGroupLayout = null,
+            bool outerGroupPageBreak = false,
+            string outerGroupBandStyles = null,
+            string headerStyle = null,
+            bool hideReportName = false)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -1589,7 +1620,10 @@ namespace ReportBuilder.Web.Controllers
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(onlyAndGroupInColumnDetail));
             Func<int, int, bool, Task<string>> linkedReportResolver = hasSubreports ? new Func<int, int, bool, Task<string>>((reportId, filterId, isAdmin) => ResolveLinkedReportTemplate(reportId, filterId, adminMode)) : null; 
-            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, hasSubreports, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport, subTotalPerGroup, totalRowFormat, HttpUtility.UrlDecode(filterDetailsText), linkedReportResolver);
+            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, hasSubreports, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport, subTotalPerGroup, totalRowFormat, HttpUtility.UrlDecode(filterDetailsText), linkedReportResolver, outerGroupLayout: outerGroupLayout, outerGroupPageBreak: outerGroupPageBreak,
+                bandStyles: string.IsNullOrEmpty(outerGroupBandStyles) ? null : Newtonsoft.Json.JsonConvert.DeserializeObject<List<NestedBandStyle>>(outerGroupBandStyles),
+                headerStyle: string.IsNullOrEmpty(headerStyle) ? null : Newtonsoft.Json.JsonConvert.DeserializeObject<NestedBandStyle>(headerStyle),
+                hideReportName: hideReportName);
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".xlsx");
             Response.ContentType = "application/vnd.ms-excel";
             Response.BinaryWrite(excel);
@@ -1703,7 +1737,12 @@ namespace ReportBuilder.Web.Controllers
             string currentUserName = null,
             string currentUserRoles = null,
             string customHtml = null,
-            string defaultDateFormat = null)
+            string defaultDateFormat = null,
+            string headerStyle = null,
+            bool hideReportName = false,
+            string outerGroupLayout = null,
+            bool outerGroupPageBreak = false,
+            string outerGroupBandStyles = null)
         {
             var settings = GetSettings();
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
@@ -1723,7 +1762,11 @@ namespace ReportBuilder.Web.Controllers
                 footerEveryPage: footerEveryPage,
                 currentUserName: currentUserName,
                 currentUserRoles: currentUserRoles,
-                customHtml: !string.IsNullOrEmpty(customHtml) ? HttpUtility.UrlDecode(customHtml) : null);
+                customHtml: !string.IsNullOrEmpty(customHtml) ? HttpUtility.UrlDecode(customHtml) : null,
+                headerStyle: string.IsNullOrEmpty(headerStyle) ? null : Newtonsoft.Json.JsonConvert.DeserializeObject<NestedBandStyle>(headerStyle),
+                hideReportName: hideReportName,
+                outerGroupLayout: outerGroupLayout, outerGroupPageBreak: outerGroupPageBreak,
+                bandStyles: string.IsNullOrEmpty(outerGroupBandStyles) ? null : Newtonsoft.Json.JsonConvert.DeserializeObject<List<NestedBandStyle>>(outerGroupBandStyles));
                 Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".docx");
                 Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
                 Response.BinaryWrite(word);

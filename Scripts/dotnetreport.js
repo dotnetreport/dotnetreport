@@ -522,7 +522,7 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings, apiUrl, previewEma
 			SelectedDays: self.selectedDays().join(","),
 			SelectedMonths: self.selectedMonths().join(","),
 			SelectedDates: self.selectedOption() == 'once' ? self.selectedDate() : self.selectedDates().join(","),
-			SelectedHour: self.selectedHour(),
+			SelectedHour: (self.selectedHour() || '12').toString(),
 			SelectedMinute: self.selectedMinute(),
 			SelectedAmPm: self.selectedAmPm(),
 			EmailTo: self.emailTo(),
@@ -744,6 +744,112 @@ function DesignerViewModel() {
 	};
 }
 
+var drDateSlicerChoices = ['Today', 'Yesterday', 'This Week', 'Last Week', 'This Month', 'Last Month', 'Last 30 Days', 'This Year', 'Last Year', 'This Week To Date', 'This Month To Date', 'This Year To Date'];
+var drDateSlicerDefaults = ['This Month', 'Last Month', 'Last 30 Days', 'This Year', 'Last Year'];
+var drGroupSlicerChoices = ['Group by Day', 'Group by Week', 'Group by Month', 'Group by Year', 'Group by Month/Year'];
+var drGroupSlicerDefaults = ['Group by Day', 'Group by Week', 'Group by Month', 'Group by Year'];
+var drSlicerMax = 5;
+
+function drClearValueOnOperatorChange(filter) {
+	var kind = function (op) {
+		if (op === 'range') return 'range';
+		if (op === 'in' || op === 'not in') return 'list';
+		return 'value';
+	};
+	var previous = filter.Operator();
+	filter.Operator.subscribe(function (op) {
+		var changed = kind(op) !== kind(previous);
+		previous = op;
+		if (!changed) return;
+		filter.Value(null);
+		if (filter.Value2) filter.Value2(null);
+		if (filter.fmtValue) filter.fmtValue(null);
+		if (filter.fmtValue2) filter.fmtValue2(null);
+		if (filter.ValueIn) filter.ValueIn([]);
+	});
+}
+
+function drFilterSummary(filter) {
+	filter.fieldText = function () {
+		var f = filter.Field();
+		return f ? (ko.unwrap(f.selectedFieldName) || f.fieldName) : 'Choose a field';
+	};
+	filter.operatorText = function () {
+		var op = filter.Operator() || '';
+		return op === 'range' ? 'is' : op;
+	};
+	filter.hasValue = function () {
+		var op = filter.Operator() || '';
+		if (/blank|null|^all$|^none$|default/.test(op)) return true;
+		if (op === 'in' || op === 'not in') return filter.ValueIn().length > 0 || !!filter.Value();
+		if (op === 'between') return !!filter.Value() && !!filter.Value2();
+		return filter.Value() != null && filter.Value() !== '';
+	};
+	filter.valueText = function () {
+		var op = filter.Operator() || '';
+		if (/blank|null|^all$|^none$/.test(op)) return '';
+		if (op === 'in' || op === 'not in') {
+			var vals = filter.ValueIn();
+			if (!vals.length) return filter.Value() || 'not set';
+			var list = filter.LookupList ? ko.unwrap(filter.LookupList) || [] : [];
+			var texts = _.map(vals, function (v) {
+				var hit = _.find(list, function (x) { return String(x.id) === String(v); });
+				return hit ? hit.text : v;
+			});
+			return texts.length > 3 ? texts.slice(0, 3).join(', ') + ' +' + (texts.length - 3) + ' more' : texts.join(', ');
+		}
+		if (op === 'between') return (filter.Value() || '?') + ' and ' + (filter.Value2() || '?');
+		if (op === 'range' && /Today [+-]/.test(filter.Value() || '')) return filter.Value() + ' ' + (filter.Value2() || '?') + ' days';
+		if (filter.Value() == null || filter.Value() === '') return 'not set';
+		var options = filter.LookupList ? ko.unwrap(filter.LookupList) || [] : [];
+		var match = _.find(options, function (x) { return String(x.id) === String(filter.Value()); });
+		return match ? match.text : filter.Value();
+	};
+}
+
+function drFlyPill(filter, reportVm) {
+	if (!filter.uiId) filter.uiId = generateUniqueId();
+	if (!filter.valueText) drFilterSummary(filter);
+	filter.flyEditing = ko.observable(false);
+	var flySnapshot = null, flyRunner = null;
+	var flyState = function () {
+		return JSON.stringify([filter.Operator(), filter.Value(), filter.Value2(), filter.ValueIn(), filter.Apply(), filter.Valuetime(), filter.Valuetime2()]);
+	};
+	filter.flyFieldText = function () {
+		var f = filter.Field();
+		return f ? (ko.unwrap(f.selectedFilterName) || filter.fieldText()) : '';
+	};
+	filter.openFlyEditor = function (runner) {
+		flyRunner = runner;
+		flySnapshot = flyState();
+		if (!filter.Apply()) filter.Apply(true);
+		filter.flyEditing(true);
+	};
+	filter.tryCloseFlyEditor = function () {
+		var rows = $('[data-fly-filter-id="' + filter.uiId + '"]');
+		var row = rows.filter(':visible').length ? rows.filter(':visible') : rows;
+		var ok = true;
+		row.find('.dr-fly-editor').find('input, select').each(function () {
+			var valid = reportVm && reportVm.isInputValid ? reportVm.isInputValid(this) : true;
+			$(this).toggleClass('is-invalid', !valid);
+			if (!valid) ok = false;
+		});
+		if (!ok) return;
+		filter.flyEditing(false);
+		if (flyState() !== flySnapshot && typeof flyRunner === 'function') flyRunner();
+	};
+	var closeFlyOnOutsideClick = function (event) {
+		var rows = document.querySelectorAll('[data-fly-filter-id="' + filter.uiId + '"]');
+		if (!rows.length || _.some(rows, function (row) { return row.contains(event.target); })) return;
+		if ($(event.target).closest('.select2-container, .select2-dropdown, .ui-datepicker, .datepicker, .ui-autocomplete, .tribute-container, .popover').length) return;
+		filter.tryCloseFlyEditor();
+	};
+	filter.flyEditing.subscribe(function (on) {
+		document.removeEventListener('mousedown', closeFlyOnOutsideClick, true);
+		if (on) document.addEventListener('mousedown', closeFlyOnOutsideClick, true);
+	});
+}
+
 function filterGroupViewModel(args) {
 	args = args || {};
 	var self = this;
@@ -849,6 +955,13 @@ function filterGroupViewModel(args) {
 				return runLookupSearch(lookupSqlInfo, lookupList, token, keep);
 			},
 			SearchParentList: function (token) { return runLookupSearch(parentSqlInfo, parentList, token, filter.ParentIn()); },
+			SelectAllLookup: function () {
+				var key = filter.IsConditionalFilter ? 'text' : 'id';
+				var current = filter.ValueIn() || [];
+				var seen = {};
+				_.forEach(current, function (v) { seen[String(v)] = true; });
+				filter.ValueIn(current.concat(_.filter(_.map(lookupList(), key), function (v) { return !seen[String(v)]; })));
+			},
 			ParentIn: ko.observableArray(parentIn),
 			Apply: ko.observable(e.Apply != null ? e.Apply : true),
 			EmailListColumn: ko.observable(e.EmailListColumn || ''),
@@ -864,6 +977,63 @@ function filterGroupViewModel(args) {
 		};
 
 		filter.useEmailListColumn.subscribe(function (on) { if (!on) filter.EmailListColumn(''); });
+
+		var reportVm = args.parent;
+		var savedSlicer = reportVm && reportVm._dateSlicerConfig && e.FieldId
+			? _.find(reportVm._dateSlicerConfig, function (c) { return c.fieldId == e.FieldId; }) : null;
+		filter.slicer = ko.observable(!!savedSlicer);
+		filter.slicerOptions = ko.observableArray(savedSlicer && savedSlicer.options && savedSlicer.options.length
+			? savedSlicer.options.slice(0, drSlicerMax) : drDateSlicerDefaults.slice());
+		filter.slicerChoices = drDateSlicerChoices;
+		filter.toggleSlicerOption = function (option) {
+			if (filter.slicerOptions.indexOf(option) >= 0) {
+				filter.slicerOptions.remove(option);
+			} else {
+				var order = drDateSlicerChoices;
+				var kept = filter.slicerOptions().length >= drSlicerMax ? filter.slicerOptions().slice(1) : filter.slicerOptions();
+				filter.slicerOptions(_.sortBy(kept.concat([option]), function (x) { return order.indexOf(x); }));
+			}
+		};
+		filter.applySlicer = function (option) {
+			if (reportVm && reportVm.applyDateSlicer) reportVm.applyDateSlicer(filter, option);
+		};
+		filter.slicer.subscribe(function (on) {
+			if (on && reportVm && reportVm.allFilters) {
+				_.forEach(reportVm.allFilters(), function (other) {
+					if (other !== filter && other.slicer && other.slicer()) other.slicer(false);
+				});
+			}
+			if (reportVm && reportVm.markFormatDirty) reportVm.markFormatDirty();
+		});
+		filter.editing = ko.observable(!e.FieldId && !e.FilterSettings);
+		drFilterSummary(filter);
+		drClearValueOnOperatorChange(filter);
+		filter.tryFinishEditing = function () {
+			var rows = $('[data-filter-id="' + filter.uiId + '"]');
+			var row = rows.filter(':visible').length ? rows.filter(':visible') : rows;
+			var ok = !!filter.Field();
+			row.find('.dr-filter-editor').find('input, select').each(function () {
+				var valid = reportVm && reportVm.isInputValid ? reportVm.isInputValid(this) : true;
+				$(this).toggleClass('is-invalid', !valid);
+				if (!valid) ok = false;
+			});
+			if (ok) filter.editing(false);
+		};
+		var closeOnOutsideClick = function (event) {
+			var rows = document.querySelectorAll('[data-filter-id="' + filter.uiId + '"]');
+			if (!rows.length || _.some(rows, function (row) { return row.contains(event.target); })) return;
+			if ($(event.target).closest('.select2-container, .select2-dropdown, .ui-datepicker, .datepicker, .ui-autocomplete, .tribute-container, .dr-format-panel, .popover').length) return;
+			filter.tryFinishEditing();
+		};
+		var watchOutsideClicks = function (on) {
+			document.removeEventListener('mousedown', closeOnOutsideClick, true);
+			if (on) document.addEventListener('mousedown', closeOnOutsideClick, true);
+		};
+		filter.editing.subscribe(watchOutsideClicks);
+		watchOutsideClicks(filter.editing());
+
+		drFlyPill(filter, reportVm);
+		filter.slicerOptions.subscribe(function () { if (reportVm && reportVm.markFormatDirty) reportVm.markFormatDirty(); });
 
 		//filter.Operator.subscribe(function () {
 		//	filter.Value(null);
@@ -909,13 +1079,15 @@ function filterGroupViewModel(args) {
 			});
 		}
 
-		function loadLookupList(fieldId, dataFilters) {
+		function loadLookupList(fieldId, dataFilters, parentValues) {
 			if (printMode === true) return;
+			var model = { fieldId: fieldId, addToken: true };
+			if (parentValues && parentValues.length > 0) model.parentFilterValues = JSON.stringify(parentValues);
 			ajaxcall({
 				url: args.options.apiUrl,
 				data: {
 					method: "/ReportApi/GetLookupList",
-					model: JSON.stringify({ fieldId: fieldId, dataFilters: dataFilters, addToken: true })
+					model: JSON.stringify(model)
 				},
 				noBlocking: args.parent.ReportMode()=='dashboard'
 			}).done(function (result) {
@@ -969,13 +1141,7 @@ function filterGroupViewModel(args) {
 				if (newField.hasForeignParentKey) {
 
 					filter.ParentIn.subscribe(function (newValue) {
-						if (newValue && newValue.length > 0) {
-							var df = Object.assign({}, args.options.dataFilters || {});
-							df[newField.foreignParentApplyTo] = newValue.join();
-							loadLookupList(newField.fieldId, df);
-						} else {
-							loadLookupList(newField.fieldId, args.options.dataFilters);
-						}
+						loadLookupList(newField.fieldId, args.options.dataFilters, newValue);
 					});
 
 					var existingParentFilter = self.GetValuesInFilterGroupForFieldAndTable(newField.foreignParentTable, newField.foreignParentKeyField);
@@ -1095,6 +1261,12 @@ function filterGroupViewModel(args) {
 		filter.compareTo = ko.computed(function () {
 			return field() ? _.filter(args.parent.AdditionalSeries(), function (x) { return x.Field().fieldId == field().fieldId; }) : [];
 		});
+		filter.removeSeries = function (series) {
+			if (args.parent && args.parent.RemoveSeries) args.parent.RemoveSeries(series);
+		};
+		filter.compareText = function () {
+			return _.map(filter.compareTo(), function (c) { return ko.unwrap(c.Value); }).join(', ');
+		};
 
 		self.Filters.push(filter);
 		addingFilter = false;
@@ -1102,6 +1274,9 @@ function filterGroupViewModel(args) {
 	};
 
 	self.RemoveFilter = function (filter) {
+		if (filter.compareTo && args.parent && args.parent.AdditionalSeries) {
+			_.forEach(filter.compareTo().slice(), function (series) { args.parent.AdditionalSeries.remove(series); });
+		}
 		self.Filters.remove(filter);
 		if (args.parent && typeof args.parent.reportChanged == 'function') args.parent.reportChanged();
 	};
@@ -1672,6 +1847,309 @@ var reportViewModel = function (options) {
 	self.IncludeSubTotal = ko.observable(false);
 	self.totalRowFormat = ko.observable('row');
 	self.subTotalPerGroup = ko.observable(false);
+	self.outerGroupLayout = ko.observable('separate');
+	self.outerGroupPageBreak = ko.observable(false);
+	self.defaultBandStyles = function () {
+		return [
+			{ backColor: '#1f4e79', fontColor: '#ffffff', border: 'none', borderColor: '', align: 'center', bold: true },
+			{ backColor: '#dbe9f6', fontColor: '#000000', border: 'none', borderColor: '', align: 'center', bold: true },
+			{ backColor: '', fontColor: '', border: 'none', borderColor: '', align: 'left', bold: true }
+		];
+	};
+	self.markFormatDirty = function () {
+		if (self._suppressReportChanged || self.executingReport || self.isExporting) return;
+		if (self.ReportMode && self.ReportMode() && self.ReportMode().indexOf('export-') == 0) return;
+		self.isDirty(true);
+	};
+	self.makeBandStyle = function (x) {
+		var style = {
+			backColor: ko.observable(x.backColor || ''),
+			fontColor: ko.observable(x.fontColor || ''),
+			border: ko.observable(x.border || 'none'),
+			borderColor: ko.observable(x.borderColor || ''),
+			align: ko.observable(x.align || 'left'),
+			bold: ko.observable(x.bold !== false)
+		};
+		_.forEach(style, function (o) { o.subscribe(function () { self.markFormatDirty(); }); });
+		return style;
+	};
+	self.outerGroupLayout.subscribe(function () { self.markFormatDirty(); });
+	self.outerGroupPageBreak.subscribe(function () { self.markFormatDirty(); });
+	self.bandStylePopup = ko.observable(null);
+	self.headerStyle = {
+		backColor: ko.observable(''),
+		fontColor: ko.observable(''),
+		border: ko.observable('none'),
+		borderColor: ko.observable(''),
+		align: ko.observable(''),
+		bold: ko.observable(false)
+	};
+	self._loadingHeaderStyle = false;
+	self.rowAlign = ko.observable('');
+	self.rowBorder = ko.observable('none');
+	self.rowBorderColor = ko.observable('');
+	self.altRowBackColor = ko.observable('');
+	self.altRowFontColor = ko.observable('');
+	self.rowBackColor = ko.observable('');
+	self.rowFontColor = ko.observable('');
+	self.pageBackColor = ko.observable('');
+	self.rowBackColor.subscribe(function (v) {
+		if (self._loadingHeaderStyle) return;
+		self.tableSettings().rowBackColor = v || null;
+		self.markFormatDirty();
+	});
+	self.rowFontColor.subscribe(function (v) {
+		if (self._loadingHeaderStyle) return;
+		self.tableSettings().rowFontColor = v || null;
+		self.markFormatDirty();
+	});
+	self.pageBackColor.subscribe(function (v) {
+		if (self._loadingHeaderStyle) return;
+		self.tableSettings().backColor = v || null;
+		var data = self.ReportResult && self.ReportResult() ? self.ReportResult().ReportData() : null;
+		if (data && data.BackColor) data.BackColor(v || null);
+		self.markFormatDirty();
+	});
+	self.HideReportName = ko.observable(false);
+	self._dateSlicerConfig = [];
+	self.allFilters = function () {
+		var list = [];
+		var walk = function (groups) {
+			_.forEach(groups, function (g) {
+				_.forEach(g.Filters(), function (f) { list.push(f); });
+				if (g.FilterGroups) walk(g.FilterGroups());
+			});
+		};
+		walk(self.FilterGroups ? self.FilterGroups() : []);
+		return list;
+	};
+	self.dateSlicerFilters = ko.pureComputed(function () {
+		return _.filter(self.allFilters(), function (f) {
+			var field = f.Field();
+			return f.slicer && f.slicer() && field && ['Date', 'DateTime'].indexOf(field.fieldType) >= 0;
+		}).slice(0, 1);
+	});
+	self.groupSlicerFields = ko.pureComputed(function () {
+		return _.filter(self.SelectedFields ? self.SelectedFields() : [], function (f) {
+			return f.groupSlicer && f.groupSlicer() && ['Date', 'DateTime'].indexOf(f.fieldType) >= 0 && f.selectedAggregate && (f.selectedAggregate() || '').indexOf('Group by') === 0 && f.visibleGroupSlicerOptions().length > 0;
+		});
+	});
+	self.groupSlicerLabel = function (option) {
+		return option.replace('Group by ', '');
+	};
+	self.hasSlicers = ko.pureComputed(function () {
+		return self.dateSlicerFilters().length > 0 || self.groupSlicerFields().length > 0;
+	});
+	self.runWithoutSaving = function (keepDirty) {
+		var wasSaving = self.SaveReport();
+		self.SaveReport(false);
+		if (keepDirty !== undefined) self.isDirty(keepDirty);
+		var run = self.RunReport(false, true);
+		var restore = function () {
+			self.SaveReport(wasSaving);
+			if (keepDirty !== undefined) self.isDirty(keepDirty);
+		};
+		if (run && run.always) run.always(restore);
+		else restore();
+	};
+	self.applyDateSlicer = function (filter, option) {
+		var wasDirty = self.isDirty();
+		filter.Operator('range');
+		filter.Value(option);
+		if (filter.Apply) filter.Apply(true);
+		self.runWithoutSaving(wasDirty);
+	};
+	self.HideReportName.subscribe(function () { self.markFormatDirty(); });
+	_.forEach(['rowBorder', 'rowBorderColor', 'altRowBackColor', 'altRowFontColor'], function (key) {
+		self[key].subscribe(function (v) {
+			if (self._loadingHeaderStyle) return;
+			self.tableSettings()[key] = v && v !== 'none' ? v : null;
+			self.markFormatDirty();
+		});
+	});
+	self.getTableStyleJson = function () {
+		return JSON.stringify(_.assign(ko.toJS(self.headerStyle), {
+			rowAlign: self.rowAlign(),
+			rowBorder: self.rowBorder(),
+			rowBorderColor: self.rowBorderColor(),
+			altRowBackColor: self.altRowBackColor(),
+			altRowFontColor: self.altRowFontColor(),
+			rowBackColor: self.rowBackColor(),
+			rowFontColor: self.rowFontColor()
+		}));
+	};
+	self.rowBorderCss = function () {
+		var width = self.rowBorder() === 'thick' ? '2px' : self.rowBorder() === 'thin' ? '1px' : '';
+		return width ? width + ' solid ' + (self.rowBorderColor() || '#000000') : '';
+	};
+	self.cellBack = function (item, index) {
+		var own = ko.unwrap(item.backColor);
+		var table = self.rowBackColor();
+		if (own && own !== table) return own;
+		var alt = self.altRowBackColor();
+		return (alt && index % 2 === 1 ? alt : table) || '';
+	};
+	self.cellFont = function (item, index) {
+		var own = ko.unwrap(item.fontColor);
+		var table = self.rowFontColor();
+		if (own && own !== table) return own;
+		var alt = self.altRowFontColor();
+		return (alt && index % 2 === 1 ? alt : table) || '';
+	};
+	self.rowAlign.subscribe(function (v) {
+		if (self._loadingHeaderStyle) return;
+		self.tableSettings().rowAlign = v || null;
+		self.markFormatDirty();
+	});
+	var onHeaderChange = function (apply) {
+		return function (v) {
+			if (self._loadingHeaderStyle) return;
+			apply(v);
+			self.markFormatDirty();
+		};
+	};
+	self.headerStyle.backColor.subscribe(onHeaderChange(function (v) {
+		self.tableSettings().headerBackColor = v || null;
+	}));
+	self.headerStyle.fontColor.subscribe(onHeaderChange(function (v) {
+		self.tableSettings().headerFontColor = v || null;
+	}));
+	self.headerStyle.bold.subscribe(onHeaderChange(function (v) {
+		self.tableSettings().headerBold = v;
+	}));
+	self.headerStyle.align.subscribe(onHeaderChange(function (v) { self.tableSettings().headerAlign = v || null; }));
+	self.headerStyle.border.subscribe(onHeaderChange(function (v) { self.tableSettings().headerBorder = v; }));
+	self.headerStyle.borderColor.subscribe(onHeaderChange(function (v) { self.tableSettings().headerBorderColor = v || null; }));
+	self.loadHeaderStyle = function () {
+		var ts = self.tableSettings() || {};
+		self._loadingHeaderStyle = true;
+		self.headerStyle.backColor(ts.headerBackColor || '');
+		self.headerStyle.fontColor(ts.headerFontColor || '');
+		self.headerStyle.bold(ts.headerBold === true);
+		self.headerStyle.align(ts.headerAlign || '');
+		self.headerStyle.border(ts.headerBorder || 'none');
+		self.headerStyle.borderColor(ts.headerBorderColor || '');
+		self.rowAlign(ts.rowAlign || '');
+		self.rowBorder(ts.rowBorder || 'none');
+		self.rowBorderColor(ts.rowBorderColor || '');
+		self.altRowBackColor(ts.altRowBackColor || '');
+		self.altRowFontColor(ts.altRowFontColor || '');
+		self.rowBackColor(ts.rowBackColor || '');
+		self.rowFontColor(ts.rowFontColor || '');
+		self.pageBackColor(ts.backColor || '');
+		self._loadingHeaderStyle = false;
+	};
+	self.headerBorderCss = function () {
+		var h = self.headerStyle;
+		var width = h.border() === 'thick' ? '2px' : h.border() === 'thin' ? '1px' : '';
+		return width ? width + ' solid ' + (h.borderColor() || '#000000') : '';
+	};
+	self.openStylePopup = function (title, style, event, reset, allowAuto, extra) {
+		var target = event && event.currentTarget ? $(event.currentTarget).closest('td, th, .dr-nested-band, .dr-group-heading')[0] : null;
+		var rect = target ? target.getBoundingClientRect() : { bottom: 100, right: 400 };
+		var alignOptions = [{ text: 'Left', value: 'left', icon: 'fa-align-left' }, { text: 'Center', value: 'center', icon: 'fa-align-center' }, { text: 'Right', value: 'right', icon: 'fa-align-right' }];
+		if (allowAuto) alignOptions.unshift({ text: 'Auto', value: '', icon: '' });
+		var width = 264;
+		var left = Math.min(rect.right - width, window.innerWidth - width - 8);
+		self.bandStylePopup(_.assign({
+			title: title,
+			style: style,
+			alignOptions: alignOptions,
+			top: rect.bottom + window.scrollY + 6,
+			left: Math.max(8, left) + window.scrollX,
+			reset: reset,
+			more: null,
+			close: function () { self.bandStylePopup(null); }
+		}, extra || {}));
+	};
+	self.openHeaderStyle = function (event) {
+		self.openStylePopup('Column Headers', self.headerStyle, event, function () {
+			self.headerStyle.backColor(''); self.headerStyle.fontColor(''); self.headerStyle.bold(false);
+			self.headerStyle.align(''); self.headerStyle.border('none'); self.headerStyle.borderColor('');
+		}, true);
+	};
+	self._closeStylePopupOnOutsideClick = function (e) {
+		var host = self._stylePopupHost;
+		if (!host || !self.bandStylePopup()) return;
+		if (host.contains(e.target) || $(e.target).closest('.dr-band-edit, .dr-header-edit').length) return;
+		self.bandStylePopup(null);
+	};
+	self._closeStylePopupOnScroll = function (e) {
+		if (!self.bandStylePopup() || e.target === document || (self._stylePopupHost && self._stylePopupHost.contains(e.target))) return;
+		self.bandStylePopup(null);
+	};
+	self.bandStylePopup.subscribe(function (popup) {
+		var host = self._stylePopupHost;
+		if (host) { ko.cleanNode(host); host.innerHTML = ''; }
+		document.removeEventListener('mousedown', self._closeStylePopupOnOutsideClick, true);
+		document.removeEventListener('scroll', self._closeStylePopupOnScroll, true);
+		if (!popup) return;
+		if (!host) {
+			host = self._stylePopupHost = document.createElement('div');
+			document.body.appendChild(host);
+		}
+		ko.renderTemplate('format-style-popup', popup, {}, host, 'replaceChildren');
+		document.addEventListener('mousedown', self._closeStylePopupOnOutsideClick, true);
+		document.addEventListener('scroll', self._closeStylePopupOnScroll, true);
+	});
+	self.outerGroupBandStyles = ko.observableArray(_.map(self.defaultBandStyles(), self.makeBandStyle));
+	self.defaultGroupHeadingStyle = { backColor: '', fontColor: '', border: 'none', borderColor: '', align: 'left', bold: false };
+	self.groupHeadingStyle = self.makeBandStyle(self.defaultGroupHeadingStyle);
+	self.setGroupHeadingStyle = function (x) {
+		var d = x || self.defaultGroupHeadingStyle, h = self.groupHeadingStyle;
+		h.backColor(d.backColor || ''); h.fontColor(d.fontColor || ''); h.border(d.border || 'none');
+		h.borderColor(d.borderColor || ''); h.align(d.align || 'left'); h.bold(d.bold === true);
+	};
+	self.groupHeadingCss = function () {
+		var x = self.groupHeadingStyle;
+		var width = x.border() === 'thick' ? '2px' : x.border() === 'thin' ? '1px' : '';
+		return 'background-color: ' + (x.backColor() || 'transparent') + '; color: ' + (x.fontColor() || 'inherit') + '; font-weight: ' + (x.bold() ? '600' : 'normal') +
+			'; text-align: ' + x.align() + ';' + (x.backColor() || width ? ' padding: 4px 8px;' : '') +
+			(width ? ' border: ' + width + ' solid ' + (x.borderColor() || '#000000') + ';' : '');
+	};
+	self.editGroupHeadingStyle = function (data, event) {
+		var first = self.OuterGroupColumns()[0];
+		var field = first ? (_.find(self.SelectedFields(), function (f) { return first.fieldId && f.fieldId === first.fieldId; })
+			|| _.find(self.SelectedFields(), function (f) { return f.fieldName === first.fieldName; })) : null;
+		self.openStylePopup('Group Heading', self.groupHeadingStyle, event, function () { self.setGroupHeadingStyle(); }, false, {
+			labelOption: first && first.showLabel ? first.showLabel : undefined,
+			more: field && field.setupFieldOptions ? function () { self.bandStylePopup(null); field.setupFieldOptions(); } : null
+		});
+	};
+	self.bandStyleFor = function (depth) {
+		var list = self.outerGroupBandStyles();
+		return list[Math.min(depth, list.length - 1)];
+	};
+	self.bandText = function (band) {
+		return (band.showLabel && band.showLabel() ? band.label + ' - ' : '') + band.value;
+	};
+	self.bandCss = function (depth) {
+		var x = self.bandStyleFor(depth);
+		var width = x.border() === 'thick' ? '2px' : x.border() === 'thin' ? '1px' : '';
+		return 'background-color: ' + (x.backColor() || 'var(--bs-body-bg)') + '; color: ' + (x.fontColor() || 'var(--bs-body-color)') + '; font-weight: ' + (x.bold() ? '600' : 'normal') +
+			'; text-align: ' + x.align() + '; box-shadow: none;' + (depth === 0 ? ' font-size: 1.1em; padding: 10px;' : '') +
+			(width ? ' border: ' + width + ' solid ' + (x.borderColor() || '#000000') + ';' : '');
+	};
+	self.editBandStyle = function (band, event) {
+		var current = self.bandStylePopup();
+		if (current && current.depth === band.depth) { self.bandStylePopup(null); return; }
+		var list = self.outerGroupBandStyles();
+		var last = ko.toJS(list[list.length - 1]);
+		while (self.outerGroupBandStyles().length <= band.depth) self.outerGroupBandStyles.push(self.makeBandStyle(last));
+		var field = _.find(self.SelectedFields(), function (f) { return band.fieldId && f.fieldId === band.fieldId; })
+			|| _.find(self.SelectedFields(), function (f) { return f.fieldName === band.fieldName; });
+		self.openStylePopup(band.label + ' Heading', self.outerGroupBandStyles()[band.depth], event, function () { self.resetBandStyle(band.depth); }, false, {
+			depth: band.depth,
+			labelOption: band.showLabel,
+			more: field && field.setupFieldOptions ? function () { self.bandStylePopup(null); field.setupFieldOptions(); } : null
+		});
+	};
+	self.resetBandStyle = function (depth) {
+		var defaults = self.defaultBandStyles();
+		var d = defaults[Math.min(depth, defaults.length - 1)];
+		var x = self.outerGroupBandStyles()[depth];
+		x.backColor(d.backColor); x.fontColor(d.fontColor); x.border(d.border); x.borderColor(d.borderColor); x.align(d.align); x.bold(d.bold);
+	};
 	self.IncludeColumnTotal = ko.observable(false);
 	self.ShowUniqueRecords = ko.observable(false);
 	self.ShowExpandOption = ko.observable(false);
@@ -1752,6 +2230,12 @@ var reportViewModel = function (options) {
 	self.panels = new DesignerViewModel();
 	self.selectMode = ko.observable(false);
 
+	self.newReportJoinCondition = function (fieldName, joinFieldName) {
+		return { fieldName: ko.observable(fieldName || ''), joinFieldName: ko.observable(joinFieldName || '') };
+	};
+	self.addReportJoinCondition = function (join) { join.conditions.push(self.newReportJoinCondition('', '')); };
+	self.removeReportJoinCondition = function (join, c) { join.conditions.remove(c); };
+
 	self.swapJoinDirection = function (join) {
 		var swapped = {
 			tableId: join.joinedTableId,
@@ -1763,7 +2247,11 @@ var reportViewModel = function (options) {
 			joinType: join.joinType,
 			joinOrder: join.joinOrder,
 			isForeignKey: join.isForeignKey,
-			fieldId: join.fieldId
+			fieldId: join.fieldId,
+			tableFields: join.joinedTableFields,
+			joinedTableFields: join.tableFields,
+			globalConditions: _.map(join.globalConditions || [], function (g) { return { fieldName: g.joinFieldName, joinFieldName: g.fieldName, removed: g.removed }; }),
+			conditions: ko.observableArray(_.map(join.conditions ? join.conditions() : [], function (c) { return self.newReportJoinCondition(c.joinFieldName(), c.fieldName()); }))
 		};
 
 		var all = self.detectedJoins();
@@ -1859,9 +2347,33 @@ var reportViewModel = function (options) {
 					joinFieldName = existingOverride.joinFieldName || r.JoinFieldName;
 				}
 
+				var sameAsRelation = tableId === r.TableId;
+				var sameCondition = function (saved, g) {
+					var f = saved.tableId == tableId ? saved.fieldName : saved.joinFieldName;
+					var jf = saved.tableId == tableId ? saved.joinFieldName : saved.fieldName;
+					return (f || '').toLowerCase() === (g.fieldName || '').toLowerCase() && (jf || '').toLowerCase() === (g.joinFieldName || '').toLowerCase();
+				};
+				var globalConditions = [];
+				var withConditions = r.JoinConditions ? r : _.find(result, function (o) {
+					var eq = function (a, b) { return (a || '').toLowerCase() === (b || '').toLowerCase(); };
+					return o.JoinConditions && ((o.TableId === r.TableId && o.JoinedTableId === r.JoinedTableId && eq(o.FieldName, r.FieldName) && eq(o.JoinFieldName, r.JoinFieldName))
+						|| (o.TableId === r.JoinedTableId && o.JoinedTableId === r.TableId && eq(o.FieldName, r.JoinFieldName) && eq(o.JoinFieldName, r.FieldName)));
+				});
+				try { globalConditions = JSON.parse((withConditions && withConditions.JoinConditions) || '[]') || []; } catch (e) { }
+				var savedConditions = existingOverride && existingOverride.conditions ? existingOverride.conditions : [];
 				joins.push({
 					tableId: tableId,
 					joinedTableId: joinedTableId,
+					tableFields: (sameAsRelation ? r.TableFields : r.JoinedTableFields) || [],
+					joinedTableFields: (sameAsRelation ? r.JoinedTableFields : r.TableFields) || [],
+					globalConditions: _.map(globalConditions, function (c) {
+						var g = c.TableId == tableId ? { fieldName: c.FieldName, joinFieldName: c.JoinFieldName } : { fieldName: c.JoinFieldName, joinFieldName: c.FieldName };
+						g.removed = ko.observable(!!(existingOverride && existingOverride.replaceConditions) && !_.some(savedConditions, function (s) { return sameCondition(s, g); }));
+						return g;
+					}),
+					conditions: ko.observableArray(_.map(_.filter(savedConditions, function (s) {
+						return !_.some(globalConditions, function (c) { return sameCondition(s, c.TableId == tableId ? { fieldName: c.FieldName, joinFieldName: c.JoinFieldName } : { fieldName: c.JoinFieldName, joinFieldName: c.FieldName }); });
+					}), function (c) { return c.tableId == tableId ? self.newReportJoinCondition(c.fieldName, c.joinFieldName) : self.newReportJoinCondition(c.joinFieldName, c.fieldName); })),
 					tableName: tableName,
 					joinedTableName: joinedTableName,
 					joinType: ko.observable(existingOverride ? existingOverride.joinType : r.JoinType),
@@ -1943,6 +2455,15 @@ var reportViewModel = function (options) {
 			};
 			if (j.isForeignKey && j.fieldId) {
 				obj.fieldId = j.fieldId;
+			}
+			if (!j.isForeignKey && j.conditions) {
+				var added = _.filter(j.conditions(), function (c) { return c.fieldName() && c.joinFieldName(); });
+				var kept = _.filter(j.globalConditions || [], function (g) { return !g.removed(); });
+				if (added.length || kept.length < (j.globalConditions || []).length) {
+					obj.replaceConditions = true;
+					obj.conditions = _.map(kept, function (g) { return { tableId: j.tableId, fieldName: g.fieldName, joinedTableId: j.joinedTableId, joinFieldName: g.joinFieldName }; })
+						.concat(_.map(added, function (c) { return { tableId: j.tableId, fieldName: c.fieldName(), joinedTableId: j.joinedTableId, joinFieldName: c.joinFieldName() }; }));
+				}
 			}
 			return obj;
 		});
@@ -2563,8 +3084,47 @@ var reportViewModel = function (options) {
 			}];
 		}
 
-		var groups = {};
 		var rows = reportData.Rows;
+		if (self.outerGroupLayout() === 'nested') {
+			var levels = _.sortBy(groupColumns, 'fieldIndex');
+			var pageBreak = self.outerGroupPageBreak();
+			var nestedGroups = [], pendingBands = [];
+			var walk = function (list, depth) {
+				if (depth >= levels.length) {
+					nestedGroups.push({ display: '', bands: pendingBands, rows: list });
+					pendingBands = [];
+					return;
+				}
+				var col = levels[depth];
+				var buckets = [], byValue = {};
+				_.forEach(list, function (row) {
+					var value = row.Items[col.fieldIndex].FormattedValue;
+					var key = '$' + value;
+					if (!byValue[key]) {
+						byValue[key] = { value: value, rows: [] };
+						buckets.push(byValue[key]);
+					}
+					byValue[key].rows.push(row);
+				});
+				_.forEach(buckets, function (bucket, index) {
+					pendingBands.push({
+						value: bucket.value,
+						label: ko.unwrap(col.fieldLabel) || col.fieldName,
+						fieldId: col.fieldId,
+						fieldName: col.fieldName,
+						showLabel: col.showLabel,
+						depth: depth,
+						vm: self,
+						pageBreak: pageBreak && depth === 0 && (index > 0 || nestedGroups.length > 0)
+					});
+					walk(bucket.rows, depth + 1);
+				});
+			};
+			walk(reportData.Rows, 0);
+			return nestedGroups;
+		}
+
+		var groups = {};
 
 		_.forEach(rows, function (row) {
 
@@ -2576,7 +3136,7 @@ var reportViewModel = function (options) {
 				keyParts.push(val);
 				var label = ko.unwrap(col.fieldLabel) || col.fieldName;
 				var esc = function (v) { return $('<div>').text(v == null ? '' : v).html(); };
-				displayParts.push('<b>' + esc(label) + '</b> - ' + esc(val));
+				displayParts.push(!col.showLabel || col.showLabel() ? '<b>' + esc(label) + '</b> - ' + esc(val) : esc(val));
 			});
 
 			var key = keyParts.join('|');
@@ -4401,7 +4961,7 @@ var reportViewModel = function (options) {
 				"change",
 				"input, select, .form-select, .form-control, .btn, .list-group-item",
 				function (e) {
-					if ($(e.target).closest('.subreport-inline-container, [data-bind*="subreport-content"]').length) return;
+					if ($(e.target).closest('.subreport-inline-container, [data-bind*="subreport-content"]').length) return; if ($(e.target).closest('.dr-format-tab, .dr-format-panel').length) return;
 					self.reportChanged();
 				}
 			);
@@ -4425,7 +4985,7 @@ var reportViewModel = function (options) {
 					var activeId = options.reportWizard.data('report-id');
 					if (activeId != null && activeId != (self.ReportID() || 0)) return;
 				}
-				if ($(e.target).closest('.subreport-inline-container, [data-bind*="subreport-content"]').length) return;
+				if ($(e.target).closest('.subreport-inline-container, [data-bind*="subreport-content"]').length) return; if ($(e.target).closest('.dr-format-tab, .dr-format-panel').length) return;
 				self.reportChanged();
 			}
 		);
@@ -4441,7 +5001,7 @@ var reportViewModel = function (options) {
 	};
 
 	self.setupSettingsDirtyCheck = function () {
-		var setingsTabs = $('#chartTab-' + self.ReportID() + ', #tableTab-' + self.ReportID() + ', #kpiTab-' + self.ReportID());
+		var setingsTabs = $('#chartTab-' + self.ReportID() + ', #kpiTab-' + self.ReportID());
 
 		setingsTabs 
 			.off("change click", "input, select, .form-select, .form-control, .btn, .list-group-item")
@@ -6471,6 +7031,20 @@ var reportViewModel = function (options) {
 			return;
 		}
 		var copyfield = ko.toJS(field);
+		copyfield.aggregateFunction = copyfield.selectedAggregate;
+		copyfield.fieldSettings = {
+			dateFormat: copyfield.dateFormat,
+			customDateFormat: copyfield.customDateFormat,
+			currencyFormat: copyfield.currencyFormat,
+			fieldLabel2: copyfield.fieldLabel2,
+			drillDataFormat: copyfield.drillDataFormat,
+			seriesType: copyfield.seriesType,
+			formulaType: copyfield.formulaType,
+			functionConfig: copyfield.functionConfig,
+			customSqlField: copyfield.customSqlField,
+			outerGroup: copyfield.outerGroup,
+			totalRowAggregate: copyfield.totalRowAggregate
+		};
 		copyfield.fieldName = "Copy - " + copyfield.fieldName;
 		var duplicatedField = self.setupField(copyfield);
 		self.SelectedFields.push(duplicatedField);
@@ -6947,9 +7521,15 @@ var reportViewModel = function (options) {
 				includeColumnTotal: self.IncludeColumnTotal(),
 				totalRowFormat: self.totalRowFormat(),
 				subTotalPerGroup: self.subTotalPerGroup(),
+				outerGroupLayout: self.outerGroupLayout(),
+				outerGroupPageBreak: self.outerGroupPageBreak(),
+				outerGroupBandStyles: ko.toJS(self.outerGroupBandStyles()),
+				outerGroupHeadingStyle: ko.toJS(self.groupHeadingStyle),
 				customJoins: ko.toJS(self.customJoins()),
 				customJoinsBaseTableId: self.baseTableIdOverride(),
 				ShowFilterDetails: self.ShowFilterDetails(),
+				HideReportName: self.HideReportName(),
+				dateSlicers: _.map(self.dateSlicerFilters(), function (f) { return { fieldId: f.Field().fieldId, options: f.slicerOptions() }; }),
 				ReportHeaderId: self.ReportHeaderId() || 0,
 				UseCustomReportHeader: self.UseCustomReportHeader(),
 				CustomReportHeaderHtml: self.UseCustomReportHeader() ? encodeURIComponent(self.customReportHeaderHtml() || '') : '',
@@ -7011,7 +7591,11 @@ var reportViewModel = function (options) {
 						functionConfig: x.functionConfig,
 						customSqlField: x.customSqlField,
 						outerGroup: x.outerGroup(),
-						totalRowAggregate: x.totalRowAggregate()
+						outerGroupShowLabel: x.outerGroupShowLabel ? x.outerGroupShowLabel() : true,
+						groupSlicer: x.groupSlicer ? x.groupSlicer() : false,
+						groupSlicerOptions: x.groupSlicerOptions ? x.groupSlicerOptions() : [],
+						totalRowAggregate: x.totalRowAggregate(),
+						headerAlign: x.headerAlign ? x.headerAlign() : ''
 					}),
 					DrillDataFormat: effectiveDrillDataFormat,
 					FieldAlign: x.fieldAlign(),
@@ -7163,7 +7747,7 @@ var reportViewModel = function (options) {
 		var saveAlertFlag = false;
 		if (!importJson) {
 			self.TotalSeries(self.AdditionalSeries().length);
-			if (self.TotalSeries() > 0 && !saveOnly && self.ReportMode() != 'dashboard' && !self.activeDesign()) self.ReportMode('start');
+			if (self.TotalSeries() > 0 && !saveOnly && self.ReportMode() != 'dashboard' && self.ReportMode() != 'execute' && !self.activeDesign()) self.ReportMode('start');
 
 
 			if (self.ReportType() == 'Single') {
@@ -7519,7 +8103,7 @@ var reportViewModel = function (options) {
 				col.decimalPlacesDigit = col.decimalPlaces ? col.decimalPlaces() : null;
 				col.fieldFormating = col.fieldFormat ? col.fieldFormat() : null;
 				col.IsPivotField = e.IsPivotField ;
-				if (skipColDetails !== true) self.columnDetails.push(ko.toJS(col));
+				if (skipColDetails !== true) self.columnDetails.push(col);
 
 				e.decimalPlaces = col.decimalPlaces || ko.observable();
 				e.currencyFormat = col.currencyFormat || ko.observable();
@@ -7527,6 +8111,7 @@ var reportViewModel = function (options) {
 				e.customDateFormat = col.customDateFormat || ko.observable();
 				e.fieldLabel2 = col.fieldLabel2 || ko.observable();
 				e.fieldAlign = col.fieldAlign || ko.observable();
+				e.groupAggregate = col.selectedAggregate || null;
 				e.fieldConditionOp = col.fieldConditionOp || ko.observable();
 				e.fieldConditionVal = col.fieldConditionVal || [];
 				e.fieldFormat = col.fieldFormat || ko.observable();
@@ -7546,6 +8131,8 @@ var reportViewModel = function (options) {
 				e.drillDataFormat = col.drillDataFormat || ko.observable();
 				e.seriesType = col.seriesType || ko.observable();
 				e.headerFontBold = col.headerFontBold || ko.observable();
+				e.headerAlign = col.headerAlign || ko.observable('');
+				e.outerGroupShowLabel = col.outerGroupShowLabel || ko.observable(true);
 				e.headerFontColor = col.headerFontColor || ko.observable();
 				e.headerBackColor = col.headerBackColor || ko.observable();
 				e.fieldId = col.fieldId;
@@ -7569,38 +8156,51 @@ var reportViewModel = function (options) {
 					e.outerGroup(!e.outerGroup());			
 				}
 
-				e.outerGroup.subscribe(function (newValue) {
-					if (newValue) {
-						if (!self.OuterGroupColumns().find(x => x.fieldId == col.fieldId)) {
-							self.OuterGroupColumns.push({
-								fieldId: col.fieldId,
-								fieldName: col.fieldName,
-								fieldLabel: col.fieldLabel,
-								fieldIndex: e.colIndex,
-								rowData: _.uniq(_.map(result.ReportData.Rows, function (r) {
-									return r.Items[e.colIndex].FormattedValue;
-								})).sort(),
-								remove: function () {
-									e.outerGroup(false);
-									self.OuterGroupColumns.remove(this);
-								}
-							});
+				var registerOuterGroup = function () {
+					if (self.OuterGroupColumns().find(x => x.fieldId == col.fieldId)) return;
+					self.OuterGroupColumns.push({
+						fieldId: col.fieldId,
+						fieldName: col.fieldName,
+						fieldLabel: col.fieldLabel,
+						showLabel: e.outerGroupShowLabel,
+						fieldIndex: e.colIndex,
+						rowData: _.uniq(_.map(result.ReportData.Rows, function (r) {
+							return r.Items[e.colIndex].FormattedValue;
+						})).sort(),
+						remove: function () {
+							col._outerGroup = false;
+							if (col.selectedAggregate && col.selectedAggregate() === 'Outer Group') col.selectedAggregate('Group');
+							self.OuterGroupColumns.remove(this);
+							if (e.outerGroup()) e.outerGroup(false);
 						}
-					} else {
-						const entry = self.OuterGroupColumns().find(x => x.fieldId === col.fieldId);
-						if (entry && typeof entry.remove === "function") {
-							entry.remove();
+					});
+				};
+				if (!skipColDetails) {
+					if (col._outerGroupSubscription) col._outerGroupSubscription.dispose();
+					col._outerGroupSubscription = e.outerGroup.subscribe(function (newValue) {
+						if (newValue) {
+							registerOuterGroup();
+						} else {
+							const entry = self.OuterGroupColumns().find(x => x.fieldId === col.fieldId);
+							if (entry && typeof entry.remove === "function") entry.remove();
 						}
-					}
-				});
+					});
+				}
 
 				e.setupFieldOptions = function () {
 					col.setupFieldOptions();
 				}
 
-				if (col._outerGroup || (col.selectedAggregate && col.selectedAggregate() == 'Outer Group' && !_.find(self.OuterGroupColumns(), {fieldId: e.fieldId}))) {
-					e.outerGroup(false);
-					e.toggleOuterGroup();
+				var existingOuterGroup = !skipColDetails ? _.find(self.OuterGroupColumns(), { fieldId: e.fieldId }) : null;
+				if (existingOuterGroup) {
+					existingOuterGroup.fieldIndex = e.colIndex;
+					existingOuterGroup.rowData = _.uniq(_.map(result.ReportData.Rows, function (r) { return r.Items[e.colIndex].FormattedValue; })).sort();
+				}
+				var wantsOuterGroup = (ko.isObservable(col.outerGroup) ? col.outerGroup() : !!col._outerGroup)
+					|| (col.selectedAggregate && col.selectedAggregate() == 'Outer Group');
+				if (!skipColDetails && wantsOuterGroup) {
+					if (!e.outerGroup()) e.outerGroup(true);
+					else registerOuterGroup();
 				}
 			});
 		}
@@ -7719,7 +8319,58 @@ var reportViewModel = function (options) {
 			return txt.value;
 		}
 
-		function processRow(row, columns, subreportsRan, outerGroupIndicesToSuppress) {
+		function splitOuterGroupTemplate(body, keys) {
+			var cacheKey = keys.join('\u0001') + '\u0002' + body;
+			if (self._outerGroupTemplateCache && self._outerGroupTemplateCache.key === cacheKey) return self._outerGroupTemplateCache.value;
+			var serialize = function (node) {
+				var d = document.createElement('div');
+				d.appendChild(node.cloneNode(true));
+				return decodeHtmlEntities(d.innerHTML);
+			};
+			var wrap = function (node, inner, edge) {
+				var d = document.createElement('div');
+				var shell = node.cloneNode(false);
+				if (edge === 'before') { shell.style.marginBottom = '0'; inner = inner.replace(/(\s| |<br\s*\/?>)+$/i, ''); }
+				if (edge === 'after') { shell.style.marginTop = '0'; inner = inner.replace(/^(\s| |<br\s*\/?>)+/i, ''); }
+				d.appendChild(shell);
+				var outer = decodeHtmlEntities(d.innerHTML);
+				var close = outer.lastIndexOf('</');
+				return close >= 0 ? outer.substring(0, close) + inner + outer.substring(close) : outer + inner;
+			};
+			var split = function (nodes, key) {
+				var parts = nodes.map(serialize);
+				var k = -1;
+				parts.forEach(function (x, i) { if (x.indexOf(key) >= 0) k = i; });
+				if (k < 0) return null;
+				var node = nodes[k];
+				var tail = parts[k].substring(parts[k].lastIndexOf(key) + key.length);
+				if (node.nodeType === 1 && node.childNodes.length && tail.indexOf('{{') >= 0) {
+					var inner = split(Array.prototype.slice.call(node.childNodes), key);
+					if (inner) return [parts.slice(0, k).join('') + wrap(node, inner[0], 'before'), wrap(node, inner[1], 'after') + parts.slice(k + 1).join('')];
+				}
+				return [parts.slice(0, k + 1).join(''), parts.slice(k + 1).join('')];
+			};
+			var holder = document.createElement('div');
+			var rest = body.replace(/(\s*<p[^>]*>(\s| |&nbsp;|<br\s*\/?>)*<\/p>)+\s*$/i, ''), sections = [];
+			_.forEach(keys, function (k) {
+				holder.innerHTML = rest;
+				var r = split(Array.prototype.slice.call(holder.childNodes), '{{' + k + '}}');
+				if (r) { sections.push(r[0]); rest = r[1]; } else sections.push('');
+			});
+			var value = { sections: sections, detail: rest, groupOpen: '', rowTemplate: null, groupClose: '' };
+			if (rest.indexOf('html-report-table-standard') >= 0) {
+				var m = rest.match(/(<table[\s\S]*?<thead[\s\S]*?<\/thead>\s*<tbody>)([\s\S]*?)(<\/tbody>\s*<\/table>)/i);
+				if (m) {
+					value.groupOpen = rest.substring(0, m.index) + m[1];
+					value.rowTemplate = m[2];
+					value.groupClose = m[3] + rest.substring(m.index + m[0].length);
+				}
+			}
+			self._outerGroupTemplateCache = { key: cacheKey, value: value };
+			return value;
+		}
+
+		function processRow(row, columns, subreportsRan, outerGroupIndicesToSuppress, outerGroupLevel) {
 			let fullHtml = decodeHtmlEntities(self.reportHtml());
 			let header = "", body = fullHtml, footer = "";
 
@@ -7731,8 +8382,29 @@ var reportViewModel = function (options) {
 				body = parts[0];
 				footer = parts.length > 1 ? parts[1] : "";
 
+				var outerGroupHandled = false;
+				if (outerGroupLevel != null && outerGroupPlaceholderKeys.length > 0
+					&& body.indexOf('html-report-table-grouped') < 0 && body.indexOf('html-report-table-transposed') < 0) {
+					var ogTpl = splitOuterGroupTemplate(body, outerGroupPlaceholderKeys);
+					var startsGroup = outerGroupLevel < ogTpl.sections.length;
+					var ogOut = '';
+					if (ogTpl.rowTemplate !== null && startsGroup && !row.__isFirstRow) ogOut += ogTpl.groupClose;
+					if (startsGroup && !row.__isFirstRow && outerGroupLevel === 0 && self.outerGroupPageBreak()) ogOut += '<div style="break-before: page; page-break-before: always;"></div>';
+					for (var ogI = outerGroupLevel; ogI < ogTpl.sections.length; ogI++) ogOut += ogTpl.sections[ogI];
+					if (ogTpl.rowTemplate !== null) {
+						if (startsGroup) ogOut += ogTpl.groupOpen;
+						ogOut += ogTpl.rowTemplate;
+						if (row.__isLastRow) ogOut += ogTpl.groupClose;
+					} else {
+						ogOut += ogTpl.detail;
+					}
+					body = ogOut;
+					outerGroupHandled = true;
+				}
 				// detect standard table
-				if (body.indexOf("html-report-table-standard") >= 0) {
+				if (outerGroupHandled) {
+				}
+				else if (body.indexOf("html-report-table-standard") >= 0) {
 					let match = body.match(/(<table[\s\S]*?<thead[\s\S]*?<\/thead>\s*<tbody>)([\s\S]*?)(<\/tbody>\s*<\/table>)/i);
 					if (match) {
 						const tableHeader = match[1];
@@ -7762,17 +8434,23 @@ var reportViewModel = function (options) {
 						var groupHeaderTrs = [];
 						var dataTrs = [];
 
+						var changedGroupHeaderTrs = [];
 						allTrs.forEach(function (tr) {
 							var isHeader = false;
+							var trLevel = -1;
 							if (outerGroupPlaceholderKeys.length > 0) {
-								isHeader = outerGroupPlaceholderKeys.some(function (ph) {
-									return tr.indexOf('{{'+ ph + '}}') >= 0;
+								outerGroupPlaceholderKeys.forEach(function (ph, level) {
+									if (tr.indexOf('{{' + ph + '}}') >= 0) trLevel = level;
 								});
+								isHeader = trLevel >= 0;
 							}
 							if (!isHeader) {
 								isHeader = /class="[^"]*html-report-group-header/.test(tr);
 							}
-							if (isHeader) groupHeaderTrs.push(tr);
+							if (isHeader) {
+								groupHeaderTrs.push(tr);
+								if (outerGroupLevel == null || trLevel < 0 || trLevel >= outerGroupLevel) changedGroupHeaderTrs.push(tr);
+							}
 							else dataTrs.push(tr);
 						});
 
@@ -7783,7 +8461,7 @@ var reportViewModel = function (options) {
 							body = gTableTop + groupRows + dataRow + gTableBot;
 						} else if (!outerGroupIndicesToSuppress) {
 							// First row of a new group
-							body = '<!-- outer-group-break -->' + groupRows + dataRow;
+							body = '<!-- outer-group-break -->' + changedGroupHeaderTrs.join('') + dataRow;
 						} else {
 							// Continuation of same group
 							body = dataRow;
@@ -7818,7 +8496,7 @@ var reportViewModel = function (options) {
 				// Outer-group template splitting:
 				// For non-first rows of a group, strip everything up to and including
 				// the last outer-group placeholder so only the inner-row portion renders.
-				if (outerGroupIndicesToSuppress && outerGroupPlaceholderKeys.length > 0
+				if (!outerGroupHandled && outerGroupIndicesToSuppress && outerGroupPlaceholderKeys.length > 0
 					&& fullHtml.indexOf('html-report-table-standard') < 0
 					&& fullHtml.indexOf('html-report-table-transposed') < 0
 					&& fullHtml.indexOf('html-report-table-grouped') < 0) {
@@ -7963,6 +8641,10 @@ var reportViewModel = function (options) {
 				col = col || {};
 				r.backColor = col.backColor;
 				r.fieldAlign = col.fieldAlign;
+				r.rowAlign = self.rowAlign;
+				r.cellBack = self.cellBack;
+				r.cellFont = self.cellFont;
+				r.rowBorderCss = self.rowBorderCss;
 				r.fieldWidth = col.fieldWidth;
 				r.fontBold = col.fontBold;
 				r.fontColor = col.fontColor;
@@ -7974,17 +8656,7 @@ var reportViewModel = function (options) {
 				r.Column.fieldLabel = col.fieldLabel
 
 				r.formattedVal = ko.computed(function () {
-					function localeFor(name) {
-						switch (name) {
-							case 'United Kingdom': return 'en-GB';
-							case 'New Zealand': return 'en-NZ';
-							case 'France': return 'fr-FR';
-							case 'German': return 'de-DE';
-							case 'Spanish': return 'es-ES';
-							case 'Chinese': return 'zh-CN';
-							default: return 'en-US';
-						}
-					}
+					var localeFor = self.dateLocaleFor;
 					var ff = col.fieldFormat ? col.fieldFormat() : null;
 					var ft = col.fieldType;
 					var _parsedDate = self.safeParseDate(r.Value);
@@ -7995,7 +8667,9 @@ var reportViewModel = function (options) {
 					var resolvedDateFormatName = explicitDateFormat ? (col.dateFormat() || globalDefaultName) : globalDefaultName;
 					var dtFormat = localeFor(resolvedDateFormatName);
 
-					if (explicitDateFormat || autoDateField) {
+					var groupAggregate = col.groupAggregate ? ko.unwrap(col.groupAggregate) : '';
+					var dateGroupedAway = ['Group by Week', 'Group by Month', 'Group by Year', 'Group by Month/Year'].indexOf(groupAggregate) >= 0;
+					if ((explicitDateFormat || autoDateField) && !dateGroupedAway) {
 						if (_parsedDate) {
 							if (explicitDateFormat && col.dateFormat() === 'Custom' && col.customDateFormat()) {
 								r.FormattedValue = self.formatDate(r.Value, col.customDateFormat());
@@ -8324,6 +8998,33 @@ var reportViewModel = function (options) {
 			result.ReportData.CurrencySymbol = ko.observable(self.kpiSettings()?.currencySymbol());
 		} else {
 			result.ReportData.BackColor = ko.observable(self.tableSettings().backColor);
+			result.ReportData.canFormatTable = function () { return self.CanEdit(); };
+			result.ReportData.openHeaderStyle = function (event) { self.openHeaderStyle(event); };
+			result.ReportData.headerStyle = self.headerStyle;
+			result.ReportData.headerBorderCss = self.headerBorderCss;
+			var fieldForColumn = function (col) {
+				return _.find(self.SelectedFields(), function (f) { return col.fieldId && f.fieldId === col.fieldId; })
+					|| _.find(self.SelectedFields(), function (f) { return f.fieldName === col.fieldName; });
+			};
+			result.ReportData.aggregateOptionsFor = function (col) {
+				if (!self.AggregateReport() || self.useStoredProc() || !self.CanEdit()) return [];
+				var field = fieldForColumn(col);
+				return field && field.fieldAggregate ? field.fieldAggregate : [];
+			};
+			result.ReportData.aggregateFor = function (col) {
+				var field = fieldForColumn(col);
+				return field && field.selectedAggregate ? field.selectedAggregate() : '';
+			};
+			result.ReportData.changeAggregate = function (col, value) {
+				var field = fieldForColumn(col);
+				if (!field || !field.selectedAggregate || field.selectedAggregate() === value) return;
+				field.selectedAggregate(value);
+				self.markFormatDirty();
+				self.runWithoutSaving();
+			};
+			result.ReportData.lastHeaderIndex = function () {
+				return _.findLastIndex(result.ReportData.Columns, function (c) { return !ko.unwrap(c.outerGroup); });
+			};
 		}
 		var lastOuterGroupKey = null;
 		var outerGroupPlaceholderKeys = [];
@@ -8360,6 +9061,23 @@ var reportViewModel = function (options) {
 			var _fhRest = _fhParts.length > 1 ? _fhParts[1] : _fhParts[0];
 			_fhParts = _fhRest.split("{{footerbreak}}");
 			htmlFooter = _fhParts.length > 1 ? _fhParts[1] : "";
+		}
+		var outerGroupLevelCols = self.ReportType() == 'Html' ? _.sortBy(self.OuterGroupColumns(), 'fieldIndex') : [];
+		var lastOuterGroupValues = null;
+		if (outerGroupLevelCols.length > 0) {
+			var groupedRows = [];
+			var groupRowsByLevel = function (list, depth) {
+				if (depth >= outerGroupLevelCols.length) { _.forEach(list, function (r) { groupedRows.push(r); }); return; }
+				var idxCol = outerGroupLevelCols[depth].fieldIndex, buckets = [], byValue = {};
+				_.forEach(list, function (r) {
+					var key = '$' + (r.Items[idxCol] ? r.Items[idxCol].FormattedValue : '');
+					if (!byValue[key]) { byValue[key] = []; buckets.push(byValue[key]); }
+					byValue[key].push(r);
+				});
+				_.forEach(buckets, function (b) { groupRowsByLevel(b, depth + 1); });
+			};
+			groupRowsByLevel(result.ReportData.Rows, 0);
+			result.ReportData.Rows = groupedRows;
 		}
 		_.forEach(result.ReportData.Rows, function (e, idx) {
 			e.DrillDownData = ko.observable(null);
@@ -8507,6 +9225,7 @@ var reportViewModel = function (options) {
 				return e.subReportsRan().filter(function (sr) { return !sr._isInline; });
 			});
 			var outerGroupIndicesToSuppress = null;
+			var outerGroupLevel = null;
 			if (self.ReportType() == 'Html' && self.OuterGroupColumns().length > 0) {
 				var outerGroupCols = self.OuterGroupColumns();
 				var groupKey = outerGroupCols.map(function(gc) {
@@ -8516,15 +9235,24 @@ var reportViewModel = function (options) {
 					outerGroupIndicesToSuppress = new Set(outerGroupCols.map(function(gc) { return gc.fieldIndex; }));
 				}
 				lastOuterGroupKey = groupKey;
+				var levelValues = outerGroupLevelCols.map(function (gc) { return e.Items[gc.fieldIndex] ? e.Items[gc.fieldIndex].FormattedValue : ''; });
+				outerGroupLevel = 0;
+				if (lastOuterGroupValues) {
+					outerGroupLevel = levelValues.length;
+					for (var lv = 0; lv < levelValues.length; lv++) {
+						if (levelValues[lv] !== lastOuterGroupValues[lv]) { outerGroupLevel = lv; break; }
+					}
+				}
+				lastOuterGroupValues = levelValues;
 			}
 			e.Items.__isFirstRow = idx === 0;
 			e.Items.__isLastRow = idx === result.ReportData.Rows.length - 1;
-			e.renderedHtml = processRow(e.Items, result.ReportData.Columns, subReportsRanUnsorted, outerGroupIndicesToSuppress);
+			e.renderedHtml = processRow(e.Items, result.ReportData.Columns, subReportsRanUnsorted, outerGroupIndicesToSuppress, outerGroupLevel);
 		});
 
 		if (result.ReportData.Rows.length > 0 && self.ReportType() == 'Html') {
 			let first = result.ReportData.Rows[0];
-			if (first.renderedHtml && first.renderedHtml.indexOf("html-report-table-standard") >= 0) {
+			if (first.renderedHtml && first.renderedHtml.indexOf("html-report-table-standard") >= 0 && self.OuterGroupColumns().length === 0) {
 				let match = first.renderedHtml.match(/(<table[\s\S]*?<thead[\s\S]*?<\/thead>\s*<tbody>)([\s\S]*?)(<\/tbody>\s*<\/table>)/i);
 				if (match) {
 					const tableHeader = match[1];
@@ -8807,14 +9535,17 @@ var reportViewModel = function (options) {
 						let leftBorder = '';
 						if (isFirstTotal) leftBorder = 'border-left:2px solid;';
 
+						const ownAlign = item.fieldAlign() && item.fieldAlign() !== 'Auto' ? item.fieldAlign() : '';
+						const rowBorderCss = self.rowBorderCss();
 						let tdStyle = `
 							style="
-								background-color:${item._backColor ?? item.backColor()};
-								color:${item._fontColor ?? item.fontColor()};
+								background-color:${item._backColor ?? (self.cellBack(item, rowIndex) || '')};
+								color:${item._fontColor ?? (self.cellFont(item, rowIndex) || '')};
 								font-weight:${isTotalCell ? 'bold' : (item.fontBold() || item._fontBold) ? 'bold' : 'normal'};
-								text-align:${item.fieldAlign() ? item.fieldAlign() : (item.Column.IsNumeric ? 'right' : 'left')};
+								text-align:${ownAlign || self.rowAlign() || (item.Column.IsNumeric ? 'right' : 'left')};
 								width:${ko.unwrap(item.fieldWidth())};
 								text-wrap:${ko.unwrap(item.fieldWidth()) ? 'wrap' : 'nowrap'};
+								${rowBorderCss ? 'border:' + rowBorderCss + ';' : ''}
 								${leftBorder}
 							"
 						`;
@@ -8841,8 +9572,24 @@ var reportViewModel = function (options) {
 
 		reportResult.ReportData(result.ReportData);
 
+		if (self._renderTableWatcher) {
+			self._renderTableWatcher.dispose();
+			self._renderTableWatcher = null;
+		}
 		if (self.useRenderTable()) {
 			renderTable(result.ReportData.Rows, result.ReportData.Columns.length);
+			self._renderTableWatcher = ko.computed(function () {
+				_.forEach(result.ReportData.Columns, function (c) {
+					ko.unwrap(c.fieldAlign); ko.unwrap(c.backColor); ko.unwrap(c.fontColor); ko.unwrap(c.fontBold); ko.unwrap(c.fieldWidth);
+				});
+				self.rowAlign(); self.rowBorder(); self.rowBorderColor(); self.altRowBackColor(); self.altRowFontColor(); self.rowBackColor(); self.rowFontColor(); self.tableSettings();
+				return {};
+			}).extend({ rateLimit: 50 });
+			self._renderTableWatcher.subscribe(function () {
+				if (self.useRenderTable() && self.ReportResult().ReportData() === result.ReportData) {
+					renderTable(result.ReportData.Rows, result.ReportData.Columns.length);
+				}
+			});
 		}
 
 		self.pager.totalRecords(result.Pager.TotalRecords);
@@ -9027,10 +9774,13 @@ var reportViewModel = function (options) {
 		return _.map(_.orderBy(self.expandSqls(), 'index'), function (x) { return x.sql; });
 	});
 
-	self.getColumnDetails = ko.computed(function () {
+	self.getColumnDetails = ko.pureComputed(function () {
 		var cleaned = ko.toJS(self.columnDetails());
 
 		cleaned.forEach(col => {
+			if (col.currencyFormat !== undefined) col.currencySymbol = col.currencyFormat || null;
+			if (col.decimalPlaces !== undefined) col.decimalPlacesDigit = col.decimalPlaces;
+			if (col.fieldFormat !== undefined) col.fieldFormating = col.fieldFormat || null;
 			if (col.fieldCondtionalFormats) {
 				col.fieldCondtionalFormats.forEach(fmt => {
 					if (fmt.filter && fmt.filter.Filters) {
@@ -9439,6 +10189,7 @@ var reportViewModel = function (options) {
 		showXAxisLabel: true,
 		showYAxisLabel: true,
 		showSmallValuesOnLabel: false,
+		fillEmptyDates: false,
 		annotations : {
 			alwaysOutside: true,
 			textStyle: {
@@ -9488,6 +10239,15 @@ var reportViewModel = function (options) {
 		self.tableSettings().borderColor = null;
 		self.tableSettings().backColor = null;
 		self.ReportResult()?.ReportData()?.BackColor(null);
+		self.tableSettings().headerAlign = null;
+		self.tableSettings().headerBorder = null;
+		self.tableSettings().headerBorderColor = null;
+		self.tableSettings().headerBold = null;
+		self.tableSettings().rowAlign = null;
+		self.tableSettings().rowBorder = null;
+		self.tableSettings().rowBorderColor = null;
+		self.loadHeaderStyle();
+		self.markFormatDirty();
 		let inputs = document.querySelectorAll('#tbl-color-picker-' + self.ReportID());
 		inputs.forEach(function (inp) {
 			inp.value = null;   
@@ -9502,6 +10262,8 @@ var reportViewModel = function (options) {
 		if (window.copiedTableFormat) {
 			self.tableSettings(window.copiedTableFormat);
 			self.updateTable(true);
+			self.loadHeaderStyle();
+			self.markFormatDirty();
 			toastr.success("Table format pasted!");
 		} else {
 			toastr.error("No table format copied yet.");
@@ -9515,39 +10277,15 @@ var reportViewModel = function (options) {
 	};
 	self.updateTable = function (clear) {
 		let setting = self.tableSettings();
+		if (arguments[1] && arguments[1].type) self.markFormatDirty();
 
 		_.forEach(self.SelectedFields(), function (f) {
-			if (setting.headerBackColor || clear === true) f.headerBackColor(setting.headerBackColor);
-			if (setting.headerFontColor || clear === true) f.headerFontColor(setting.headerFontColor);
-			if (setting.rowBackColor || clear === true) f.backColor(setting.rowBackColor);
-			if (setting.rowFontColor || clear === true) f.fontColor(setting.rowFontColor);
+			if (clear === true) f.headerBackColor(null);
+			if (clear === true) f.headerFontColor(null);
+			if (clear === true) f.backColor(null);
+			if (clear === true) f.fontColor(null);
 		});
 
-		let tableId = self.ReportID();
-
-		let header = document.getElementById('report-table-head' + tableId);
-		let body = document.getElementById('report-table-body' + tableId);
-
-		if (!header && !body) return;
-
-		let headerBack = setting.headerBackColor || "";
-		let headerFont = setting.headerFontColor || "";
-		let rowBack = setting.rowBackColor || "";
-		let rowFont = setting.rowFontColor || "";
-
-		if (header) {
-			header.querySelectorAll("th").forEach(th => {
-				if (clear === true || headerBack) th.style.backgroundColor = headerBack;
-				if (clear === true || headerFont) th.style.color = headerFont;
-			});
-		}
-
-		if (body) {
-			body.querySelectorAll("td").forEach(td => {
-				if (clear === true || rowBack) td.style.backgroundColor = rowBack;
-				if (clear === true || rowFont) td.style.color = rowFont;
-			});
-		}
 		if (setting.backColor) {
 			var result = self.ReportResult().ReportData();
 			result.BackColor(setting.backColor);
@@ -9572,6 +10310,107 @@ var reportViewModel = function (options) {
 		var colors = self.chartOptions().seriesColors.filter(c => c !== color);
 		self.chartOptions(Object.assign({}, self.chartOptions(), { seriesColors: colors }));
 		self.updateChart();
+	};
+
+	self.dateLocaleFor = function (name) {
+		switch (name) {
+			case 'United Kingdom': return 'en-GB';
+			case 'New Zealand': return 'en-NZ';
+			case 'France': return 'fr-FR';
+			case 'German': return 'de-DE';
+			case 'Spanish': return 'es-ES';
+			case 'Chinese': return 'zh-CN';
+			default: return 'en-US';
+		}
+	};
+
+	// Format a date the way a result cell of this column is formatted (same rules as processReportResult)
+	self.formatDateLikeColumn = function (date, col) {
+		var ff = col.fieldFormat ? col.fieldFormat() : null;
+		var explicitDateFormat = self.dateFormatTypes.indexOf(ff) >= 0;
+		var globalDefaultName = (self.appSettings && self.appSettings.defaultDateFormat) || 'United States';
+		if (explicitDateFormat && col.dateFormat() === 'Custom' && col.customDateFormat()) return self.formatDate(date, col.customDateFormat());
+		var loc = self.dateLocaleFor(explicitDateFormat ? (col.dateFormat() || globalDefaultName) : globalDefaultName);
+		var fmt = explicitDateFormat ? ff : (col.fieldType === 'Time' ? 'Time' : 'Date');
+		if (fmt === 'Time') return date.toLocaleTimeString(loc, { hour: 'numeric', minute: 'numeric', second: 'numeric' });
+		if (fmt === 'Date and Time') return date.toLocaleDateString(loc, { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
+		return date.toLocaleDateString(loc, { year: 'numeric', month: 'numeric', day: 'numeric' });
+	};
+
+	self.fillChartDateGaps = function (data, reportData) {
+		var col = reportData.Columns[0];
+		if (!col || data.rows.length < 2) return null;
+		var agg = (self.SelectedFields()[0] && self.SelectedFields()[0].selectedAggregate()) || '';
+		var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+		var rawByLabel = {};
+		_.forEach(reportData.Rows, function (row, i) { rawByLabel[row.Items[0].FormattedValue || ''] = { value: row.Items[0].Value, index: i }; });
+		function raw(label) { return rawByLabel[label] ? rawByLabel[label].value : label; }
+
+		var mode;
+		if (agg === 'Group by Year') {
+			mode = { key: function (v) { var y = parseInt(v, 10); return isNaN(y) ? null : y; }, next: function (k) { return k + 1; }, label: function (k) { return String(k); } };
+		} else if (agg === 'Group by Month') {
+			mode = {
+				key: function (v) { var i = _.findIndex(months, function (m) { return m.toLowerCase() === String(v).trim().toLowerCase(); }); return i < 0 ? null : i; },
+				next: function (k) { return k + 1; }, label: function (k) { return months[k]; }
+			};
+		} else if (agg === 'Group by Month/Year') {
+			var numeric = /^\d{1,2}\/\d{4}$/.test(String(raw(data.rows[0][0])).trim());   // 08/2026 (MySQL, Postgres) or Aug 2026 (SQL Server)
+			mode = {
+				key: function (v) {
+					var t = String(v).trim(), m = t.match(/^(\d{1,2})\/(\d{4})$/) || t.match(/^([A-Za-z]{3})[a-z]* (\d{4})$/);
+					if (!m) return null;
+					var month = /^\d/.test(m[1]) ? parseInt(m[1], 10) - 1 : _.findIndex(months, function (x) { return x.substr(0, 3).toLowerCase() === m[1].toLowerCase(); });
+					return month < 0 ? null : parseInt(m[2], 10) * 12 + month;
+				},
+				next: function (k) { return k + 1; },
+				label: function (k) { var y = Math.floor(k / 12), m = k % 12; return numeric ? ((m < 9 ? '0' : '') + (m + 1) + '/' + y) : months[m].substr(0, 3) + ' ' + y; }
+			};
+		} else {
+			// plain dates and Group by Day: detect the spacing from the values
+			var dates = _.map(data.rows, function (r) { return self.safeParseDate(raw(r[0])); });
+			if (col.IsNumeric || _.some(dates, function (d) { return !d; })) return null;
+			if (_.some(dates, function (d) { return d.getMinutes() || d.getSeconds(); })) return null;   // minute-level data, leave it
+			var sorted = _.sortBy(dates, function (d) { return d.getTime(); });
+			var unit = 'day';
+			if (_.some(dates, function (d) { return d.getHours(); })) unit = 'hour';
+			else if (_.every(dates, function (d) { return d.getDate() === 1; })) unit = _.every(dates, function (d) { return d.getMonth() === 0; }) ? 'year' : 'month';
+			else if (_.every(sorted, function (d, i) { return i === 0 || Math.round((d - sorted[i - 1]) / 86400000) % 7 === 0; })) unit = 'week';
+			mode = {
+				key: function (v) { var d = self.safeParseDate(v); return d ? d.getTime() : null; },
+				next: function (k) {
+					var n = new Date(k);
+					if (unit === 'hour') n.setHours(n.getHours() + 1);
+					else if (unit === 'day') n.setDate(n.getDate() + 1);
+					else if (unit === 'week') n.setDate(n.getDate() + 7);
+					else if (unit === 'month') n.setMonth(n.getMonth() + 1);
+					else n.setFullYear(n.getFullYear() + 1);
+					return n.getTime();
+				},
+				label: function (k) {
+					var text = self.formatDateLikeColumn(new Date(k), col);
+					return unit === 'hour' && text.indexOf(':') < 0 ? new Date(k).toLocaleString() : text;
+				}
+			};
+		}
+
+		var byKey = {}, keys = [];
+		for (var i = 0; i < data.rows.length; i++) {
+			var k = mode.key(raw(data.rows[i][0]));
+			if (k === null) return null;                        // not a date axis after all
+			byKey[k] = { row: data.rows[i], index: rawByLabel[data.rows[i][0]] ? rawByLabel[data.rows[i][0]].index : i };
+			keys.push(k);
+		}
+		var template = data.rows[0];
+		var rows = [], map = [];
+		for (var key = _.min(keys), last = _.max(keys); key <= last; key = mode.next(key)) {
+			if (rows.length > 2000) return null;                // too many points to be useful
+			if (byKey[key]) { rows.push(byKey[key].row); map.push(byKey[key].index); continue; }
+			rows.push(_.map(template, function (v, j) { return j === 0 ? mode.label(key) : (typeof v === 'number' ? 0 : ''); }));
+			map.push(-1);
+		}
+		data.rows = rows;
+		return map;
 	};
 
 	self.updateChart = function () {
@@ -9945,6 +10784,10 @@ var reportViewModel = function (options) {
 		});
 
 		data.rows = rowArray;
+		var chartRowMap = null;
+		if (self.chartOptions().fillEmptyDates && ['Line', 'Bar', 'Combo'].indexOf(self.ReportType()) >= 0 && !isLatLongMap) {
+			chartRowMap = self.fillChartDateGaps(data, reportData);
+		}
 
 		// Set chart options
 		var chartOptions = self.chartOptions();
@@ -10623,9 +11466,10 @@ var reportViewModel = function (options) {
 		if (self.ReportType() != 'Treemap' && self.ReportType() != 'Radar' && self.ReportType() != 'Polar') {
 			chart.off('click');
 			chart.on('click', function (params) {
-				if (params && params.dataIndex != null) {
+				var rowIndex = params && params.dataIndex != null ? (chartRowMap ? chartRowMap[params.dataIndex] : params.dataIndex) : -1;
+				if (rowIndex >= 0) {
 					self.ChartDrillDownData(null);
-					self.ReportResult().ReportData().Rows[params.dataIndex].expand();
+					self.ReportResult().ReportData().Rows[rowIndex].expand();
 					$("#drilldownModal").modal('show');
 				}
 			});
@@ -10817,6 +11661,7 @@ var reportViewModel = function (options) {
 		e.headerBackColor = ko.observable(e.headerBackColor);
 		e.fontBold = ko.observable(e.fontBold);
 		e.headerFontBold = ko.observable(e.headerFontBold);
+		e.headerAlign = ko.observable(e.fieldSettings.headerAlign || '');
 		e.fieldWidth = ko.observable(e.fieldWidth);
 		e.fieldConditionOp = ko.observable(e.fieldConditionOp);
 		e.fieldConditionVal = e.fieldConditionVal && Array.isArray(e.fieldConditionVal) ? e.fieldConditionVal : JSON.parse(e.fieldConditionVal || '[]');
@@ -10826,6 +11671,34 @@ var reportViewModel = function (options) {
 		e.uiId = generateUniqueId();
 		e._outerGroup = e.fieldSettings.outerGroup
 		e.outerGroup = ko.observable(e.fieldSettings.outerGroup == true);
+		e.outerGroupShowLabel = ko.observable(e.fieldSettings.outerGroupShowLabel !== false);
+		e.groupSlicer = ko.observable(e.fieldSettings.groupSlicer === true);
+		e.groupSlicerOptions = ko.observableArray(e.fieldSettings.groupSlicerOptions && e.fieldSettings.groupSlicerOptions.length
+			? e.fieldSettings.groupSlicerOptions.slice(0, drSlicerMax) : drGroupSlicerDefaults.slice());
+		e.groupSlicerChoices = ko.pureComputed(function () {
+			var available = e.fieldAggregateWithDrilldown || e.fieldAggregate || [];
+			return _.filter(drGroupSlicerChoices, function (x) { return available.indexOf(x) >= 0; });
+		});
+		e.visibleGroupSlicerOptions = ko.pureComputed(function () {
+			var choices = e.groupSlicerChoices();
+			return _.filter(e.groupSlicerOptions(), function (x) { return choices.indexOf(x) >= 0; });
+		});
+		e.toggleGroupSlicerOption = function (option) {
+			if (e.groupSlicerOptions.indexOf(option) >= 0) {
+				e.groupSlicerOptions.remove(option);
+			} else {
+				var kept = e.groupSlicerOptions().length >= drSlicerMax ? e.groupSlicerOptions().slice(1) : e.groupSlicerOptions();
+				e.groupSlicerOptions(_.sortBy(kept.concat([option]), function (x) { return drGroupSlicerChoices.indexOf(x); }));
+			}
+		};
+		e.applyGroupSlicer = function (option) {
+			if (!e.selectedAggregate || e.selectedAggregate() === option) return;
+			var wasDirty = self.isDirty();
+			e.selectedAggregate(option);
+			self.runWithoutSaving(wasDirty);
+		};
+		e.groupSlicer.subscribe(function () { self.markFormatDirty(); });
+		e.groupSlicerOptions.subscribe(function () { self.markFormatDirty(); });
 		e.totalRowAggregate = ko.observable(e.fieldSettings.totalRowAggregate || 'Sum');
 		var _numericFormats = ['Int', 'Decimal', 'Currency', 'Double', 'Integer', 'Number', 'Days', 'Hours', 'Minutes', 'Seconds'];
 		e.totalRowAggregateOptions = ko.computed(function () {
@@ -10845,6 +11718,7 @@ var reportViewModel = function (options) {
 		e.applyAllBackColor = ko.observable(false);
 		e.applyAllBold = ko.observable(false);
 		e.applyAllHeaderBold = ko.observable(false);
+		e.applyAllHeaderAlign = ko.observable(false);
 		e.applyAllDontSubTotal = ko.observable(false);
 		e.applyAllTotalRowAggregate = ko.observable(false);
 		e.addConditionalFormatSetting = function (f) {
@@ -10939,6 +11813,10 @@ var reportViewModel = function (options) {
 				headerBackColor: e.headerBackColor(),
 				fontBold: e.fontBold(),
 				headerFontBold: e.headerFontBold(),
+				headerAlign: e.headerAlign(),
+				outerGroupShowLabel: e.outerGroupShowLabel(),
+				groupSlicer: e.groupSlicer(),
+				groupSlicerOptions: e.groupSlicerOptions().slice(),
 				fieldWidth: e.fieldWidth(),
 				fieldConditionOp: e.fieldConditionOp(),
 				fieldConditionVal: e.fieldConditionVal,
@@ -10971,6 +11849,7 @@ var reportViewModel = function (options) {
 				if (e.applyAllBackColor()) f.backColor(e.backColor());
 				if (e.applyAllBold()) f.fontBold(e.fontBold());
 				if (e.applyAllHeaderBold()) f.headerFontBold(e.headerFontBold());
+				if (e.applyAllHeaderAlign() && f.headerAlign) f.headerAlign(e.headerAlign());
 				if (e.applyAllDontSubTotal()) f.dontSubTotal(e.dontSubTotal());
 				if (e.applyAllTotalRowAggregate()) f.totalRowAggregate(e.totalRowAggregate());
 			});
@@ -11010,11 +11889,21 @@ var reportViewModel = function (options) {
 			e.headerBackColor(self.currentFieldOptions.headerBackColor);
 			e.fontBold(self.currentFieldOptions.fontBold);
 			e.headerFontBold(self.currentFieldOptions.headerFontBold);
+			e.headerAlign(self.currentFieldOptions.headerAlign || '');
+			e.outerGroupShowLabel(self.currentFieldOptions.outerGroupShowLabel !== false);
+			e.groupSlicer(self.currentFieldOptions.groupSlicer === true);
+			e.groupSlicerOptions(self.currentFieldOptions.groupSlicerOptions || drGroupSlicerDefaults.slice());
 			e.fieldWidth(self.currentFieldOptions.fieldWidth);
 			e.fieldConditionOp(self.currentFieldOptions.fieldConditionOp);
 			e.fieldConditionVal = self.currentFieldOptions.fieldConditionVal;
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('hide');
 		}
+
+		_.forEach(['fieldAlign', 'fieldFormat', 'fieldLabel', 'fieldLabel2', 'decimalPlaces', 'currencyFormat', 'dateFormat', 'customDateFormat',
+			'fontColor', 'backColor', 'headerFontColor', 'headerBackColor', 'fontBold', 'headerFontBold', 'headerAlign', 'fieldWidth',
+			'outerGroup', 'outerGroupShowLabel', 'dontSubTotal', 'totalRowAggregate'], function (key) {
+			if (ko.isObservable(e[key])) e[key].subscribe(function () { self.markFormatDirty(); });
+		});
 
 		return e;
 	};
@@ -11093,6 +11982,8 @@ var reportViewModel = function (options) {
 		self.bypassSpecificIds(bdf && bdf !== "/all/" ? bdf.split(",").filter(Boolean) : []);
 		self.DontExecuteOnRun(reportSettings.DontExecuteOnRun === true ? true : false);
 		self.ShowFilterDetails(reportSettings.ShowFilterDetails === true ? true : false);
+		self.HideReportName(reportSettings.HideReportName === true);
+		self._dateSlicerConfig = reportSettings.dateSlicers || [];
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
 		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
 		self.pieChartDonut(reportSettings.pieChartDonut === true ? true : false);
@@ -11107,6 +11998,7 @@ var reportViewModel = function (options) {
 		};
 		if (reportSettings.chartOptions) self.chartOptions(reportSettings.chartOptions);
 		if (reportSettings.tableSettings) self.tableSettings(reportSettings.tableSettings);
+		self.loadHeaderStyle();
 		if (reportSettings.kpiSettings && Object.keys(reportSettings.kpiSettings).length > 0) {
 			var kpisetting = reportSettings.kpiSettings;
 			self.kpiSettings().fontSize(kpisetting.fontSize);
@@ -11122,6 +12014,10 @@ var reportViewModel = function (options) {
 		self.IncludeColumnTotal(reportSettings.includeColumnTotal);
 		self.totalRowFormat(reportSettings.totalRowFormat || 'row');
 		self.subTotalPerGroup(reportSettings.subTotalPerGroup === true);
+		self.outerGroupLayout(reportSettings.outerGroupLayout || 'separate');
+		self.outerGroupPageBreak(reportSettings.outerGroupPageBreak === true);
+		self.outerGroupBandStyles(_.map(reportSettings.outerGroupBandStyles && reportSettings.outerGroupBandStyles.length ? reportSettings.outerGroupBandStyles : self.defaultBandStyles(), self.makeBandStyle));
+		self.setGroupHeadingStyle(reportSettings.outerGroupHeadingStyle);
 		self.noHeaderRow(reportSettings.noHeaderRow);
 		self.noDashboardBorders(reportSettings.noDashboardBorders);
 		self.showPriorInKpi(reportSettings.showPriorInKpi);
@@ -11800,6 +12696,9 @@ var reportViewModel = function (options) {
 		}
 
 		var curInputs = containerSelector.find(selector);
+		if (validateCustomOnly !== true) {
+			curInputs = curInputs.add(containerSelector.find('.dr-filter-editor').find('input, select'));
+		}
 
 		if (!self.isModalOpen() && !self.activeDesign()) {
 			curInputs = $("#filter-panel-" + self.ReportID()).find("input, select");
@@ -11812,6 +12711,16 @@ var reportViewModel = function (options) {
 				isValid = false;
 				$(".needs-validation").addClass("was-validated");
 				$(curInputs[i]).addClass("is-invalid");
+				var filterRow = $(curInputs[i]).closest('.dr-filter-row');
+				if (filterRow.length) {
+					var filterData = ko.dataFor(filterRow[0]);
+					if (filterData && filterData.editing) filterData.editing(true);
+				}
+				var flyRow = $(curInputs[i]).closest('.dr-fly-row');
+				if (flyRow.length) {
+					var flyData = ko.dataFor(flyRow[0]);
+					if (flyData && flyData.flyEditing) flyData.flyEditing(true);
+				}
 				if (!firstInvalid) firstInvalid = curInputs[i];
 			}
 		}
@@ -12310,6 +13219,11 @@ var reportViewModel = function (options) {
 			includeColumnTotal: self.IncludeColumnTotal(),
 			subTotalPerGroup: self.subTotalPerGroup(),
 			totalRowFormat: self.totalRowFormat(),
+			outerGroupLayout: self.outerGroupLayout(),
+			outerGroupPageBreak: self.outerGroupPageBreak(),
+			outerGroupBandStyles: JSON.stringify(ko.toJS(self.outerGroupBandStyles())),
+			headerStyle: self.getTableStyleJson(),
+			hideReportName: self.HideReportName(),
 			pivot: self.ReportType() == 'Pivot',
 			pivotColumn: pivotData.pivotColumn,
 			pivotFunction: pivotData.pivotFunction,
@@ -12377,6 +13291,11 @@ var reportViewModel = function (options) {
 
 	self.downloadWord = function (pageSize, pageOrientation) {
 		var data = self.getExportJson(pageSize, pageOrientation);
+		data.headerStyle = self.getTableStyleJson();
+		data.hideReportName = self.HideReportName();
+		data.outerGroupLayout = self.outerGroupLayout();
+		data.outerGroupPageBreak = self.outerGroupPageBreak();
+		data.outerGroupBandStyles = JSON.stringify(ko.toJS(self.outerGroupBandStyles()));
 		if (self.ReportType() == 'Html') {
 			data.customHtml = encodeURIComponent(self.getRenderedHtmlOutput() || '');
 		}
@@ -13784,6 +14703,8 @@ var dashboardViewModel = function (options) {
 									Valuetime: ko.observable(f.Valuetime()),
 									Valuetime2: ko.observable(f.Valuetime2()),
 								};
+								drFlyPill(filter, self);
+								drClearValueOnOperatorChange(filter);
 								self.FlyFilters.push(filter);
 
 								if (f.Field().hasForeignKey) {
