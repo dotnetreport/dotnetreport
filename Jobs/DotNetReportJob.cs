@@ -423,7 +423,7 @@ namespace ReportBuilder.Web.Jobs
                                                 var rHdr = await ResolveScheduledReportHeader(client, apiUrl, accountApiKey, databaseApiKey, clientId, schedule.UserId, r);
                                                 fileData = await DotNetReportHelper.GetWordFile(r.ReportSql, r.ConnectKey, r.ReportName, columns: r.Columns, includeSubtotal: r.IncludeSubTotals, pivot: r.ReportType == "Pivot", chartData: imageData, expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation,
                                                     headerHtml: rHdr.html, footerHtml: r.HideReportFooter ? null : hfFooterHtml, headerEveryPage: rHdr.everyPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
-                                                    customHtml: customHtmlR);
+                                                    customHtml: customHtmlR, headerStyle: ExcelSettings(r.ReportSettings).header, hideReportName: ExcelSettings(r.ReportSettings).hideName, outerGroupLayout: ExcelSettings(r.ReportSettings).layout, outerGroupPageBreak: ExcelSettings(r.ReportSettings).pageBreak, bandStyles: ExcelSettings(r.ReportSettings).bands);
                                                 files.Add(fileData);
                                             }
 
@@ -453,13 +453,16 @@ namespace ReportBuilder.Web.Jobs
                                             var singleHdr = await ResolveScheduledReportHeader(client, apiUrl, accountApiKey, databaseApiKey, clientId, schedule.UserId, reportToRun);
                                             fileData = await DotNetReportHelper.GetWordFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData, expandSqls: reportToRun.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction, pageSize: schedule.SelectedPageSize, pageOrientation: schedule.SelectedPageOrientation,
                                                 headerHtml: singleHdr.html, footerHtml: reportToRun.HideReportFooter ? null : hfFooterHtml, headerEveryPage: singleHdr.everyPage, footerEveryPage: hfFooterEveryPage, currentUserName: schedule.UserId, currentUserRoles: null,
-                                                customHtml: customHtml);
+                                                customHtml: customHtml, headerStyle: ExcelSettings(reportToRun.ReportSettings).header, hideReportName: ExcelSettings(reportToRun.ReportSettings).hideName, outerGroupLayout: ExcelSettings(reportToRun.ReportSettings).layout, outerGroupPageBreak: ExcelSettings(reportToRun.ReportSettings).pageBreak, bandStyles: ExcelSettings(reportToRun.ReportSettings).bands);
                                         }
                                         break;
 
                                     case "EXCEL-SUB":
                                         pivotInfo = PreparePivotData(reportToRun.Columns);
-                                        fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, allExpanded: true, expandSqls: reportToRun.ReportData, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
+                                        fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, allExpanded: true, expandSqls: reportToRun.ReportData, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction,
+                                                subTotalPerGroup: ExcelSettings(reportToRun.ReportSettings).subTotalPerGroup, totalRowFormat: ExcelSettings(reportToRun.ReportSettings).totalRowFormat,
+                                                outerGroupLayout: ExcelSettings(reportToRun.ReportSettings).layout, outerGroupPageBreak: ExcelSettings(reportToRun.ReportSettings).pageBreak,
+                                                bandStyles: ExcelSettings(reportToRun.ReportSettings).bands, headerStyle: ExcelSettings(reportToRun.ReportSettings).header, hideReportName: ExcelSettings(reportToRun.ReportSettings).hideName);
                                         fileExt = ".xlsx";
                                         break;
                                     
@@ -478,7 +481,10 @@ namespace ReportBuilder.Web.Jobs
                                                     }
                                                     catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                                 }
-                                                fileData = await DotNetReportHelper.GetExcelFile(r.ReportSql, r.ConnectKey, r.ReportName, columns: r.Columns, expandSqls: r.ReportData, includeSubtotal: r.IncludeSubTotals, pivot: r.ReportType == "Pivot", chartData: imageData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
+                                                fileData = await DotNetReportHelper.GetExcelFile(r.ReportSql, r.ConnectKey, r.ReportName, columns: r.Columns, expandSqls: r.ReportData, includeSubtotal: r.IncludeSubTotals, pivot: r.ReportType == "Pivot", chartData: imageData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction,
+                                                subTotalPerGroup: ExcelSettings(r.ReportSettings).subTotalPerGroup, totalRowFormat: ExcelSettings(r.ReportSettings).totalRowFormat,
+                                                outerGroupLayout: ExcelSettings(r.ReportSettings).layout, outerGroupPageBreak: ExcelSettings(r.ReportSettings).pageBreak,
+                                                bandStyles: ExcelSettings(r.ReportSettings).bands, headerStyle: ExcelSettings(r.ReportSettings).header, hideReportName: ExcelSettings(r.ReportSettings).hideName);
                                                 files.Add(fileData);
                                             }
 
@@ -496,7 +502,10 @@ namespace ReportBuilder.Web.Jobs
                                                 }
                                                 catch (Exception __ex) { imageData = ""; DiagLog("chart image (imageOnly)", __ex); }
                                             }
-                                            fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, expandSqls: reportToRun.ReportData, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction);
+                                            fileData = await DotNetReportHelper.GetExcelFile(reportToRun.ReportSql, reportToRun.ConnectKey, reportToRun.ReportName, columns: reportToRun.Columns, expandSqls: reportToRun.ReportData, includeSubtotal: reportToRun.IncludeSubTotals, pivot: reportToRun.ReportType == "Pivot", chartData: imageData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction,
+                                                subTotalPerGroup: ExcelSettings(reportToRun.ReportSettings).subTotalPerGroup, totalRowFormat: ExcelSettings(reportToRun.ReportSettings).totalRowFormat,
+                                                outerGroupLayout: ExcelSettings(reportToRun.ReportSettings).layout, outerGroupPageBreak: ExcelSettings(reportToRun.ReportSettings).pageBreak,
+                                                bandStyles: ExcelSettings(reportToRun.ReportSettings).bands, headerStyle: ExcelSettings(reportToRun.ReportSettings).header, hideReportName: ExcelSettings(reportToRun.ReportSettings).hideName);
                                             fileExt = ".xlsx";
                                         }
                                         break;
@@ -658,6 +667,52 @@ namespace ReportBuilder.Web.Jobs
         // "don't use" (HideReportHeader / ReportHeaderId == -1) -> none; a custom per-report header ->
         // used verbatim; otherwise the chosen named header id is resolved server-side (chosen ->
         // client default -> global default) via GetReportHeader.
+        private static (string layout, bool pageBreak, List<NestedBandStyle> bands, NestedBandStyle header, bool hideName, bool subTotalPerGroup, string totalRowFormat) ExcelSettings(string reportSettings)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(reportSettings)) return (null, false, null, null, false, false, "row");
+                var rs = Newtonsoft.Json.Linq.JObject.Parse(reportSettings);
+                string Str(Newtonsoft.Json.Linq.JToken t, string key) => t?[key]?.Type == Newtonsoft.Json.Linq.JTokenType.Null ? null : t?[key]?.ToString();
+                var ts = rs["tableSettings"];
+                NestedBandStyle header = null;
+                if (ts != null && ts.Type == Newtonsoft.Json.Linq.JTokenType.Object)
+                {
+                    header = new NestedBandStyle
+                    {
+                        backColor = Str(ts, "headerBackColor"),
+                        fontColor = Str(ts, "headerFontColor"),
+                        align = Str(ts, "headerAlign"),
+                        border = Str(ts, "headerBorder") ?? "none",
+                        borderColor = Str(ts, "headerBorderColor"),
+                        bold = ts["headerBold"]?.Type == Newtonsoft.Json.Linq.JTokenType.Boolean && ts["headerBold"].ToObject<bool>(),
+                        rowAlign = Str(ts, "rowAlign"),
+                        rowBorder = Str(ts, "rowBorder"),
+                        rowBorderColor = Str(ts, "rowBorderColor"),
+                        altRowBackColor = Str(ts, "altRowBackColor"),
+                        altRowFontColor = Str(ts, "altRowFontColor"),
+                        rowBackColor = Str(ts, "rowBackColor"),
+                        rowFontColor = Str(ts, "rowFontColor")
+                    };
+                }
+                List<NestedBandStyle> bands = null;
+                if (rs["outerGroupBandStyles"] is Newtonsoft.Json.Linq.JArray bandArray && bandArray.Count > 0)
+                    bands = bandArray.ToObject<List<NestedBandStyle>>();
+                return (
+                    Str(rs, "outerGroupLayout"),
+                    rs["outerGroupPageBreak"]?.Type == Newtonsoft.Json.Linq.JTokenType.Boolean && rs["outerGroupPageBreak"].ToObject<bool>(),
+                    bands,
+                    header,
+                    rs["HideReportName"]?.Type == Newtonsoft.Json.Linq.JTokenType.Boolean && rs["HideReportName"].ToObject<bool>(),
+                    rs["subTotalPerGroup"]?.Type == Newtonsoft.Json.Linq.JTokenType.Boolean && rs["subTotalPerGroup"].ToObject<bool>(),
+                    Str(rs, "totalRowFormat") ?? "row");
+            }
+            catch
+            {
+                return (null, false, null, null, false, false, "row");
+            }
+        }
+
         private async Task<(string html, bool everyPage)> ResolveScheduledReportHeader(HttpClient client, string apiUrl, string accountApiKey, string databaseApiKey, string clientId, string userId, DotNetReportScheduleModel r)
         {
             try

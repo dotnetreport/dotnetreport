@@ -353,11 +353,21 @@ var manageViewModel = function (options) {
 	self.reorderableJoins = ko.observableArray([]);
 
 	self.trackJoinChanges = function (join) {
-		join.JoinTable.subscribe(() => self.isDirty(true));
-		join.OtherTable.subscribe(() => self.isDirty(true));
-		join.FieldName.subscribe(() => self.isDirty(true));
-		join.JoinFieldName.subscribe(() => self.isDirty(true));
-		join.JoinType.subscribe(() => self.isDirty(true));
+		// Knockout re-writes select values whenever the option list re-renders, so compare before flagging dirty
+		function watch(obs, key) {
+			var last = key(obs());
+			obs.subscribe(function (v) {
+				var now = key(v);
+				if (now !== last) { last = now; self.isDirty(true); }
+			});
+		}
+		var tableId = function (t) { return t ? ko.unwrap(t.Id) : 0; };
+		var text = function (x) { return x || ''; };
+		watch(join.JoinTable, tableId);
+		watch(join.OtherTable, tableId);
+		watch(join.FieldName, text);
+		watch(join.JoinFieldName, text);
+		watch(join.JoinType, text);
 	};
 
 
@@ -380,19 +390,27 @@ var manageViewModel = function (options) {
 		primaryField: ko.observable(),
 		joinType: ko.observable(),
 		joinTable: ko.observable(),
-		joinField: ko.observable()
+		joinField: ko.observable(),
+		newOnly: ko.observable(false)
 	}
+	self.newJoinsCount = ko.computed(function () {
+		return _.filter(self.Joins(), function (x) { return ko.unwrap(x.isNew); }).length;
+	});
+	self.newJoinsCount.subscribe(function (n) { if (n === 0) self.JoinFilters.newOnly(false); });
+
 	self.filteredJoins = ko.computed(function () {
 		var primaryTableFilter = self.JoinFilters.primaryTable();
 		var primaryFieldFilter = self.JoinFilters.primaryField();
 		var joinTypeFilter = self.JoinFilters.joinType();
 		var joinTableFilter = self.JoinFilters.joinTable();
 		var joinFieldFilter = self.JoinFilters.joinField();
+		var newOnly = self.JoinFilters.newOnly();
 
 		var joins = self.Joins();
 
 		return _.filter(joins, function (x) {
-			return (!primaryTableFilter || !x.JoinTable() || x.JoinTable().DisplayName().toLowerCase().indexOf(primaryTableFilter.toLowerCase()) >= 0)
+			return (!newOnly || ko.unwrap(x.isNew))
+				&& (!primaryTableFilter || !x.JoinTable() || x.JoinTable().DisplayName().toLowerCase().indexOf(primaryTableFilter.toLowerCase()) >= 0)
 				&& (!primaryFieldFilter || !x.FieldName() || x.FieldName().toLowerCase().indexOf(primaryFieldFilter.toLowerCase()) >= 0)
 				&& (!joinTypeFilter || !x.JoinType() || x.JoinType().toLowerCase().indexOf(joinTypeFilter.toLowerCase()) >= 0)
 				&& (!joinTableFilter || !x.OtherTable() || x.OtherTable().DisplayName().toLowerCase().indexOf(joinTableFilter.toLowerCase()) >= 0)
@@ -510,6 +528,13 @@ var manageViewModel = function (options) {
 		setTimeout(function () {
 			var tables = self.Tables.availableTables() || [];
 			var joins = self.Joins() || [];
+			var only = self.diagramTableFilter();
+			if (only) {
+				joins = _.filter(joins, function (j) { return j.TableId() == only || j.JoinedTableId() == only; });
+				var ids = {}; ids[only] = true;
+				_.forEach(joins, function (j) { ids[j.TableId()] = true; ids[j.JoinedTableId()] = true; });
+				tables = _.filter(tables, function (t) { return ids[t.Id()]; });
+			}
 
 			tables.sort(function (a, b) {
 				return a.TableName().localeCompare(b.TableName());
@@ -800,92 +825,194 @@ var manageViewModel = function (options) {
 		}, 200);
 	};
 
-	self.AddAllRelations = function () {
-		var rawTables = ko.toJS(self.Tables.availableTables) || [];
-		if (rawTables.length === 0) {
-			toastr.error("Please select some tables first");
-			return;
+	self.importJoins = ko.observableArray([]);
+	self.importJoinsTitle = ko.observable('');
+	self.importJoinsToAdd = ko.computed(function () { return _.filter(self.importJoins(), function (r) { return r.join && r.add(); }); });
+
+	self.importJoinsAllSelected = ko.computed({
+		read: function () {
+			var addable = _.filter(self.importJoins(), function (r) { return r.join; });
+			return addable.length > 0 && _.every(addable, function (r) { return r.add(); });
+		},
+		write: function (checked) {
+			_.forEach(self.importJoins(), function (r) { if (r.join) r.add(checked); });
 		}
+	});
 
-		function isIdField(name) {
-			return name && (name.toLowerCase().endsWith("id")) && name.toLowerCase() != "id";
-		}
+	function joinKey(t1, f1, t2, f2) {
+		return t1 + "|" + (f1 || '').toLowerCase() + "|" + t2 + "|" + (f2 || '').toLowerCase();
+	}
+	function existingJoinKeys() {
+		return new Set(_.map(self.Joins() || [], function (j) {
+			return joinKey(j.JoinTable() ? j.JoinTable().Id() : j.TableId(), j.FieldName(), j.OtherTable() ? j.OtherTable().Id() : j.JoinedTableId(), j.JoinFieldName());
+		}));
+	}
+	// A join is the same relation in either direction: the query builder swaps sides as needed
+	self.joinExists = function (t1Id, f1, t2Id, f2) {
+		var keys = existingJoinKeys();
+		return keys.has(joinKey(t1Id, f1, t2Id, f2)) || keys.has(joinKey(t2Id, f2, t1Id, f1));
+	};
 
-		bootbox.confirm("Do you want to add suggested joins for fields ending in 'Id'?", function (confirmed) {
-			if (!confirmed) return;
-
-			var newJoins = [];
-			var existingJoins = new Set(
-				(self.Joins() || []).map(function (join) {
-					return join.TableId() + "-" + join.JoinedTableId() + "-" + join.JoinFieldName();
-				})
-			);
-
-			rawTables.forEach(function (t1) {
-				if (!t1.Columns || t1.Columns.length === 0) return;
-				var t1PrimaryKey = t1.Columns[0].ColumnName;
-		
-				t1.Columns.forEach(function (col1) {
-					rawTables.forEach(function (t2) {
-						if (t1.Id === t2.Id) return;
-						if (!t2.Columns || t2.Columns.length === 0) return;
-						var t2PrimaryKey = t2.Columns[0].ColumnName;
-						if (!isIdField(t2PrimaryKey)) return;
-						var matchByIdLogic = (isIdField(col1.ColumnName) && (col1.ColumnName.toLowerCase() === t2.TableName.toLowerCase() + "id" || col1.ColumnName.toLowerCase() == t2PrimaryKey.toLowerCase()));
-
-						var matchBySameName = false;
-						if (!matchByIdLogic) {
-							var exactMatch = t2.Columns.find(function (col2) {
-								return col2.ColumnName === col1.ColumnName && isIdField(col1.ColumnName) && isIdField(col2.ColumnName)
-							});
-
-							if (exactMatch) {
-								matchBySameName = true;
-							}
-						}
-
-						if (matchByIdLogic || matchBySameName) {
-							var joinKey1 = t1.Id + "-" + t2.Id + "-" + col1.ColumnName;
-							if (!existingJoins.has(joinKey1)) {
-								newJoins.push(
-									self.setupJoin({
-										TableId: t1.Id,
-										JoinedTableId: t2.Id,
-										JoinType: self.JoinTypes[0],
-										FieldName: col1.ColumnName,
-										JoinFieldName: matchByIdLogic ? t2PrimaryKey : col1.ColumnName
-									})
-								);
-								existingJoins.add(joinKey1);
-							}
-
-							var joinKey2 = t2.Id + "-" + t1.Id + "-" + (matchByIdLogic ? t1PrimaryKey : col1.ColumnName);
-							if (!existingJoins.has(joinKey2)) {
-								newJoins.push(
-									self.setupJoin({
-										TableId: t2.Id,
-										JoinedTableId: t1.Id,
-										JoinType: self.JoinTypes[0],
-										FieldName: matchByIdLogic ? t2PrimaryKey : col1.ColumnName,
-										JoinFieldName: col1.ColumnName
-									})
-								);
-								existingJoins.add(joinKey2);
-							}
-						}
+	// candidates: { t1, f1, t2, f2, t1Name, t2Name } where t1/t2 are table view models (null when not selected)
+	self.reviewJoins = function (title, candidates) {
+		var existing = existingJoinKeys();
+		var label = function (t, name, f) { return (t ? t.DisplayName() : (name || '?')) + "." + f; };
+		var eq = function (a, b) { return (a || '').toLowerCase() === (b || '').toLowerCase(); };
+		var findJoin = function (c) {
+			return _.sortBy(_.filter(self.Joins(), function (j) {
+				var a = j.JoinTable() ? j.JoinTable().Id() : j.TableId(), b = j.OtherTable() ? j.OtherTable().Id() : j.JoinedTableId();
+				return (a === c.t1.Id() && b === c.t2.Id() && eq(j.FieldName(), c.f1) && eq(j.JoinFieldName(), c.f2))
+					|| (a === c.t2.Id() && b === c.t1.Id() && eq(j.FieldName(), c.f2) && eq(j.JoinFieldName(), c.f1));
+			}), function (j) { return (j.Conditions().length ? 0 : 2) + (j.JoinTable() && j.JoinTable().Id() === c.t1.Id() ? 0 : 1); })[0];
+		};
+		var rows = _.map(candidates, function (c) {
+			var extra = c.extra || [];
+			var row = { from: label(c.t1, c.t1Name, c.f1), to: label(c.t2, c.t2Name, c.f2), status: '', join: null, add: ko.observable(false),
+				conditions: _.map(extra, function (e) { return 'AND ' + e.f1 + ' = ' + e.f2; }).join(' ') };
+			if (!c.t1 || !c.t2) {
+				row.status = 'Table not selected';
+			} else if (c.t1.Id() === c.t2.Id()) {
+				row.status = 'Self join not supported'; // the join editor cannot pick the same table on both sides
+			} else if (existing.has(joinKey(c.t1.Id(), c.f1, c.t2.Id(), c.f2)) || existing.has(joinKey(c.t2.Id(), c.f2, c.t1.Id(), c.f1))) {
+				var target = findJoin(c);
+				var missing = !target ? [] : _.filter(extra, function (e) {
+					var forward = target.JoinTable() && target.JoinTable().Id() === c.t1.Id();
+					return !_.some(target.Conditions(), function (x) {
+						return forward ? eq(x.FieldName(), e.f1) && eq(x.JoinFieldName(), e.f2) : eq(x.FieldName(), e.f2) && eq(x.JoinFieldName(), e.f1);
 					});
 				});
-			});
-
-			if (newJoins.length > 0) {
-				self.Joins.push.apply(self.Joins, newJoins);
-				toastr.success("Added " + newJoins.length + " new joins.");
+				if (missing.length) {
+					row.status = 'Add AND conditions';
+					row.add(true);
+					row.join = true;
+					row.update = { target: target, forward: target.JoinTable() && target.JoinTable().Id() === c.t1.Id(), missing: missing };
+				} else {
+					row.status = 'Already exists';
+				}
 			} else {
-				toastr.info("No matching columns found for automatic joins.");
+				existing.add(joinKey(c.t1.Id(), c.f1, c.t2.Id(), c.f2));
+				row.status = 'New';
+				row.add(true);
+				row.join = { TableId: c.t1.Id(), JoinedTableId: c.t2.Id(), JoinType: self.JoinTypes[0], FieldName: c.f1, JoinFieldName: c.f2,
+					JoinConditions: extra.length ? JSON.stringify(_.map(extra, function (e) { return { TableId: c.t1.Id(), FieldName: e.f1, JoinedTableId: c.t2.Id(), JoinFieldName: e.f2 }; })) : null };
 			}
+			return row;
+		});
+		// New first, then already-existing, then the ones we cannot add
+		var order = { 'New': 0, 'Add AND conditions': 1, 'Already exists': 2, 'Self join not supported': 3, 'Table not selected': 4 };
+		self.importJoins(_.sortBy(rows, function (r) { return order[r.status]; }));
+		self.importJoinsTitle(title);
+		$('#import-joins-modal').modal('show');
+	};
+
+	self.confirmImportJoins = function () {
+		var updates = _.filter(self.importJoinsToAdd(), function (r) { return r.update; });
+		_.forEach(updates, function (r) {
+			_.forEach(r.update.missing, function (e) {
+				r.update.target.Conditions.push(self.newJoinCondition(r.update.forward ? e.f1 : e.f2, r.update.forward ? e.f2 : e.f1));
+			});
+		});
+		if (updates.length) self.isDirty(true);
+		var newJoins = _.map(_.reject(self.importJoinsToAdd(), function (r) { return r.update; }), function (r) {
+			var j = self.setupJoin(r.join);
+			j.isNew = true;
+			self.trackJoinChanges(j);
+			return j;
+		});
+		$('#import-joins-modal').modal('hide');
+		if (updates.length) toastr.success("Added AND conditions to " + updates.length + " existing joins. Click Save Joins to keep them.");
+		if (newJoins.length === 0) return;
+		self.Joins.push.apply(self.Joins, newJoins);
+		self.isDirty(true);
+		toastr.success("Added " + newJoins.length + " joins. Click Save Joins to keep them.");
+	};
+
+	// Guess joins from column names: FooId in one table matching the first (key) column of table Foo, or the same *Id column in both
+	self.AddAllRelations = function () {
+		var tables = _.filter(self.Tables.model(), function (t) { return t.Id() > 0 && t.Columns().length > 0; });
+		if (tables.length === 0) {
+			toastr.error("Please select and save some tables first");
+			return;
+		}
+		function isIdField(name) {
+			return name && name.toLowerCase().endsWith("id") && name.toLowerCase() != "id";
+		}
+		var seen = {}, candidates = [];
+		function suggest(t1, f1, t2, f2) {
+			var k = joinKey(t1.Id(), f1, t2.Id(), f2), rk = joinKey(t2.Id(), f2, t1.Id(), f1);
+			if (seen[k] || seen[rk]) return;
+			seen[k] = true;
+			candidates.push({ t1: t1, f1: f1, t2: t2, f2: f2 });
+		}
+		_.forEach(tables, function (t1) {
+			var t1Key = t1.Columns()[0].ColumnName();
+			_.forEach(t1.Columns(), function (c1) {
+				var col1 = c1.ColumnName();
+				_.forEach(tables, function (t2) {
+					if (t1.Id() === t2.Id()) return;
+					var t2Key = t2.Columns()[0].ColumnName();
+					if (!isIdField(t2Key)) return;
+					var byId = isIdField(col1) && (col1.toLowerCase() === t2.TableName().toLowerCase() + "id" || col1.toLowerCase() === t2Key.toLowerCase());
+					var bySameName = !byId && isIdField(col1) && _.some(t2.Columns(), function (c2) { return c2.ColumnName() === col1; });
+					// one direction is enough, the query builder joins either way; reverse kept for reference
+					if (byId) { suggest(t1, col1, t2, t2Key); /* suggest(t2, t2Key, t1, col1); */ }
+					else if (bySameName) { suggest(t1, col1, t2, col1); /* suggest(t2, col1, t1, col1); */ }
+				});
+			});
+		});
+		if (candidates.length === 0) {
+			toastr.info("No matching columns found for automatic joins.");
+			return;
+		}
+		self.reviewJoins('Auto Add Joins (suggested from column names)', candidates);
+	};
+
+	// Read the foreign keys from the database and offer them as joins (child column -> referenced key)
+	self.ImportRelationsFromDatabase = function () {
+		var savedTables = _.filter(self.Tables.model(), function (t) { return t.Id() > 0; });
+		if (savedTables.length === 0) {
+			toastr.error("Please select and save some tables first");
+			return;
+		}
+		function findTable(schema, name) {
+			return _.find(savedTables, function (t) {
+				return (t.TableName() || '').toLowerCase() === (name || '').toLowerCase()
+					&& (!schema || !t.SchemaName() || t.SchemaName().toLowerCase() === schema.toLowerCase());
+			});
+		}
+		ajaxcall({
+			url: options.getDatabaseRelationsUrl,
+			type: 'POST',
+			data: JSON.stringify({ accountKey: self.keys.AccountApiKey, dataConnectKey: self.currentConnectionKey() || self.keys.DatabaseApiKey })
+		}).done(function (fks) {
+			if (fks && fks.d) fks = fks.d;
+			if (!fks || fks.length === 0) {
+				toastr.info("No foreign keys were found in the database.");
+				return;
+			}
+			var candidates = [], byConstraint = {};
+			_.forEach(fks, function (fk) {
+				var key = fk.ConstraintName ? [fk.ConstraintName, fk.SchemaName, fk.TableName, fk.JoinedSchemaName, fk.JoinedTableName].join('|') : null;
+				if (key && byConstraint[key]) {
+					byConstraint[key].extra.push({ f1: fk.ColumnName, f2: fk.JoinedColumnName });
+					return;
+				}
+				var t1 = findTable(fk.SchemaName, fk.TableName);
+				var t2 = findTable(fk.JoinedSchemaName, fk.JoinedTableName);
+				var candidate = { t1: t1, f1: fk.ColumnName, t2: t2, f2: fk.JoinedColumnName, t1Name: fk.TableName, t2Name: fk.JoinedTableName, extra: [] };
+				if (key) byConstraint[key] = candidate;
+				candidates.push(candidate);
+				// reverse direction not needed anymore
+				//if (t1 && t2) candidates.push({ t1: t2, f1: fk.JoinedColumnName, t2: t1, f2: fk.ColumnName });
+			});
+			self.reviewJoins('Import Joins from Database (foreign keys)', candidates);
 		});
 	};
 
+	self.diagramTableFilter = ko.observable('');
+	self.diagramTableFilter.subscribe(function () {
+		if ($('#joinModal').hasClass('show')) self.visualizeJoins();
+	});
 	self.editColumn = ko.observable();
 	self.isStoredProcColumn = ko.observable();
 	self.selectColumn = function (isStoredProcColumn, data, e) {
@@ -1236,6 +1363,13 @@ var manageViewModel = function (options) {
 		return true;
 	}
 
+	self.newJoinCondition = function (fieldName, joinFieldName) {
+		var c = { FieldName: ko.observable(fieldName || ''), JoinFieldName: ko.observable(joinFieldName || '') };
+		c.FieldName.subscribe(function () { self.isDirty(true); });
+		c.JoinFieldName.subscribe(function () { self.isDirty(true); });
+		return c;
+	};
+
 	self.setupJoin = function (item) {
 		item.JoinTable = ko.observable();
 		item.OtherTable = ko.observable();
@@ -1244,6 +1378,15 @@ var manageViewModel = function (options) {
 		item.isNew = false;
 
 		item = ko.mapping.fromJS(item);
+
+		var storedConditions = [];
+		try { storedConditions = JSON.parse(ko.unwrap(item.JoinConditions) || '[]') || []; } catch (e) { }
+		item.Conditions = ko.observableArray(_.map(storedConditions, function (c) {
+			var sameSide = c.TableId == ko.unwrap(item.TableId);
+			return self.newJoinCondition(sameSide ? c.FieldName : c.JoinFieldName, sameSide ? c.JoinFieldName : c.FieldName);
+		}));
+		item.addCondition = function () { item.Conditions.push(self.newJoinCondition('', '')); self.isDirty(true); };
+		item.removeCondition = function (c) { item.Conditions.remove(c); self.isDirty(true); };
 
 		item.OtherTables = ko.computed(function () {
 			return $.map(self.Tables.model(), function (subitem) {
@@ -1445,6 +1588,11 @@ var manageViewModel = function (options) {
 			return;
 		}
 
+		if (self.joinExists(join.JoinTable().Id(), join.FieldName(), join.OtherTable().Id(), join.JoinFieldName())) {
+			toastr.error("Cannot add as this join already exists");
+			return;
+		}
+
 		join.isNew = true;
 		self.trackJoinChanges(join);
 		self.Joins.push(join);
@@ -1501,9 +1649,10 @@ var manageViewModel = function (options) {
 			x.JoinedTableId(x.OtherTable().Id());
 		});
 
+		var source = filteredJoins === true ? self.filteredJoins() : self.Joins();
 		return $.map(
-			ko.mapping.toJS(filteredJoins === true ? self.filteredJoins() : self.Joins),
-			function (x) {
+			ko.mapping.toJS(source),
+			function (x, i) {
 				return {
 					DataConnectionId: x.DataConnectionId,
 					Id: x.Id ? x.Id : x.RelationId,
@@ -1514,7 +1663,11 @@ var manageViewModel = function (options) {
 					JoinType: x.JoinType,
 					FieldName: x.FieldName,
 					JoinFieldName: x.JoinFieldName,
-					JoinOrder: x.JoinOrder || 0
+					JoinOrder: x.JoinOrder || 0,
+					JoinConditions: (function () {
+						var list = _.filter(ko.toJS(source[i].Conditions) || [], function (c) { return c.FieldName && c.JoinFieldName; });
+						return list.length ? JSON.stringify(_.map(list, function (c) { return { TableId: x.TableId, FieldName: c.FieldName, JoinedTableId: x.JoinedTableId, JoinFieldName: c.JoinFieldName }; })) : null;
+					})()
 				};
 			}
 		);
@@ -3026,6 +3179,7 @@ var tablesViewModel = function (options, keys, previewData, activeTable) {
 				}
 				if (e.Columns) {
 					_.each(e.Columns, function (col) {
+						if (!col.ForeignJoin) col.ForeignJoin = 'Inner'; 
 						if (!col.ForeignKey) {
 							col.ForeignTable = null;
 							col.ForeignKeyField = null;

@@ -79,7 +79,7 @@
 <div class="container-fluid">
     <div data-bind="template: {name: 'admin-mode-template'}, visible: allowAdmin" style="display: none;"></div>
 
-    <div class="card">
+       <div class="card">
         <div class="card-header">
             <nav class="navbar navbar-expand-lg navbar-light bg-light">
                 <a class="navbar-brand" href="#">Viewing Report</a>
@@ -89,7 +89,7 @@
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <ul class="navbar-nav me-auto"></ul>
                     <div class="d-flex align-items-center gap-2">
-                        <a href="/DotNetReport/Index.aspx?folderId=<%= Model.SelectedFolder %>" class="btn btn-light btn-sm">
+                        <a href="@Url.Action("Index","DotNetReport")?folderId=@Model.SelectedFolder" class="btn btn-light btn-sm">
                             <i class="fa fa-arrow-left"></i>
                             <span>Back to Reports</span>
                         </a>
@@ -271,11 +271,11 @@
                             <div class="report-canvas">
                                 <div class="report-container">
                                     <div class="report-inner">
-                                        <div data-bind="template: 'chart-settings', data: $data"></div>
+                                        <div data-bind="if: CanEdit() && ReportType() != 'Html' && ReportType() != 'Single'"><div data-bind="template: 'chart-settings', data: $data"></div></div>
                                         <div data-bind="visible: UseReportHeader">
                                             <div id="report-header" width="900" height="120" data-bind="html: headerDesigner.headerHtml"></div>
                                         </div>
-                                        <h2 data-bind="text: ReportName"></h2>
+                                        <div class="dr-report-title" data-bind="visible: !HideReportName()"><h2 data-bind="text: ReportName"></h2><!-- ko if: CanEdit() --><a href="#" class="dr-title-hide" title="Hide report name" data-bind="click: function () { HideReportName(true); }"><i class="fa fa-times"></i></a><!-- /ko --></div>
                                         <p data-bind="html: ReportDescription">
                                         </p>
 

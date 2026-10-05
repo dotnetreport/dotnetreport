@@ -82,7 +82,7 @@
                 <div data-bind="visible: useReportHeader">
                     <div id="report-header" width="900" height="120" data-bind="html: headerDesigner.headerHtml"></div>
                 </div>
-                <h2 data-bind="text: ReportName"></h2>
+                <h2 data-bind="text: ReportName, visible: !HideReportName()"></h2>
                 <p data-bind="html: ReportDescription">
                 </p>
                 <div data-bind="template: 'filter-details-summary'"></div>
@@ -176,25 +176,21 @@
         <div data-bind="template: {name: 'report-render', data: $data }"></div>
         <!-- /ko -->
         <!-- ko if: $parent.ReportType() != 'Pivot' && $parent.ReportType() != 'Html' && (!$parent.isChart() || $parent.ShowDataWithGraph()) -->
-        <div class="pull-right" data-bind="if: $parent.OuterGroupColumns().length > 0">
-            <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
-                Manage Groups <span class="fa fa-ellipsis-v"></span>
-            </a>
-            <ul class="dropdown-menu" style="z-index: 1001;" data-bind="foreach: $parent.OuterGroupColumns">
-                <li class="dropdown-item small">
-                    <a href="#" data-bind="click: remove" title="Remove from Group">
-                        <span class="fa fa-close"></span> <span data-bind="text: fieldName"></span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-        <div class="clear-fix"></div>
+        <div class="clear-fix" style="clear: both;"></div>
 
         <div data-bind="foreach: outerGroupData">
             <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
+            <!-- ko ifnot: $data.bands -->
             <br />
-            <h6 style="font-weight: normal; page-break-after: avoid; break-after: avoid;" data-bind="html: display"></h6>
+            <div class="dr-group-heading" style="page-break-after: avoid; break-after: avoid;" data-bind="attr: { style: 'page-break-after: avoid; break-after: avoid; ' + ($parents[1].groupHeadingCss ? $parents[1].groupHeadingCss() : '') }"><h6 class="mb-0" data-bind="html: display"></h6></div>
             <div class="" style="padding-top: 5px;"></div>
+            <!-- /ko -->
+            <!-- ko foreach: $data.bands || [] -->
+            <div class="dr-nested-band" data-bind="attr: { style: 'padding: 6px 8px; ' + vm.bandCss(depth) + (pageBreak ? ' break-before: page; page-break-before: always;' : '') + ' page-break-after: avoid; break-after: avoid;', title: label }">
+                <span data-bind="text: vm.bandText($data)"></span>
+            </div>
+            <!-- /ko -->
+            <div data-bind="visible: $data.bands" style="padding-top: 4px;"></div>
 
             <!-- ko if: $parents[1].ReportType() != 'Single'-->
             <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div>
@@ -210,13 +206,13 @@
 
     <script type="text/html" id="report-column-header">
         <!-- ko foreach: Columns -->
-        <th data-bind="attr: { id: !IsPivotField ? fieldId : 'pivot--' + fieldName }, style: {'text-align': fieldAlign() ? fieldAlign() : (IsNumeric ? 'right' : 'left'), 'background-color': headerBackColor }, hidden: outerGroup" style="border-right: 1px solid;">
+        <th data-bind="attr: { id: !IsPivotField ? fieldId : 'pivot--' + fieldName }, style: {'text-align': ko.unwrap($data.headerAlign) || (fieldAlign() && fieldAlign() !== 'Auto' ? fieldAlign() : '') || ($parent.headerStyle && $parent.headerStyle.align()) || (IsNumeric ? 'right' : 'left'), 'background-color': ko.unwrap(headerBackColor) || ($parent.headerStyle ? $parent.headerStyle.backColor() : ''), 'border-top': $parent.headerBorderCss ? $parent.headerBorderCss() : '', 'border-bottom': $parent.headerBorderCss ? $parent.headerBorderCss() : '', 'border-left': $parent.headerBorderCss ? $parent.headerBorderCss() : '', 'border-right': ($parent.headerBorderCss && $parent.headerBorderCss()) || '1px solid' }, hidden: outerGroup" style="border-right: 1px solid;">
             <div data-bind="style: {'width': fieldWidth}">
                 <!-- ko if: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false) -->
-                <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}"></span>
+                <span data-bind="text: fieldLabel() ? fieldLabel() : fieldName, style: {'color': ko.unwrap(headerFontColor) || ($parent.headerStyle ? $parent.headerStyle.fontColor() : ''), 'font-weight': (headerFontBold() || ($parent.headerStyle && $parent.headerStyle.bold())) ? 'bold' : 'normal'}"></span>
                 <!-- /ko -->
                 <!-- ko ifnot: $parents[3].useStoredProc ? $parents[3].useStoredProc() : ($parents[5].useStoredProc ? $parents[5].useStoredProc() : false)  -->
-                <span data-bind="click: function(){ if (!IsPivotField) { $parents[pagerIndex($parents)].changeSort(SqlField); } }, style: {'color': headerFontColor, 'font-weight': headerFontBold() ? 'bold' : 'normal'}">
+                <span data-bind="click: function(){ if (!IsPivotField) { $parents[pagerIndex($parents)].changeSort(SqlField); } }, style: {'color': ko.unwrap(headerFontColor) || ($parent.headerStyle ? $parent.headerStyle.fontColor() : ''), 'font-weight': (headerFontBold() || ($parent.headerStyle && $parent.headerStyle.bold())) ? 'bold' : 'normal'}">
                     <span data-bind="text: $parent.IsDrillDown() && fieldLabel2() ? fieldLabel2() : (fieldLabel() ? fieldLabel() : fieldName)"></span>
                 </span>
                 <!-- /ko -->
@@ -252,7 +248,7 @@
 
     <script type="text/html" id="report-column">
         <!-- ko foreach: Items -->
-        <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? backColor(), 'color': _fontColor ?? fontColor(), 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': fieldAlign() ? fieldAlign() : (Column.IsNumeric ? 'right' : 'left')}">
+        <td data-bind="hidden: outerGroup, style: {'background-color': _backColor ?? ($data.cellBack ? $data.cellBack($data, $parentContext.$index ? $parentContext.$index() : 0) : backColor()), 'color': _fontColor ?? ($data.cellFont ? $data.cellFont($data, $parentContext.$index ? $parentContext.$index() : 0) : fontColor()), 'border': $data.rowBorderCss ? $data.rowBorderCss() : '', 'font-weight': fontBold() || _fontBold ? 'bold' : 'normal', 'text-align': (fieldAlign() && fieldAlign() !== 'Auto' ? fieldAlign() : '') || ($data.rowAlign ? $data.rowAlign() : '') || (Column.IsNumeric ? 'right' : 'left')}">
             <div data-bind="style: {'width': fieldWidth }, css: { 'text-wrap': fieldWidth }">
                 <!-- ko if: LinkTo-->
                 <a data-bind="attr: {href: LinkTo}" target="_blank"><span class="preserve-space" data-bind="html: formattedVal"></span></a>
