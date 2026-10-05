@@ -8668,7 +8668,8 @@ var reportViewModel = function (options) {
 					var dtFormat = localeFor(resolvedDateFormatName);
 
 					var groupAggregate = col.groupAggregate ? ko.unwrap(col.groupAggregate) : '';
-					var dateGroupedAway = ['Group by Week', 'Group by Month', 'Group by Year', 'Group by Month/Year'].indexOf(groupAggregate) >= 0;
+					var customMonthYear = groupAggregate === 'Group by Month/Year' && explicitDateFormat && col.dateFormat() === 'Custom' && !!col.customDateFormat();
+					var dateGroupedAway = ['Group by Week', 'Group by Month', 'Group by Year', 'Group by Month/Year'].indexOf(groupAggregate) >= 0 && !customMonthYear;
 					if ((explicitDateFormat || autoDateField) && !dateGroupedAway) {
 						if (_parsedDate) {
 							if (explicitDateFormat && col.dateFormat() === 'Custom' && col.customDateFormat()) {

@@ -527,13 +527,29 @@ namespace ReportBuilder.Web.Controllers
                                     sortBy = $"MIN({match.Value})";
                             }
 
+                            // Month/Year columns are text ("Apr 2026", "04/2026"), so sort them by the underlying date instead
+                            var sortParts = new List<string> { sortBy };
+                            var monthYear = Regex.Match(sortBy, @"^CONVERT\(VARCHAR\(3\),\s*DATENAME\(MONTH,\s*(?<col>.+?)\)\)\s*\+\s*' '\s*\+\s*CONVERT\(VARCHAR\(4\),\s*YEAR\(\k<col>\)\)\s*$");
+                            if (monthYear.Success)
+                            {
+                                var col = monthYear.Groups["col"].Value;
+                                sortParts = new List<string> { $"YEAR({col})", $"MONTH({col})" };
+                            }
+                            var monthYearText = Regex.Match(sortBy, @"^(TO_CHAR|VARCHAR_FORMAT)\((?<col>.+?),\s*'MM/YYYY'\)\s*$");
+                            if (monthYearText.Success)
+                            {
+                                var col = monthYearText.Groups["col"].Value;
+                                sortParts = new List<string> { sql.Contains("Group By") ? $"MIN({col})" : col };
+                            }
+                            var orderBy = string.Join(", ", sortParts.Select(x => x + (desc ? " DESC" : "")));
+
                             if (!sql.Contains("ORDER BY"))
                             {
-                                sql = sql + "ORDER BY " + sortBy + (desc ? " DESC" : "");
+                                sql = sql + "ORDER BY " + orderBy;
                             }
                             else
                             {
-                                sql = sql.Substring(0, sql.IndexOf("ORDER BY")) + "ORDER BY " + sortBy + (desc ? " DESC" : "");
+                                sql = sql.Substring(0, sql.IndexOf("ORDER BY")) + "ORDER BY " + orderBy;
                             }
                         }
 
