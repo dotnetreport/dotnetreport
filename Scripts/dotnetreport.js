@@ -860,7 +860,7 @@ function filterGroupViewModel(args) {
 	self.FilterGroups = ko.observableArray([]);
 
 	self.AddFilterGroup = function (e) {
-		var newGroup = new filterGroupViewModel({ parent: args.parent, AndOr: ko.unwrap(e.AndOr), options: args.options });
+		var newGroup = new filterGroupViewModel({ parent: args.parent, AndOr: ko.unwrap(e.AndOr), options: args.options, isSchedule: args.isSchedule });
 		self.FilterGroups.push(newGroup);
 		return newGroup;
 	};
@@ -997,7 +997,9 @@ function filterGroupViewModel(args) {
 		filter.applySlicer = function (option) {
 			if (reportVm && reportVm.applyDateSlicer) reportVm.applyDateSlicer(filter, option);
 		};
+		filter.slicerAllowed = args.isSchedule !== true;
 		filter.slicer.subscribe(function (on) {
+			if (!filter.slicerAllowed) return;
 			if (on && reportVm && reportVm.allFilters) {
 				_.forEach(reportVm.allFilters(), function (other) {
 					if (other !== filter && other.slicer && other.slicer()) other.slicer(false);
@@ -2020,6 +2022,20 @@ var reportViewModel = function (options) {
 	self.headerStyle.align.subscribe(onHeaderChange(function (v) { self.tableSettings().headerAlign = v || null; }));
 	self.headerStyle.border.subscribe(onHeaderChange(function (v) { self.tableSettings().headerBorder = v; }));
 	self.headerStyle.borderColor.subscribe(onHeaderChange(function (v) { self.tableSettings().headerBorderColor = v || null; }));
+	var dropTableColorCopies = function (tableColor, fieldKey) {
+		var previous = null;
+		tableColor.subscribe(function (v) { previous = v; }, null, 'beforeChange');
+		tableColor.subscribe(function () {
+			if (self._loadingHeaderStyle || !previous) return;
+			_.forEach(self.SelectedFields(), function (f) {
+				if (f[fieldKey] && (f[fieldKey]() || '').toLowerCase() === previous.toLowerCase()) f[fieldKey](null);
+			});
+		});
+	};
+	dropTableColorCopies(self.headerStyle.backColor, 'headerBackColor');
+	dropTableColorCopies(self.headerStyle.fontColor, 'headerFontColor');
+	dropTableColorCopies(self.rowBackColor, 'backColor');
+	dropTableColorCopies(self.rowFontColor, 'fontColor');
 	self.loadHeaderStyle = function () {
 		var ts = self.tableSettings() || {};
 		self._loadingHeaderStyle = true;
@@ -5699,7 +5715,8 @@ var reportViewModel = function (options) {
 	};
 
 	self.validateScheduleFilter = function () {
-		var inputs = $('#schedule-filter-editor').find('input:visible, select:visible'), isValid = true;
+		var editor = $('#schedule-filter-editor');
+		var inputs = editor.find('input:visible, select:visible').add(editor.find('.dr-filter-editor').find('input, select')), isValid = true;
 		$('.needs-validation').removeClass('was-validated');
 		for (var i = 0; i < inputs.length; i++) {
 			$(inputs[i]).removeClass('is-invalid');
@@ -5707,6 +5724,9 @@ var reportViewModel = function (options) {
 				isValid = false;
 				$('.needs-validation').addClass('was-validated');
 				$(inputs[i]).addClass('is-invalid');
+				var filterRow = $(inputs[i]).closest('.dr-filter-row');
+				var filterData = filterRow.length ? ko.dataFor(filterRow[0]) : null;
+				if (filterData && filterData.editing) filterData.editing(true);
 			}
 		}
 		if (!isValid) toastr.error('Please complete the filter values before applying');
@@ -5832,7 +5852,7 @@ var reportViewModel = function (options) {
 		changeFilter: function (s) {
 			var m = self.scheduleReportModal;
 			m.filterEditingSchedule = s;
-			var root = new filterGroupViewModel({ isRoot: true, parent: self, options: options });
+			var root = new filterGroupViewModel({ isRoot: true, parent: self, options: options, isSchedule: true });
 			self.scheduleFilterGroups([root]);
 			var filters = (s && s.Filters) ? JSON.parse(s.Filters) : self.BuildFilterData(self.FilterGroups());
 			self.loadFiltersIntoGroups(self.scheduleFilterGroups, filters);
@@ -8668,7 +8688,8 @@ var reportViewModel = function (options) {
 					var dtFormat = localeFor(resolvedDateFormatName);
 
 					var groupAggregate = col.groupAggregate ? ko.unwrap(col.groupAggregate) : '';
-					var dateGroupedAway = ['Group by Week', 'Group by Month', 'Group by Year', 'Group by Month/Year'].indexOf(groupAggregate) >= 0;
+					var customMonthYear = groupAggregate === 'Group by Month/Year' && explicitDateFormat && col.dateFormat() === 'Custom' && !!col.customDateFormat();
+					var dateGroupedAway = ['Group by Week', 'Group by Month', 'Group by Year', 'Group by Month/Year'].indexOf(groupAggregate) >= 0 && !customMonthYear;
 					if ((explicitDateFormat || autoDateField) && !dateGroupedAway) {
 						if (_parsedDate) {
 							if (explicitDateFormat && col.dateFormat() === 'Custom' && col.customDateFormat()) {
@@ -10228,7 +10249,7 @@ var reportViewModel = function (options) {
 	});
 	self.showSettings = ko.observable(false);
 	self.showTableSettings = ko.observable(false);
-	self.clearTableSettings = function () {
+	self.clearTableSettings = function (data, event) {
 		self.tableSettings().headerBackColor=null;
 		self.tableSettings().headerFontColor=null;
 		self.tableSettings().rowBackColor=null;
@@ -10247,7 +10268,7 @@ var reportViewModel = function (options) {
 		self.tableSettings().rowBorder = null;
 		self.tableSettings().rowBorderColor = null;
 		self.loadHeaderStyle();
-		self.markFormatDirty();
+		if (event) self.markFormatDirty();
 		let inputs = document.querySelectorAll('#tbl-color-picker-' + self.ReportID());
 		inputs.forEach(function (inp) {
 			inp.value = null;   
@@ -13796,6 +13817,7 @@ var dashboardViewModel = function (options) {
 	self.ChartDrillDownData = ko.observable();
 	self.selectedStyle = ko.observable('default');
 	self.DontExecuteOnRun = ko.observable(false);
+	self.isDashboardFilters = true; 
 	self.searchReports = ko.observable('');
 	self.arrangeDashboard = ko.observable(false);
 	self.ReportResult = ko.observable({
