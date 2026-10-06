@@ -14117,7 +14117,8 @@ var dashboardViewModel = function (options) {
 
 	self.getDashboards = function (reloadCurrent) {
 		return ajaxcall({
-			url: options.getDashbordsUrl+ '?adminMode=' + self.adminMode(),
+			url: options.getDashbordsUrl,
+			data: { adminMode: self.adminMode() },
 			noBlocking: true
 		}).done(function (dashboardData) {
 			if (dashboardData.d) { dashboardData = dashboardData.d; }
