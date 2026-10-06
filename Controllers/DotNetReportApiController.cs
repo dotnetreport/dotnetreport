@@ -601,13 +601,29 @@ namespace ReportBuilder.Web.Controllers
                                     sortBy = $"MIN({match.Value})";
                             }
 
+                            // Month/Year columns are text ("Apr 2026", "04/2026"), so sort them by the underlying date instead
+                            var sortParts = new List<string> { sortBy };
+                            var monthYear = Regex.Match(sortBy, @"^CONVERT\(VARCHAR\(3\),\s*DATENAME\(MONTH,\s*(?<col>.+?)\)\)\s*\+\s*' '\s*\+\s*CONVERT\(VARCHAR\(4\),\s*YEAR\(\k<col>\)\)\s*$");
+                            if (monthYear.Success)
+                            {
+                                var col = monthYear.Groups["col"].Value;
+                                sortParts = new List<string> { $"YEAR({col})", $"MONTH({col})" };
+                            }
+                            var monthYearText = Regex.Match(sortBy, @"^(TO_CHAR|VARCHAR_FORMAT)\((?<col>.+?),\s*'MM/YYYY'\)\s*$");
+                            if (monthYearText.Success)
+                            {
+                                var col = monthYearText.Groups["col"].Value;
+                                sortParts = new List<string> { sql.Contains("Group By") ? $"MIN({col})" : col };
+                            }
+                            var orderBy = string.Join(", ", sortParts.Select(x => x + (desc ? " DESC" : "")));
+
                             if (!sql.Contains("ORDER BY"))
                             {
-                                sql = sql + "ORDER BY " + sortBy + (desc ? " DESC" : "");
+                                sql = sql + "ORDER BY " + orderBy;
                             }
                             else
                             {
-                                sql = sql.Substring(0, sql.IndexOf("ORDER BY")) + "ORDER BY " + sortBy + (desc ? " DESC" : "");
+                                sql = sql.Substring(0, sql.IndexOf("ORDER BY")) + "ORDER BY " + orderBy;
                             }
                         }
 
@@ -1957,7 +1973,12 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] bool subTotalPerGroup = false,
             [FromForm] string totalRowFormat = "row",
             [FromForm] string filterDetailsText = null,
-            [FromForm] string defaultDateFormat = null)
+            [FromForm] string defaultDateFormat = null,
+            [FromForm] string outerGroupLayout = null,
+            [FromForm] bool outerGroupPageBreak = false,
+            [FromForm] string outerGroupBandStyles = null,
+            [FromForm] string headerStyle = null,
+            [FromForm] bool hideReportName = false)
         {
             GetSettings(); // must be called directly here so CurrentDataFilters flows to RunReportApiCall
             reportSql = HttpUtility.HtmlDecode(reportSql);
@@ -1968,7 +1989,10 @@ namespace ReportBuilder.Web.Controllers
             var columns = string.IsNullOrEmpty(columnDetails) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(columnDetails));
             var onlyAndGroupInDetailColumns = string.IsNullOrEmpty(onlyAndGroupInColumnDetail) ? new List<ReportHeaderColumn>() : Newtonsoft.Json.JsonConvert.DeserializeObject<List<ReportHeaderColumn>>(HttpUtility.UrlDecode(onlyAndGroupInColumnDetail));
             Func<int, int, bool, Task<string>> linkedReportResolver = hasSubreports ? (reportId, filterId, filterValue) => ResolveLinkedReportTemplate(reportId, filterId, adminMode) : null;
-            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, hasSubreports, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport, subTotalPerGroup, totalRowFormat, HttpUtility.UrlDecode(filterDetailsText), linkedReportResolver);
+            var excel = await DotNetReportHelper.GetExcelFile(reportSql, connectKey, HttpUtility.UrlDecode(reportName), chartData, allExpanded, hasSubreports, HttpUtility.UrlDecode(expandSqls), columns, includeSubtotal, pivot, pivotColumn, pivotFunction, onlyAndGroupInDetailColumns, isSubReport, subTotalPerGroup, totalRowFormat, HttpUtility.UrlDecode(filterDetailsText), linkedReportResolver, outerGroupLayout: outerGroupLayout, outerGroupPageBreak: outerGroupPageBreak,
+                bandStyles: string.IsNullOrEmpty(outerGroupBandStyles) ? null : Newtonsoft.Json.JsonConvert.DeserializeObject<List<NestedBandStyle>>(outerGroupBandStyles),
+                headerStyle: string.IsNullOrEmpty(headerStyle) ? null : Newtonsoft.Json.JsonConvert.DeserializeObject<NestedBandStyle>(headerStyle),
+                hideReportName: hideReportName);
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".xlsx");
             Response.ContentType = "application/vnd.ms-excel";
 
@@ -2077,7 +2101,13 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] string currentUserName = null,
             [FromForm] string currentUserRoles = null,
             [FromForm] string customHtml = null,
-            [FromForm] string defaultDateFormat = null)
+            [FromForm] string defaultDateFormat = null,
+            [FromForm] string headerStyle = null,
+            [FromForm] bool hideReportName = false,
+            [FromForm] string outerGroupLayout = null,
+            [FromForm] bool outerGroupPageBreak = false,
+            [FromForm] string outerGroupBandStyles = null,
+            [FromForm] bool subTotalPerGroup = false)
         {
             GetSettings(); // must be called directly here so CurrentDataFilters flows to RunReportApiCall
             reportSql = HttpUtility.HtmlDecode(reportSql);
@@ -2093,7 +2123,12 @@ namespace ReportBuilder.Web.Controllers
                 footerEveryPage: footerEveryPage,
                 currentUserName: currentUserName,
                 currentUserRoles: currentUserRoles,
-                customHtml: !string.IsNullOrEmpty(customHtml) ? HttpUtility.UrlDecode(customHtml) : null);
+                customHtml: !string.IsNullOrEmpty(customHtml) ? HttpUtility.UrlDecode(customHtml) : null,
+                headerStyle: string.IsNullOrEmpty(headerStyle) ? null : Newtonsoft.Json.JsonConvert.DeserializeObject<NestedBandStyle>(headerStyle),
+                hideReportName: hideReportName,
+                outerGroupLayout: outerGroupLayout, outerGroupPageBreak: outerGroupPageBreak,
+                bandStyles: string.IsNullOrEmpty(outerGroupBandStyles) ? null : Newtonsoft.Json.JsonConvert.DeserializeObject<List<NestedBandStyle>>(outerGroupBandStyles),
+                subTotalPerGroup: subTotalPerGroup);
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             return File(word, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", reportName + ".docx");
