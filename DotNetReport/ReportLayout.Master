@@ -1278,8 +1278,8 @@
                 <!-- ko foreach: FlyFilters -->
                 <div class="dr-fly-row" data-bind="attr: { 'data-fly-filter-id': uiId }, css: { 'dr-fly-row-editing': flyEditing }">
                     <div class="dr-filter-pill-line">
-                        <input type="checkbox" class="form-check-input mt-0" title="Apply this filter" data-bind="checked: Apply, disable: Field() && Field().forced, event: { change: function () { $parent.ExecuteReport(); } }" />
-                        <span class="dr-filter-pill" tabindex="0" title="Click to change this filter" data-bind="click: function () { openFlyEditor($parent.ExecuteReport); }, css: { 'dr-filter-pill-empty': Apply() && !hasValue(), 'dr-filter-pill-off': !Apply() }">
+                        <input type="checkbox" class="form-check-input mt-0" title="Apply this filter" data-bind="checked: Apply, disable: Field() && Field().forced, event: { change: function () { if (!$parent.DontExecuteOnRun()) $parent.ExecuteReport(); } }" />
+                        <span class="dr-filter-pill" tabindex="0" title="Click to change this filter" data-bind="click: function () { openFlyEditor($parent.DontExecuteOnRun() ? null : $parent.ExecuteReport); }, css: { 'dr-filter-pill-empty': Apply() && !hasValue(), 'dr-filter-pill-off': !Apply() }">
                             <span class="dr-filter-pill-field" data-bind="text: flyFieldText()"></span>
                             <span class="dr-filter-pill-op" data-bind="text: operatorText()"></span>
                             <span class="dr-filter-pill-value" data-bind="text: valueText()"></span>
@@ -1298,7 +1298,7 @@
                     </div>
                 </div>
                 <!-- /ko -->
-                <!-- ko if: DontExecuteOnRun() && !(typeof reportRan === 'function' && reportRan()) -->
+                <!-- ko if: DontExecuteOnRun() || $data.isDashboardFilters === true -->
                 <div><button class="btn btn-sm btn-primary" data-bind="click: ExecuteReport">Run</button></div>
                 <!-- /ko -->
             </div>
@@ -1378,7 +1378,7 @@
                                 <button class="btn btn-sm btn-secondary" data-bind="click: $parentContext.$parent.AddSeries.bind($data)">Add Comparison</button>
                                 <!--/ko -->
                                 <!--/ko -->
-                                <!-- ko if: Field() && ['Date', 'DateTime'].indexOf(Field().fieldType) >= 0 && $data.hasOwnProperty('slicer') -->
+                                <!-- ko if: Field() && ['Date', 'DateTime'].indexOf(Field().fieldType) >= 0 && $data.slicerAllowed === true -->
                                 <div class="form-check form-switch small mt-1 mb-0">
                                     <input class="form-check-input" type="checkbox" data-bind="checked: slicer" />
                                     <label class="form-check-label">Show as slicer on the report <span class="text-muted">(up to 5 options)</span></label>
