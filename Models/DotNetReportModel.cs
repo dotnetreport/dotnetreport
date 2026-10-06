@@ -4513,7 +4513,7 @@ namespace ReportBuilder.Web.Models
             string expandSqls = null, List<ReportHeaderColumn> columns = null, bool includeSubtotal = false, bool pivot = false, string pivotColumn = null, string pivotFunction = null, string pageSize = "", string pageOrientation = "", string filterDetailsText = null,
             string headerHtml = null, string footerHtml = null, bool headerEveryPage = false, bool footerEveryPage = false, string currentUserName = null, string currentUserRoles = null,
             string customHtml = null, NestedBandStyle headerStyle = null, bool hideReportName = false,
-            string outerGroupLayout = null, bool outerGroupPageBreak = false, List<NestedBandStyle> bandStyles = null)
+            string outerGroupLayout = null, bool outerGroupPageBreak = false, List<NestedBandStyle> bandStyles = null, bool subTotalPerGroup = false)
         {
             bool hasCustomHtml = !string.IsNullOrWhiteSpace(customHtml);
             // Only fetch tabular data when we are not rendering a custom HTML report.
@@ -4698,7 +4698,23 @@ namespace ReportBuilder.Web.Models
                             return new Paragraph(pp, new Run(rp, new Text(text ?? "") { Space = SpaceProcessingModeValues.Preserve }));
                         }
 
-                        Table BuildGroupTable(List<DataRow> rows, List<(int depth, string text)> headings)
+                        var grandTotals = new decimal[detailColumns.Count];
+                        TableRow TotalRow(decimal[] totals, string label)
+                        {
+                            var totalRow = new TableRow();
+                            for (int k = 0; k < detailColumns.Count; k++)
+                            {
+                                var value = totals[k].ToString();
+                                var fc = GetColumnFormatting(detailColumns[k], columns, ref value);
+                                bool show = fc?.isNumeric == true && !(fc?.dontSubTotal ?? false);
+                                var text = show ? value : (k == 0 ? label : " ");
+                                totalRow.AppendChild(new TableCell(CellParagraph(text, null, true, show ? JustificationValues.Right : (JustificationValues?)null, "16")));
+                            }
+                            ApplyCellWidths(totalRow, groupWidths);
+                            return totalRow;
+                        }
+
+                        Table NewGroupTable()
                         {
                             var groupTable = new Table();
                             groupTable.AppendChild(new TableProperties(
@@ -4714,7 +4730,12 @@ namespace ReportBuilder.Web.Models
                             var grid = new TableGrid();
                             foreach (var gw in groupWidths) grid.Append(new GridColumn() { Width = gw.ToString() });
                             groupTable.AppendChild(grid);
+                            return groupTable;
+                        }
 
+                        Table BuildGroupTable(List<DataRow> rows, List<(int depth, string text)> headings)
+                        {
+                            var groupTable = NewGroupTable();
                             foreach (var heading in headings)
                             {
                                 var hs = headingStyles[Math.Min(heading.depth, headingStyles.Count - 1)];
@@ -4771,19 +4792,8 @@ namespace ReportBuilder.Web.Models
                                 groupTable.AppendChild(dataRow);
                             }
 
-                            if (includeSubtotal)
-                            {
-                                var totalRow = new TableRow();
-                                for (int k = 0; k < detailColumns.Count; k++)
-                                {
-                                    var value = groupTotals[k].ToString();
-                                    var fc = GetColumnFormatting(detailColumns[k], columns, ref value);
-                                    bool show = fc?.isNumeric == true && !(fc?.dontSubTotal ?? false);
-                                    totalRow.AppendChild(new TableCell(CellParagraph(show ? value : " ", null, true, show ? JustificationValues.Right : (JustificationValues?)null, "16")));
-                                }
-                                ApplyCellWidths(totalRow, groupWidths);
-                                groupTable.AppendChild(totalRow);
-                            }
+                            for (int k = 0; k < detailColumns.Count; k++) grandTotals[k] += groupTotals[k];
+                            if (includeSubtotal && subTotalPerGroup) groupTable.AppendChild(TotalRow(groupTotals, "Subtotal"));
                             return groupTable;
                         }
 
@@ -4844,6 +4854,14 @@ namespace ReportBuilder.Web.Models
                                 body.AppendChild(BuildGroupTable(group.ToList(), new List<(int depth, string text)>()));
                                 firstGroupTable = false;
                             }
+                        }
+                        // Report total after the last group, as in the flat table
+                        if (includeSubtotal)
+                        {
+                            body.AppendChild(new Paragraph());
+                            var grandTable = NewGroupTable();
+                            grandTable.AppendChild(TotalRow(grandTotals, "Total"));
+                            body.AppendChild(grandTable);
                         }
                         body.AppendChild(new Paragraph());
                     }

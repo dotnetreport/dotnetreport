@@ -1764,7 +1764,8 @@ namespace ReportBuilder.Web.Controllers
             [FromForm] bool hideReportName = false,
             [FromForm] string outerGroupLayout = null,
             [FromForm] bool outerGroupPageBreak = false,
-            [FromForm] string outerGroupBandStyles = null)
+            [FromForm] string outerGroupBandStyles = null,
+            [FromForm] bool subTotalPerGroup = false)
         {
             GetSettings(); // must be called directly here so CurrentDataFilters flows to RunReportApiCall
             reportSql = HttpUtility.HtmlDecode(reportSql);
@@ -1784,7 +1785,8 @@ namespace ReportBuilder.Web.Controllers
                 headerStyle: string.IsNullOrEmpty(headerStyle) ? null : Newtonsoft.Json.JsonConvert.DeserializeObject<NestedBandStyle>(headerStyle),
                 hideReportName: hideReportName,
                 outerGroupLayout: outerGroupLayout, outerGroupPageBreak: outerGroupPageBreak,
-                bandStyles: string.IsNullOrEmpty(outerGroupBandStyles) ? null : Newtonsoft.Json.JsonConvert.DeserializeObject<List<NestedBandStyle>>(outerGroupBandStyles));
+                bandStyles: string.IsNullOrEmpty(outerGroupBandStyles) ? null : Newtonsoft.Json.JsonConvert.DeserializeObject<List<NestedBandStyle>>(outerGroupBandStyles),
+                subTotalPerGroup: subTotalPerGroup);
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             return File(word, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", reportName + ".docx");
