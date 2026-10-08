@@ -317,6 +317,13 @@ namespace ReportBuilder.Web.Controllers
                     }
                 }
 
+                if ((method ?? "").Trim().Equals("/ReportApi/RunReport", StringComparison.OrdinalIgnoreCase)
+                    && data.TryGetValue("SaveReport", out var saveReport) && saveReport is JsonElement sr && sr.ValueKind == JsonValueKind.True)
+                {
+                    keyvalues.RemoveAll(kv => kv.Key == "userIdForFilter");
+                    keyvalues.Add(new KeyValuePair<string, string>("userIdForFilter", ""));
+                }
+
                 if (!adminMode)
                 {
                     if (dashboardId > 0) await ValidateAccess(userId, dashboardId: dashboardId);
