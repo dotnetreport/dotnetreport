@@ -12444,6 +12444,11 @@ var reportViewModel = function (options) {
 				}
 				e.hasDrilldown = ["List", "Pivot", "Treemap"].indexOf(e.reportType) < 0;
 				e.deleteReport = function () {
+					var folderVisible = !e.folderId || !self.allFolders || _.some(self.allFolders, function (f) { return f.Id == e.folderId; });
+					if (!self.adminMode() && (!e.canDelete || !folderVisible)) {
+						toastr.error("You do not have access to Delete this Report");
+						return;
+					}
 					bootbox.confirm("Are you sure you would like to Delete this Report?", function (r) {
 						if (r) {
 							ajaxcall({
