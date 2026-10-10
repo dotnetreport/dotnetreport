@@ -13112,24 +13112,55 @@ var reportViewModel = function (options) {
 		iframe.style.border = "0";
 		document.body.appendChild(iframe);
 
+		var styles = _.map(document.querySelectorAll('link[rel="stylesheet"]'), function (l) {
+			return '<link href="' + l.href + '" rel="stylesheet" />';
+		}).join('');
+
+		var reportInner = document.querySelector('.report-inner');
+		var reportCopy = reportInner.cloneNode(true);
+		var canvases = reportInner.querySelectorAll('canvas');
+		_.forEach(reportCopy.querySelectorAll('canvas'), function (c, i) {
+			var img = document.createElement('img');
+			img.src = canvases[i].toDataURL('image/png');
+			img.style.cssText = 'display: block; width: ' + canvases[i].offsetWidth + 'px; max-width: 100%; height: auto;';
+			var wrapper = c.parentNode;
+			wrapper.replaceChild(img, c);
+			wrapper.style.width = 'auto';
+			wrapper.style.height = 'auto';
+			if (wrapper.parentNode) { wrapper.parentNode.style.height = 'auto'; wrapper.parentNode.style.maxWidth = '100%'; wrapper.parentNode.style.minHeight = '0'; }
+		});
+
 		var doc = iframe.contentWindow.document;
 		doc.open();
 		doc.write(
 			'<html><head>' +
 			'<title>' + reportTitle + '</title>' +
-			'<link href="/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" />' +
-			'<style>a[href]:after {content: none !important;}</style>' +
+			styles +
+			'<style>a[href]:after {content: none !important;} @media print { body * { visibility: visible !important; } }' +
+			' * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }' +
+			' .dr-title-hide, .chart-settings-btn, .dr-header-edit, .dr-band-edit, th .dropdown, .dropdown-menu, td > a > .fa-plus, td > a > .fa-minus { display: none !important; }</style>' +
 			'</head><body>' +
-			document.querySelector('.report-inner').innerHTML +
+			reportCopy.outerHTML +
 			'</body></html>'
 		);
 		doc.close();
 
-		setTimeout(function () {
+		var printed = false;
+		var doPrint = function () {
+			if (printed) return;
+			printed = true;
 			iframe.contentWindow.focus();
 			iframe.contentWindow.print();
 			document.body.removeChild(iframe); // clean up
-		}, 250);
+		};
+		var links = doc.querySelectorAll('link[rel="stylesheet"]');
+		var pending = links.length;
+		_.forEach(links, function (link) {
+			if (link.sheet) { pending--; return; }
+			link.onload = link.onerror = function () { if (--pending <= 0) setTimeout(doPrint, 100); };
+		});
+		if (pending <= 0) setTimeout(doPrint, 250);
+		setTimeout(doPrint, 5000);
 	};
 
 	self.getExportJson = function (pageSize, pageOrientation, expand) {
@@ -14861,6 +14892,15 @@ var dashboardViewModel = function (options) {
 	}
 
 	self.PrintDashboard = function () {
+		var grid = document.querySelector('.grid-stack');
+		var width = grid ? grid.offsetWidth : 0;
+		var style = document.createElement('style');
+		style.textContent = '@media print { @page { size: landscape; }' +
+			(width ? ' .grid-stack { width: ' + width + 'px !important; zoom: ' + Math.min(1, 960 / width) + '; }' : '') +
+			' * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }' +
+			' .grid-stack .fa-ellipsis-v, .grid-stack .fa-expand, .grid-stack .fa-compress, .grid-stack .dr-header-edit, .grid-stack .dr-band-edit, .grid-stack .dropdown-menu, .grid-stack td > a > .fa-plus, .grid-stack td > a > .fa-minus { display: none !important; } }';
+		document.head.appendChild(style);
+		window.addEventListener('afterprint', function () { style.remove(); }, { once: true });
 		window.print();
 	};
 	self.onWidgetChange = function (data) {
