@@ -476,6 +476,7 @@ namespace ReportBuilder.Web.Models
         public string dateFormat { get; set; }
         public string customDateFormat { get; set; }
         public string fieldType { get; set; }
+        public string selectedAggregate { get; set; }
     }
     public class LinkFieldItem
     {
@@ -896,6 +897,26 @@ namespace ReportBuilder.Web.Models
 
         }
 
+        /// <summary>"###,###,##0.00" style pattern; no trailing decimal point when zero decimals are requested.</summary>
+        private static string NumberPattern(string decimalZeros) =>
+            string.IsNullOrEmpty(decimalZeros) ? "###,###,##0" : "###,###,##0." + decimalZeros;
+
+        /// <summary>
+        ///  use database provider type for formatting
+        /// </summary>
+        public static bool IsWholeNumberField(DataColumn dc, ReportHeaderColumn formatColumn)
+        {
+            if (formatColumn == null || (dc.DataType != typeof(decimal) && dc.DataType != typeof(double))) return false;
+            if (formatColumn.decimalPlacesDigit.GetValueOrDefault() > 0) return false;
+            var format = formatColumn.fieldFormating;
+            if (!string.IsNullOrEmpty(format) && format != "Auto" && format != "Number") return false;
+
+            var aggregate = formatColumn.selectedAggregate ?? formatColumn.aggregateFunction ?? "";
+            if (aggregate.StartsWith("Count")) return true;
+            if (aggregate.StartsWith("Avg") || aggregate.StartsWith("Average")) return false;
+            return formatColumn.fieldType == "Int";
+        }
+
         public static bool IsNumericType(Type type)
         {
 
@@ -1195,11 +1216,11 @@ namespace ReportBuilder.Web.Models
                 {
                     ws.Cells[rowstart, i].Value = formatColumn.fieldLabel2;
                 }
-                if (dc.DataType == typeof(decimal) || (formatColumn != null && formatColumn.fieldFormating == "Decimal"))
+                if ((dc.DataType == typeof(decimal) && !IsWholeNumberField(dc, formatColumn)) || (formatColumn != null && formatColumn.fieldFormating == "Decimal"))
                 {
                     if (formatColumn != null && formatColumn.decimalPlacesDigit != null)
                     {
-                        ws.Column(i).Style.Numberformat.Format = "###,###,##0." + decimalFormat;
+                        ws.Column(i).Style.Numberformat.Format = NumberPattern(decimalFormat);
                     }
                     else
                     {
@@ -1214,7 +1235,7 @@ namespace ReportBuilder.Web.Models
                 {
                     if (formatColumn.currencySymbol != null && formatColumn.decimalPlacesDigit != null)
                     {
-                        ws.Column(i).Style.Numberformat.Format = formatColumn.currencySymbol + "###,###,##0." + decimalFormat;
+                        ws.Column(i).Style.Numberformat.Format = formatColumn.currencySymbol + NumberPattern(decimalFormat);
                     }
                     else if (formatColumn.currencySymbol != null)
                     {
@@ -3023,12 +3044,12 @@ namespace ReportBuilder.Web.Models
                     string decFmt = new string('0', fc?.decimalPlacesDigit ?? 2);
                     bool colIsNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
 
-                    if (dc.DataType == typeof(decimal) || fc?.fieldFormating == "Decimal")
-                        ws.Column(colIdx).Style.Numberformat.Format = "###,###,##0." + decFmt;
+                    if ((dc.DataType == typeof(decimal) && !IsWholeNumberField(dc, fc)) || fc?.fieldFormating == "Decimal")
+                        ws.Column(colIdx).Style.Numberformat.Format = NumberPattern(decFmt);
                     if (dc.DataType == typeof(DateTime))
                         ws.Column(colIdx).Style.Numberformat.Format = GetExcelDateFormat(fc);
                     if (fc?.fieldFormating == "Currency")
-                        ws.Column(colIdx).Style.Numberformat.Format = (fc.currencySymbol ?? "$") + "###,###,##0." + decFmt;
+                        ws.Column(colIdx).Style.Numberformat.Format = (fc.currencySymbol ?? "$") + NumberPattern(decFmt);
 
                     bool alignRight = fc?.fieldAlign == "Right" ||
                         (colIsNumeric && (fc?.fieldAlign == "Auto" || string.IsNullOrEmpty(fc?.fieldAlign)));
@@ -3076,9 +3097,9 @@ namespace ReportBuilder.Web.Models
 
                             string decFmt = new string('0', fc?.decimalPlacesDigit ?? 2);
                             if (fc?.fieldFormating == "Currency")
-                                ws.Cells[currentRow, colIdx].Style.Numberformat.Format = (fc.currencySymbol ?? "$") + "###,###,##0." + decFmt;
+                                ws.Cells[currentRow, colIdx].Style.Numberformat.Format = (fc.currencySymbol ?? "$") + NumberPattern(decFmt);
                             else if (fc?.fieldFormating == "Decimal")
-                                ws.Cells[currentRow, colIdx].Style.Numberformat.Format = "###,###,##0." + decFmt;
+                                ws.Cells[currentRow, colIdx].Style.Numberformat.Format = NumberPattern(decFmt);
 
                             if (isGrandTotal)
                             {
@@ -3413,9 +3434,9 @@ namespace ReportBuilder.Web.Models
 
                         string decFmt = new string('0', fc?.decimalPlacesDigit ?? 2);
                         if (fc?.fieldFormating == "Currency")
-                            ws.Cells[tblRow, tblCol + 1].Style.Numberformat.Format = (fc.currencySymbol ?? "$") + "###,###,##0." + decFmt;
+                            ws.Cells[tblRow, tblCol + 1].Style.Numberformat.Format = (fc.currencySymbol ?? "$") + NumberPattern(decFmt);
                         else if (fc?.fieldFormating == "Decimal")
-                            ws.Cells[tblRow, tblCol + 1].Style.Numberformat.Format = "###,###,##0." + decFmt;
+                            ws.Cells[tblRow, tblCol + 1].Style.Numberformat.Format = NumberPattern(decFmt);
 
                         tblRow++;
                     }
@@ -3530,11 +3551,11 @@ namespace ReportBuilder.Web.Models
             string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
             try
             {
-                if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormating == "Decimal" || formatColumn.fieldFormating == "Double")))
+                if ((dc.DataType == typeof(decimal) && !IsWholeNumberField(dc, formatColumn)) || (formatColumn != null && (formatColumn.fieldFormating == "Decimal" || formatColumn.fieldFormating == "Double")))
                 {
                     if (formatColumn.decimalPlacesDigit != null)
                     {
-                        value = Convert.ToDecimal(value).ToString("###,###,##0." + decimalFormat);
+                        value = Convert.ToDecimal(value).ToString(NumberPattern(decimalFormat));
                     }
                     else
                     {
@@ -3546,7 +3567,7 @@ namespace ReportBuilder.Web.Models
                 {
                     if (formatColumn.currencySymbol != null && formatColumn.decimalPlacesDigit != null)
                     {
-                        value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + "###,###,##0." + decimalFormat);
+                        value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + NumberPattern(decimalFormat));
                     }
                     else if (formatColumn.currencySymbol != null)
                     {
