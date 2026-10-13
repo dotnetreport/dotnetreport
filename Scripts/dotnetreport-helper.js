@@ -829,6 +829,61 @@ function htmlDecode(input) {
     return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
 }
 
+// Bootbox renders the message and title as html and is no longer maintained, so every dialog is
+// sanitized here instead of at each call site. Formatting tags are kept, scripts and events are not.
+(function () {
+    if (typeof bootbox === 'undefined' || !bootbox.dialog) return;
+
+    var allowedTags = ['A', 'B', 'BR', 'CODE', 'DIV', 'EM', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HR', 'I', 'LI',
+        'OL', 'P', 'PRE', 'SMALL', 'SPAN', 'STRONG', 'TABLE', 'TBODY', 'TD', 'TH', 'THEAD', 'TR', 'U', 'UL'];
+    var allowedAttributes = ['class', 'style', 'title', 'colspan', 'rowspan', 'href', 'target'];
+    var dropContentTags = ['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'LINK', 'META', 'FORM', 'INPUT'];
+
+    function clean(node) {
+        var children = Array.prototype.slice.call(node.children);
+        for (var i = 0; i < children.length; i++) {
+            var child = children[i];
+            if (dropContentTags.indexOf(child.tagName) > -1) {
+                child.parentNode.removeChild(child);
+                continue;
+            }
+            if (allowedTags.indexOf(child.tagName) === -1) {
+                // keep the text, drop the tag
+                child.parentNode.replaceChild(document.createTextNode(child.textContent || ''), child);
+                continue;
+            }
+            var attributes = Array.prototype.slice.call(child.attributes);
+            for (var j = 0; j < attributes.length; j++) {
+                var name = attributes[j].name.toLowerCase();
+                var value = attributes[j].value || '';
+                if (allowedAttributes.indexOf(name) === -1 || /^\s*javascript:/i.test(value)) {
+                    child.removeAttribute(attributes[j].name);
+                }
+            }
+            clean(child);
+        }
+    }
+
+    function sanitizeHtml(html) {
+        if (html === null || html === undefined) return html;
+        if (typeof html !== 'string') return html;
+        // parsed in a separate inert document so nothing runs or loads while we clean it
+        var doc = document.implementation.createHTMLDocument('');
+        doc.body.innerHTML = html;
+        clean(doc.body);
+        return doc.body.innerHTML;
+    }
+
+    var originalDialog = bootbox.dialog;
+    bootbox.dialog = function (options) {
+        if (options) {
+            options.message = sanitizeHtml(options.message);
+            options.title = sanitizeHtml(options.title);
+        }
+        return originalDialog.apply(this, arguments);
+    };
+})();
+
 function pagerViewModel(args) {
     args = args || {};
     var self = this;
