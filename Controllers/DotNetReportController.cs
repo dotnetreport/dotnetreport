@@ -78,6 +78,13 @@ namespace ReportBuilder.Web.Controllers
                 AllowedAttributes = { "style", "class", "src", "alt", "width", "height" }
             };
 
+            // sanitize each value, not the raw json text, otherwise the json may get corrupted
+            var reportDataJson = Newtonsoft.Json.Linq.JToken.Parse(string.IsNullOrEmpty(reportData) ? "{}" : reportData);
+            foreach (var value in reportDataJson.SelectTokens("..*").OfType<Newtonsoft.Json.Linq.JValue>().Where(x => x.Type == Newtonsoft.Json.Linq.JTokenType.String))
+            {
+                value.Value = sanitizer.Sanitize((string)value.Value);
+            }
+
             var model = new DotNetReportPrintModel
             {
                 ReportId = reportId,
@@ -97,7 +104,7 @@ namespace ReportBuilder.Web.Controllers
                 UserId = settings.UserId,
                 CurrentUserRoles = string.Join(",", settings.CurrentUserRole ?? new List<string>()),
                 DataFilters = dataFilters,
-                ReportData = sanitizer.Sanitize(HttpUtility.UrlDecode(reportData))
+                ReportData = reportDataJson.ToString(Newtonsoft.Json.Formatting.None)
             };
 
             return View(model);
