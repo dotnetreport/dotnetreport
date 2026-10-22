@@ -53,9 +53,6 @@ var deps = {
 	"bootstrap-datepicker": {
 		"dist/**/*": ""
 	},
-	"font-awesome": {
-		"**/*": ""
-	},
 	"select2": {
 		"dist/**/*": ""
 	},
@@ -132,6 +129,24 @@ gulp.task("scripts", function (done) {
 			});
 		}
 	}
+	// Font Awesome 7 (free) with the v4 shims, bundled as lib/font-awesome/css/font-awesome.min.css so the
+	// existing v4 class names (fa fa-*) and the existing stylesheet link keep working
+	tasks.push(function (cb) {
+		pump(
+			gulp.src(["all.min.css", "v4-shims.min.css", "v4-font-face.min.css"].map(f => `node_modules/@fortawesome/fontawesome-free/css/${f}`)),
+			concat("font-awesome.min.css"),
+			gulp.dest("wwwroot/lib/font-awesome/css/"),
+			cb
+		);
+	});
+	tasks.push(function (cb) {
+		pump(
+			gulp.src("node_modules/@fortawesome/fontawesome-free/webfonts/*", { encoding: false }),
+			gulp.dest("wwwroot/lib/font-awesome/webfonts/"),
+			cb
+		);
+	});
+
 	// move dotnet report files
 	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport.js"), gulp.dest("wwwroot/js/"), cb); });
 	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport-helper.js"), gulp.dest("wwwroot/js/"), cb); });

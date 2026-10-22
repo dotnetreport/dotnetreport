@@ -1,4 +1,14 @@
-﻿body {
+﻿/* Helpers the templates rely on that used to come from Font Awesome 4's stylesheet */
+.pull-left { float: left; }
+.pull-right { float: right; }
+.fa.pull-left { margin-right: .3em; }
+.fa.pull-right { margin-left: .3em; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+.sr-only-focusable:active, .sr-only-focusable:focus { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; }
+/* Font Awesome 7 makes icons fixed width by default; keep the natural widths the layout was built with (fa-fw still works) */
+:root { --fa-width: auto; }
+
+body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     font-size: 1rem;
