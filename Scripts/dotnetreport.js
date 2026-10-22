@@ -2228,6 +2228,45 @@ var reportViewModel = function (options) {
 	self.lineChartArea = ko.observable();
 	self.barChartStacked = ko.observable();
 	self.comboChartType = ko.observable('bars');
+	self.gaugeStyles = [
+		{ value: 'gauge', text: 'Gauge' },
+		{ value: 'half', text: 'Half Circle' },
+		{ value: 'ring', text: 'Progress Ring' },
+		{ value: 'bar', text: 'Progress Bar' }
+	];
+	self.gaugeOptions = {
+		style: ko.observable('gauge'),
+		min: ko.observable(0),
+		max: ko.observable(100),
+		showPercent: ko.observable(false)
+	};
+	self.funnelOptions = {
+		sort: ko.observable('descending'),
+		showPercent: ko.observable(false)
+	};
+	self.resetChartTypeOptions = function () {
+		self.gaugeOptions.style('gauge');
+		self.gaugeOptions.min(0);
+		self.gaugeOptions.max(100);
+		self.gaugeOptions.showPercent(false);
+		self.funnelOptions.sort('descending');
+		self.funnelOptions.showPercent(false);
+	};
+	self.loadChartTypeOptions = function (reportSettings) {
+		self.resetChartTypeOptions();
+		var g = reportSettings.gaugeOptions;
+		if (g) {
+			if (g.style) self.gaugeOptions.style(g.style);
+			if (g.min !== undefined && g.min !== null && g.min !== '') self.gaugeOptions.min(g.min);
+			if (g.max !== undefined && g.max !== null && g.max !== '') self.gaugeOptions.max(g.max);
+			self.gaugeOptions.showPercent(g.showPercent === true);
+		}
+		var f = reportSettings.funnelOptions;
+		if (f) {
+			if (f.sort) self.funnelOptions.sort(f.sort);
+			self.funnelOptions.showPercent(f.showPercent === true);
+		}
+	};
 	self.DefaultPageSize = ko.observable(30);
 	self.FilterGroups = ko.observableArray();
 	self.PivotColumns = ko.observable();
@@ -3993,6 +4032,8 @@ var reportViewModel = function (options) {
 	var _svgTreemap = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="110" height="65" rx="2" fill="#0d6efd"/><rect x="125" y="10" width="65" height="35" rx="2" fill="#6ea8fe"/><rect x="125" y="50" width="65" height="25" rx="2" fill="#3d8bfd"/><rect x="10" y="80" width="70" height="30" rx="2" fill="#9ec5fe"/><rect x="85" y="80" width="50" height="30" rx="2" fill="#0a58ca"/><rect x="140" y="80" width="50" height="30" rx="2" fill="#6ea8fe" opacity="0.7"/><text x="50" y="48" font-size="9" fill="white" text-anchor="middle">Product A</text><text x="157" y="32" font-size="7" fill="white" text-anchor="middle">Product B</text></svg>';
 	var _svgScatter = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="105" x2="185" y2="105" stroke="#adb5bd" stroke-width="1"/><line x1="20" y1="10" x2="20" y2="105" stroke="#adb5bd" stroke-width="1"/><circle cx="40" cy="80" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="60" cy="65" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="55" cy="75" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="85" cy="50" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="100" cy="40" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="95" cy="55" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="120" cy="35" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="140" cy="25" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="130" cy="45" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="160" cy="20" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="75" cy="60" r="4" fill="#0d6efd" opacity="0.7"/><line x1="35" y1="85" x2="165" y2="18" stroke="#dc3545" stroke-width="1" stroke-dasharray="4"/></svg>';
 	var _svgGauge = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><path d="M40,90 A60,60 0 0,1 160,90" fill="none" stroke="#e9ecef" stroke-width="14" stroke-linecap="round"/><path d="M40,90 A60,60 0 0,1 136,42" fill="none" stroke="#198754" stroke-width="14" stroke-linecap="round"/><text x="100" y="85" font-size="22" font-weight="bold" fill="#495057" text-anchor="middle">73%</text><text x="100" y="100" font-size="8" fill="#6c757d" text-anchor="middle">Performance</text></svg>';
+	var _svgHalfGauge = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><path d="M40,95 A60,60 0 0,1 160,95" fill="none" stroke="#e9ecef" stroke-width="16" stroke-linecap="round"/><path d="M40,95 A60,60 0 0,1 142,53" fill="none" stroke="#0d6efd" stroke-width="16" stroke-linecap="round"/><text x="100" y="92" font-size="20" font-weight="bold" text-anchor="middle" fill="#333">72%</text></svg>';
+	var _svgProgressBar = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><text x="20" y="45" font-size="18" font-weight="bold" fill="#333">72%</text><rect x="20" y="58" width="160" height="18" rx="9" fill="#e9ecef"/><rect x="20" y="58" width="115" height="18" rx="9" fill="#0d6efd"/><text x="180" y="95" font-size="10" text-anchor="end" fill="#888">of 100</text></svg>';
 	var _svgFunnel = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><polygon points="20,15 180,15 170,35 30,35" fill="#0d6efd"/><polygon points="35,40 165,40 150,60 50,60" fill="#3d8bfd"/><polygon points="55,65 145,65 135,85 65,85" fill="#6ea8fe"/><polygon points="70,90 130,90 120,110 80,110" fill="#9ec5fe"/><text x="100" y="28" font-size="8" fill="white" text-anchor="middle">Leads: 1000</text><text x="100" y="53" font-size="8" fill="white" text-anchor="middle">Qualified: 450</text><text x="100" y="78" font-size="8" fill="white" text-anchor="middle">Proposals: 180</text><text x="100" y="103" font-size="7" fill="#0d6efd" text-anchor="middle">Won: 45</text></svg>';
 	var _svgRadar = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><polygon points="100,20 155,45 145,90 55,90 45,45" fill="none" stroke="#dee2e6" stroke-width="0.5"/><polygon points="100,35 140,52 133,82 67,82 60,52" fill="none" stroke="#dee2e6" stroke-width="0.5"/><polygon points="100,50 125,60 120,75 80,75 75,60" fill="none" stroke="#dee2e6" stroke-width="0.5"/><polygon points="100,28 148,50 125,88 60,78 52,42" fill="#0d6efd" opacity="0.2" stroke="#0d6efd" stroke-width="1.5"/><circle cx="100" cy="28" r="2.5" fill="#0d6efd"/><circle cx="148" cy="50" r="2.5" fill="#0d6efd"/><circle cx="125" cy="88" r="2.5" fill="#0d6efd"/><circle cx="60" cy="78" r="2.5" fill="#0d6efd"/><circle cx="52" cy="42" r="2.5" fill="#0d6efd"/></svg>';
 	var _svgWaterfall = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="25" width="24" height="80" rx="2" fill="#0d6efd"/><rect x="48" y="25" width="24" height="30" rx="2" fill="#198754"/><line x1="48" y1="55" x2="72" y2="55" stroke="#adb5bd" stroke-width="0.5" stroke-dasharray="2"/><rect x="81" y="35" width="24" height="20" rx="2" fill="#198754"/><rect x="114" y="55" width="24" height="25" rx="2" fill="#dc3545"/><rect x="147" y="20" width="24" height="85" rx="2" fill="#0d6efd"/><line x1="10" y1="107" x2="180" y2="107" stroke="#adb5bd" stroke-width="1"/></svg>';
@@ -4094,15 +4135,28 @@ var reportViewModel = function (options) {
 			bestFor: 'Price vs quantity, age vs income, any two-variable correlation',
 			needs: '2 numeric fields (one for each axis)',
 			svg: _svgScatter },
-		{ category: 'Advanced', id: 'Gauge', name: 'Gauge', icon: 'fa-tachometer', desc: 'Single value against a target range', available: false,
-			detail: 'A speedometer-style gauge showing a single value against min/max ranges. Great for KPI dashboards with targets.',
+		{ category: 'Advanced', id: 'Gauge', name: 'Gauge', icon: 'fa-tachometer', desc: 'Single value against a target range', available: true,
+			detail: 'A speedometer-style gauge showing a single value between a min and max. Switch the style to Half Circle, Progress Ring or Progress Bar in the chart options.',
 			bestFor: 'Achievement vs target, system health %, completion rate',
-			needs: '1 numeric field with aggregate + configured min/max range',
-			svg: _svgGauge },
-		{ category: 'Advanced', id: 'Funnel', name: 'Funnel', icon: 'fa-filter', desc: 'Sequential stages with drop-off', available: false,
+			needs: '1 numeric field with aggregate. Add a 2nd numeric field to use it as the target (max), otherwise set Min/Max in the chart options.',
+			svg: _svgGauge,
+			modifier: function () { self.setReportType('Gauge'); self.gaugeOptions.style('gauge'); } },
+		{ category: 'Advanced', id: 'Gauge-half', name: 'Half Circle Gauge', icon: 'fa-adjust', desc: 'Progress toward a target on a half circle', available: true,
+			detail: 'A half circle that fills up as the value approaches the target, with the value in the middle. Great for dashboards.',
+			bestFor: 'Sales vs quota, percent complete, goal tracking',
+			needs: '1 numeric field with aggregate. Add a 2nd numeric field to use it as the target (max), otherwise set Min/Max in the chart options.',
+			svg: _svgHalfGauge,
+			modifier: function () { self.setReportType('Gauge'); self.gaugeOptions.style('half'); } },
+		{ category: 'Advanced', id: 'Gauge-bar', name: 'Progress Bar', icon: 'fa-tasks', desc: 'Progress toward a target as a bar', available: true,
+			detail: 'A horizontal bar that fills up as the value approaches the target. Compact, and reads well in small dashboard widgets.',
+			bestFor: 'Percent complete, budget used, tickets closed vs target',
+			needs: '1 numeric field with aggregate. Add a 2nd numeric field to use it as the target (max), otherwise set Min/Max in the chart options.',
+			svg: _svgProgressBar,
+			modifier: function () { self.setReportType('Gauge'); self.gaugeOptions.style('bar'); } },
+		{ category: 'Advanced', id: 'Funnel', name: 'Funnel', icon: 'fa-filter', desc: 'Sequential stages with drop-off', available: true,
 			detail: 'Shows values decreasing through stages of a process. Each stage is narrower than the previous, showing conversion/drop-off.',
 			bestFor: 'Sales pipeline, conversion funnel, recruitment process stages',
-			needs: '1 categorical field (stages) + 1 numeric field (values), sorted by stage order',
+			needs: '1 categorical field (stages) + 1 numeric field with aggregate. Sorted largest first by default, or keep the report order in the chart options.',
 			svg: _svgFunnel },
 		{ category: 'Advanced', id: 'Waterfall', name: 'Waterfall', icon: 'fa-sort-amount-desc', desc: 'Show cumulative additions/subtractions', available: false,
 			detail: 'Shows how an initial value is affected by a series of positive and negative changes, ending at a final value.',
@@ -6278,6 +6332,7 @@ var reportViewModel = function (options) {
 		self.lineChartArea(false);
 		self.barChartStacked(false);
 		self.comboChartType('bars');
+		self.resetChartTypeOptions();
 		self.heatMapOptions.showMarker(false);
 		self.selectedStyle('default');
 		self.reportHtml('');
@@ -7518,6 +7573,8 @@ var reportViewModel = function (options) {
 				lineChartArea: self.lineChartArea(),
 				comboChartType: self.comboChartType(),
 				heatMapOptions: ko.toJS(self.heatMapOptions),
+				gaugeOptions: ko.toJS(self.gaugeOptions),
+				funnelOptions: ko.toJS(self.funnelOptions),
 				DefaultPageSize: self.DefaultPageSize() || 30,
 				noHeaderRow: self.noHeaderRow(),
 				noDashboardBorders: self.noDashboardBorders(),
@@ -11472,6 +11529,146 @@ var reportViewModel = function (options) {
 			option.grid = null;
 		}
 
+		if (self.ReportType() == 'Gauge') {
+			// Gauge / progress: first numeric field is the value, an optional second numeric field is the target (max)
+			var gaugeCols = [];
+			_.forEach(reportData.Columns, function (col, i) {
+				if (col.IsNumeric && !col.groupInGraph()) gaugeCols.push(i);
+			});
+			var gaugeRow = reportData.Rows && reportData.Rows.length > 0 ? reportData.Rows[0] : null;
+			if (gaugeCols.length === 0 || !gaugeRow) {
+				if (!self.activeDesign()) {
+					toastr.error('Gauge requires a numeric field with an aggregate.');
+				}
+				return;
+			}
+			var gaugeColor = (chartOptions.seriesColors && chartOptions.seriesColors.length)
+				? chartOptions.seriesColors[0]
+				: (self.colorScheme().length > 1 ? self.colorScheme()[1] : '#0d6efd');
+			var gaugeFont = chartOptions.fontFamily || undefined;
+			var gaugeTextColor = chartOptions.fontColor || '#333';
+			var gaugeValueItem = gaugeRow.Items[gaugeCols[0]];
+			var gaugeValue = parseFloat(gaugeValueItem.Value) || 0;
+			var gaugeMin = parseFloat(self.gaugeOptions.min());
+			if (isNaN(gaugeMin)) gaugeMin = 0;
+			var gaugeMax = gaugeCols.length > 1 ? parseFloat(gaugeRow.Items[gaugeCols[1]].Value) : parseFloat(self.gaugeOptions.max());
+			if (isNaN(gaugeMax) || gaugeMax <= gaugeMin) gaugeMax = Math.max(gaugeMin + 1, gaugeValue);
+			var gaugePct = Math.round((gaugeValue - gaugeMin) / (gaugeMax - gaugeMin) * 100);
+			var gaugeValueText = self.gaugeOptions.showPercent() ? gaugePct + '%' : (gaugeValueItem.FormattedValue || String(gaugeValue));
+			var gaugeLabel = reportData.Columns[0].IsNumeric
+				? (reportData.Columns[gaugeCols[0]].fieldLabel() || reportData.Columns[gaugeCols[0]].ColumnName)
+				: (gaugeRow.Items[0].FormattedValue || gaugeRow.Items[0].Value || '');
+			var gaugeMaxText = gaugeCols.length > 1 ? (gaugeRow.Items[gaugeCols[1]].FormattedValue || String(gaugeMax)) : String(gaugeMax);
+			var gaugeTooltip = gaugeLabel + ': ' + (gaugeValueItem.FormattedValue || gaugeValue) + ' / ' + gaugeMaxText;
+			var gaugeStyle = self.gaugeOptions.style() || 'gauge';
+			var gaugeData = Math.min(Math.max(gaugeValue, gaugeMin), gaugeMax);
+
+			if (gaugeStyle === 'bar') {
+				option = {
+					title: {
+						text: gaugeValueText,
+						subtext: gaugeLabel + (self.gaugeOptions.showPercent() ? '' : '  (' + gaugePct + '% of ' + gaugeMaxText + ')'),
+						left: 'center',
+						top: '18%',
+						textStyle: { fontSize: 32, fontWeight: 'bold', fontFamily: gaugeFont, color: gaugeTextColor },
+						subtextStyle: { fontSize: 13, fontFamily: gaugeFont, color: gaugeTextColor }
+					},
+					tooltip: { trigger: 'item', formatter: gaugeTooltip },
+					grid: { left: '8%', right: '8%', top: '50%', bottom: '30%', containLabel: false },
+					xAxis: { type: 'value', min: gaugeMin, max: gaugeMax, show: false },
+					yAxis: { type: 'category', data: [gaugeLabel], show: false },
+					series: [{
+						type: 'bar',
+						data: [gaugeData],
+						barWidth: 28,
+						showBackground: true,
+						backgroundStyle: { color: '#e9ecef', borderRadius: 14 },
+						itemStyle: { color: gaugeColor, borderRadius: 14 }
+					}]
+				};
+			} else {
+				var isHalf = gaugeStyle === 'half', isRing = gaugeStyle === 'ring', isProgress = isHalf || isRing;
+				option = {
+					title: option.title,
+					tooltip: { trigger: 'item', formatter: gaugeTooltip },
+					series: [{
+						type: 'gauge',
+						min: gaugeMin,
+						max: gaugeMax,
+						startAngle: isHalf ? 180 : (isRing ? 90 : 225),
+						endAngle: isHalf ? 0 : (isRing ? -270 : -45),
+						center: isHalf ? ['50%', '70%'] : ['50%', '55%'],
+						radius: isHalf ? '100%' : '85%',
+						progress: { show: true, roundCap: isProgress, width: isProgress ? 24 : 14, itemStyle: { color: gaugeColor } },
+						axisLine: { roundCap: isProgress, lineStyle: { width: isProgress ? 24 : 14, color: [[1, '#e9ecef']] } },
+						pointer: { show: !isProgress, itemStyle: { color: gaugeColor } },
+						anchor: { show: !isProgress, size: 14, itemStyle: { borderWidth: 2, borderColor: gaugeColor } },
+						axisTick: { show: !isProgress },
+						splitLine: { show: !isProgress, length: 12 },
+						splitNumber: 5,
+						axisLabel: { show: !isProgress, distance: 22, fontFamily: gaugeFont, color: gaugeTextColor, formatter: function (v) { return Number(v).toLocaleString(undefined, { notation: 'compact', maximumFractionDigits: 1 }); } },
+						title: { show: true, offsetCenter: [0, isHalf ? '20%' : (isRing ? '30%' : '90%')], fontSize: 14, fontFamily: gaugeFont, color: gaugeTextColor },
+						detail: {
+							valueAnimation: false,
+							offsetCenter: [0, isHalf ? '-15%' : (isRing ? '-5%' : '62%')],
+							fontSize: 30,
+							fontWeight: 'bold',
+							fontFamily: gaugeFont,
+							color: gaugeTextColor,
+							formatter: function () { return gaugeValueText; }
+						},
+						data: [{ value: gaugeData, name: gaugeLabel + (isProgress && !self.gaugeOptions.showPercent() ? '\n' + gaugePct + '% of ' + gaugeMaxText : '') }]
+					}]
+				};
+			}
+			if (chartOptions.backgroundColor) option.backgroundColor = chartOptions.backgroundColor;
+		}
+
+		if (self.ReportType() == 'Funnel') {
+			var funnelValCol = valColumns.length > 0 ? valColumns[0] : null;
+			if (!funnelValCol) {
+				if (!self.activeDesign()) {
+					toastr.error('Funnel requires a category field and a numeric field with an aggregate.');
+				}
+				return;
+			}
+			var funnelData = data.rows.map(function (r, idx) {
+				return { name: r[0], value: r[funnelValCol.index], rowIndex: idx };
+			});
+			var funnelTop = _.max(funnelData.map(function (d) { return d.value || 0; })) || 1;
+			var funnelShowPercent = self.funnelOptions.showPercent();
+			option.series = [{
+				name: funnelValCol.column,
+				type: 'funnel',
+				left: '10%',
+				width: '80%',
+				top: chartOptions.title ? 40 : 20,
+				bottom: 20,
+				minSize: '25%',
+				sort: self.funnelOptions.sort() || 'descending',
+				gap: 2,
+				label: {
+					show: true,
+					position: 'inside',
+					color: '#fff',
+					textBorderColor: 'rgba(0, 0, 0, 0.35)',
+					textBorderWidth: 2,
+					fontFamily: chartOptions.fontFamily || undefined,
+					formatter: function (p) {
+						return p.name + ': ' + (funnelShowPercent ? Math.round((p.value || 0) / funnelTop * 100) + '%' : p.value);
+					}
+				},
+				itemStyle: { borderColor: '#fff', borderWidth: 1 },
+				data: funnelData
+			}];
+			option.tooltip = { trigger: 'item', formatter: '{b}: {c}' };
+			// each stage is already labelled inside the funnel
+			option.legend = { show: false };
+			option.xAxis = null;
+			option.yAxis = null;
+			option.grid = null;
+		}
+
 		chart.off('finished');
 		chart.on('finished', function () {
 			var img = chart.getDataURL({
@@ -11483,10 +11680,12 @@ var reportViewModel = function (options) {
 			window.chartImageUrl = img;
 		});
 
-		if (self.ReportType() != 'Treemap' && self.ReportType() != 'Radar' && self.ReportType() != 'Polar') {
+		var noAxisChart = ['Treemap', 'Radar', 'Polar', 'Gauge', 'Funnel'].indexOf(self.ReportType()) >= 0;
+		if (['Treemap', 'Radar', 'Polar', 'Gauge'].indexOf(self.ReportType()) < 0) {
 			chart.off('click');
 			chart.on('click', function (params) {
-				var rowIndex = params && params.dataIndex != null ? (chartRowMap ? chartRowMap[params.dataIndex] : params.dataIndex) : -1;
+				var rowIndex = params && params.data && params.data.rowIndex != null ? params.data.rowIndex
+					: (params && params.dataIndex != null ? (chartRowMap ? chartRowMap[params.dataIndex] : params.dataIndex) : -1);
 				if (rowIndex >= 0) {
 					self.ChartDrillDownData(null);
 					self.ReportResult().ReportData().Rows[rowIndex].expand();
@@ -11495,7 +11694,7 @@ var reportViewModel = function (options) {
 			});
 		}
 
-		if (yAxisFormatter) {
+		if (yAxisFormatter && !noAxisChart) {
 			var isHorizontalBar = self.barChartHorizontal() === true && self.ReportType() === 'Bar';
 			if (isHorizontalBar) {
 				// For horizontal bars, value axis is xAxis
@@ -11576,6 +11775,8 @@ var reportViewModel = function (options) {
 		var d = self.pieChartDonut();
 		var a = self.lineChartArea();
 		var c = self.comboChartType();
+		ko.toJS(self.gaugeOptions);
+		ko.toJS(self.funnelOptions);
 		self.DrawChart();
 	});
 
@@ -12009,6 +12210,7 @@ var reportViewModel = function (options) {
 		self.pieChartDonut(reportSettings.pieChartDonut === true ? true : false);
 		self.lineChartArea(reportSettings.lineChartArea === true ? true : false);
 		self.comboChartType(reportSettings.comboChartType || 'bars');
+		self.loadChartTypeOptions(reportSettings);
 		if (reportSettings.heatMapOptions) {
 			self.heatMapOptions.showMarker(reportSettings.heatMapOptions.showMarker);
 			self.heatMapOptions.gradient1(reportSettings.heatMapOptions.gradient1);
