@@ -1394,98 +1394,116 @@
             </script>
 
 <script type="text/html" id="report-schedule">
-    <div data-bind="with: scheduleBuilder" id="schedule-builder-div">
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" data-bind="checked: hasSchedule" id="scheduleReportCheckbox">
+    <div data-bind="with: scheduleBuilder" id="schedule-builder-div" class="dr-sched">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" data-bind="checked: hasSchedule" id="scheduleReportCheckbox">
             <label class="form-check-label" for="scheduleReportCheckbox">
                 Set Schedule to send by Email
             </label>
         </div>
         <div data-bind="if: hasSchedule">
-            <div class="d-flex align-items-center">
-                <div class="me-3 d-flex align-items-center">
-                    <span data-bind="text: selectedOption() != 'once' ? 'Every ' : ''"></span>&nbsp;
-                    <select class="form-select" required data-bind="options: options, value: selectedOption" style="min-width: 80px;"></select>
+            <div class="dr-sched-body">
+                <div class="dr-sched-row">
+                    <label class="dr-sched-label">Repeat</label>
+                    <div class="dr-sched-control">
+                        <span class="dr-sched-word" data-bind="visible: selectedOption() != 'once'">Every</span>
+                        <select class="form-select form-select-sm dr-sched-narrow" required data-bind="options: options, value: selectedOption"></select>
+                    </div>
                 </div>
-                <div data-bind="if: selectedOption() == 'once'" class="me-3 d-flex align-items-center">
-                    &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate, datepickerOptions: {value: selectedDate}" class="form-control" required />
+
+                <div class="dr-sched-row" data-bind="visible: selectedOption() == 'once'">
+                    <label class="dr-sched-label">On</label>
+                    <div class="dr-sched-control" data-bind="if: selectedOption() == 'once'">
+                        <input class="form-control form-control-sm dr-sched-date" data-bind="datepicker: selectedDate, datepickerOptions: {value: selectedDate}" required />
+                    </div>
                 </div>
-                <div class="d-flex align-items-center">
-                    <div data-bind="if: showDays" class="d-flex align-items-center">
-                        &nbsp;on&nbsp;
-                        <select multiple class="form-select ms-2" required data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
+
+                <div class="dr-sched-row" data-bind="visible: showDays">
+                    <label class="dr-sched-label">On</label>
+                    <div class="dr-sched-control" data-bind="if: showDays">
+                        <select multiple class="form-select" style="width: 100%;" required data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
                     </div>
-                    <div data-bind="if: showDates" class="d-flex align-items-center">
-                        &nbsp;on&nbsp;
-                        <select multiple class="form-select" required data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
+                </div>
+
+                <div class="dr-sched-row" data-bind="visible: showDates">
+                    <label class="dr-sched-label">On</label>
+                    <div class="dr-sched-control" data-bind="if: showDates">
+                        <select multiple class="form-select" style="width: 100%;" required data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
                     </div>
-                    <div data-bind="if: showMonths" class="d-flex align-items-center">
-                        &nbsp;on&nbsp;
-                        <select multiple class="form-select" required data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
+                </div>
+
+                <div class="dr-sched-row" data-bind="visible: showMonths">
+                    <label class="dr-sched-label">In</label>
+                    <div class="dr-sched-control" data-bind="if: showMonths">
+                        <select multiple class="form-select" style="width: 100%;" required data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
                     </div>
-                    <div data-bind="if: showAtTime" class="d-flex align-items-center ms-3">
-                        &nbsp;at&nbsp;
-                        <select class="form-select me-2" style="min-width: 60px;" data-bind="options: hours, value: selectedHour"></select>
-                        <select class="form-select me-2" style="min-width: 60px;" data-bind="options: minutes, value: selectedMinute"></select>
-                        <select class="form-select" style="min-width: 80px;" data-bind="value: selectedAmPm">
+                </div>
+
+                <div class="dr-sched-row" data-bind="visible: showAtTime">
+                    <label class="dr-sched-label">At</label>
+                    <div class="dr-sched-control">
+                        <select class="form-select form-select-sm dr-sched-time" data-bind="options: hours, value: selectedHour"></select>
+                        <span class="dr-sched-word">:</span>
+                        <select class="form-select form-select-sm dr-sched-time" data-bind="options: minutes, value: selectedMinute"></select>
+                        <select class="form-select form-select-sm dr-sched-time" data-bind="value: selectedAmPm">
                             <option>AM</option>
                             <option>PM</option>
                         </select>
                     </div>
                 </div>
-            </div>
 
-            <div class="alert alert-info">
-                Report will be run and emailed <span data-bind="text: selectedOption() != 'once' ? 'every' : ''"></span> <span data-bind="text: selectedOption"></span>
-                <span data-bind="if: selectedOption() == 'once'">
-                    on <span class="error" data-bind="visible: !selectedDate()">Please pick a Date</span> <span data-bind="text: selectedDate"></span>
-                </span>
-                <span data-bind="if: showDays">
-                    on <span class="error" data-bind="visible: selectedDays().length == 0">Please pick Day(s)</span> <span data-bind="text: selectedDays"></span>
-                </span>
-                <span data-bind="if: showDates">
-                    on <span class="error" data-bind="visible: selectedDates().length == 0">Please pick Date(s)</span>
-                    <span data-bind="foreach: selectedDates"><span data-bind="visible: $index()>0">, </span><span data-bind="text: $data == 1 ? '1st': ($data == 2 ? '2nd' : ($data == 3 ? '3rd' : ($data == 31 ? '31st' : $data+'th')))"></span></span>
-                </span>
-                <span data-bind="if: showMonths">
-                    of <span class="error" data-bind="visible: selectedMonths().length == 0">Please pick Month(s)</span> <span data-bind="text: selectedMonths"></span>
-                </span>
-                <span data-bind="if: showAtTime">
-                    at <span data-bind="text: selectedHour"></span>:<span data-bind="text: selectedMinute"></span> <span data-bind="text: selectedAmPm"></span>
-                </span>
-            </div>
-            <div class="mb-3">
-                <div class="row g-2 align-items-center">
-                    <div class="col-12 col-sm-3">
-                        <label class="col-form-label pb-0">Email to</label>
-                        <div class="form-check small">
-                            <label class="form-check-label text-muted" title="Send to a saved Email List instead of typing addresses">
-                                <input class="form-check-input" type="checkbox" data-bind="checked: useEmailQuery" />
-                                Email List
-                            </label>
-                        </div>
-                    </div>
+                <div class="dr-sched-summary">
+                    <i class="fa fa-clock-o"></i>
+                    <span>
+                        Report will be run and emailed <span data-bind="text: selectedOption() != 'once' ? 'every' : ''"></span> <span data-bind="text: selectedOption"></span>
+                        <span data-bind="if: selectedOption() == 'once'">
+                            on <span class="error" data-bind="visible: !selectedDate()">Please pick a Date</span> <span data-bind="text: selectedDate"></span>
+                        </span>
+                        <span data-bind="if: showDays">
+                            on <span class="error" data-bind="visible: selectedDays().length == 0">Please pick Day(s)</span> <span data-bind="text: selectedDays"></span>
+                        </span>
+                        <span data-bind="if: showDates">
+                            on <span class="error" data-bind="visible: selectedDates().length == 0">Please pick Date(s)</span>
+                            <span data-bind="foreach: selectedDates"><span data-bind="visible: $index()>0">, </span><span data-bind="text: $data == 1 ? '1st': ($data == 2 ? '2nd' : ($data == 3 ? '3rd' : ($data == 31 ? '31st' : $data+'th')))"></span></span>
+                        </span>
+                        <span data-bind="if: showMonths">
+                            of <span class="error" data-bind="visible: selectedMonths().length == 0">Please pick Month(s)</span> <span data-bind="text: selectedMonths"></span>
+                        </span>
+                        <span data-bind="if: showAtTime">
+                            at <span data-bind="text: selectedHour"></span>:<span data-bind="text: selectedMinute"></span> <span data-bind="text: selectedAmPm"></span>
+                        </span>
+                    </span>
+                </div>
 
-                    <div class="col-12 col-sm-6">
+                <div class="dr-sched-row">
+                    <label class="dr-sched-label">Email to</label>
+                    <div class="dr-sched-control dr-sched-stack">
                         <!-- ko ifnot: useEmailQuery -->
-                        <input type="text" class="form-control"
+                        <input type="text" class="form-control form-control-sm"
                                data-bind="value: emailTo"
                                placeholder="Enter Email Addresses separated by comma" />
                         <!-- /ko -->
                         <!-- ko if: useEmailQuery -->
-                        <div class="d-flex align-items-center gap-2">
-                            <select class="form-select" data-bind="options: emailQueries, optionsText: 'name', optionsValue: 'id', value: emailQueryId, optionsCaption: 'Choose Email List...'"></select>
+                        <div class="d-flex gap-2 w-100">
+                            <select class="form-select form-select-sm" data-bind="options: emailQueries, optionsText: 'name', optionsValue: 'id', value: emailQueryId, optionsCaption: 'Choose Email List...'"></select>
                             <button type="button" class="btn btn-light btn-sm text-nowrap"
                                     data-bind="click: previewRecipients, enable: emailQueryId() > 0"
                                     title="Show who this Email List currently returns">View</button>
                         </div>
                         <!-- /ko -->
+                        <div class="form-check small mb-0">
+                            <label class="form-check-label text-muted" title="Send to a saved Email List instead of typing addresses">
+                                <input class="form-check-input" type="checkbox" data-bind="checked: useEmailQuery" />
+                                Use a saved Email List
+                            </label>
+                        </div>
                     </div>
+                </div>
 
-                    <label class="col-6 col-sm-1 col-form-label">Format</label>
-
-                    <div class="col-6 col-sm-2">
-                        <select class="form-select" data-bind="value: format,event: { change: onFormatChange }">
+                <div class="dr-sched-row">
+                    <label class="dr-sched-label">Format</label>
+                    <div class="dr-sched-control">
+                        <select class="form-select form-select-sm dr-sched-narrow" data-bind="value: format,event: { change: onFormatChange }">
                             <option value="EXCEL">Excel</option>
                             <option data-bind="visible: $parent.canDrilldown && $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option>
                             <option value="CSV">CSV</option>
@@ -1495,13 +1513,11 @@
                         </select>
                     </div>
                 </div>
-            </div>
-            <div class="mb-3">
-                <div class="row g-2 align-items-center">
-                    <label class="col-12 col-sm-3 col-form-label">Pick Time Zone</label>
 
-                    <div class="col-12 col-sm-9">
-                        <select class="form-select"
+                <div class="dr-sched-row">
+                    <label class="dr-sched-label">Time Zone</label>
+                    <div class="dr-sched-control">
+                        <select class="form-select" style="width: 100%;"
                                 data-bind="options: timezonOption,
                                            optionsText: 'displayName',
                                            optionsValue: 'timeZoneId',
@@ -1510,48 +1526,44 @@
                         </select>
                     </div>
                 </div>
-            </div>
 
-            <div class="mb-3">
-                <div class="row g-2">
-                    <div class="col-6 col-sm-3">
-                        <div class="form-check" title="Set a date to start sending scheduled report">
+                <div class="dr-sched-row">
+                    <label class="dr-sched-label">Start Date</label>
+                    <div class="dr-sched-control">
+                        <div class="form-check mb-0" title="Set a date to start sending scheduled report">
                             <input class="form-check-input" type="checkbox"
                                    data-bind="checked: hasScheduleStart"
                                    id="scheduleStartCheckbox">
-                            <label class="form-check-label" for="scheduleStartCheckbox">
-                                Schedule Start Date
+                            <label class="form-check-label small text-muted" for="scheduleStartCheckbox" data-bind="visible: !hasScheduleStart()">
+                                Start sending right away
                             </label>
                         </div>
-                    </div>
-
-                    <div class="col-6 col-sm-4" data-bind="if: hasScheduleStart">
-                        <input type="text" class="form-control"
+                        <!-- ko if: hasScheduleStart -->
+                        <input type="text" class="form-control form-control-sm dr-sched-date"
                                data-bind="datepicker: scheduleStart, datepickerOptions: {value: scheduleStart}"
                                title="Scheduled Report will not be sent before this date"
                                required />
+                        <!-- /ko -->
                     </div>
                 </div>
-            </div>
 
-            <div class="mb-3">
-                <div class="row g-2">
-                    <div class="col-6 col-sm-3">
-                        <div class="form-check"  title="Set a date to stop sending scheduled report">
+                <div class="dr-sched-row">
+                    <label class="dr-sched-label">End Date</label>
+                    <div class="dr-sched-control">
+                        <div class="form-check mb-0" title="Set a date to stop sending scheduled report">
                             <input class="form-check-input" type="checkbox"
                                    data-bind="checked: hasScheduleEnd"
                                    id="scheduleEndCheckbox">
-                            <label class="form-check-label" for="scheduleEndCheckbox">
-                                Schedule End Date
+                            <label class="form-check-label small text-muted" for="scheduleEndCheckbox" data-bind="visible: !hasScheduleEnd()">
+                                Keep sending until turned off
                             </label>
                         </div>
-                    </div>
-
-                    <div class="col-6 col-sm-4" data-bind="if: hasScheduleEnd">
-                        <input type="text" class="form-control"
+                        <!-- ko if: hasScheduleEnd -->
+                        <input type="text" class="form-control form-control-sm dr-sched-date"
                                data-bind="datepicker: scheduleEnd, datepickerOptions: {value: scheduleEnd}"
                                title="Scheduled Report will not be sent after this date"
                                required />
+                        <!-- /ko -->
                     </div>
                 </div>
             </div>
@@ -1800,10 +1812,18 @@
             <span class="fa fa-2x fa-globe"></span>
             <p>Map</p>
         </button>
+        <!-- ko ifnot: extraChartType -->
         <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Single'); }, css: { active: ReportType()=='Single',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Single' }">
             <span class="fa fa-2x fa-window-maximize"></span>
             <p>KPI</p>
         </button>
+        <!-- /ko -->
+        <!-- ko with: extraChartType -->
+        <button class="btn btn-outline-secondary chart-type-btn active" data-bind="click: $parent.selectExtraChartType, attr: { 'data-chart-id': id, title: title }">
+            <span class="fa fa-2x" data-bind="css: icon"></span>
+            <p data-bind="text: name"></p>
+        </button>
+        <!-- /ko -->
         <button class="btn btn-outline-secondary" data-bind="click: showMoreCharts" title="Explore more visualization options">
             <span class="fa fa-2x fa-th-large"></span>
             <p>More...</p>
@@ -1811,7 +1831,7 @@
     </div>
     </div>
     <!-- Smart Suggestion -->
-    <div class="smart-suggestion mt-2" data-bind="visible: smartSuggestion() && (showHints() || activeDesign())">
+    <div class="smart-suggestion mt-2" data-bind="visible: smartSuggestion() && showHints()">
         <i class="fa fa-lightbulb-o text-warning"></i>
         <span data-bind="text: smartSuggestion"></span>
         <a href="#" class="ms-2 small" data-bind="click: applySuggestion">

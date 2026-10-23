@@ -4184,6 +4184,25 @@ var reportViewModel = function (options) {
 		return cats;
 	});
 
+	var stripChartTypes = ['List', 'Summary', 'Bar', 'Pie', 'Line', 'Combo', 'Html', 'Map', 'Single'];
+	var shortChartNames = { 'HeatMap': 'Heat Map', 'Radar': 'Radar', 'Polar': 'Polar', 'Gauge-half': 'Half Gauge', 'Gauge-bar': 'Progress' };
+	self.extraChartType = ko.pureComputed(function () {
+		var type = self.ReportType();
+		if (!type || stripChartTypes.indexOf(type) >= 0 || type.indexOf('Map') === 0) return null;
+		var id = type;
+		if (type === 'Gauge') {
+			var style = self.gaugeOptions.style();
+			id = style === 'half' ? 'Gauge-half' : (style === 'bar' ? 'Gauge-bar' : 'Gauge');
+		}
+		var chart = _.find(self.moreChartTypes, { id: id }) || _.find(self.moreChartTypes, { id: type });
+		return chart ? { id: chart.id, icon: chart.icon, name: shortChartNames[chart.id] || chart.name, title: chart.name, modifier: chart.modifier } : null;
+	});
+	self.selectExtraChartType = function () {
+		var chart = self.extraChartType();
+		if (!chart) return;
+		if (chart.modifier) chart.modifier(); else self.setReportType(chart.id);
+	};
+
 	self.getChartsForCategory = function (category) {
 		return _.filter(self.moreChartTypes, { category: category });
 	};

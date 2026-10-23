@@ -92,7 +92,6 @@ body {
         color: #495057;
     }
 
-/* The "..." actions menu reveals on row hover; stays visible while the dropdown is open */
 .row-hover .hover-ellipsis {
     visibility: hidden;
 }
@@ -100,6 +99,21 @@ body {
 .row-hover:hover .hover-ellipsis,
 .row-hover .hover-ellipsis.show {
     visibility: visible;
+}
+
+@media (min-width: 768px) {
+    .row > .col-md-3:has(+ .col-md-1 > .hover-ellipsis) {
+        flex: 0 1 auto;
+        width: auto;
+        max-width: calc(33.3333% - 2.5rem);
+    }
+
+    .row > .col-md-3 + .col-md-1:has(> .hover-ellipsis) {
+        flex: 1 1 0;
+        width: auto;
+        min-width: 2.5rem;
+        padding-left: 0;
+    }
 }
 
 /* Touch devices have no hover — keep all hover-revealed actions always visible there */
@@ -2190,40 +2204,6 @@ tfoot tr.sub-total {
     padding: 2px 4px;
 }
 
-/* Sidebar responsive overrides for schedule */
-.compact-designer-sidebar #schedule-builder-div .d-flex.align-items-center {
-    flex-wrap: wrap;
-    gap: 4px;
-}
-
-.compact-designer-sidebar #schedule-builder-div .d-flex.align-items-center .me-3 {
-    margin-right: 0 !important;
-}
-
-.compact-designer-sidebar #schedule-builder-div .d-flex.align-items-center .ms-3 {
-    margin-left: 0 !important;
-}
-
-.compact-designer-sidebar #schedule-builder-div .d-flex.align-items-center select.form-select {
-    min-width: 60px !important;
-}
-
-.compact-designer-sidebar #schedule-builder-div .row.g-3 {
-    display: block;
-}
-
-.compact-designer-sidebar #schedule-builder-div .row.g-3 > [class*="col-"] {
-    width: 100%;
-    max-width: 100%;
-    flex: none;
-    margin-bottom: 4px;
-}
-
-.compact-designer-sidebar #schedule-builder-div .alert {
-    font-size: 11px;
-    padding: 8px;
-}
-
 /* Sidebar responsive overrides for options */
 .compact-designer-sidebar #settingsPanel .form-group.row {
     display: block;
@@ -2436,40 +2416,6 @@ td[class^="pivot-group-"] {
     padding: 2px 4px;
 }
 
-/* Live preview designer - responsive schedule */
-.live-preview-designer #schedule-builder-div .d-flex.align-items-center {
-    flex-wrap: wrap;
-    gap: 4px;
-}
-
-.live-preview-designer #schedule-builder-div .d-flex.align-items-center .me-3 {
-    margin-right: 0 !important;
-}
-
-.live-preview-designer #schedule-builder-div .d-flex.align-items-center .ms-3 {
-    margin-left: 0 !important;
-}
-
-.live-preview-designer #schedule-builder-div .d-flex.align-items-center select.form-select {
-    min-width: 60px !important;
-}
-
-.live-preview-designer #schedule-builder-div .row.g-3 {
-    display: block;
-}
-
-.live-preview-designer #schedule-builder-div .row.g-3 > [class*="col-"] {
-    width: 100%;
-    max-width: 100%;
-    flex: none;
-    margin-bottom: 4px;
-}
-
-.live-preview-designer #schedule-builder-div .alert {
-    font-size: 11px;
-    padding: 8px;
-}
-
 /* Live preview area - chart sizing */
 .live-preview-area .report-chart {
     min-height: 300px;
@@ -2674,6 +2620,14 @@ body.dark-mode .ai-assistant-panel .ai-msg-bubble.bg-light { background-color: #
 .dr-nested-band:hover .dr-band-edit { visibility: visible; }
 .dr-header-edit { visibility: hidden; opacity: 0.7; }
 tr:hover > th > .dr-header-edit { visibility: visible; }
+/* Column menu (vertical ...) shows on header hover like the pencil, and stays while its menu is open */
+th .dropdown > [data-bs-toggle="dropdown"] { visibility: hidden; }
+tr:hover > th .dropdown > [data-bs-toggle="dropdown"],
+th .dropdown > [data-bs-toggle="dropdown"].show { visibility: visible; }
+@media (hover: none) {
+    .dr-header-edit,
+    th .dropdown > [data-bs-toggle="dropdown"] { visibility: visible; }
+}
 .dr-color-unset::-webkit-color-swatch { background: linear-gradient(to top right, transparent calc(50% - 1px), #dc3545 50%, transparent calc(50% + 1px)), #fff !important; }
 .dr-color-unset::-moz-color-swatch { background: linear-gradient(to top right, transparent calc(50% - 1px), #dc3545 50%, transparent calc(50% + 1px)), #fff !important; }
 
@@ -2897,3 +2851,22 @@ tr:hover > th > .dr-header-edit { visibility: visible; }
 .dr-group-heading h6 { flex: 1; font-weight: inherit; color: inherit; text-align: inherit; }
 .dr-group-heading .dr-band-edit { visibility: hidden; opacity: 0.8; }
 .dr-group-heading:hover .dr-band-edit { visibility: visible; }
+
+/* Schedule builder: label / control rows that stack when the panel is narrow (designer sidebar) */
+.dr-sched { container-type: inline-size; }
+.dr-sched-body { margin-top: .5rem; }
+.dr-sched-row { display: grid; grid-template-columns: 7rem minmax(0, 1fr); align-items: center; gap: .25rem .75rem; margin-bottom: .5rem; }
+.dr-sched-label { margin: 0; font-size: .875rem; color: #495057; }
+.dr-sched-control { display: flex; align-items: center; flex-wrap: wrap; gap: .375rem; min-width: 0; }
+.dr-sched-control > .form-control, .dr-sched-control > .select2-container { flex: 1 1 auto; }
+.dr-sched-stack { flex-direction: column; align-items: stretch; }
+.dr-sched-word { font-size: .875rem; color: #6c757d; }
+.dr-sched-narrow { width: auto; min-width: 8rem; flex: 0 0 auto; }
+.dr-sched-time { width: auto; min-width: 3.6rem; flex: 0 1 4.25rem; padding-right: 1.6rem; background-position: right .45rem center; }
+.dr-sched-control:has(> .dr-sched-time) { flex-wrap: nowrap; }
+.dr-sched-control > .dr-sched-date { flex: 0 1 11rem; }
+.dr-sched-summary { display: flex; gap: .5rem; align-items: baseline; padding: .5rem .75rem; margin: .25rem 0 .75rem; font-size: .8125rem; color: #055160; background: #e7f6fa; border-radius: .375rem; }
+@container (max-width: 380px) {
+    .dr-sched-row { grid-template-columns: 1fr; gap: .25rem; }
+    .dr-sched-label { font-weight: 600; font-size: .8125rem; }
+}
