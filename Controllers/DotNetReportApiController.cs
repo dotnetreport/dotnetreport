@@ -20,8 +20,8 @@ namespace ReportBuilder.Web.Controllers
         public readonly static string _configFileName = "appsettings.dotnetreport.json";
         public DotNetReportApiController(IConfiguration configuration)
         {
-            _configuration = configuration;
             DotNetReportHelper.UseConfiguration(configuration);
+            _configuration = DotNetReportHelper.StaticConfig; // appsettings.json with appsettings.dotnetreport.json on top
         }
 
         public DotNetReportSettings GetSettings()
@@ -255,7 +255,9 @@ namespace ReportBuilder.Web.Controllers
             "/ReportApi/SaveReportHeader",
             "/ReportApi/SaveFolderData",
             "/ReportApi/DeleteFolder",
-            "/ReportApi/SaveReportAccess"
+            "/ReportApi/SaveReportAccess",
+            "/ReportApi/ChangeAccountSettings",
+            "/ReportApi/GetAccountInfo"
         };
 
         private async Task<IActionResult> ExecuteCallReportApi(string method, string model, string userId, DotNetReportSettings settings = null)
@@ -285,6 +287,11 @@ namespace ReportBuilder.Web.Controllers
                 };
 
                 var data = JsonSerializer.Deserialize<Dictionary<string, dynamic>>(model);
+                if ((method ?? "").Trim().Equals("/ReportApi/ChangeAccountSettings", StringComparison.OrdinalIgnoreCase)
+                    && data.TryGetValue("settings", out var accountSettings) && accountSettings is JsonElement asElement && asElement.ValueKind == JsonValueKind.String)
+                {
+                    data["settings"] = JsonSerializer.SerializeToElement(WithoutEmailSettings(asElement.GetString()));
+                }
                 var adminMode = false; var dashboardId = 0; var folderId = 0; var reportId = 0;
                 foreach (var key in data.Keys)
                 {
@@ -1172,6 +1179,134 @@ namespace ReportBuilder.Web.Controllers
             }
         }
 
+        /// <summary>
+        /// Email settings are kept in appsettings.dotnetreport.json on this server, so they are taken out of the
+        /// Account Settings sent to Dotnet Report.
+        /// </summary>
+        private static string WithoutEmailSettings(string settingsJson)
+        {
+            try
+            {
+                var values = Newtonsoft.Json.Linq.JObject.Parse(settingsJson ?? "{}");
+                foreach (var key in values.Properties().Select(p => p.Name).ToList())
+                {
+                    if (key.StartsWith("email", StringComparison.OrdinalIgnoreCase) || key.StartsWith("sendGrid", StringComparison.OrdinalIgnoreCase))
+                        values.Remove(key);
+                }
+                return values.ToString(Newtonsoft.Json.Formatting.None);
+            }
+            catch
+            {
+                return settingsJson;
+            }
+        }
+
+        /// <summary>The email settings for the Setup page, with the password and SendGrid key masked. Admin Mode only.</summary>
+        [HttpGet]
+        public IActionResult GetEmailSettings()
+        {
+            if (!GetSettings().CanUseAdminMode)
+                return StatusCode(403, new { success = false, message = "You are not authorized to perform this action" });
+
+            return new JsonResult(DotNetReportHelper.GetEmailSettings(maskSecrets: true), new JsonSerializerOptions { PropertyNamingPolicy = null });
+        }
+
+        /// <summary>Saves the email settings in appsettings.dotnetreport.json on this server. Admin Mode only.</summary>
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public IActionResult SaveEmailSettings([FromBody] DotNetReportEmailSettings model)
+        {
+            if (!GetSettings().CanUseAdminMode)
+                return StatusCode(403, new { success = false, message = "You are not authorized to perform this action" });
+
+            try
+            {
+                DotNetReportHelper.SaveEmailSettings(model ?? new DotNetReportEmailSettings());
+                return Ok(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Ok(new { success = false, message = ex.Message });
+            }
+        }
+
+        public class SwitchWorkspaceCall
+        {
+            public string dataConnect { get; set; }
+        }
+
+        /// <summary>
+        /// Switches the whole app to another Workspace of this account, saved in appsettings.dotnetreport.json.
+        /// Admin Mode only.
+        /// </summary>
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<IActionResult> SwitchWorkspace([FromBody] SwitchWorkspaceCall data)
+        {
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode)
+                return StatusCode(403, new { success = false, message = "You are not authorized to perform this action" });
+
+            var dataConnect = (data?.dataConnect ?? "").Trim();
+            if (string.IsNullOrEmpty(dataConnect)) return Ok(new { success = false, message = "Please choose a Workspace" });
+
+            try
+            {
+                // Only a Workspace of this account, so the app can't be pointed at something else
+                using (var client = new HttpClient())
+                {
+                    var response = await client.GetAsync($"{settings.ApiUrl}/ReportApi/GetDataConnectKey?account={Uri.EscapeDataString(settings.AccountApiToken ?? "")}&dataConnect={Uri.EscapeDataString(dataConnect)}");
+                    if (!response.IsSuccessStatusCode) return Ok(new { success = false, message = "That Workspace was not found in your account" });
+                }
+
+                DotNetReportHelper.SwitchWorkspace(dataConnect);
+                return Ok(new { success = true, message = "The app now uses this Workspace" });
+            }
+            catch (Exception ex)
+            {
+                return Ok(new { success = false, message = ex.Message });
+            }
+        }
+
+        public class SendTestEmailCall
+        {
+            public string email { get; set; }
+        }
+
+        /// <summary>
+        /// Sends a test email with the saved email settings. Admin Mode only.
+        /// </summary>
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<IActionResult> SendTestEmail([FromBody] SendTestEmailCall data)
+        {
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode)
+                return StatusCode(403, new { success = false, message = "You are not authorized to perform this action" });
+
+            var email = (data?.email ?? "").Trim();
+            if (string.IsNullOrEmpty(email)) return Ok(new { success = false, message = "Email is required" });
+
+            try
+            {
+                using (var mail = new System.Net.Mail.MailMessage
+                {
+                    Subject = "Dotnet Report test email",
+                    IsBodyHtml = true,
+                    Body = "<p>Your email settings are working.</p>"
+                })
+                {
+                    mail.To.Add(email);
+                    await DotNetReportEmail.SendAsync(_configuration, mail);
+                }
+                return Ok(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Ok(new { success = false, message = ex.Message });
+            }
+        }
+
         public async Task<IActionResult> GetUsersAndRoles()
         {
             var settings = GetSettings();
@@ -1493,6 +1628,7 @@ namespace ReportBuilder.Web.Controllers
                 Tables = tables,
                 Procedures = procedures,
                 Functions = functions,
+                DbConfig = GetDbConfigForPage(connect.AccountApiKey, connect.DatabaseApiKey),
                 CurrentUserId = settings.UserId
             };
 
@@ -1502,6 +1638,101 @@ namespace ReportBuilder.Web.Controllers
             {
                 Response.StatusCode = 500;
                 return new JsonResult(new { ex.Message }, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+        }
+
+        /// <summary>
+        /// The server and database a connection string points to, to show on the setup page. The rest of the
+        /// connection string, with any password, stays on the server.
+        /// </summary>
+        private static (string server, string database) DescribeConnectionString(string connectionString)
+        {
+            try
+            {
+                var builder = new System.Data.Common.DbConnectionStringBuilder { ConnectionString = connectionString ?? "" };
+                string pick(params string[] keys) => keys.Select(k => builder.TryGetValue(k, out var v) ? v?.ToString() : null).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? "";
+                return (pick("Server", "Data Source", "Host", "Address", "Addr", "Network Address"), pick("Database", "Initial Catalog"));
+            }
+            catch
+            {
+                return ("", "");
+            }
+        }
+
+        private static (string server, string database) DescribeDbConnection(Newtonsoft.Json.Linq.JObject saved)
+        {
+            if (saved["ConnectionType"]?.ToString() == "Build")
+                return (saved["DatabaseHost"]?.ToString() ?? "", saved["DatabaseName"]?.ToString() ?? "");
+
+            // A key in appsettings.json is read now, so a changed connection string shows straight away
+            var key = saved["ConnectionKey"]?.ToString();
+            var connectionString = string.IsNullOrEmpty(key) ? null : DotNetReportHelper.GetAppConnectionString(key, false);
+            return DescribeConnectionString(string.IsNullOrEmpty(connectionString) ? saved["ConnectionString"]?.ToString() : connectionString);
+        }
+
+        /// <summary>
+        /// The workspace's saved database connection for the setup page, without the connection string or password.
+        /// </summary>
+        private static Dictionary<string, string> GetDbConfigForPage(string accountApiKey, string databaseApiKey)
+        {
+            var result = new Dictionary<string, string>();
+            try
+            {
+                if (DotNetReportHelper.GetDbConnectionSettings(accountApiKey, databaseApiKey) is Newtonsoft.Json.Linq.JObject saved)
+                {
+                    foreach (var key in new[] { "DatabaseType", "ConnectionType", "ConnectionKey", "DatabaseHost", "DatabasePort", "DatabaseName", "Username", "AuthenticationType", "ProviderName" })
+                        result[key] = saved[key]?.ToString() ?? "";
+                    result["HasPassword"] = string.IsNullOrEmpty(saved["Password"]?.ToString()) ? "false" : "true";
+                    var (server, database) = DescribeDbConnection(saved);
+                    result["ConnectedServer"] = server;
+                    result["ConnectedDatabase"] = database;
+                }
+            }
+            catch
+            {
+                // No saved connection: the app's own connection string is used
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Tests or saves the workspace's database connection, stored in appsettings.dotnetreport.json on this server.
+        /// Admin Mode only.
+        /// </summary>
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public IActionResult UpdateDbConnection([FromBody] UpdateDbConnectionModel model)
+        {
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode)
+                return StatusCode(403, new { success = false, message = "You are not authorized to perform this action" });
+
+            try
+            {
+                // The saved password is never sent to the page, so a blank one means keep it
+                if (model.connectionType == "Build" && string.Equals(model.dbAuthType, "Username", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(model.dbPassword)
+                    && DotNetReportHelper.GetDbConnectionSettings(model.account, model.dataConnect) is Newtonsoft.Json.Linq.JObject saved)
+                {
+                    model.dbPassword = saved["Password"]?.ToString() ?? "";
+                }
+
+                DotNetReportHelper.UpdateDbConnection(model);
+
+                var (server, database) = model.connectionType == "Build"
+                    ? (model.dbServer, model.dbName)
+                    : DescribeConnectionString(DotNetReportHelper.GetAppConnectionString(model.connectionKey, false));
+                var where = string.Join(", ", new[] { server, database }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                return Ok(new
+                {
+                    success = true,
+                    message = (model.testOnly ? "Connected to the database" : "Database connection saved") + (where == "" ? "" : " (" + where + ")"),
+                    connectedServer = server,
+                    connectedDatabase = database
+                });
+            }
+            catch (Exception ex)
+            {
+                return Ok(new { success = false, message = ex.Message });
             }
         }
 

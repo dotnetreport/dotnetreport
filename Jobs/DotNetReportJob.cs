@@ -217,11 +217,8 @@ namespace ReportBuilder.Web.Jobs
             var accountApiKey = _configuration.GetValue<string>("dotNetReport:accountApiToken");
             var databaseApiKey = _configuration.GetValue<string>("dotNetReport:dataconnectApiToken");
 
-            var fromEmail = _configuration.GetValue<string>("email:fromemail");
-            var fromName = _configuration.GetValue<string>("email:fromname");
-            var mailServer = _configuration.GetValue<string>("email:server");
-            var mailUserName = _configuration.GetValue<string>("email:username");
-            var mailPassword = _configuration.GetValue<string>("email:password");
+            // SMTP or SendGrid, from the Email tab on the setup page (or appsettings.json when not set there)
+            var emailSettings = DotNetReportEmail.GetSettings(_configuration);
 
             var clientId = ""; // you can specify client id here if needed
 
@@ -508,7 +505,7 @@ namespace ReportBuilder.Web.Jobs
                                     {
                                         var mail = new MailMessage
                                         {
-                                            From = new MailAddress(fromEmail, fromName),
+                                            From = new MailAddress(emailSettings.emailAddress, emailSettings.emailName ?? ""),
                                             Subject = report.Name,
                                             Body = $"Your scheduled report is attached.<br><br>{report.Description}",
                                             IsBodyHtml = true
@@ -525,13 +522,7 @@ namespace ReportBuilder.Web.Jobs
                                             mail.Attachments.Add(attachment);
                                         }
 
-                                        using (var smtpServer = new SmtpClient(mailServer))
-                                        {
-                                            smtpServer.Port = 587;
-                                            smtpServer.Credentials = new System.Net.NetworkCredential(mailUserName, mailPassword);
-                                            //smtpServer.EnableSsl = true;
-                                            smtpServer.Send(mail);
-                                        }
+                                        await DotNetReportEmail.SendAsync(_configuration, mail, emailSettings);
 
                                         await LogScheduleSent(client, apiUrl, accountApiKey, databaseApiKey, schedule, report, isDashboard, isError: false, message: "Sent", recipient: recipient);
                                     }

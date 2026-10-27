@@ -836,7 +836,17 @@ namespace ReportBuilder.Web.Models
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
                 .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json", optional: true, reloadOnChange: true)
                 .AddEnvironmentVariables()
+                .AddJsonFile(LocalSettingsPath, optional: true, reloadOnChange: true)
                 .Build());
+
+        private static IConfiguration _hostConfiguration;
+        private static readonly object _configurationLock = new object();
+
+        /// <summary>
+        /// appsettings.dotnetreport.json, saved by the Setup page (Workspace, database connection, email).
+        /// When it has a setting, it wins over the app's own appsettings.json.
+        /// </summary>
+        public static string LocalSettingsPath => Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
 
         /// <summary>
         /// Call at startup to hand Dotnet Report the host's own configuration, so tokens and connection
@@ -844,12 +854,59 @@ namespace ReportBuilder.Web.Models
         /// </summary>
         public static void UseConfiguration(IConfiguration configuration)
         {
-            if (configuration != null) _configuration = configuration;
+            // Built once per host configuration, not per call, so nothing piles up
+            if (configuration == null || ReferenceEquals(configuration, _hostConfiguration)) return;
+            lock (_configurationLock)
+            {
+                if (ReferenceEquals(configuration, _hostConfiguration)) return;
+                _configuration = new ConfigurationBuilder()
+                    .AddConfiguration(configuration)
+                    .AddJsonFile(LocalSettingsPath, optional: true, reloadOnChange: true)
+                    .Build();
+                _hostConfiguration = configuration;
+            }
         }
 
         public static IConfiguration StaticConfig => _configuration ?? _fallbackConfiguration.Value;
 
+        /// <summary>Reads appsettings.dotnetreport.json again straight after the Setup page saves it.</summary>
+        public static void ReloadLocalSettings()
+        {
+            (StaticConfig as IConfigurationRoot)?.Reload();
+        }
+
+        /// <summary>The Workspace (data connect token) the whole app uses.</summary>
+        public static string CurrentDataConnect => StaticConfig.GetValue<string>("dotNetReport:dataconnectApiToken");
+
+        /// <summary>
+        /// The connection entered on the Setup page for a Workspace ("Enter the server details"), or null when the
+        /// Workspace uses a connection string from the app's own settings.
+        /// </summary>
+        public static string GetWorkspaceConnectionString(string dataConnect)
+        {
+            if (string.IsNullOrEmpty(dataConnect)) return null;
+            var section = StaticConfig.GetSection("dotNetReport:" + dataConnect);
+            if (section["ConnectionType"] != "Build") return null;
+            var connectionString = section["ConnectionString"];
+            return string.IsNullOrEmpty(connectionString) ? null : connectionString;
+        }
+
+        /// <summary>
+        /// Connection string for running reports. A connection entered on the Setup page for the current Workspace
+        /// wins, otherwise the key is read from the app's connection strings.
+        /// </summary>
         public static string GetConnectionString(string key, bool addOledbProvider = false)
+        {
+            var workspace = GetWorkspaceConnectionString(CurrentDataConnect);
+            if (!string.IsNullOrEmpty(workspace))
+            {
+                return addOledbProvider && !workspace.ToLower().StartsWith("provider") ? "Provider=sqloledb;" + workspace : workspace;
+            }
+            return GetAppConnectionString(key, addOledbProvider);
+        }
+
+        /// <summary>A connection string from the app's own settings (ConnectionStrings section).</summary>
+        public static string GetAppConnectionString(string key, bool addOledbProvider = false)
         {
             var connString = StaticConfig.GetConnectionString(key);
             if (connString == null)
@@ -882,6 +939,12 @@ namespace ReportBuilder.Web.Models
             if (connect.AccountApiKey == "Your Account API Key" || string.IsNullOrEmpty(connect.AccountApiKey) || string.IsNullOrEmpty(connect.DatabaseApiKey))
                 return "";
 
+            var workspace = GetWorkspaceConnectionString(connect.DatabaseApiKey);
+            if (!string.IsNullOrEmpty(workspace))
+            {
+                return addOledbProvider && !workspace.ToLower().StartsWith("provider") ? "Provider=sqloledb;" + workspace : workspace;
+            }
+
             using (var client = new HttpClient())
             {
                 var response = await client.GetAsync(String.Format("{0}/ReportApi/GetDataConnectKey?account={1}&dataConnect={2}", connect.ApiUrl, connect.AccountApiKey, connect.DatabaseApiKey));
@@ -892,7 +955,7 @@ namespace ReportBuilder.Web.Models
                 }
 
                 var content = await response.Content.ReadAsStringAsync();
-                return DotNetReportHelper.GetConnectionString(content.Replace("\"", ""), addOledbProvider);
+                return DotNetReportHelper.GetAppConnectionString(content.Replace("\"", ""), addOledbProvider);
             }
 
         }
@@ -7037,7 +7100,7 @@ namespace ReportBuilder.Web.Models
             }
             else
             {
-                connectionString = DotNetReportHelper.GetConnectionString(model.connectionKey, false);
+                connectionString = DotNetReportHelper.GetAppConnectionString(model.connectionKey, false);
 
                 if (string.IsNullOrEmpty(connectionString))
                 {
@@ -7105,11 +7168,14 @@ namespace ReportBuilder.Web.Models
 
                 if (model.isDefault)
                 {
+                    // The whole app uses this Workspace from now on
                     dotNetReportSection["DefaultConnection"] = model.dataConnect;
+                    dotNetReportSection["dataconnectApiToken"] = model.dataConnect;
                 }
 
                 // Save the updated JSON back to the file
                 File.WriteAllText(_configFilePath, config.ToString());
+                ReloadLocalSettings();
             }
 
         }
@@ -7183,6 +7249,130 @@ namespace ReportBuilder.Web.Models
                 });
             }
             return list;
+        }
+
+        private static JObject ReadLocalSettings()
+        {
+            return System.IO.File.Exists(LocalSettingsPath) ? JObject.Parse(System.IO.File.ReadAllText(LocalSettingsPath)) : new JObject();
+        }
+
+        private static void WriteLocalSettings(JObject config)
+        {
+            System.IO.File.WriteAllText(LocalSettingsPath, config.ToString(Newtonsoft.Json.Formatting.Indented));
+            ReloadLocalSettings();
+        }
+
+        /// <summary>
+        /// Switches the whole app (reports, dashboards, schedules) to a Workspace, saved in appsettings.dotnetreport.json.
+        /// </summary>
+        public static void SwitchWorkspace(string dataConnect)
+        {
+            var config = ReadLocalSettings();
+            if (!(config["dotNetReport"] is JObject dotNetReport)) config["dotNetReport"] = dotNetReport = new JObject();
+            dotNetReport["dataconnectApiToken"] = dataConnect;
+            dotNetReport["DefaultConnection"] = dataConnect;
+            WriteLocalSettings(config);
+        }
+
+        private const string EncryptedPrefix = "enc:";
+        private const string MaskedSecret = "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022";
+
+        // Secrets saved in appsettings.dotnetreport.json are encrypted with a key made from the private Api token
+        private static byte[] LocalSecretKey()
+        {
+            var token = StaticConfig.GetValue<string>("dotNetReport:privateApiToken") ?? "";
+            return System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes("dotnetreport-local-settings:" + token));
+        }
+
+        private static string EncryptSecret(string value)
+        {
+            using (var aes = System.Security.Cryptography.Aes.Create())
+            {
+                aes.Key = LocalSecretKey();
+                aes.GenerateIV();
+                var plain = Encoding.UTF8.GetBytes(value);
+                var cipher = aes.CreateEncryptor().TransformFinalBlock(plain, 0, plain.Length);
+                return EncryptedPrefix + Convert.ToBase64String(aes.IV.Concat(cipher).ToArray());
+            }
+        }
+
+        private static string ReadSecret(string value)
+        {
+            if (string.IsNullOrEmpty(value) || !value.StartsWith(EncryptedPrefix)) return value ?? "";
+            try
+            {
+                var bytes = Convert.FromBase64String(value.Substring(EncryptedPrefix.Length));
+                using (var aes = System.Security.Cryptography.Aes.Create())
+                {
+                    aes.Key = LocalSecretKey();
+                    aes.IV = bytes.Take(16).ToArray();
+                    var cipher = bytes.Skip(16).ToArray();
+                    return Encoding.UTF8.GetString(aes.CreateDecryptor().TransformFinalBlock(cipher, 0, cipher.Length));
+                }
+            }
+            catch
+            {
+                return ""; // the private Api token changed, the secret has to be entered again
+            }
+        }
+
+        /// <summary>
+        /// Email settings from appsettings.dotnetreport.json (saved on the Setup page), or else the "email" section of
+        /// appsettings.json. They stay on this server and are never sent to Dotnet Report.
+        /// </summary>
+        public static DotNetReportEmailSettings GetEmailSettings(bool maskSecrets = false)
+        {
+            var local = StaticConfig.GetSection("dotNetReport:AppSetting:email");
+            var section = !string.IsNullOrWhiteSpace(local["fromemail"]) ? local : StaticConfig.GetSection("email");
+            string secret(string key)
+            {
+                var value = ReadSecret(section[key]);
+                return maskSecrets && !string.IsNullOrEmpty(value) ? MaskedSecret : value;
+            }
+            return new DotNetReportEmailSettings
+            {
+                emailProvider = section["provider"] ?? "smtp",
+                emailAddress = section["fromemail"] ?? "",
+                emailName = section["fromname"] ?? "",
+                emailServer = section["server"] ?? "",
+                emailPort = section["port"] ?? "",
+                emailUserName = section["username"] ?? "",
+                emailPassword = secret("password"),
+                emailEnableSsl = bool.TryParse(section["enablessl"], out var ssl) && ssl,
+                sendGridApiKey = secret("sendgridapikey")
+            };
+        }
+
+        /// <summary>
+        /// Saves the email settings in appsettings.dotnetreport.json, with the password and SendGrid key encrypted.
+        /// A blank or masked secret keeps the saved one.
+        /// </summary>
+        public static void SaveEmailSettings(DotNetReportEmailSettings model)
+        {
+            var config = ReadLocalSettings();
+            if (!(config["dotNetReport"] is JObject dotNetReport)) config["dotNetReport"] = dotNetReport = new JObject();
+            if (!(dotNetReport["AppSetting"] is JObject appSetting)) dotNetReport["AppSetting"] = appSetting = new JObject();
+            var saved = appSetting["email"] as JObject ?? new JObject();
+
+            string secret(string value, string key)
+            {
+                if (string.IsNullOrEmpty(value) || value.StartsWith("\u2022")) return saved[key]?.ToString() ?? "";
+                return EncryptSecret(value);
+            }
+
+            appSetting["email"] = new JObject
+            {
+                ["provider"] = model.emailProvider ?? "smtp",
+                ["fromemail"] = model.emailAddress ?? "",
+                ["fromname"] = model.emailName ?? "",
+                ["server"] = model.emailServer ?? "",
+                ["port"] = model.emailPort ?? "",
+                ["username"] = model.emailUserName ?? "",
+                ["password"] = secret(model.emailPassword, "password"),
+                ["enablessl"] = model.emailEnableSsl,
+                ["sendgridapikey"] = secret(model.sendGridApiKey, "sendgridapikey")
+            };
+            WriteLocalSettings(config);
         }
 
         public static AppSettingModel GetAppSettings()
@@ -7883,6 +8073,115 @@ namespace ReportBuilder.Web.Models
         {
             if (string.IsNullOrWhiteSpace(id)) return null;
             return _sessions.Get<ExportSession>(id);
+        }
+    }
+
+    /// <summary>
+    /// Email settings saved on the setup page (Email tab). When nothing is saved there, the email section in
+    /// appsettings.json is used, as before.
+    /// </summary>
+    public class DotNetReportEmailSettings
+    {
+        public string emailProvider { get; set; } = "";
+        public string emailAddress { get; set; } = "";
+        public string emailName { get; set; } = "";
+        public string emailServer { get; set; } = "";
+        public string emailPort { get; set; } = "";
+        public string emailUserName { get; set; } = "";
+        public string emailPassword { get; set; } = "";
+        public bool emailEnableSsl { get; set; }
+        public string sendGridApiKey { get; set; } = "";
+
+        public bool UseSendGrid => string.Equals(emailProvider, "sendgrid", StringComparison.OrdinalIgnoreCase);
+
+        public bool IsConfigured => !string.IsNullOrWhiteSpace(emailAddress)
+            && (UseSendGrid ? !string.IsNullOrWhiteSpace(sendGridApiKey) : !string.IsNullOrWhiteSpace(emailServer));
+    }
+
+    /// <summary>
+    /// Sends the app's emails (scheduled reports, password resets) with SMTP or SendGrid.
+    /// </summary>
+    public static class DotNetReportEmail
+    {
+        /// <summary>Email settings from appsettings.dotnetreport.json, or else appsettings.json.</summary>
+        public static DotNetReportEmailSettings GetSettings(IConfiguration configuration = null)
+        {
+            return DotNetReportHelper.GetEmailSettings();
+        }
+
+        /// <summary>
+        /// Sends the message. The From address is filled in from the settings when the message has none.
+        /// </summary>
+        public static async Task SendAsync(IConfiguration configuration, System.Net.Mail.MailMessage mail, DotNetReportEmailSettings settings = null)
+        {
+            settings = settings ?? GetSettings(configuration);
+            if (!settings.IsConfigured)
+                throw new Exception("Email is not set up, add the email settings on the Setup page");
+
+            if (mail.From == null) mail.From = new System.Net.Mail.MailAddress(settings.emailAddress, settings.emailName ?? "");
+
+            if (settings.UseSendGrid)
+            {
+                await SendWithSendGrid(settings, mail);
+                return;
+            }
+
+            using (var smtp = new System.Net.Mail.SmtpClient(settings.emailServer))
+            {
+                smtp.Port = int.TryParse(settings.emailPort, out var port) && port > 0 ? port : 587;
+                if (!string.IsNullOrEmpty(settings.emailUserName))
+                    smtp.Credentials = new System.Net.NetworkCredential(settings.emailUserName, settings.emailPassword);
+                smtp.EnableSsl = settings.emailEnableSsl;
+                await smtp.SendMailAsync(mail);
+            }
+        }
+
+        private static async Task SendWithSendGrid(DotNetReportEmailSettings settings, System.Net.Mail.MailMessage mail)
+        {
+            var attachments = new List<object>();
+            foreach (var attachment in mail.Attachments)
+            {
+                using (var ms = new MemoryStream())
+                {
+                    attachment.ContentStream.Position = 0;
+                    await attachment.ContentStream.CopyToAsync(ms);
+                    attachments.Add(new
+                    {
+                        content = Convert.ToBase64String(ms.ToArray()),
+                        filename = attachment.Name,
+                        type = attachment.ContentType?.MediaType ?? "application/octet-stream"
+                    });
+                }
+            }
+
+            var payload = new Dictionary<string, object>
+            {
+                ["personalizations"] = new[]
+                {
+                    new
+                    {
+                        to = mail.To.Select(t => new { email = t.Address }).ToArray(),
+                        cc = mail.CC.Count > 0 ? mail.CC.Select(t => new { email = t.Address }).ToArray() : null,
+                        bcc = mail.Bcc.Count > 0 ? mail.Bcc.Select(t => new { email = t.Address }).ToArray() : null
+                    }
+                },
+                ["from"] = new { email = mail.From.Address, name = mail.From.DisplayName },
+                ["subject"] = mail.Subject ?? "",
+                ["content"] = new[] { new { type = mail.IsBodyHtml ? "text/html" : "text/plain", value = string.IsNullOrEmpty(mail.Body) ? " " : mail.Body } }
+            };
+            if (attachments.Count > 0) payload["attachments"] = attachments;
+
+            using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) })
+            {
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", settings.sendGridApiKey);
+                var json = JsonConvert.SerializeObject(payload, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+                var response = await client.PostAsync("https://api.sendgrid.com/v3/mail/send", new StringContent(json, Encoding.UTF8, "application/json"));
+                if (!response.IsSuccessStatusCode)
+                {
+                    var body = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"SendGrid could not send the email ({(int)response.StatusCode}): {body}");
+                }
+            }
         }
     }
 }
