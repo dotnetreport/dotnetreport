@@ -1167,13 +1167,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
 <!-- Folder Edit Modal -->
 <div class="modal" id="manage-access-modal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-dialog manage-access-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fa fa-key"></i> Manage Access <span class="text-muted ms-1" data-bind="text: accessModalTitle"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body manage-access-body">
                 <div data-bind="template: { name: 'manage-access-template', data: manageAccess }"></div>
             </div>
             <div class="modal-footer">

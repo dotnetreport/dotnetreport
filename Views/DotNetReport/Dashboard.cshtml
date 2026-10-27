@@ -176,10 +176,11 @@
                             <span>Manage</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end small">
-                            <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode()) && (CanSaveReports() || adminMode())">
-                                <a href="#" class="dropdown-item" data-bind="click: function() { newReport() }" title="Create a new report and add it to the Dashboard">
-                                    <span class="fa fa-plus"></span> Add New Report
-                                </a>
+                            <li data-bind="visible: CanCreateDashboards() || adminMode()">
+                                <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
+                                    <i class="fa fa-dashboard"></i>
+                                    <span>New Dashboard</span>
+                                </button>
                             </li>
                             <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
                                 <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
@@ -187,11 +188,10 @@
                                     <span>Edit Dashboard</span>
                                 </button>
                             </li>
-                            <li data-bind="visible: CanCreateDashboards() || adminMode()">
-                                <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
-                                    <i class="fa fa-dashboard"></i>
-                                    <span>Create a New Dashboard</span>
-                                </button>
+                            <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode()) && (CanSaveReports() || adminMode())">
+                                <a href="#" class="dropdown-item" data-bind="click: function() { newReport() }" title="Create a new report and add it to the Dashboard">
+                                    <span class="fa fa-plus"></span> Add New Report
+                                </a>
                             </li>
                             <li data-bind="visible: hasDashboard()">
                                 <button class="dropdown-item" data-bind="click: RefreshAllReports">
@@ -392,13 +392,13 @@
 </div>
 
 <div class="modal" id="manage-access-modal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-dialog manage-access-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fa fa-key"></i> Manage Access <span class="text-muted ms-1" data-bind="text: currentDashboard() ? currentDashboard().name : ''"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body manage-access-body">
                 <div data-bind="template: { name: 'manage-access-template', data: dashboard.manageAccess }"></div>
             </div>
             <div class="modal-footer">

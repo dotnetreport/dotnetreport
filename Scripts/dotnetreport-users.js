@@ -241,6 +241,21 @@ var usersAccessViewModel = function (options) {
 	self.sqlClients = sqlSource('Clients', 'Client Ids Query', 'One row per client, with an id and a text column.', 'SELECT ClientId AS id, ClientName AS text FROM Clients');
 	self.sqlSources = [self.sqlUsers, self.sqlRoles, self.sqlClients];
 
+	// Users from the SQL query or from code, listed on the Users tab
+	self.sourceUsers = ko.pureComputed(function () {
+		if (self.userSource() === 'sql') return self.sqlUsers.rows();
+		return _.map(self.codeUsers(), function (u) {
+			return (u && typeof u === 'object') ? { id: (u.id || '').toString(), text: u.text || u.id || '' } : { id: u, text: u };
+		});
+	});
+	self.filteredSourceUsers = ko.pureComputed(function () {
+		var q = (self.userSearch() || '').toLowerCase();
+		if (!q) return self.sourceUsers();
+		return _.filter(self.sourceUsers(), function (u) {
+			return (u.id || '').toString().toLowerCase().indexOf(q) >= 0 || (u.text || '').toLowerCase().indexOf(q) >= 0;
+		});
+	});
+
 	var runSql = function (sql, done) {
 		ajaxcall({
 			url: options.getPreviewFromSqlUrl,
@@ -325,10 +340,19 @@ var usersAccessViewModel = function (options) {
 	// ---------- Client Ids ----------
 	self.editingClient = ko.observable(null);
 	self.clientSearch = ko.observable('');
+	// Like Users and Roles, the list comes from the users source; only Dotnet Report Managed is edited here
+	self.clientsEditable = ko.pureComputed(function () { return self.userSource() === 'portal'; });
+	self.sourceClients = ko.pureComputed(function () {
+		var source = self.userSource();
+		var asItem = function (c) { return (c && typeof c === 'object') ? { id: (c.id || c.Id || '').toString(), text: c.text || c.Text || c.id || c.Id || '' } : { id: c, text: c }; };
+		if (source === 'portal') return self.clientIds();
+		if (source === 'sql') return _.map(self.sqlClients.rows(), asItem);
+		return _.map(self.codeClientIds(), asItem);
+	});
 	self.filteredClients = ko.pureComputed(function () {
 		var q = (self.clientSearch() || '').toLowerCase();
-		if (!q) return self.clientIds();
-		return _.filter(self.clientIds(), function (c) {
+		if (!q) return self.sourceClients();
+		return _.filter(self.sourceClients(), function (c) {
 			return (c.id || '').toLowerCase().indexOf(q) >= 0 || (c.text || '').toLowerCase().indexOf(q) >= 0;
 		});
 	});
@@ -362,24 +386,38 @@ var usersAccessViewModel = function (options) {
 	// ---------- Permissions ----------
 	// The roles and users to choose from, from whichever source is in use
 	self.roleChoices = ko.pureComputed(function () {
-		var source = self.savedUserSource();
+		var source = self.userSource();
 		if (source === 'portal') return _.map(self.roles(), function (r) { return r.text; });
 		if (source === 'sql') return _.map(self.sqlRoles.rows(), function (r) { return r.id; });
 		return self.codeRoles();
 	});
-	self.userChoices = ko.pureComputed(function () {
-		var source = self.savedUserSource();
-		if (source === 'portal') return _.map(self.users(), function (u) { return u.email; });
-		if (source === 'sql') return _.map(self.sqlUsers.rows(), function (u) { return u.id; });
-		return _.map(self.codeUsers(), function (u) { return (u && typeof u === 'object') ? (u.id || u.text) : u; });
+	// Users as { id, text }: grants store the id, the list shows the name
+	self.userItems = ko.pureComputed(function () {
+		var source = self.userSource();
+		if (source === 'portal') return _.map(self.users(), function (u) { return { id: u.email, text: u.name ? u.name + ' (' + u.email + ')' : u.email }; });
+		if (source === 'sql') return _.map(self.sqlUsers.rows(), function (u) { return { id: (u.id || '').toString(), text: u.text || u.id }; });
+		return _.map(self.codeUsers(), function (u) {
+			return (u && typeof u === 'object') ? { id: (u.id || u.text || '').toString(), text: u.text || u.id } : { id: u, text: u };
+		});
 	});
+	self.userChoices = ko.pureComputed(function () { return _.map(self.userItems(), 'id'); });
+	self.userLabel = function (id) {
+		var match = _.find(self.userItems(), function (u) { return u.id === (id || '').toString(); });
+		return match && match.text ? match.text : id;
+	};
+	self.roleLabel = function (id) {
+		if (self.userSource() !== 'sql') return id;
+		var match = _.find(self.sqlRoles.rows(), function (r) { return (r.id || '').toString() === (id || '').toString(); });
+		return match && match.text ? match.text : id;
+	};
 	// A collapsible list of roles or users for one permission, like the Manage Access window
-	var grantList = function (title, selected, choices, emptyText) {
+	var grantList = function (title, selected, choices, emptyText, label) {
 		var g = {
 			title: title,
 			selected: selected,
 			open: ko.observable(false),
-			emptyText: emptyText
+			emptyText: emptyText,
+			label: label
 		};
 		g.choices = ko.pureComputed(function () { return self.choicesWith(choices(), selected()); });
 		g.toggle = function () { g.open(!g.open()); };
@@ -387,8 +425,8 @@ var usersAccessViewModel = function (options) {
 		return g;
 	};
 	_.forEach(self.permissionRows, function (row) {
-		row.roleGrant = grantList('By Role', row.roles, self.roleChoices, 'No roles yet');
-		row.userGrant = grantList('By User', row.users, self.userChoices, 'No users yet');
+		row.roleGrant = grantList('By Role', row.roles, self.roleChoices, 'No roles yet', self.roleLabel);
+		row.userGrant = grantList('By User', row.users, self.userChoices, 'No users yet', self.userLabel);
 	});
 
 	// The shared select2 binding renders option text as html, so names typed by users are escaped here

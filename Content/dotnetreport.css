@@ -828,6 +828,17 @@ select.is-invalid ~ span .select2-selection {
     max-width: 90%;
 }
 
+/* Manage Access window: the window title already says Manage Access */
+.modal-dialog.manage-access-dialog {
+    max-width: 760px;
+}
+.manage-access-body .manage-access-heading {
+    display: none;
+}
+.manage-access-body > div > .panel {
+    margin-left: 0 !important;
+}
+
 
 
 .card {

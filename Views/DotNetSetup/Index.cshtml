@@ -115,9 +115,9 @@
 }
 
 <div>
-    <h2>Manage Database</h2>
+    <h2>Manage Dotnet Report</h2>
     <p>
-        You can select and manage display names for the Tables and Columns you would like to allow in Dotnet Report Builder.
+        Choose the tables, columns and joins people can report on, and set up your workspace, email and app settings.
     </p>
     <div class="alert alert-danger d-flex justify-content-between align-items-center">
         <div>
@@ -431,8 +431,7 @@
                     <div class="col-sm-12 col-lg-10 col-xl-9">
                         <div class="card">
                             <div class="card-body">
-                                <div class="row g-4">
-                                    <div class="col-md-7">
+                                <div class="col-lg-8">
                                         <div class="mb-3"><b><i class="fa fa-envelope me-1 text-primary"></i> Email Settings</b></div>
                                     <div class="mb-3">
                                         <label class="form-label fw-bold small">Send with</label>
@@ -492,16 +491,27 @@
                                     <!-- /ko -->
 
                                         <button type="button" class="btn btn-primary btn-sm" data-bind="click: saveEmailSettings"><i class="fa fa-save"></i> Save Email Settings</button>
-                                    </div>
-                                    <div class="col-md-5">
-                                        <div class="card border-0 p-4 text-center" style="background:#dcf5ff;">
-                                            <i class="fa fa-paper-plane fa-3x text-primary mb-2"></i>
-                                            <p class="mb-2">Send a test email</p>
-                                            <input class="form-control form-control-sm mb-2" type="email" placeholder="you@yourcompany.com" data-bind="textInput: testEmailTo">
-                                            <button class="btn btn-outline-primary btn-sm" type="button" data-bind="click: sendTestEmail"><i class="fa fa-paper-plane"></i> Send Test</button>
-                                            <div class="form-text">Uses the saved settings, so save first.</div>
-                                        </div>
-                                    </div>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm ms-1" data-bind="click: openTestEmail"><i class="fa fa-paper-plane"></i> Send Test Email</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal" id="test-email-modal" tabindex="-1" role="dialog" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title"><i class="fa fa-paper-plane"></i> Send a Test Email</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <label class="form-label small fw-bold mb-1">Send to</label>
+                                    <input class="form-control form-control-sm" type="email" placeholder="you@yourcompany.com" data-bind="textInput: testEmailTo, event: { keypress: function(d, e) { if (e.keyCode === 13) { sendTestEmail(); return false; } return true; } }">
+                                    <div class="form-text">Uses the saved settings, so save any changes first.</div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="button" class="btn btn-primary" data-bind="click: sendTestEmail"><i class="fa fa-paper-plane"></i> Send</button>
                                 </div>
                             </div>
                         </div>

@@ -3973,6 +3973,9 @@ var settingPageViewModel = function (options) {
 		}).fail(function () { self.subscriptionError('Could not load the subscription details'); });
 	};
 
+	self.openTestEmail = function () {
+		$('#test-email-modal').modal('show');
+	};
 	self.sendTestEmail = function () {
 		var to = (self.testEmailTo() || '').trim();
 		if (!to) { toastr.warning('Please enter an email address to send the test to'); return; }
@@ -3981,7 +3984,10 @@ var settingPageViewModel = function (options) {
 			type: 'POST',
 			data: JSON.stringify({ email: to })
 		}).done(function (response) {
-			if (response && response.success) toastr.success('Test email sent to ' + to);
+			if (response && response.success) {
+				toastr.success('Test email sent to ' + to);
+				$('#test-email-modal').modal('hide');
+			}
 			else toastr.error((response && response.message) || 'Could not send the test email');
 		});
 	};
