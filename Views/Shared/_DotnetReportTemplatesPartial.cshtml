@@ -3285,21 +3285,14 @@
                                         <i class="fa fa-magic text-primary"></i> Tell me what report to build, or try:
                                     </div>
                                     <div class="small text-muted mb-2" style="background: #f0f7ff; padding: 6px 8px; border-radius: 4px; border-left: 3px solid #0d6efd;">
-                                        <i class="fa fa-lightbulb-o text-warning"></i> <strong>Tip:</strong> For best results, mention the data table name (e.g., "build a report using the Orders table")
+                                        <i class="fa fa-lightbulb-o text-warning"></i> <strong>Tip:</strong> For best results, mention the data table name (e.g., "build a report using the <span data-bind="text: aiExampleTable"></span> table")
                                     </div>
                                     <div class="d-flex flex-wrap gap-1">
-                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: function(){ aiAssistantInput('Build a sales summary report with a bar chart'); sendAiAssistantMessage(); }">
-                                            <i class="fa fa-bar-chart"></i> Sales summary
+                                        <!-- ko foreach: aiQuickPrompts -->
+                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: $parent.runAiPrompt, attr: { title: prompt }">
+                                            <i class="fa" data-bind="css: icon"></i> <span data-bind="text: label"></span>
                                         </button>
-                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: function(){ aiAssistantInput('Create an invoice report using HTML template'); sendAiAssistantMessage(); }">
-                                            <i class="fa fa-file-text-o"></i> Invoice report
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: function(){ aiAssistantInput('Show me a trend line chart of data over time'); sendAiAssistantMessage(); }">
-                                            <i class="fa fa-line-chart"></i> Trend analysis
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: function(){ aiAssistantInput('Create a KPI dashboard widget showing a key metric'); sendAiAssistantMessage(); }">
-                                            <i class="fa fa-tachometer"></i> KPI widget
-                                        </button>
+                                        <!-- /ko -->
                                         <button class="btn btn-sm btn-outline-secondary" data-bind="click: getAiRecommendation, visible: SelectedFields().length > 0">
                                             <i class="fa fa-lightbulb-o"></i> Recommend chart
                                         </button>
@@ -3319,19 +3312,8 @@
                                 <!-- Follow-up suggestions (shown after AI applies a report) -->
                                 <div class="p-2 border-top" data-bind="visible: aiReportApplied() && !aiAssistantLoading() && aiAssistantMessages().length > 0" style="display:none;">
                                     <div class="small text-muted mb-1"><i class="fa fa-comments-o"></i> Follow-up:</div>
-                                    <div class="d-flex flex-wrap gap-1">
-                                        <button class="btn btn-sm btn-outline-primary" data-bind="click: function(){ aiAssistantInput('Add a filter for this year'); sendAiAssistantMessage(); }">
-                                            + Filter this year
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-primary" data-bind="click: function(){ aiAssistantInput('Change to a bar chart'); sendAiAssistantMessage(); }">
-                                            Change chart type
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-primary" data-bind="click: function(){ aiAssistantInput('Break it down by month'); sendAiAssistantMessage(); }">
-                                            By month
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-primary" data-bind="click: function(){ aiAssistantInput('Add a top 10 limit'); sendAiAssistantMessage(); }">
-                                            Top 10
-                                        </button>
+                                    <div class="d-flex flex-wrap gap-1" data-bind="foreach: aiFollowUpPrompts">
+                                        <button class="btn btn-sm btn-outline-primary" data-bind="click: $parent.runAiPrompt, text: label, attr: { title: prompt }"></button>
                                     </div>
                                 </div>
                             </div>

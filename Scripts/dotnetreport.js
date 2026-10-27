@@ -3451,6 +3451,77 @@ var reportViewModel = function (options) {
 	self.aiConversationHistory = [];
 	self.aiReportApplied = ko.observable(false);
 
+	// AI quick actions and follow-ups built from the tables and fields in the schema
+	var aiFieldKind = function (f) {
+		var type = (ko.unwrap(f.fieldType) || '').toLowerCase();
+		var fmt = ko.unwrap(f.fieldFormat) || '';
+		if (/date|time/.test(type) || fmt === 'Date' || fmt === 'Date and Time') return 'date';
+		if (/int|decimal|money|float|double|numeric|real|currency|number/.test(type) || ['Currency', 'Percentage', 'Decimal', 'Number'].indexOf(fmt) >= 0) return 'number';
+		if (/char|text|string/.test(type)) return 'text';
+		return '';
+	};
+	var aiIsIdField = function (name) { return /^id$|[_ ]id$|[a-z]Id$|ID$|key$/i.test(name || '') && !/paid$/i.test(name || ''); };
+	var aiPickField = function (fields, kind, preferred) {
+		var list = _.filter(fields, function (f) { return aiFieldKind(f) === kind && !aiIsIdField(ko.unwrap(f.fieldName)); });
+		return _.find(list, function (f) { return preferred.test(ko.unwrap(f.fieldName)); }) || list[0];
+	};
+	var aiTableName = function (t) { return t ? (t.displayName || t.tableName || '') : ''; };
+	var aiTableShape = function (t, fields) {
+		fields = fields || t.fields || [];
+		var name = function (f) { return f ? (ko.unwrap(f.fieldLabel) || ko.unwrap(f.fieldName)) : ''; };
+		return {
+			table: aiTableName(t),
+			number: name(aiPickField(fields, 'number', /amount|total|price|sales|revenue|cost|freight|qty|quantity|balance|value/i)),
+			category: name(aiPickField(fields, 'text', /name|category|type|status|region|country|state|city|department|group/i)),
+			date: name(aiPickField(fields, 'date', /date|created|order|time/i))
+		};
+	};
+	// the selected table, or else the one with the most to show: a number, a category and a date
+	self.aiFocusTable = ko.pureComputed(function () {
+		var focus = self.SelectedTable();
+		if (focus) return aiTableShape(focus, self.ChooseFields().length ? self.ChooseFields() : null);
+		return _.maxBy(_.map(self.Tables(), function (t) { return aiTableShape(t); }), function (x) { return (x.number ? 2 : 0) + (x.category ? 1 : 0) + (x.date ? 1 : 0); }) || null;
+	});
+	self.aiExampleTable = ko.pureComputed(function () {
+		return (self.aiFocusTable() && self.aiFocusTable().table) || 'Orders';
+	});
+	self.aiQuickPrompts = ko.pureComputed(function () {
+		var shape = self.aiFocusTable();
+		if (!shape || !shape.table) {
+			return [
+				{ icon: 'fa-bar-chart', label: 'Summary report', prompt: 'Build a summary report with a bar chart' },
+				{ icon: 'fa-line-chart', label: 'Trend analysis', prompt: 'Show me a trend line chart of data over time' },
+				{ icon: 'fa-tachometer', label: 'KPI widget', prompt: 'Create a KPI dashboard widget showing a key metric' }
+			];
+		}
+		var t = shape.table, prompts = [];
+		if (shape.number && shape.category) prompts.push({ icon: 'fa-bar-chart', label: shape.number + ' by ' + shape.category, prompt: 'Show total ' + shape.number + ' by ' + shape.category + ' from the ' + t + ' table as a bar chart' });
+		if (shape.number && shape.date) prompts.push({ icon: 'fa-line-chart', label: shape.number + ' over time', prompt: 'Show total ' + shape.number + ' by month using ' + shape.date + ' from the ' + t + ' table as a line chart' });
+		if (shape.number && shape.category) prompts.push({ icon: 'fa-list-ol', label: 'Top 10 ' + shape.category, prompt: 'Show the top 10 ' + shape.category + ' by total ' + shape.number + ' from the ' + t + ' table' });
+		if (shape.number) prompts.push({ icon: 'fa-tachometer', label: 'Total ' + shape.number, prompt: 'Create a KPI showing total ' + shape.number + ' from the ' + t + ' table' });
+		if (!shape.number && shape.category) prompts.push({ icon: 'fa-pie-chart', label: t + ' by ' + shape.category, prompt: 'Show the count of ' + t + ' by ' + shape.category + ' as a pie chart' });
+		if (!shape.number && shape.date) prompts.push({ icon: 'fa-line-chart', label: t + ' over time', prompt: 'Show the count of ' + t + ' by month using ' + shape.date + ' as a line chart' });
+		prompts.push({ icon: 'fa-table', label: 'List of ' + t, prompt: 'Build a list report of the ' + t + ' table' });
+		return prompts.slice(0, 4);
+	});
+	self.aiFollowUpPrompts = ko.pureComputed(function () {
+		var shape = aiTableShape({}, self.SelectedFields());
+		var prompts = [];
+		if (shape.date) {
+			prompts.push({ label: '+ Filter this year', prompt: 'Add a filter for this year on ' + shape.date });
+			prompts.push({ label: 'By month', prompt: 'Break it down by month using ' + shape.date });
+		}
+		if (shape.number && shape.category) prompts.push({ label: 'Top 10', prompt: 'Show only the top 10 ' + shape.category + ' by ' + shape.number });
+		prompts.push(self.ReportType() === 'List'
+			? { label: 'As a bar chart', prompt: 'Change to a bar chart' }
+			: { label: 'Change chart type', prompt: 'Change to a different chart type that fits this data better' });
+		return prompts;
+	});
+	self.runAiPrompt = function (p) {
+		self.aiAssistantInput(p.prompt);
+		self.sendAiAssistantMessage();
+	};
+
 	self.hasAiConfigured = ko.computed(function () {
 		if (self.appSettings.aiEnabled) {
 			var enabled = ko.isObservable(self.appSettings.aiEnabled) ? self.appSettings.aiEnabled() : self.appSettings.aiEnabled;
