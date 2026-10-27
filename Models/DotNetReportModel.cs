@@ -444,6 +444,82 @@ namespace ReportBuilder.Web.Models
         /// Set true if the current user can enter Admin Mode
         /// </summary>
         public bool CanUseAdminMode { get; set; }
+
+        public List<string> Permissions { get; set; } = new List<string>(); // granted in code, see DotNetReportPermissions
+    }
+
+    // Granted without Admin Mode, limited to the user's own Client Id
+    public static class DotNetReportPermissions
+    {
+        public const string ManageAccess = "ManageAccess";
+        public const string ManageHeaderFooter = "ManageHeaderFooter";
+        public const string ViewSql = "ViewSql";
+        public const string ManageUsers = "ManageUsers";
+        public const string ViewOnly = "ViewOnly"; // wins over every other grant and Admin Mode
+
+        public static List<string> ApplyViewOnly(List<string> permissions)
+        {
+            return permissions != null && permissions.Contains(ViewOnly)
+                ? permissions.Where(p => p == ViewOnly || p == ViewSql).ToList()
+                : permissions;
+        }
+
+        private static readonly string[] ChangeVerbs = { "Save", "Delete", "Add", "Update", "Copy", "Change", "Set", "Remove", "Import", "Move" };
+        private static readonly string[] ViewOnlyAllowed = { "AddFavorite", "RemoveFavorite" };
+        private static readonly string[] AiReportBuilders = { "RunQueryAi", "RunQueryAiAlt", "RunQueryAiAlt2", "RunAiReportAssistant", "RunAiAssistant" };
+
+        public static bool IsChangeMethod(string method)
+        {
+            var name = (method ?? "").Substring((method ?? "").LastIndexOf('/') + 1);
+            if (ViewOnlyAllowed.Contains(name, StringComparer.OrdinalIgnoreCase)) return false;
+            return AiReportBuilders.Contains(name, StringComparer.OrdinalIgnoreCase)
+                || ChangeVerbs.Any(v => name.StartsWith(v, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Turned off in Api responses for View Only users
+        private static readonly string[] ChangeFlags =
+        {
+            "canEdit", "canDelete", "canManage", "allowUsersToCreateReports", "allowUsersToManageFolders",
+            "allowUsersToCreateDashboards", "canCopyReport", "showImportExport", "showScheduling", "aiEnabled", "usePromptBuilder"
+        };
+
+        public static string HideChangeOptions(string json)
+        {
+            try
+            {
+                var node = System.Text.Json.Nodes.JsonNode.Parse(json);
+                if (node == null) return json;
+                HideChangeOptions(node);
+                return node.ToJsonString();
+            }
+            catch
+            {
+                return json;
+            }
+        }
+
+        private static void HideChangeOptions(System.Text.Json.Nodes.JsonNode node)
+        {
+            if (node is System.Text.Json.Nodes.JsonObject obj)
+            {
+                foreach (var key in obj.Select(p => p.Key).ToList())
+                {
+                    if (ChangeFlags.Contains(key, StringComparer.OrdinalIgnoreCase) && obj[key] is System.Text.Json.Nodes.JsonValue value
+                        && value.TryGetValue<bool>(out _))
+                    {
+                        obj[key] = false;
+                    }
+                    else if (obj[key] != null)
+                    {
+                        HideChangeOptions(obj[key]);
+                    }
+                }
+            }
+            else if (node is System.Text.Json.Nodes.JsonArray array)
+            {
+                foreach (var item in array) if (item != null) HideChangeOptions(item);
+            }
+        }
     }
 
     public class ReportHeaderColumn

@@ -1,0 +1,377 @@
+@{
+    ViewBag.Title = "Users & Access";
+    Layout = "~/Views/shared/_Layout.Report.cshtml";
+}
+
+@section head {
+    <style type="text/css">
+        .ua-section-title { font-size: 1.15rem; font-weight: 600; margin-bottom: .25rem; }
+        .ua-perm { border: 1px solid #e3e6ea; border-radius: .5rem; padding: 1rem; margin-bottom: .75rem; }
+        .ua-perm-title { font-weight: 600; }
+        .ua-grant-choices { max-height: 220px; overflow-y: auto; }
+        .ua-grant-choices .form-check { margin-right: 1rem; }
+        .ua-sql textarea { font-family: SFMono-Regular, Consolas, monospace; font-size: .8125rem; }
+    </style>
+}
+
+@section scripts {
+    <script src="~/js/dotnetreport-users.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            ajaxcall({ url: '@Url.Action("GetUsersAndRoles", "DotNetReportApi")' }).done(function (data) {
+                if (data.d) data = data.d;
+                var vm = new usersAccessViewModel({
+                    userSettings: data,
+                    apiUrl: '@Url.Action("CallPostReportApi", "DotNetReportApi")',
+                    getPreviewFromSqlUrl: '@Url.Action("GetPreviewFromSql", "DotNetReportApi")'
+                });
+                ko.applyBindings(vm, document.getElementById('users-access'));
+                vm.init();
+            });
+        });
+    </script>
+}
+
+<script type="text/html" id="ua-grant-list">
+    <span class="clickable" data-bind="click: toggle"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': open(), 'fa-chevron-right': !open() }"></i> <b data-bind="text: title"></b></span>
+    <!-- ko ifnot: open -->
+    <div class="d-flex flex-wrap gap-1 align-items-center my-1 ms-3">
+        <!-- ko foreach: selected -->
+        <span class="badge bg-secondary d-inline-flex align-items-center">
+            <span data-bind="text: $data"></span>
+            <button type="button" class="btn btn-sm btn-link text-white p-0 ms-2 lh-1" title="Remove" data-bind="click: function () { $parent.remove($data); }"><i class="fa fa-times"></i></button>
+        </span>
+        <!-- /ko -->
+        <span class="text-muted small" data-bind="visible: selected().length === 0"><i class="fa fa-lock"></i> Not given to anyone</span>
+    </div>
+    <!-- /ko -->
+    <!-- ko if: open -->
+    <div class="ms-3 my-1">
+        <div class="ua-grant-choices d-flex flex-wrap" data-bind="foreach: choices">
+            <div class="form-check">
+                <label class="form-check-label">
+                    <input class="form-check-input" type="checkbox" data-bind="checked: $parent.selected, checkedValue: $data"> <span data-bind="text: $data"></span>
+                </label>
+            </div>
+        </div>
+        <div class="text-muted" data-bind="visible: choices().length === 0, text: emptyText"></div>
+    </div>
+    <!-- /ko -->
+</script>
+
+<div id="users-access" style="display: none;" data-bind="visible: true">
+    <h2>Users &amp; Access</h2>
+    <p class="text-muted" data-bind="visible: isAdmin">Who uses your reports, what they can do without Admin Mode, and how they sign in.</p>
+    <p class="text-muted" data-bind="visible: !isAdmin">Manage the users in your own <span data-bind="text: clientIdLabel"></span>.</p>
+
+    <ul class="nav nav-tabs mb-3" role="tablist" data-bind="foreach: sections">
+        <li role="presentation" class="nav-item">
+            <a class="nav-link" href="#" role="tab" data-bind="css: { active: $parent.section() === id }, attr: { 'aria-selected': $parent.section() === id }, click: function () { $parent.section(id); }">
+                <i class="fa" data-bind="css: icon"></i> <span data-bind="text: $parent.sectionText($data)"></span>
+            </a>
+        </li>
+    </ul>
+
+    <div>
+        <div>
+
+            <!-- ============ USERS ============ -->
+            <div data-bind="visible: section() === 'users'">
+                <div class="ua-section-title">Users</div>
+
+                <!-- ko if: isAdmin -->
+                <p class="text-muted small">Choose where the users, roles and <span data-bind="text: clientIdLabel"></span>s come from.</p>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                    <select class="form-select form-select-sm" style="max-width: 260px;" data-bind="value: userSource">
+                        <option value="code">My application's code</option>
+                        <option value="sql">A SQL query on my database</option>
+                        <option value="portal">Dotnet Report Managed</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm" data-bind="click: saveUserSource, enable: userSource() !== savedUserSource()"><i class="fa fa-save"></i> Save</button>
+                </div>
+                <div class="alert alert-light border small py-2" data-bind="visible: userSource() === 'code'">
+                    <i class="fa fa-code"></i> Your app fills in <code>settings.Users</code>, <code>settings.UserRoles</code> and <code>settings.ClientIds</code> in <code>GetSettings()</code>. They are listed here, and are changed in your code.
+                </div>
+                <div class="alert alert-light border small py-2" data-bind="visible: userSource() === 'sql'">
+                    <i class="fa fa-database"></i> The lists are read from your own database with the queries below.
+                </div>
+                <div class="alert alert-light border small py-2" data-bind="visible: userSource() === 'portal'">
+                    <i class="fa fa-cloud"></i> Users and roles are kept in your Dotnet Report account and managed here.
+                </div>
+                <!-- /ko -->
+
+                <!-- Managed users -->
+                <!-- ko if: userSource() === 'portal' || !isAdmin -->
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <button class="btn btn-primary btn-sm" data-bind="click: newUser"><i class="fa fa-plus"></i> Add User</button>
+                    <input class="form-control form-control-sm" style="max-width: 260px;" placeholder="Search users" data-bind="textInput: userSearch">
+                    <button class="btn btn-light btn-sm" title="Reload" data-bind="click: loadManaged"><i class="fa fa-refresh"></i></button>
+                </div>
+                <div class="text-center py-4" data-bind="visible: loadingUsers"><i class="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+                <table class="table table-sm align-middle" data-bind="visible: !loadingUsers() && filteredUsers().length > 0">
+                    <thead class="table-light">
+                        <tr><th>Email</th><th>Name</th><th>Roles</th><th data-bind="text: clientIdLabel() + 's'"></th><th style="width: 170px;"></th></tr>
+                    </thead>
+                    <tbody data-bind="foreach: filteredUsers">
+                        <tr>
+                            <td data-bind="text: email"></td>
+                            <td data-bind="text: name"></td>
+                            <td class="small" data-bind="text: (roles || []).join(', ')"></td>
+                            <td class="small" data-bind="text: $parent.clientNames(clientIds)"></td>
+                            <td class="text-end text-nowrap">
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-secondary" title="Edit" data-bind="click: $parent.editUser"><i class="fa fa-pencil"></i></button>
+                                    <button type="button" class="btn btn-outline-danger" data-bind="click: $parent.deleteUser, disable: isPrimary, attr: { title: isPrimary ? 'The primary account user cannot be deleted' : 'Delete' }"><i class="fa fa-trash"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="text-muted" data-bind="visible: !loadingUsers() && filteredUsers().length === 0">
+                    <i class="fa fa-info-circle"></i> <span data-bind="text: userSearch() ? 'No users match your search.' : 'No users yet, click Add User to create one.'"></span>
+                </div>
+                <!-- /ko -->
+
+                <!-- SQL query source -->
+                <!-- ko if: isAdmin && userSource() === 'sql' -->
+                <div data-bind="foreach: sqlSources">
+                    <div class="card mb-3 ua-sql">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-1">
+                                <b class="me-auto" data-bind="text: title"></b>
+                                <!-- ko ifnot: editing -->
+                                <button class="btn btn-sm btn-light" data-bind="click: $parent.editSql"><i class="fa fa-pencil"></i> <span data-bind="text: savedId() ? 'Edit' : 'Add'"></span></button>
+                                <button class="btn btn-sm btn-light text-danger ms-1" data-bind="visible: savedId(), click: $parent.deleteSql"><i class="fa fa-trash"></i></button>
+                                <!-- /ko -->
+                            </div>
+                            <div class="small text-muted mb-2" data-bind="text: hint"></div>
+                            <!-- ko if: editing -->
+                            <textarea class="form-control mb-2" rows="3" data-bind="textInput: draft, attr: { placeholder: placeholder }"></textarea>
+                            <button class="btn btn-sm btn-light" data-bind="click: $parent.testSql"><i class="fa fa-play"></i> Test</button>
+                            <button class="btn btn-sm btn-primary" data-bind="click: $parent.saveSql"><i class="fa fa-save"></i> Save</button>
+                            <button class="btn btn-sm btn-link" data-bind="click: $parent.cancelSql">Cancel</button>
+                            <!-- /ko -->
+                            <!-- ko ifnot: editing -->
+                            <div class="ua-code" data-bind="visible: sqlQuery, text: sqlQuery"></div>
+                            <!-- /ko -->
+                            <div class="mt-2 small">
+                                <span class="text-muted" data-bind="visible: loading"><i class="fa fa-spinner fa-spin"></i> Running...</span>
+                                <span class="text-danger" data-bind="visible: error, text: error"></span>
+                                <span data-bind="visible: !loading() && !error() && rows().length > 0">
+                                    <span class="text-muted" data-bind="text: rows().length + ' found: '"></span>
+                                    <span data-bind="text: rows().slice(0, 8).map(function (r) { return r.text; }).join(', ') + (rows().length > 8 ? ' ...' : '')"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /ko -->
+
+                <!-- Application code source -->
+                <!-- ko if: isAdmin && userSource() === 'code' -->
+                <div class="d-flex flex-wrap gap-2 mb-3" data-bind="foreach: codeUsers">
+                    <span class="badge bg-light text-dark border py-2" data-bind="text: (typeof $data === 'object') ? ($data.text || $data.id) : $data"></span>
+                </div>
+                <div class="text-muted small mb-3" data-bind="visible: codeUsers().length === 0">No users yet, set <code>settings.Users</code> in your code.</div>
+                <div class="ua-code">settings.UserId          = User.Identity.Name;                 // who is signed in
+settings.CurrentUserRole = new List&lt;string&gt; { "Manager" };    // their roles
+settings.ClientId        = "ACME";                             // their <span data-bind="text: clientIdLabel"></span>
+settings.Users     = new List&lt;dynamic&gt; { "jane@acme.com", "joe@acme.com" };  // everyone, for the access lists
+settings.UserRoles = new List&lt;string&gt; { "Manager", "Viewer" };</div>
+                <!-- /ko -->
+            </div>
+
+            <!-- ============ ROLES ============ -->
+            <div data-bind="visible: section() === 'roles'">
+                <div class="ua-section-title">Roles</div>
+                <p class="text-muted small">Give users roles, then grant roles access to reports and the permissions on the Permissions section.</p>
+                <!-- ko if: savedUserSource() === 'portal' -->
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <button class="btn btn-primary btn-sm" data-bind="click: newRole"><i class="fa fa-plus"></i> Add Role</button>
+                    <input class="form-control form-control-sm" style="max-width: 260px;" placeholder="Search roles" data-bind="textInput: roleSearch">
+                    <button class="btn btn-light btn-sm" title="Reload" data-bind="click: loadManaged"><i class="fa fa-refresh"></i></button>
+                </div>
+                <div class="text-center py-4" data-bind="visible: loadingUsers"><i class="fa fa-spinner fa-spin fa-2x text-muted"></i></div>
+                <table class="table table-sm align-middle" data-bind="visible: !loadingUsers() && filteredRoles().length > 0">
+                    <thead class="table-light">
+                        <tr><th>Role</th><th>Users</th><th style="width: 170px;"></th></tr>
+                    </thead>
+                    <tbody data-bind="foreach: filteredRoles">
+                        <tr>
+                            <td data-bind="text: text"></td>
+                            <td data-bind="text: $parent.roleUserCount($data)"></td>
+                            <td class="text-end text-nowrap">
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-secondary" title="Edit" data-bind="click: $parent.editRole"><i class="fa fa-pencil"></i></button>
+                                    <button type="button" class="btn btn-outline-danger" title="Delete" data-bind="click: $parent.deleteRole"><i class="fa fa-trash"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="text-muted" data-bind="visible: !loadingUsers() && filteredRoles().length === 0">
+                    <i class="fa fa-info-circle"></i> <span data-bind="text: roleSearch() ? 'No roles match your search.' : 'No roles yet, click Add Role to create one.'"></span>
+                </div>
+                <!-- /ko -->
+                <!-- ko if: savedUserSource() !== 'portal' -->
+                <table class="table table-sm align-middle" data-bind="visible: roleChoices().length > 0">
+                    <thead class="table-light"><tr><th>Role</th></tr></thead>
+                    <tbody data-bind="foreach: roleChoices">
+                        <tr><td data-bind="text: $data"></td></tr>
+                    </tbody>
+                </table>
+                <div class="text-muted small mt-2" data-bind="text: savedUserSource() === 'sql' ? 'Roles come from the Roles Query on the Users section.' : 'Roles come from settings.UserRoles in your code.'"></div>
+                <!-- /ko -->
+            </div>
+
+            <!-- ============ CLIENT IDS ============ -->
+            <div data-bind="visible: section() === 'clients'">
+                <div class="ua-section-title" data-bind="text: clientIdLabel() + 's'"></div>
+                <p class="text-muted small">Each <span data-bind="text: clientIdLabel"></span> keeps its own reports, folders and dashboards. Access managers and user managers only work within their own.</p>
+                <div class="mb-3" style="max-width: 420px;">
+                    <label class="small fw-bold mb-1" for="ua-client-label">Display label</label>
+                    <div class="d-flex align-items-center gap-2">
+                        <input id="ua-client-label" class="form-control form-control-sm" placeholder="Client Id, Tenant, Company..." data-bind="value: clientIdLabel">
+                        <button class="btn btn-sm btn-light" data-bind="click: saveClientLabel">Save</button>
+                    </div>
+                    <div class="form-text">The name shown for these across the reports and this page, for example Tenant or Company.</div>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <button class="btn btn-primary btn-sm" data-bind="click: newClient"><i class="fa fa-plus"></i> Add <span data-bind="text: clientIdLabel"></span></button>
+                    <input class="form-control form-control-sm" style="max-width: 260px;" data-bind="textInput: clientSearch, attr: { placeholder: 'Search ' + clientIdLabel().toLowerCase() + 's' }">
+                </div>
+                <table class="table table-sm align-middle" data-bind="visible: filteredClients().length > 0">
+                    <thead class="table-light">
+                        <tr><th>Id</th><th>Display name</th><th style="width: 170px;"></th></tr>
+                    </thead>
+                    <tbody data-bind="foreach: filteredClients">
+                        <tr>
+                            <td data-bind="text: id"></td>
+                            <td data-bind="text: text"></td>
+                            <td class="text-end text-nowrap">
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-secondary" title="Edit" data-bind="click: $parent.editClient"><i class="fa fa-pencil"></i></button>
+                                    <button type="button" class="btn btn-outline-danger" title="Remove" data-bind="click: $parent.removeClient"><i class="fa fa-trash"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="text-muted" data-bind="visible: filteredClients().length === 0">
+                    <i class="fa fa-info-circle"></i> <span data-bind="text: clientSearch() ? 'Nothing matches your search.' : 'None yet, click Add ' + clientIdLabel() + ' to create one.'"></span>
+                </div>
+            </div>
+
+            <!-- ============ PERMISSIONS ============ -->
+            <div data-bind="visible: section() === 'permissions'">
+                <div class="ua-section-title">Permissions</div>
+                <p class="text-muted small">
+                    Let roles or users do these without Admin Mode. They always stay within their own <span data-bind="text: clientIdLabel"></span>,
+                    and items shared with every <span data-bind="text: clientIdLabel"></span> stay admin only. Admin Mode works as before.
+                </p>
+                <div data-bind="foreach: permissionRows">
+                    <div class="ua-perm">
+                        <div class="ua-perm-title"><i class="fa" data-bind="css: icon"></i> <span data-bind="text: title"></span> <span class="badge bg-warning text-dark ms-1" data-bind="visible: $data.restricts">Restricts</span></div>
+                        <div class="small text-muted mb-2" data-bind="text: desc.replace('Client Id', $root.clientIdLabel() || 'Client Id')"></div>
+                        <div class="row small">
+                            <div class="col-md-6" data-bind="template: { name: 'ua-grant-list', data: roleGrant }"></div>
+                            <div class="col-md-6" data-bind="template: { name: 'ua-grant-list', data: userGrant }"></div>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary" data-bind="click: savePermissions"><i class="fa fa-save"></i> Save Permissions</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Add / edit role -->
+    <div class="modal" id="ua-role-modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content" data-bind="with: editingRole">
+                <div class="modal-header">
+                    <h5 class="modal-title" data-bind="text: original ? 'Edit Role' : 'Add Role'"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="small fw-bold mb-1">Role name</label>
+                    <input class="form-control form-control-sm" placeholder="Manager" data-bind="textInput: name, event: { keyup: function (d, e) { if (e.key === 'Enter') $parent.saveRole(); } }">
+                    <div class="form-text" data-bind="visible: original">Reports, folders and permissions given to the old name will need to be given to the new name.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" data-bind="click: $parent.saveRole">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add / edit Client Id -->
+    <div class="modal" id="ua-client-modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content" data-bind="with: editingClient">
+                <div class="modal-header">
+                    <h5 class="modal-title" data-bind="text: (original ? 'Edit ' : 'Add ') + $parent.clientIdLabel()"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="small fw-bold mb-1">Id</label>
+                        <input class="form-control form-control-sm" placeholder="ACME" data-bind="value: id, enable: !original">
+                        <div class="form-text">The value your app or sign-in gives as the user's <span data-bind="text: $parent.clientIdLabel"></span>.</div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="small fw-bold mb-1">Display name</label>
+                        <input class="form-control form-control-sm" placeholder="Acme Corporation" data-bind="value: text">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bind="click: $parent.cancelClient">Cancel</button>
+                    <button type="button" class="btn btn-primary" data-bind="click: $parent.saveClient">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add / edit user -->
+    <div class="modal" id="ua-user-modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content" data-bind="with: editingUser">
+                <div class="modal-header">
+                    <h5 class="modal-title" data-bind="text: isNew ? 'Add User' : 'Edit User'"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="small fw-bold mb-1">Email</label>
+                        <input class="form-control form-control-sm" type="email" data-bind="value: email">
+                    </div>
+                    <div class="mb-2">
+                        <label class="small fw-bold mb-1">Name</label>
+                        <input class="form-control form-control-sm" data-bind="value: name">
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="small fw-bold mb-1">Roles</label>
+                            <div data-bind="foreach: roles">
+                                <label class="d-block small"><input type="checkbox" data-bind="checked: selected"> <span data-bind="text: text"></span></label>
+                            </div>
+                            <div class="small text-muted" data-bind="visible: roles.length === 0">No roles to give</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="small fw-bold mb-1" data-bind="text: $parent.clientIdLabel() + 's'"></label>
+                            <div data-bind="foreach: clients">
+                                <label class="d-block small"><input type="checkbox" data-bind="checked: selected"> <span data-bind="text: text"></span></label>
+                            </div>
+                            <div class="small text-muted" data-bind="visible: clients.length === 0">None added yet</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" data-bind="click: $parent.saveUser">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

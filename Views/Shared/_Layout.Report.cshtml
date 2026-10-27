@@ -26,6 +26,12 @@
                 <li class="nav-item">
                     <a class="nav-link" href="/DotnetReport"><i class="fa fa-bar-chart"></i> Reports</a>
                 </li>
+                @if (ViewBag.ShowUsersPage == true)
+                {
+                    <li class="nav-item">
+                        <a class="nav-link" href="/DotnetSetup/Users"><i class="fa fa-users"></i> Users &amp; Access</a>
+                    </li>
+                }
                 <li class="nav-item">
                     <a class="nav-link" href="/DotnetSetup"><i class="fa fa-gear"></i> Setup</a>
                 </li>

@@ -1369,6 +1369,11 @@ var headerDesigner = function (options) {
 	self.selectedHeaderClientId = ko.observable('');
 	self.headerClientId = ko.observable('');
 	self.executeMode = false;
+	// Users who manage headers and footers through the permission rather than Admin Mode can only work on
+	// their own Client Id's. The server enforces this too.
+	self.isTenantScoped = function () { return options.isAdmin ? !options.isAdmin() : false; };
+	self.tenantClientId = function () { return ((options.userClientId || '') + '').split(',')[0].trim(); };
+	var adminModeFlag = function () { return options.isAdmin ? options.isAdmin() : false; };
 
 	// Named-header support (multiple headers per client/global scope, one default).
 	self.headersList = ko.observableArray([]);
@@ -1421,6 +1426,10 @@ var headerDesigner = function (options) {
 			tableresize: true
 		});
 		self.executeMode = executeMode;
+		if (!executeMode && self.isTenantScoped()) {
+			self.headerClientId(self.tenantClientId());
+			self.loadedHeaderClientId = self.tenantClientId();
+		}
 		// Runtime rendering resolves a single header; the admin designer manages the list.
 		return executeMode ? self.loadHtmlHeader(false) : self.loadHeadersList();
 	};
@@ -1447,7 +1456,7 @@ var headerDesigner = function (options) {
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetReportHeadersList",
-				model: JSON.stringify({ headerClientId: self.headerClientId(), forceGlobal: !self.executeMode })
+				model: JSON.stringify({ headerClientId: self.headerClientId(), forceGlobal: !self.executeMode && !self.isTenantScoped() })
 			}
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
@@ -1538,7 +1547,7 @@ var headerDesigner = function (options) {
 				url: options.apiUrl,
 				data: {
 					method: "/ReportApi/DeleteReportHeader",
-					model: JSON.stringify({ id: id })
+					model: JSON.stringify({ id: id, adminMode: adminModeFlag() })
 				}
 			}).done(function () {
 				toastr.success('Header deleted');
@@ -1576,7 +1585,8 @@ var headerDesigner = function (options) {
 				headerJson: data,
 				useReportHeader: self.UseReportHeader(),
 				includeOnEveryPage: self.IncludeOnEveryPage(),
-				headerClientId: self.headerClientId() || ''
+				headerClientId: self.isTenantScoped() ? self.tenantClientId() : (self.headerClientId() || ''),
+				adminMode: adminModeFlag()
 			})
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
@@ -1637,6 +1647,11 @@ var footerDesigner = function (options) {
 	self.showClientScope = ko.observable(false);
 	self.loadedFooterClientId = '';
 	self.executeMode = false;
+	// Users who manage headers and footers through the permission rather than Admin Mode can only work on
+	// their own Client Id's. The server enforces this too.
+	self.isTenantScoped = function () { return options.isAdmin ? !options.isAdmin() : false; };
+	self.tenantClientId = function () { return ((options.userClientId || '') + '').split(',')[0].trim(); };
+	var adminModeFlag = function () { return options.isAdmin ? options.isAdmin() : false; };
 	self.init = function (executeMode) {
 		$('#report-footer-editor').summernote({
 			height: 150,
@@ -1675,6 +1690,10 @@ var footerDesigner = function (options) {
 			tableresize: true
 		});
 		self.executeMode = executeMode;
+		if (!executeMode && self.isTenantScoped()) {
+			self.footerClientId(self.tenantClientId());
+			self.loadedFooterClientId = self.tenantClientId();
+		}
 		return self.loadHtmlFooter(false);
 	};
 
@@ -1700,7 +1719,8 @@ var footerDesigner = function (options) {
 				footerJson: data,
 				useReportFooter: self.UseReportFooter(),
 				includeOnEveryPage: self.IncludeOnEveryPage(),
-				footerClientId: self.footerClientId() || ''
+				footerClientId: self.isTenantScoped() ? self.tenantClientId() : (self.footerClientId() || ''),
+				adminMode: adminModeFlag()
 			})
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
@@ -1745,7 +1765,7 @@ var footerDesigner = function (options) {
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetReportFooter",
-				model: JSON.stringify({ footerClientId: self.footerClientId(), forceGlobal: !self.executeMode })
+				model: JSON.stringify({ footerClientId: self.footerClientId(), forceGlobal: !self.executeMode && !self.isTenantScoped() })
 			}
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
@@ -2825,12 +2845,16 @@ var reportViewModel = function (options) {
 	self.designingHeader = ko.observable(false);
 	self.headerDesigner = new headerDesigner({
 		apiUrl: options.apiUrl,
-		isExpanded: self.isExpanded
+		isExpanded: self.isExpanded,
+		isAdmin: function () { return self.adminMode(); },
+		userClientId: options.userSettings ? options.userSettings.clientId : ''
 	});
 	self.designingFooter = ko.observable(false);
 	self.footerDesigner = new footerDesigner({
 		apiUrl: options.apiUrl,
-		isExpanded: self.isExpanded
+		isExpanded: self.isExpanded,
+		isAdmin: function () { return self.adminMode(); },
+		userClientId: options.userSettings ? options.userSettings.clientId : ''
 	});
 	self.dateFormatMappings = {
 		'United States': 'mm/dd/yy',
@@ -3222,6 +3246,13 @@ var reportViewModel = function (options) {
 	self.currentSql = ko.observable();
 	self.currentConnectKey = ko.observable();
 	self.adminMode = ko.observable(false);
+	// Permissions granted without Admin Mode (Users & Access page). They only show the matching options;
+	// the server checks every one of them again, limited to the user's own Client Id.
+	self.permissions = ko.observableArray((options.userSettings && options.userSettings.permissions) || []);
+	self.hasPermission = function (key) { return self.permissions().indexOf(key) >= 0; };
+	self.canManageAccess = ko.pureComputed(function () { return self.adminMode() || self.hasPermission('ManageAccess'); });
+	self.canManageHeaderFooter = ko.pureComputed(function () { return self.adminMode() || self.hasPermission('ManageHeaderFooter'); });
+	self.canViewSql = ko.pureComputed(function () { return self.adminMode() || self.hasPermission('ViewSql'); });
 	self.allExpanded = ko.observable(false);
 	self.pager.currentPage(1);
 
@@ -4583,6 +4614,10 @@ var reportViewModel = function (options) {
 		self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, folder.DeleteOnlyUserRoles || '');
 		$('#manage-access-modal').modal('show');
 	};
+	var accessSaveError = function (x) {
+		var r = x && x.responseJSON;
+		toastr.error((r && (r.Message || r.message || r.result)) || 'Failed to save access changes');
+	};
 	self.saveFolderAccessModal = function (folder) {
 		var folderToSave = {
 			Id: folder.Id,
@@ -4600,9 +4635,18 @@ var reportViewModel = function (options) {
 		return ajaxcall({
 			url: options.apiUrl,
 			data: {
-				method: "/ReportApi/SaveFolderData",
+				method: "/ReportApi/SaveFolderAccess",
 				model: JSON.stringify({
-					folderData: JSON.stringify(folderToSave),
+					folderId: folder.Id,
+					accessJson: JSON.stringify({
+						clientId: folderToSave.ClientId,
+						userId: folderToSave.UserId,
+						userRole: folderToSave.UserRoles,
+						viewOnlyUserId: folderToSave.ViewOnlyUserId,
+						viewOnlyUserRole: folderToSave.ViewOnlyUserRoles,
+						deleteOnlyUserId: folderToSave.DeleteOnlyUserId,
+						deleteOnlyUserRole: folderToSave.DeleteOnlyUserRoles
+					}),
 					adminMode: self.adminMode()
 				})
 			}
@@ -4611,7 +4655,20 @@ var reportViewModel = function (options) {
 			_.extend(folder, _.pick(folderToSave, 'ClientId', 'UserId', 'UserRoles', 'ViewOnlyUserId', 'ViewOnlyUserRoles', 'DeleteOnlyUserId', 'DeleteOnlyUserRoles'));
 			$('#manage-access-modal').modal('hide');
 			self.loadFolders();
-		}).fail(function () { toastr.error('Failed to save access changes'); });
+		}).fail(function (x) {
+			// An older Api without SaveFolderAccess: admins save the way they did before
+			if (x && x.status >= 500 && self.adminMode()) {
+				return ajaxcall({
+					url: options.apiUrl,
+					data: { method: "/ReportApi/SaveFolderData", model: JSON.stringify({ folderData: JSON.stringify(folderToSave), adminMode: true }) }
+				}).done(function () {
+					toastr.success('Access changes saved');
+					$('#manage-access-modal').modal('hide');
+					self.loadFolders();
+				}).fail(accessSaveError);
+			}
+			accessSaveError(x);
+		});
 	};
 	self.saveAccessModal = function () {
 		if (self.accessModalFolder()) return self.saveFolderAccessModal(self.accessModalFolder());
@@ -4631,7 +4688,8 @@ var reportViewModel = function (options) {
 						UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
 						ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
 						DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles)
-					})
+					}),
+					adminMode: self.adminMode()
 				})
 			}
 		}).done(function () {
@@ -4646,7 +4704,7 @@ var reportViewModel = function (options) {
 			report.deleteOnlyUserRole = self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles);
 			$('#manage-access-modal').modal('hide');
 			self.LoadAllSavedReports(true);
-		}).fail(function () { toastr.error('Failed to save access changes'); });
+		}).fail(accessSaveError);
 	};
 
 	self.pager.currentPage.subscribe(function () {
@@ -14049,6 +14107,13 @@ var dashboardViewModel = function (options) {
 	options.isDashboard = true;
 	self.dashboards = ko.observableArray(options.dashboards || []);
 	self.adminMode = ko.observable(false);
+	// Permissions granted without Admin Mode (Users & Access page). They only show the matching options;
+	// the server checks every one of them again, limited to the user's own Client Id.
+	self.permissions = ko.observableArray((options.userSettings && options.userSettings.permissions) || []);
+	self.hasPermission = function (key) { return self.permissions().indexOf(key) >= 0; };
+	self.canManageAccess = ko.pureComputed(function () { return self.adminMode() || self.hasPermission('ManageAccess'); });
+	self.canManageHeaderFooter = ko.pureComputed(function () { return self.adminMode() || self.hasPermission('ManageHeaderFooter'); });
+	self.canViewSql = ko.pureComputed(function () { return self.adminMode() || self.hasPermission('ViewSql'); });
 	self.currentUserId = options.userSettings.currentUserId || options.currentUserId;
 	window.currentUserId = self.currentUserId || window.currentUserId;
 	self.currentUserRole = (options.userSettings.currentUserRoles || options.currentUserRole || []).join();
@@ -14410,7 +14475,39 @@ var dashboardViewModel = function (options) {
 		$('#manage-access-modal').modal('show');
 	};
 	self.saveDashboardAccess = function () {
-		if (self.saveDashboard()) $('#manage-access-modal').modal('hide');
+		var current = self.currentDashboard();
+		if (!current) return;
+		var access = self.dashboard.manageAccess;
+		var saved = {
+			clientId: access.clientId() || '',
+			userId: access.getAsList(access.users),
+			userRole: access.getAsList(access.userRoles),
+			viewOnlyUserId: access.getAsList(access.viewOnlyUsers),
+			viewOnlyUserRole: access.getAsList(access.viewOnlyUserRoles)
+		};
+		return ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/SaveDashboardAccess",
+				model: JSON.stringify({ dashboardId: current.id, accessJson: JSON.stringify(saved), adminMode: self.adminMode() })
+			}
+		}).done(function () {
+			toastr.success('Access changes saved');
+			current.clientId = saved.clientId;
+			current.userId = saved.userId;
+			current.userRoles = saved.userRole;
+			current.viewOnlyUserId = saved.viewOnlyUserId;
+			current.viewOnlyUserRoles = saved.viewOnlyUserRole;
+			$('#manage-access-modal').modal('hide');
+		}).fail(function (x) {
+			// An older Api without SaveDashboardAccess: admins save the way they did before
+			if (x && x.status >= 500 && self.adminMode()) {
+				if (self.saveDashboard()) $('#manage-access-modal').modal('hide');
+				return;
+			}
+			var r = x && x.responseJSON;
+			toastr.error((r && (r.Message || r.message || r.result)) || 'Failed to save access changes');
+		});
 	};
 
 	self.removeReportFromDashboard = function (reportId) {

@@ -256,7 +256,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                                         <div data-bind="template: 'pager-template', data: $data"></div>
                                     </div>
                                     <div class="btn-group btn-group-sm pull-right" role="group">
-                                        <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode">
+                                        <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.canViewSql">
                                             <i class="fa fa-code"></i> View Report Code
                                         </button>
                                         <button class="btn btn-light" data-bind="click: $parent.zoomOut" data-bs-toggle="tooltip" title="Zoom Out">
@@ -303,7 +303,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                     <b>Error Details</b>
                     <div data-bind="text: Exception"></div>
                     <br />
-                    <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode">
+                    <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.canViewSql">
                         <i class="fa fa-code"></i> View Report Code
                     </button>
                     <button class="btn btn-light" data-bind="click: $root.RunReport">

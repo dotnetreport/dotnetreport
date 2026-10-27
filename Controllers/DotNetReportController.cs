@@ -22,7 +22,9 @@ namespace ReportBuilder.Web.Controllers
             if ((context.ActionDescriptor as ControllerActionDescriptor)?.ActionName == "ReportPrint") return;
 
             var api = new DotNetReportApiController(_configuration) { ControllerContext = ControllerContext };
-            ViewBag.AllowAdminMode = api.GetSettings().CanUseAdminMode;
+            var settings = api.GetSettings();
+            ViewBag.AllowAdminMode = settings.CanUseAdminMode;
+            ViewBag.ShowUsersPage = DotNetSetupController.CanOpenUsersPage(settings, api.GetUserPermissions(settings));
         }
 
         public IActionResult Index()

@@ -105,6 +105,7 @@ gulp.task("clean", function (cb) {
 		rimraf.sync("wwwroot/js/dotnetreport.js"),
 		rimraf.sync("wwwroot/js/dotnetreport-helper.js"),
 		rimraf.sync("wwwroot/js/dotnetreport-setup.js"),
+		rimraf.sync("wwwroot/js/dotnetreport-users.js"),
 		rimraf.sync("wwwroot/css/dotnetreport.css"),
 		rimraf.sync("wwwroot/img/report-logo.png"),
 		rimraf.sync("wwwroot/lib/")
@@ -151,6 +152,7 @@ gulp.task("scripts", function (done) {
 	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport.js"), gulp.dest("wwwroot/js/"), cb); });
 	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport-helper.js"), gulp.dest("wwwroot/js/"), cb); });
 	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport-setup.js"), gulp.dest("wwwroot/js/"), cb); })
+	tasks.push(function (cb) { pump(gulp.src("Scripts/dotnetreport-users.js"), gulp.dest("wwwroot/js/"), cb); });
 	tasks.push(function (cb) { pump(gulp.src("Content/dotnetreport.css"), gulp.dest("wwwroot/css/"), cb); });
 	tasks.push(function (cb) {
 		pump(

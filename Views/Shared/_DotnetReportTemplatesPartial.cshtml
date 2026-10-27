@@ -547,7 +547,7 @@
                                     &nbsp;
                                     <a href="#" title="Download Excel" data-bind="click: $parent.exportExcel"><span class="fa fa-file-excel-o"></span></a>
                                     &nbsp;
-                                    <a href="#" title="View Code" data-bs-toggle="modal" data-bs-target="#sqlDrillDownModal" data-bind="visible: $root.adminMode">
+                                    <a href="#" title="View Code" data-bs-toggle="modal" data-bs-target="#sqlDrillDownModal" data-bind="visible: $root.canViewSql">
                                         <span class="fa fa-code"></span>
                                     </a>
                                 </div>
@@ -892,6 +892,12 @@
         <div class="form-group row">
             <label class="col-md-3 col-sm-3 control-label" data-bind="text: ($root.clientIdLabelText ? $root.clientIdLabelText() : 'Client Id') + ' to Restrict Access'"></label>
             <div class="col-md-6 col-sm-6">
+                <!-- ko if: $root.adminMode && !$root.adminMode() -->
+                <!-- Without Admin Mode the item stays with the user's own Client Id; the server enforces this -->
+                <div class="form-control-plaintext py-1" data-bind="text: clientId() || '-'"></div>
+                <div class="form-text">Only an admin can change this.</div>
+                <!-- /ko -->
+                <!-- ko ifnot: $root.adminMode && !$root.adminMode() -->
                 <!-- ko if: $root.clientIdOptions && $root.clientIdOptions().length > 0 -->
                 <select class="form-select form-select-sm"
                         data-bind="options: $root.clientIdOptions().filter(function(c){ return selectedClientIds().indexOf(c.id) < 0; }),
@@ -922,6 +928,7 @@
                 </div>
                 <!-- /ko -->
                 <div class="form-text" data-bind="visible: selectedClientIds().length === 0">Not restricted, available to all.</div>
+                <!-- /ko -->
                 <!-- /ko -->
             </div>
             <div class="col-md-1 col-sm-1">
@@ -4066,7 +4073,7 @@
                         </div>
                         <div class="pull-left">
                             <button class="btn btn-xs" title="Download Excel" data-bind="click: $parent.exportExcel"><span class="fa fa-file-excel-o"></span></button>
-                            <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#sqlDrillDownModal" data-bind="visible: $root.adminMode">
+                            <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#sqlDrillDownModal" data-bind="visible: $root.canViewSql">
                                 <span class="fa fa-code"></span> View Code
                             </button>
                         </div>

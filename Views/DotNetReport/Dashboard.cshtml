@@ -224,7 +224,7 @@
                                     <span>Schedule</span>
                                 </button>
                             </li>                            
-                            <li data-bind="visible: hasDashboard() && adminMode()">
+                            <li data-bind="visible: hasDashboard() && canManageAccess()">
                                 <button class="dropdown-item" data-bind="click: openDashboardAccessModal">
                                     <i class="fa fa-key"></i>
                                     <span>Manage Access</span>
@@ -484,7 +484,7 @@
                             </a>
                         </li>
                         <li>
-                            <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode, click: getCode">
+                            <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.canViewSql, click: getCode">
                                 <span class="fa fa-code"></span> Report Code
                             </a>
                         </li>
