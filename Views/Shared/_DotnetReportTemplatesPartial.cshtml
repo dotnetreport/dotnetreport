@@ -1541,8 +1541,8 @@
                             <input class="form-check-input" type="checkbox"
                                    data-bind="checked: hasScheduleStart"
                                    id="scheduleStartCheckbox">
-                            <label class="form-check-label small text-muted" for="scheduleStartCheckbox" data-bind="visible: !hasScheduleStart()">
-                                Start sending right away
+                            <label class="form-check-label small" for="scheduleStartCheckbox" title="Optional. Sends right away if not set.">
+                                Set a start date
                             </label>
                         </div>
                         <!-- ko if: hasScheduleStart -->
@@ -1561,8 +1561,8 @@
                             <input class="form-check-input" type="checkbox"
                                    data-bind="checked: hasScheduleEnd"
                                    id="scheduleEndCheckbox">
-                            <label class="form-check-label small text-muted" for="scheduleEndCheckbox" data-bind="visible: !hasScheduleEnd()">
-                                Keep sending until turned off
+                            <label class="form-check-label small" for="scheduleEndCheckbox" title="Optional. Keeps sending if not set.">
+                                Set an end date
                             </label>
                         </div>
                         <!-- ko if: hasScheduleEnd -->
