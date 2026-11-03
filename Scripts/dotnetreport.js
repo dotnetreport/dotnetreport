@@ -13119,14 +13119,14 @@ var reportViewModel = function (options) {
 			if (fromContext && toContext) {
 				var configuredDefault = fromContext.$root.appSettings && fromContext.$root.appSettings.defaultDateFormat;
 				var defaultFormat = (configuredDefault && fromContext.$root.dateFormatMappings[configuredDefault]) || "mm/dd/yyyy";
-				var fromDateFormat = fromContext.$data.dateFormat() ? fromContext.$root.dateFormatMappings[fromContext.$data.dateFormat()] : defaultFormat;
-				var toDateFormat = toContext.$data.dateFormat() ? toContext.$root.dateFormatMappings[toContext.$data.dateFormat()] : defaultFormat;
+				var fromDateFormat = fromContext.$root.dateFormatMappings[fromContext.$data.dateFormat()] || defaultFormat;
+				var toDateFormat = toContext.$root.dateFormatMappings[toContext.$data.dateFormat()] || defaultFormat;
 				var fromDateValue = fromInput.value;
 				var toDateValue = toInput.value;
-				if (fromDateValue && toDateValue) {
-					var fromDateParsed = parseDate(fromDateValue, fromDateFormat).toISOString();
-					var toDateParsed = parseDate(toDateValue, toDateFormat).toISOString();
-					if (new Date(toDateParsed) < new Date(fromDateParsed)) {
+				var fromDateParsed = fromDateValue ? parseDate(fromDateValue, fromDateFormat) : null;
+				var toDateParsed = toDateValue ? parseDate(toDateValue, toDateFormat) : null;
+				if (fromDateParsed && toDateParsed) {
+					if (toDateParsed < fromDateParsed) {
 						isValid = false;
 						toastr.error("The 'To' date cannot be earlier than the 'From' date.");
 						toInput.classList.add("is-invalid");
