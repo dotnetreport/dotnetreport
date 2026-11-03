@@ -779,10 +779,10 @@
         <!-- /ko -->
         <div data-bind="visible: $data.bands" style="padding-top: 4px;"></div>
 
-        <!-- ko if: $parents[1].ReportType() != 'Single'-->
+        <!-- ko if: $parents[1].ReportType() != 'Single' || !ko.unwrap($parent.ReportData).FontSize -->
         <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div>
         <!-- /ko -->
-        <!-- ko if: $parents[1].ReportType() == 'Single'-->
+        <!-- ko if: $parents[1].ReportType() == 'Single' && ko.unwrap($parent.ReportData).FontSize -->
         <div data-bind="template: {name: 'report-widget', data: $parent.ReportData }"></div>
         <!-- /ko -->
         <!-- /ko -->

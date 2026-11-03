@@ -10333,7 +10333,7 @@ var reportViewModel = function (options) {
 	self.updateKpi = function (clear) {
 		if (clear != true) {
 			var result = self.ReportResult().ReportData();
-			if (result) {
+			if (result && result.FontSize) {
 				result.FontSize(self.kpiSettings().fontSize() + "px");
 				result.Alignment(self.kpiSettings().alignment());
 				result.FontColor(self.kpiSettings().fontColor());
