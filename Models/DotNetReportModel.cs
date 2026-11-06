@@ -1036,7 +1036,6 @@ namespace ReportBuilder.Web.Models
 
         }
 
-        /// <summary>"###,###,##0.00" style pattern; no trailing decimal point when zero decimals are requested.</summary>
         private static string NumberPattern(string decimalZeros) =>
             string.IsNullOrEmpty(decimalZeros) ? "###,###,##0" : "###,###,##0." + decimalZeros;
 
@@ -1053,7 +1052,7 @@ namespace ReportBuilder.Web.Models
             var aggregate = formatColumn.selectedAggregate ?? formatColumn.aggregateFunction ?? "";
             if (aggregate.StartsWith("Count")) return true;
             if (aggregate.StartsWith("Avg") || aggregate.StartsWith("Average")) return false;
-            return formatColumn.fieldType == "Int";
+            return string.Equals(formatColumn.fieldType, "Int", StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsNumericType(Type type)
