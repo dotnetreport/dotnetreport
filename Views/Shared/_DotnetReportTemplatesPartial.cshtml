@@ -104,7 +104,7 @@
         <select required class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, lookupSearch: $parent.SearchLookupList, options: $parent.LookupList, optionsText: 'text', optionsValue:   $parent.IsConditionalFilter ? 'text': 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-        <select required multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, lookupSearch: $parent.SearchLookupList, options: $parent.LookupList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ValueIn"></select>
+        <select multiple class="form-control" data-bind="attr: { required: !$parent.IsFilterOnFly }, select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, lookupSearch: $parent.SearchLookupList, options: $parent.LookupList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ValueIn"></select>
         <button type="button" class="btn btn-link btn-sm p-0" data-bind="click: $parent.SelectAllLookup, visible: $parent.LookupList().length > 0 && $parent.ValueIn().length < $parent.LookupList().length">Select all</button>
         <!-- /ko -->
         <!-- /ko -->
@@ -2571,8 +2571,8 @@
                     data-bind="visible: changePageSize,
                                 css: { 'text-muted': subReports().length > 0 }">
                 <select style="width: 150px;" class="form-select"
-                        data-bind="options: [1,10,30,50,100,150,200,500,1000],
-                                    value: DefaultPageSize,
+                        data-bind="options: DefaultPageSizeOptions,
+                                    value: DefaultPageSize, valueAllowUnset: true,
                                     disable: subReports().length > 0">
                 </select>
                 </div>

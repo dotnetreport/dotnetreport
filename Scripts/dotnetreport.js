@@ -2288,6 +2288,12 @@ var reportViewModel = function (options) {
 		}
 	};
 	self.DefaultPageSize = ko.observable(30);
+	// Keeps a saved size that isn't one of the standard choices
+	self.DefaultPageSizeOptions = ko.pureComputed(function () {
+		var size = parseInt(self.DefaultPageSize());
+		var list = [1, 10, 30, 50, 100, 150, 200, 500, 1000];
+		return size && list.indexOf(size) < 0 ? _.sortBy(list.concat([size])) : list;
+	});
 	self.FilterGroups = ko.observableArray();
 	self.PivotColumns = ko.observable();
 	self.PivotColumnsWidth = ko.observable();
@@ -7966,7 +7972,7 @@ var reportViewModel = function (options) {
 			}).done(function (linkedReport) {
 				if (linkedReport.d) { linkedReport = linkedReport.d; }
 				if (linkedReport.result) { linkedReport = linkedReport.result; }
-				self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, '', true);
+				self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, '');
 			}).always(function () { _resetSaving(); });
 		}
 		var saveAlertFlag = false;
@@ -9940,7 +9946,14 @@ var reportViewModel = function (options) {
 		
 		var pivotData = self.preparePivotData();
 		var reportData = pivotData.pivotColumn != null ? self.BuildReportData() : '';
-		if (!isPageSizeClick) self.pager.pageSize(self.DefaultPageSize());
+		if (!isPageSizeClick) {
+			// A saved size missing from the dropdown would otherwise be reset by the pager's select
+			var _defaultSize = parseInt(self.DefaultPageSize()) || 30;
+			if (self.pager.pageSizeOptions.indexOf(_defaultSize) < 0) {
+				self.pager.pageSizeOptions(_.sortBy(self.pager.pageSizeOptions().concat([_defaultSize])));
+			}
+			self.pager.pageSize(_defaultSize);
+		}
 		return ajaxcall({
 			url: options.execReportUrl,
 			type: "POST",
@@ -9949,7 +9962,7 @@ var reportViewModel = function (options) {
 				connectKey: connectKey,
 				reportType: self.ReportType(),
 				pageNumber: self.pager.currentPage(),
-				pageSize: isPageSizeClick ? self.pager.pageSize() : self.DefaultPageSize(),
+				pageSize: isPageSizeClick ? self.pager.pageSize() : (parseInt(self.DefaultPageSize()) || 30),
 				sortBy: self.pager.sortColumn() || '',
 				desc: self.pager.sortDescending() || false,
 				reportSeries: reportSeries || "",
@@ -10099,7 +10112,7 @@ var reportViewModel = function (options) {
 		if (heatPoints && heatPoints.length > 0) {
 			const latLngs = heatPoints.map(p => L.latLng(p[0], p[1]));
 			const bounds = L.latLngBounds(latLngs);
-			map.fitBounds(bounds, { padding: [20, 20] });
+			map.fitBounds(bounds, { padding: [20, 20], maxZoom: 12 }); // one town shouldn't open at street level
 		} 
 
 		const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -10123,15 +10136,29 @@ var reportViewModel = function (options) {
 			1.0: opts.gradient3()  
 		};
 
-		const scaledPoints = heatPoints.map(p => [p[0], p[1], p[2] * 100]);
-		const maxPlotValue = Math.max(...heatPoints.map(p => p[2])); 
+		const maxPlotValue = Math.max(...heatPoints.map(p => p[2]));
 
-		L.heatLayer(scaledPoints, {
-			radius: 50,
-			blur: 15, 
-			max: maxPlotValue,
+		// Square root scale, so a few very large values don't wash out everything else
+		const weighted = heatPoints.map(p => [p[0], p[1], Math.sqrt(Math.abs(p[2]) / (maxPlotValue || 1))]);
+		// Point size follows how wide the data appears, so tile and expanded views match
+		const heatBounds = L.latLngBounds(heatPoints.map(p => L.latLng(p[0], p[1])));
+		const heatRadius = () => {
+			const span = map.latLngToContainerPoint(heatBounds.getNorthEast()).x - map.latLngToContainerPoint(heatBounds.getSouthWest()).x;
+			return Math.max(18, Math.min(45, span / 23));
+		};
+
+		// maxZoom 0 stops leaflet.heat fading values by zoom level
+		const heat = L.heatLayer(weighted, {
+			radius: heatRadius(),
+			blur: heatRadius(),
+			minOpacity: 0.3,
+			max: 1,
+			maxZoom: 0,
 			gradient: gradient
 		}).addTo(map);
+
+		// Keep each point the same size on the ground as the map zooms
+		map.on('zoomend', () => heat.setOptions({ radius: heatRadius(), blur: heatRadius() }));
 
 		if (opts.showMarker() && markers) {			
 			markers.addTo(map);
@@ -10258,7 +10285,7 @@ var reportViewModel = function (options) {
 		const intensities = heatPoints.map(p => p[2]);
 		const minValue = Math.min(...intensities);
 		const maxValue = Math.max(...intensities);
-		const midValue = (minValue + maxValue) / 2;
+		const midValue = maxValue * 0.25; // halfway along the square root scale
 		const legend = L.control({ position: 'bottomleft' });
 
 		legend.onAdd = function (map) {
@@ -10811,6 +10838,14 @@ var reportViewModel = function (options) {
 			if (chartDiv.offsetHeight === 0) {
 				chartDiv.style.height = '400px';
 			}
+			if (self.isExpanded()) {
+				if (chartDiv._collapsedHeight === undefined) chartDiv._collapsedHeight = chartDiv.style.height;
+				chartDiv.style.width = '100%';
+				chartDiv.style.height = Math.max(400, window.innerHeight - chartDiv.getBoundingClientRect().top - 40) + 'px';
+			} else if (chartDiv._collapsedHeight !== undefined) {
+				chartDiv.style.height = chartDiv._collapsedHeight;
+				chartDiv._collapsedHeight = undefined;
+			}
 			if (chartDiv._leaflet_map) {
 				chartDiv._leaflet_map.remove();
 				chartDiv._leaflet_map = null;
@@ -11292,6 +11327,7 @@ var reportViewModel = function (options) {
 						scatterData.push({ name: label, value: [lon, lat, isNaN(val) ? 1 : val] });
 					});
 
+					var maxScatter = Math.max.apply(null, scatterData.map(function (d) { return Math.abs(d.value[2]); }).concat([1]));
 					mapOption = {
 						backgroundColor: chartOptions.backgroundColor || '#fff',
 						title: chartOptions.title ? { text: chartOptions.title, textStyle: { fontSize: chartOptions.fontSize, color: chartOptions.fontColor } } : null,
@@ -11308,7 +11344,7 @@ var reportViewModel = function (options) {
 							type: 'scatter',
 							coordinateSystem: 'geo',
 							data: scatterData,
-							symbolSize: function (val) { return Math.max(6, Math.min(30, Math.sqrt(Math.abs(val[2])) * 3)); },
+							symbolSize: function (val) { return 5 + 21 * Math.sqrt(Math.abs(val[2]) / maxScatter); },
 							itemStyle: { color: colors[3] || '#4575b4', opacity: 0.8 },
 							emphasis: { itemStyle: { color: colors[4] || '#313695' } }
 						}]
@@ -12516,7 +12552,7 @@ var reportViewModel = function (options) {
 					if (linkedReport.result) { linkedReport = linkedReport.result; }
 					if (!override && queryParams.noparent == 'true') self.ReportMode('execute');
 
-					return self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, reportSeries, true);
+					return self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, reportSeries);
 				});
 			}
 			else {
