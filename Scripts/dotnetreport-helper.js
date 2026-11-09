@@ -219,6 +219,37 @@ ko.bindingHandlers.stopBindings = {
     }
 };
 
+// KPI vertical alignment: stretches the KPI to the free height of its dashboard tile
+ko.bindingHandlers.kpiVerticalAlign = {
+    init: function (element) {
+        var body = $(element).closest('.list-overflow-auto, .dash-preview-body')[0];
+        if (!body || !window.ResizeObserver) return;
+        element._kpiBody = body;
+        var observer = new ResizeObserver(function () { ko.bindingHandlers.kpiVerticalAlign.fit(element); });
+        observer.observe(body);
+        ko.utils.domNodeDisposal.addDisposeCallback(element, function () { observer.disconnect(); });
+    },
+    update: function (element, valueAccessor) {
+        element._kpiAlign = ko.unwrap(valueAccessor()) || 'top';
+        ko.bindingHandlers.kpiVerticalAlign.fit(element);
+    },
+    fit: function (element) {
+        var body = element._kpiBody, align = element._kpiAlign;
+        element.style.minHeight = '';
+        element.style.display = '';
+        if (!body || !align || align === 'top') return;
+
+        var top = element.getBoundingClientRect().top - body.getBoundingClientRect().top - body.clientTop + body.scrollTop;
+        var free = body.clientHeight - parseFloat(getComputedStyle(body).paddingBottom || 0) - top - 1;
+        if (free <= element.offsetHeight) return;
+
+        element.style.display = 'flex';
+        element.style.flexDirection = 'column';
+        element.style.justifyContent = align === 'middle' ? 'center' : 'flex-end';
+        element.style.minHeight = free + 'px';
+    }
+};
+
 ko.bindingHandlers.bsPopover = {
     init: function (element, valueAccessor) {
         var opts = valueAccessor() || {};

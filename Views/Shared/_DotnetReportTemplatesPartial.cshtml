@@ -242,7 +242,7 @@
 </script>
 
 <script type="text/html" id="report-widget">
-    <div data-bind="style: { 'font-size': (FontSize ? FontSize : '48px'),'text-align': Alignment ? Alignment : 'center','color': FontColor ? FontColor : '#000000','background-color':BackColor ? BackColor : '#fff' }" style="width: 100%;">
+    <div data-bind="style: { 'font-size': (FontSize ? FontSize : '48px'),'text-align': Alignment ? Alignment : 'center','color': FontColor ? FontColor : '#000000','background-color':BackColor ? BackColor : '#fff' }, kpiVerticalAlign: typeof VerticalAlignment !== 'undefined' ? VerticalAlignment : 'top'" style="width: 100%;">
         <span data-bind="visible: Rows.length < 1" title="No data found">/</span>
 
         <div data-bind="if: Rows.length > 0">
@@ -303,6 +303,15 @@
                             <option value="left">Left</option>
                             <option value="center">Center</option>
                             <option value="right">Right</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Vertical Alignment</label>
+                        <select class="form-select form-select-sm"
+                                data-bind="value: kpiSettings().verticalAlignment, event: { change: updateKpi }">
+                            <option value="top">Top</option>
+                            <option value="middle">Middle</option>
+                            <option value="bottom">Bottom</option>
                         </select>
                     </div>
                     <div class="mb-2">

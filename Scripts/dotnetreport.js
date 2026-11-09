@@ -9221,6 +9221,7 @@ var reportViewModel = function (options) {
 		if (self.ReportType() == 'Single' && self.kpiSettings() && Object.keys(self.kpiSettings()).length > 0) {
 			result.ReportData.FontSize = ko.observable(self.kpiSettings()?.fontSize() + "px");
 			result.ReportData.Alignment = ko.observable(self.kpiSettings()?.alignment());
+			result.ReportData.VerticalAlignment = ko.observable(self.kpiSettings()?.verticalAlignment());
 			result.ReportData.FontColor = ko.observable(self.kpiSettings()?.fontColor());
 			result.ReportData.BackColor = ko.observable(self.kpiSettings()?.backColor());
 			result.ReportData.PositiveColor = ko.observable(self.kpiSettings()?.positiveColor());
@@ -10333,6 +10334,7 @@ var reportViewModel = function (options) {
 	self.kpiSettings = ko.observable({
 		fontSize: ko.observable(48),
 		alignment: ko.observable("center"),
+		verticalAlignment: ko.observable("top"),
 		fontColor: ko.observable("#000000"),
 		backColor: ko.observable("#fffff"),
 		positiveColor: ko.observable("#28a745"),
@@ -10363,6 +10365,7 @@ var reportViewModel = function (options) {
 			if (result && result.FontSize) {
 				result.FontSize(self.kpiSettings().fontSize() + "px");
 				result.Alignment(self.kpiSettings().alignment());
+				if (result.VerticalAlignment) result.VerticalAlignment(self.kpiSettings().verticalAlignment());
 				result.FontColor(self.kpiSettings().fontColor());
 				result.BackColor(self.kpiSettings().backColor());
 				result.PositiveColor(self.kpiSettings().positiveColor());
@@ -10377,6 +10380,7 @@ var reportViewModel = function (options) {
 		window.copiedKpiFormatGlobal({
 			fontSize: self.kpiSettings().fontSize(),
 			alignment: self.kpiSettings().alignment(),
+			verticalAlignment: self.kpiSettings().verticalAlignment(),
 			fontColor: self.kpiSettings().fontColor(),
 			backColor: self.kpiSettings().backColor(),
 			positiveColor: self.kpiSettings().positiveColor(),
@@ -10393,6 +10397,7 @@ var reportViewModel = function (options) {
 		if (format) {
 			self.kpiSettings().fontSize(format.fontSize);
 			self.kpiSettings().alignment(format.alignment);
+			self.kpiSettings().verticalAlignment(format.verticalAlignment || "top");
 			self.kpiSettings().fontColor(format.fontColor);
 			self.kpiSettings().backColor(format.backColor);
 			self.kpiSettings().positiveColor(format.positiveColor);
@@ -10416,6 +10421,7 @@ var reportViewModel = function (options) {
 	self.clearKpiSettings = function (clear) {
 		self.kpiSettings().fontSize(48);
 		self.kpiSettings().alignment("center");
+		self.kpiSettings().verticalAlignment("top");
 		self.kpiSettings().fontColor("#000000");//black
 		self.kpiSettings().backColor("#fff");//white
 		self.kpiSettings().positiveColor("#28a745");//green
@@ -11941,6 +11947,21 @@ var reportViewModel = function (options) {
 			delete option.tooltip.confine;
 		}
 
+		// ECharts' default margins (60px top, 70px bottom, 10% sides) leave a small chart mostly empty
+		if (option.grid) {
+			var legendPos = chartOptions.legendPosition;
+			var legendShown = option.legend && option.legend.show;
+			var gridFont = Number(chartOptions.fontSize) || 12;
+			var sideLegend = legendShown && (legendPos === 'right' || legendPos === 'left')
+				? Math.ceil((_.max(_.map(option.series, function (s) { return String(s.name || '').length; })) || 0) * gridFont * 0.6) + 40 : 0;
+			option.grid = $.extend({}, option.grid, {
+				left: 10 + (legendPos === 'left' ? sideLegend : 0),
+				right: 16 + (legendPos === 'right' ? sideLegend : 0),
+				top: 10 + (option.title ? gridFont + 14 : 0) + (legendShown && !sideLegend && legendPos !== 'bottom' ? gridFont + 14 : 0),
+				bottom: 8 + (legendShown && legendPos === 'bottom' ? gridFont + 14 : 0)
+			});
+		}
+
 		chart.setOption(option);
 		chart.resize();
 
@@ -12409,6 +12430,7 @@ var reportViewModel = function (options) {
 			var kpisetting = reportSettings.kpiSettings;
 			self.kpiSettings().fontSize(kpisetting.fontSize);
 			self.kpiSettings().alignment(kpisetting.alignment);
+			self.kpiSettings().verticalAlignment(kpisetting.verticalAlignment || "top");
 			self.kpiSettings().fontColor(kpisetting.fontColor);
 			self.kpiSettings().backColor(kpisetting.backColor);
 			self.kpiSettings().positiveColor(kpisetting.positiveColor);
