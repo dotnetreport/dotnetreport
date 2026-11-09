@@ -466,7 +466,7 @@ namespace ReportBuilder.Web.Models
 
         private static readonly string[] ChangeVerbs = { "Save", "Delete", "Add", "Update", "Copy", "Change", "Set", "Remove", "Import", "Move" };
         private static readonly string[] ViewOnlyAllowed = { "AddFavorite", "RemoveFavorite" };
-        private static readonly string[] AiReportBuilders = { "RunQueryAi", "RunQueryAiAlt", "RunQueryAiAlt2", "RunAiReportAssistant", "RunAiAssistant" };
+        private static readonly string[] AiReportBuilders = { "RunQueryAi", "RunQueryAiAlt", "RunQueryAiAlt2", "RunAiReportAssistant", "RunAiDashboardAssistant", "RunAiAssistant" };
 
         public static bool IsChangeMethod(string method)
         {

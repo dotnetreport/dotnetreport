@@ -1810,6 +1810,44 @@ function attachFilterLookup(options, field, filter) {
 	}
 }
 
+// AI quick prompts, shared by the report and dashboard builders
+var aiFieldKind = function (f) {
+	var type = (ko.unwrap(f.fieldType) || '').toLowerCase();
+	var fmt = ko.unwrap(f.fieldFormat) || '';
+	if (/date|time/.test(type) || fmt === 'Date' || fmt === 'Date and Time') return 'date';
+	if (/int|decimal|money|float|double|numeric|real|currency|number/.test(type) || ['Currency', 'Percentage', 'Decimal', 'Number'].indexOf(fmt) >= 0) return 'number';
+	if (/char|text|string/.test(type)) return 'text';
+	return '';
+};
+var aiIsIdField = function (name) { return /^id$|[_ ]id$|[a-z]Id$|ID$|key$/i.test(name || '') && !/paid$/i.test(name || ''); };
+var aiIsFlagField = function (name) { return /^([Ii]s|[Hh]as|[Nn]o|[Cc]an|[Ww]as)([\s_]|[A-Z])/.test(name || ''); };
+var aiPickField = function (fields, kind, preferred) {
+	var list = _.filter(fields, function (f) {
+		var name = ko.unwrap(f.fieldName);
+		return aiFieldKind(f) === kind && !aiIsIdField(name) && !(kind === 'number' && aiIsFlagField(name));
+	});
+	return _.find(list, function (f) { return preferred.test(ko.unwrap(f.fieldName)); }) || list[0];
+};
+var aiTableName = function (t) { return t ? (t.displayName || t.tableName || '') : ''; };
+var aiMeasureName = /amount|total|price|sales|revenue|cost|freight|qty|quantity|balance|value/i;
+var aiTableShape = function (t, fields) {
+	fields = fields || t.fields || [];
+	var name = function (f) { return f ? (ko.unwrap(f.fieldLabel) || ko.unwrap(f.fieldName)) : ''; };
+	var number = name(aiPickField(fields, 'number', aiMeasureName));
+	return {
+		table: aiTableName(t),
+		number: number,
+		measure: aiMeasureName.test(number),
+		category: name(aiPickField(fields, 'text', /name|category|type|status|region|country|state|city|department|group/i)),
+		date: name(aiPickField(fields, 'date', /date|created|order|time/i))
+	};
+};
+var aiBestTable = function (tables) {
+	return _.maxBy(_.map(tables, function (t) { return aiTableShape(t); }), function (x) {
+		return (x.measure ? 3 : x.number ? 1 : 0) + (x.category ? 1 : 0) + (x.date ? 1 : 0);
+	}) || null;
+};
+
 var reportViewModel = function (options) {
 	var self = this;
 
@@ -2824,12 +2862,12 @@ var reportViewModel = function (options) {
 		self.DrawChart();
 	}
 	self.removeZoomDashboard = function () {
-		const grid = document.querySelector('.grid-stack');
+		const grid = document.querySelector('.grid-stack:not(.dash-preview-grid)');
 		if (grid) grid.style.transform = 'none';
 	};
 
 	self.applyZoomDashboard = function () {
-		const grid = document.querySelector('.grid-stack');
+		const grid = document.querySelector('.grid-stack:not(.dash-preview-grid)');
 		if (grid) {
 			grid.style.transform = `scale(0.9)`;
 			grid.style.transformOrigin = 'top center';
@@ -3457,36 +3495,11 @@ var reportViewModel = function (options) {
 	self.aiConversationHistory = [];
 	self.aiReportApplied = ko.observable(false);
 
-	// AI quick actions and follow-ups built from the tables and fields in the schema
-	var aiFieldKind = function (f) {
-		var type = (ko.unwrap(f.fieldType) || '').toLowerCase();
-		var fmt = ko.unwrap(f.fieldFormat) || '';
-		if (/date|time/.test(type) || fmt === 'Date' || fmt === 'Date and Time') return 'date';
-		if (/int|decimal|money|float|double|numeric|real|currency|number/.test(type) || ['Currency', 'Percentage', 'Decimal', 'Number'].indexOf(fmt) >= 0) return 'number';
-		if (/char|text|string/.test(type)) return 'text';
-		return '';
-	};
-	var aiIsIdField = function (name) { return /^id$|[_ ]id$|[a-z]Id$|ID$|key$/i.test(name || '') && !/paid$/i.test(name || ''); };
-	var aiPickField = function (fields, kind, preferred) {
-		var list = _.filter(fields, function (f) { return aiFieldKind(f) === kind && !aiIsIdField(ko.unwrap(f.fieldName)); });
-		return _.find(list, function (f) { return preferred.test(ko.unwrap(f.fieldName)); }) || list[0];
-	};
-	var aiTableName = function (t) { return t ? (t.displayName || t.tableName || '') : ''; };
-	var aiTableShape = function (t, fields) {
-		fields = fields || t.fields || [];
-		var name = function (f) { return f ? (ko.unwrap(f.fieldLabel) || ko.unwrap(f.fieldName)) : ''; };
-		return {
-			table: aiTableName(t),
-			number: name(aiPickField(fields, 'number', /amount|total|price|sales|revenue|cost|freight|qty|quantity|balance|value/i)),
-			category: name(aiPickField(fields, 'text', /name|category|type|status|region|country|state|city|department|group/i)),
-			date: name(aiPickField(fields, 'date', /date|created|order|time/i))
-		};
-	};
 	// the selected table, or else the one with the most to show: a number, a category and a date
 	self.aiFocusTable = ko.pureComputed(function () {
 		var focus = self.SelectedTable();
 		if (focus) return aiTableShape(focus, self.ChooseFields().length ? self.ChooseFields() : null);
-		return _.maxBy(_.map(self.Tables(), function (t) { return aiTableShape(t); }), function (x) { return (x.number ? 2 : 0) + (x.category ? 1 : 0) + (x.date ? 1 : 0); }) || null;
+		return aiBestTable(self.Tables());
 	});
 	self.aiExampleTable = ko.pureComputed(function () {
 		return (self.aiFocusTable() && self.aiFocusTable().table) || 'Orders';
@@ -3659,7 +3672,8 @@ var reportViewModel = function (options) {
 
 	// ── Apply AI actions by driving existing UI functions ──
 	// Fields go through loadTableFields → setupField — the exact same path as manual use.
-	self.applyAiActions = function (actions) {
+	self.applyAiActions = function (actions, runOpts) {
+		var applied = $.Deferred();
 		try {
 			console.log('AI: applying actions:', JSON.stringify(actions));
 
@@ -3701,7 +3715,7 @@ var reportViewModel = function (options) {
 					if (tableIndex >= tableNames.length) {
 						console.log('AI: all tables processed, SelectedFields count:', self.SelectedFields().length);
 						// All tables processed — now apply report type, filters, settings, and run
-						self._applyAiPostFields(actions);
+						self._applyAiPostFields(actions, runOpts, applied);
 						return;
 					}
 
@@ -3810,7 +3824,7 @@ var reportViewModel = function (options) {
 				processNextTable();
 			} else {
 				// No new fields — just apply type/filters/settings changes
-				self._applyAiPostFields(actions);
+				self._applyAiPostFields(actions, runOpts, applied);
 			}
 
 		} catch (e) {
@@ -3819,11 +3833,13 @@ var reportViewModel = function (options) {
 				role: 'assistant',
 				content: 'Had trouble applying the changes to the designer. Error: ' + e.message
 			});
+			applied.reject(e);
 		}
+		return applied.promise();
 	};
 
 	// ── Apply report type, filters, settings after fields are loaded ──
-	self._applyAiPostFields = function (actions) {
+	self._applyAiPostFields = function (actions, runOpts, applied) {
 		try {
 			// Set report type
 			if (actions.reportType) {
@@ -4015,6 +4031,10 @@ var reportViewModel = function (options) {
 			}
 
 			self.aiReportApplied(true);
+			if (runOpts && runOpts.noRun) {
+				if (applied) applied.resolve();
+				return;
+			}
 
 			// Auto-run the report so user sees results immediately
 			// For Html reports, delay to let the template get applied first
@@ -4028,9 +4048,11 @@ var reportViewModel = function (options) {
 			}
 
 			toastr.success('AI has updated your report');
+			if (applied) applied.resolve();
 
 		} catch (e) {
 			console.error('Error in _applyAiPostFields:', e);
+			if (applied) applied.reject(e);
 		}
 	};
 
@@ -10708,8 +10730,13 @@ var reportViewModel = function (options) {
 				chartDiv = modal.querySelector('[id="' + chartDivId + '"]');
 			}
 		}
+		if (!chartDiv && options.chartContainer) {
+			var scope = document.querySelector(options.chartContainer);
+			chartDiv = scope ? scope.querySelector('[id="' + chartDivId + '"]') : null;
+			if (!chartDiv) return;
+		}
 		if (!chartDiv) {
-			chartDiv = document.getElementById(chartDivId);
+			chartDiv = _.find(document.querySelectorAll('[id="' + chartDivId + '"]'), function (el) { return !el.closest('[data-chart-scope]'); });
 		}
 		if (!chartDiv || !reportData) return;
 		if (chartDiv._echart) {
@@ -10747,7 +10774,7 @@ var reportViewModel = function (options) {
 			chartHeight = event.clientY - chartDiv.getBoundingClientRect().top;
 			chartWidth = Math.max(100, chartWidth);
 			chartHeight = Math.max(100, chartHeight);
-			var el = document.getElementById('chart_div_' + self.ReportID());
+			var el = chartDiv;
 			el.style.width = chartWidth + 'px';
 			el.style.height = chartHeight + 'px';
 			if (el._echart) el._echart.resize();
@@ -14562,6 +14589,7 @@ var dashboardViewModel = function (options) {
 	});
 
 	self.newDashboard = function () {
+		self.clearAiAssistant();
 		$("#add-dash-name").removeClass("is-invalid");
 		self.dashboard.Id(0);
 		self.dashboard.Name('');
@@ -14577,6 +14605,7 @@ var dashboardViewModel = function (options) {
 	};
 
 	self.editDashboard = function () {
+		self.clearAiAssistant();
 		$("#add-dash-name").removeClass("is-invalid");
 		self.dashboard.Id(self.currentDashboard().id);
 		self.dashboard.Name(self.currentDashboard().name);
@@ -14822,12 +14851,25 @@ var dashboardViewModel = function (options) {
 			return false;
 		}
 
+		var drafts = _.filter(self.aiDraftWidgets(), function (d) { return d.selected(); });
+		if (!drafts.length) {
+			saveDashboardNow([]);
+		} else {
+			saveAiDrafts(drafts)
+				.done(function (ids) { saveDashboardNow(ids); })
+				.fail(function (why) { toastr.error('Could not save the new widgets: ' + why); });
+		}
+		return true;
+	};
+
+	var saveDashboardNow = function (newReportIds) {
 		var list = '';
 		_.forEach(self.reportsAndFolders(), function (f) {
 			_.forEach(f.reports, function (r) {
 				if (r.selected()) list += (list ? ',' : '') + r.reportId;
 			});
 		});
+		_.forEach(newReportIds, function (id) { list += (list ? ',' : '') + id; });
 		var model = {
 			id: self.dashboard.Id() || 0,
 			name: self.dashboard.Name(),
@@ -14868,15 +14910,17 @@ var dashboardViewModel = function (options) {
 			}
 
 			toastr.success("Dashboard saved successfully");
-			$('#add-dashboard-modal').modal('hide');
-			setTimeout(function () {
-				self.lineSeparators([]);
-				self.textWidgets([]);
-				self.loadDashboard(result.id);
-			}, 500);
+			savePreviewLayout(result.id).always(function () {
+				self.aiDraftWidgets([]);
+				$('#add-dashboard-modal').modal('hide');
+				setTimeout(function () {
+					self.lineSeparators([]);
+					self.textWidgets([]);
+					var loaded = self.loadDashboard(result.id);
+					if (loaded && loaded.done) loaded.done(function () { setTimeout(self.drawChart, 1500); });
+				}, 500);
+			});
 		});
-
-		return true;
 	};
 
 	self.deleteDashboard = function () {
@@ -14937,7 +14981,7 @@ var dashboardViewModel = function (options) {
 		return document.querySelector('.grid-stack-item[gs-id="0"]') !== null;
 	}
 	function removeNewReportWidget() {
-		const grid = document.querySelector('.grid-stack')?.gridstack;
+		const grid = document.querySelector('.grid-stack:not(.dash-preview-grid)')?.gridstack;
 		if (!grid) return;
 
 		const zeroWidgets = document.querySelectorAll('.grid-stack-item[gs-id="null"]');
@@ -14959,7 +15003,7 @@ var dashboardViewModel = function (options) {
 			return;
 		}
 
-		const grid = document.querySelector('.grid-stack')?.gridstack;
+		const grid = document.querySelector('.grid-stack:not(.dash-preview-grid)')?.gridstack;
 		if (!grid) return;
 
 		grid.removeAll(false);
@@ -14991,8 +15035,8 @@ var dashboardViewModel = function (options) {
 		self.skipGridRefresh = false;
 	}
 
-	function buildReport(x, i) {
-		var report = new reportViewModel({
+	function reportOptions(x, extra) {
+		return _.extend({
 			runReportUrl: options.runReportUrl,
 			runExportUrl: options.runExportUrl,
 			execReportUrl: options.execReportUrl,
@@ -15018,7 +15062,11 @@ var dashboardViewModel = function (options) {
 			arrangeDashboard: self.arrangeDashboard,
 			appSettings: self.appSettings,
 			dashboardId: self.currentDashboard().id
-		});
+		}, extra || {});
+	}
+
+	function buildReport(x, i) {
+		var report = new reportViewModel(reportOptions(x));
 
 		report.x = ko.observable(x.x);
 		report.y = ko.observable(x.y);
@@ -15160,6 +15208,381 @@ var dashboardViewModel = function (options) {
 		if (report && report.initChartTooltips) {
 			report.initChartTooltips(document.getElementById('modal-reportbuilder'));
 		}
+	});
+
+	// AI Assist is hidden until a later release
+	self.hasAiConfigured = function () { return false; };
+	self.aiAssistantEnabled = ko.observable(false);
+	self.aiAssistantMessages = ko.observableArray([]);
+	self.aiAssistantLoading = ko.observable(false);
+	self.aiAssistantInput = ko.observable('');
+	self.aiStatus = ko.observable('');
+	self.aiDashboardApplied = ko.observable(false);
+	self.aiConversationHistory = [];
+	self.aiTables = ko.observableArray([]);
+
+	var allReportEntries = function () { return _.flatMap(self.reportsAndFolders(), function (f) { return f.reports; }); };
+	var selectedReportEntries = function () { return _.filter(allReportEntries(), function (r) { return r.selected(); }); };
+
+	var loadAiTables = function () {
+		if (self.tables.length) { self.aiTables(self.tables); return $.when(); }
+		return ajaxcall({
+			url: options.apiUrl,
+			data: { method: "/ReportApi/GetTables", model: JSON.stringify({ adminMode: self.adminMode(), includeColumns: true }) },
+			noBlocking: true
+		}).done(function (x) {
+			if (x.d) x = x.d;
+			if (x.result) x = x.result;
+			self.tables = _.sortBy(x, 'tableName');
+			self.aiTables(self.tables);
+		});
+	};
+	self.aiAssistantEnabled.subscribe(function (on) { if (on) loadAiTables(); });
+
+	self.aiFocusTable = ko.pureComputed(function () {
+		return aiBestTable(self.aiTables());
+	});
+	self.aiQuickPrompts = ko.pureComputed(function () {
+		var s = self.aiFocusTable();
+		var prompts = [];
+		if (s && s.table) {
+			var t = s.table;
+			prompts.push({ icon: 'fa-dashboard', label: t + ' dashboard', prompt: 'Build a dashboard for ' + t + ' with KPIs for the key totals'
+				+ (s.number && s.category ? ', ' + s.number + ' by ' + s.category : '') + (s.number && s.date ? ' and ' + s.number + ' over time' : '') });
+			if (s.number) prompts.push({ icon: 'fa-tachometer', label: 'KPI widgets', prompt: 'Add KPI widgets for total ' + s.number + ' and the count of ' + t });
+			if (s.number && s.date) prompts.push({ icon: 'fa-line-chart', label: s.number + ' trend', prompt: 'Add a line chart of total ' + s.number + ' by month using ' + s.date + ' from the ' + t + ' table' });
+			else if (s.category) prompts.push({ icon: 'fa-pie-chart', label: t + ' by ' + s.category, prompt: 'Add a pie chart of the count of ' + t + ' by ' + s.category });
+		} else {
+			prompts.push({ icon: 'fa-dashboard', label: 'Overview dashboard', prompt: 'Build an overview dashboard with KPIs and charts for my main data' });
+		}
+		if (allReportEntries().length) prompts.push({ icon: 'fa-th-large', label: 'Use my reports', prompt: 'Pick the saved reports that make a good ' + (s && s.table ? s.table + ' ' : '') + 'dashboard' });
+		return prompts.slice(0, 4);
+	});
+	self.aiFollowUpPrompts = ko.pureComputed(function () {
+		var s = self.aiFocusTable() || {};
+		var prompts = [{ label: '+ KPI', prompt: 'Add one more KPI widget' + (s.number ? ' for the average ' + s.number : '') }];
+		if (s.category && s.number) prompts.push({ label: '+ Top 10', prompt: 'Add a bar chart of the top 10 ' + s.category + ' by ' + s.number });
+		prompts.push({ label: 'Name it', prompt: 'Suggest a name and description for this dashboard' });
+		return prompts;
+	});
+	self.runAiPrompt = function (p) {
+		self.aiAssistantInput(p.prompt);
+		self.sendAiAssistantMessage();
+	};
+	self.clearAiAssistant = function () {
+		self.aiAssistantMessages([]);
+		self.aiConversationHistory = [];
+		self.aiDashboardApplied(false);
+		if (self.aiDraftWidgets) self.aiDraftWidgets([]);
+	};
+	self.aiAssistantMessages.subscribe(function () {
+		setTimeout(function () {
+			var el = document.querySelector('.dash-ai-messages');
+			if (el) el.scrollTop = el.scrollHeight;
+		}, 50);
+	});
+
+	var aiSay = function (text) {
+		self.aiAssistantMessages.push({ role: 'assistant', content: text });
+		self.aiConversationHistory.push({ role: 'assistant', content: text });
+	};
+
+	self.sendAiAssistantMessage = function () {
+		var msg = (self.aiAssistantInput() || '').trim();
+		if (!msg || self.aiAssistantLoading()) return;
+
+		self.aiAssistantMessages.push({ role: 'user', content: msg });
+		self.aiConversationHistory.push({ role: 'user', content: msg });
+		self.aiAssistantInput('');
+		self.aiAssistantLoading(true);
+
+		var current = {
+			name: self.dashboard.Name() || '',
+			description: self.dashboard.Description() || '',
+			reports: _.map(selectedReportEntries(), function (r) { return { id: r.reportId, name: r.reportName, type: r.reportType }; }),
+			newWidgets: _.map(_.filter(self.aiDraftWidgets(), function (d) { return d.selected(); }), function (d) { return { name: d.name, type: d.reportType }; })
+		};
+		var available = _.map(allReportEntries(), function (r) {
+			return { id: r.reportId, name: r.reportName, description: r.reportDescription || '', type: r.reportType || '' };
+		});
+
+		ajaxcall({
+			url: options.apiUrl.replace('CallReportApi', 'CallPostReportApi'),
+			type: 'POST',
+			data: JSON.stringify({
+				method: "/ReportApi/RunAiDashboardAssistant",
+				model: JSON.stringify({
+					userMessage: msg,
+					conversationHistory: JSON.stringify(self.aiConversationHistory),
+					currentDashboardJson: JSON.stringify(current),
+					availableReportsJson: JSON.stringify(available)
+				})
+			}),
+			noBlocking: true
+		}).done(function (result) {
+			if (result && result.d) result = result.d;
+			if (result && result.result) result = result.result;
+			if (!result || result.success === false) {
+				aiSay((result && result.message) || 'Error processing request.');
+				self.aiAssistantLoading(false);
+				return;
+			}
+			aiSay(result.message || 'Done.');
+			var actions = result.actions;
+			if (typeof actions === 'string') { try { actions = JSON.parse(actions); } catch (e) { actions = null; } }
+			if (!actions) { self.aiAssistantLoading(false); return; }
+			self.applyAiDashboardActions(actions).always(function () {
+				self.aiStatus('');
+				self.aiAssistantLoading(false);
+			});
+		}).fail(function (xhr) {
+			var errMsg = 'AI request failed';
+			try {
+				var resp = typeof xhr.responseJSON === 'object' ? xhr.responseJSON : JSON.parse(xhr.responseText);
+				if (resp && (resp.message || resp.result)) errMsg = resp.message || resp.result;
+			} catch (e) { }
+			aiSay('Error: ' + errMsg);
+			self.aiAssistantLoading(false);
+		});
+	};
+
+	self.aiDraftWidgets = ko.observableArray([]);
+	var draftCount = 0;
+
+	var createAiWidget = function (widget) {
+		var d = $.Deferred();
+		var key = 'draft-' + (++draftCount);
+		var r = new reportViewModel(reportOptions({ reportId: 0 }, { dashboardId: 0, skipDraw: false, chartContainer: '[data-preview-id="' + key + '"]' }));
+		r.adminMode(self.adminMode());
+		r.Tables(self.tables);
+		r.createNewReport();
+		r.ReportMode('dashboard');
+		r.SaveReport(false);
+		r.previewKey = key;
+		r.previewPos = ko.observable({ x: 0, y: 0, w: 6, h: 6 });
+
+		r.applyAiActions(_.extend({}, widget, { clearExisting: true }), { noRun: true }).done(function () {
+			if (!r.SelectedFields().length) { d.reject('none of its fields were found'); return; }
+			r.ReportResult().ReportData.subscribe(function (data) { if (data) setTimeout(r.DrawChart, 300); });
+			r.RunReport(false, true, true);
+			var type = widget.reportType || 'List';
+			d.resolve({
+				key: key,
+				vm: r,
+				name: widget.reportName || 'Widget',
+				description: widget.reportDescription || '',
+				reportType: type,
+				icon: type === 'Single' ? 'fa-tachometer' : type === 'Line' ? 'fa-line-chart' : type === 'Pie' ? 'fa-pie-chart' : type === 'List' ? 'fa-file' : 'fa-bar-chart',
+				selected: ko.observable(true),
+				savedId: 0
+			});
+		}).fail(function (e) { d.reject((e && e.message) || 'it could not be built'); });
+
+		return d.promise();
+	};
+
+	var createAiWidgets = function (widgets) {
+		var created = [], failed = [], i = 0, done = $.Deferred();
+		var next = function () {
+			if (i >= widgets.length) { done.resolve(created, failed); return; }
+			var w = widgets[i++];
+			self.aiStatus('Building ' + (w.reportName || 'widget') + ' (' + i + ' of ' + widgets.length + ')...');
+			createAiWidget(w)
+				.done(function (draft) { created.push(draft); })
+				.fail(function (why) { failed.push((w.reportName || 'Widget') + ': ' + why); })
+				.always(next);
+		};
+		loadAiTables().always(next);
+		return done.promise();
+	};
+
+	var saveAiDraft = function (draft) {
+		var d = $.Deferred(), r = draft.vm;
+		if (draft.savedId) return d.resolve(draft.savedId).promise();
+		r.SaveReport(true);
+		var sub = r.ReportID.subscribe(function (id) {
+			if (id > 0) { clearTimeout(timer); sub.dispose(); draft.savedId = id; d.resolve(id); }
+		});
+		var timer = setTimeout(function () { sub.dispose(); d.reject(draft.name + ' did not save'); }, 45000);
+		var run = r.RunReport(true, true);
+		if (!run) { clearTimeout(timer); sub.dispose(); d.reject(draft.name + ' could not be saved'); return d.promise(); }
+		run.done(function (isValid) {
+			if (isValid === false) { clearTimeout(timer); sub.dispose(); d.reject(draft.name + ': its tables do not join'); }
+		});
+		return d.promise();
+	};
+	var saveAiDrafts = function (drafts) {
+		var ids = [], i = 0, done = $.Deferred();
+		var next = function () {
+			if (i >= drafts.length) { done.resolve(ids); return; }
+			saveAiDraft(drafts[i++]).done(function (id) { ids.push(id); next(); }).fail(function (why) { done.reject(why); });
+		};
+		next();
+		return done.promise();
+	};
+
+	self.applyAiDashboardActions = function (actions) {
+		if (actions.dashboardName) self.dashboard.Name(actions.dashboardName);
+		if (actions.dashboardDescription) self.dashboard.Description(actions.dashboardDescription);
+
+		var entries = allReportEntries();
+		var find = function (id) { return _.find(entries, function (r) { return r.reportId == id; }); };
+		_.forEach(actions.removeReportIds || [], function (id) { var r = find(id); if (r) r.selected(false); });
+		_.forEach(actions.addReportIds || [], function (id) { var r = find(id); if (r) r.selected(true); });
+		self.aiDashboardApplied(true);
+
+		var widgets = _.filter(actions.newWidgets || [], function (w) { return w && w.fields && w.fields.length; });
+		if (!widgets.length) return $.when();
+
+		return createAiWidgets(widgets).done(function (created, failed) {
+			if (created.length) {
+				_.forEach(created, function (draft) { self.aiDraftWidgets.push(draft); });
+				aiSay('Added ' + created.length + ' new ' + (created.length === 1 ? 'widget' : 'widgets') + ': ' + _.map(created, 'name').join(', ')
+					+ '. They are saved as reports when you save the dashboard.');
+			}
+			if (failed.length) aiSay('Could not build: ' + failed.join('; '));
+		});
+	};
+
+	self.dashLivePreview = ko.observable(false);
+	self.previewWidgets = ko.observableArray([]);
+	var previewCache = {};
+
+	var savedLayout = function () {
+		var placed = {};
+		if (!self.dashboard.Id() || self.dashboard.Id() !== self.currentDashboard().id) return placed;
+		var grid = document.querySelector('.grid-stack:not(.dash-preview-grid)');
+		_.forEach(grid && grid.gridstack ? grid.gridstack.engine.nodes : [], function (n) {
+			if (n.el && n.el.getAttribute('data-type') === 'report') placed[n.el.getAttribute('gs-id')] = { x: n.x, y: n.y, w: n.w, h: n.h };
+		});
+		if (!_.size(placed)) {
+			_.forEach(self.reports(), function (r) {
+				placed[r.ReportID()] = { x: ko.unwrap(r.x) || 0, y: ko.unwrap(r.y) || 0, w: ko.unwrap(r.width) || 6, h: ko.unwrap(r.height) || 6 };
+			});
+		}
+		return placed;
+	};
+
+	var previewLayout = {};
+	var previewGrid = null;
+
+	// lay out at the dashboard's width, then scale down to fit
+	var scalePreview = function () {
+		var el = document.querySelector('#dash-live-preview .grid-stack');
+		var holder = el && el.parentElement;
+		if (!holder) return;
+		var dashGrid = document.querySelector('.grid-stack:not(.dash-preview-grid)');
+		var fullWidth = Math.max((dashGrid && dashGrid.offsetWidth) || 0, window.innerWidth - 40, 900);
+		var scale = Math.min(1, holder.clientWidth / fullWidth);
+		el.style.width = fullWidth + 'px';
+		el.style.transform = 'scale(' + scale + ')';
+		el.style.transformOrigin = '0 0';
+		holder.style.height = Math.ceil(el.offsetHeight * scale) + 'px';
+	};
+	$(window).on('resize', _.debounce(scalePreview, 200));
+
+	var initPreviewGrid = function () {
+		var el = document.querySelector('#dash-live-preview .grid-stack');
+		if (!el || typeof GridStack === 'undefined') return;
+		if (!previewGrid || previewGrid.el !== el) {
+			previewGrid = GridStack.init({ column: 12, cellHeight: 60, margin: 10, resizable: { handles: 'se, sw, ne, nw, n, e, s, w' } }, el);
+			previewGrid.on('change', function (event, items) {
+				_.forEach(items, function (n) {
+					previewLayout[n.el.getAttribute('data-preview-id')] = { x: n.x, y: n.y, w: n.w, h: n.h };
+				});
+				scalePreview();
+			});
+			previewGrid.on('resizestop', function (event, item) {
+				var r = _.find(self.previewWidgets(), function (x) { return x.previewKey === item.getAttribute('data-preview-id'); });
+				if (r) r.DrawChart();
+			});
+		}
+		scalePreview();
+		previewGrid.batchUpdate();
+		previewGrid.removeAll(false);
+		_.forEach(el.querySelectorAll('.grid-stack-item'), function (item) { previewGrid.makeWidget(item); });
+		previewGrid.batchUpdate(false);
+		scalePreview();
+	};
+
+	var refreshPreview = _.debounce(function () {
+		if (!self.dashLivePreview() || !$('#add-dashboard-modal').hasClass('show')) return;
+		var placed = savedLayout();
+		_.forEach(previewLayout, function (p, key) { if (key.indexOf('report-') === 0) placed[key.substring(7)] = p; });
+		var rowY = _.max(_.map(placed, function (p) { return p.y + p.h; })) || 0, cursorX = 0, rowH = 0;
+		var nextSpot = function (reportType) {
+			var kpi = reportType === 'Single';
+			var w = kpi ? 3 : 6, h = kpi ? 4 : 8;
+			if (cursorX + w > 12) { cursorX = 0; rowY += rowH; rowH = 0; }
+			var spot = { x: cursorX, y: rowY, w: w, h: h };
+			cursorX += w;
+			rowH = Math.max(rowH, h);
+			return spot;
+		};
+		var list = _.map(selectedReportEntries(), function (entry) {
+			var p = placed[entry.reportId] || nextSpot(entry.reportType);
+			var r = previewCache[entry.reportId];
+			if (!r) {
+				r = new reportViewModel(reportOptions({ reportId: entry.reportId }, { dashboardId: 0, skipDraw: false, chartContainer: '#dash-live-preview' }));
+				r.adminMode(self.adminMode());
+				previewCache[entry.reportId] = r;
+				r.ReportResult().ReportData.subscribe(function (data) { if (data) setTimeout(r.DrawChart, 300); });
+				r.LoadReport(entry.reportId, true, '', true, false).then(function () { return r.RunReport(false, true, true); });
+				r.previewPos = ko.observable(p);
+				r.previewKey = 'report-' + entry.reportId;
+			}
+			r.previewPos(p);
+			return r;
+		});
+		_.forEach(_.filter(self.aiDraftWidgets(), function (d) { return d.selected(); }), function (draft) {
+			draft.vm.previewPos(previewLayout[draft.key] || nextSpot(draft.reportType));
+			list.push(draft.vm);
+		});
+		list =_.sortBy(list, function (r) { var p = r.previewPos(); return p.y * 100 + p.x; });
+		self.previewWidgets(list);
+		setTimeout(function () {
+			initPreviewGrid();
+			setTimeout(function () { _.forEach(list, function (r) { r.DrawChart(); }); }, 300);
+		}, 100);
+	}, 400);
+
+	var savePreviewLayout = function (dashboardId) {
+		if (!previewGrid || !dashboardId) return $.when();
+		var calls = [];
+		_.forEach(previewGrid.engine.nodes, function (n) {
+			var key = n.el.getAttribute('data-preview-id') || '';
+			var draft = _.find(self.aiDraftWidgets(), function (d) { return d.key === key; });
+			var reportId = draft ? draft.savedId : parseInt(key.replace('report-', ''));
+			var p = { x: n.x, y: n.y, w: n.w, h: n.h };
+			if (!reportId) return;
+			calls.push(ajaxcall({
+				url: options.apiUrl.replace('CallReportApi', 'CallPostReportApi'),
+				type: 'POST',
+				noBlocking: true,
+				data: JSON.stringify({
+					method: '/ReportApi/UpdateDashboardReportPosition',
+					model: JSON.stringify({
+						x: p.x, y: p.y, width: p.w, height: p.h,
+						dashboardId: dashboardId,
+						reportId: reportId,
+						widgetSettings: JSON.stringify(self.buildWidgetSettings({ id: reportId, w: p.w, h: p.h })),
+						adminMode: self.adminMode()
+					})
+				})
+			}));
+		});
+		return $.when.apply($, calls);
+	};
+	self.dashLivePreview.subscribe(refreshPreview);
+	self.selectedReportCount.subscribe(refreshPreview);
+	self.reportsAndFolders.subscribe(refreshPreview);
+	ko.computed(function () { return _.map(self.aiDraftWidgets(), function (d) { return d.selected(); }); }).subscribe(refreshPreview);
+	$('#add-dashboard-modal').on('shown.bs.modal', refreshPreview);
+	$('#add-dashboard-modal').on('hidden.bs.modal', function () {
+		self.previewWidgets([]);
+		previewCache = {};
+		previewLayout = {};
+		if (previewGrid) { previewGrid.destroy(false); previewGrid = null; }
 	});
 
 	self.loadDashboardReports = function (reports, skipGridRefresh) {
@@ -15339,7 +15762,7 @@ var dashboardViewModel = function (options) {
 	}
 
 	self.PrintDashboard = function () {
-		var grid = document.querySelector('.grid-stack');
+		var grid = document.querySelector('.grid-stack:not(.dash-preview-grid)');
 		var width = grid ? grid.offsetWidth : 0;
 		var style = document.createElement('style');
 		style.textContent = '@media print { @page { size: landscape; }' +
@@ -15744,74 +16167,76 @@ var dashboardViewModel = function (options) {
 
 	self.init = function () {
 		return self.loadAppSettings().done(function () {
-			
-			var getReports = function () {
-				return ajaxcall({
-					url: options.apiUrl,
-					data: {
-						method: "/ReportApi/GetSavedReports",
-						model: JSON.stringify({ adminMode: self.adminMode(), applyClientInAdmin: self.appSettings.useClientIdInAdmin })
-					},
-					noBlocking: true
-				});
-			};
+			self.loadReportLists();
+		});
+	};
 
-			var getFolders = function () {
-				return ajaxcall({
-					url: options.apiUrl,
-					data: {
-						method: "/ReportApi/GetFolders",
-						model: JSON.stringify({
-							adminMode: self.adminMode(),
-							applyClientInAdmin: self.appSettings.useClientIdInAdmin
-						})
-					},
-					noBlocking: true
-				});
-			};
+	self.loadReportLists = function () {
+		var getReports = function () {
+			return ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/GetSavedReports",
+					model: JSON.stringify({ adminMode: self.adminMode(), applyClientInAdmin: self.appSettings.useClientIdInAdmin })
+				},
+				noBlocking: true
+			});
+		};
+
+		var getFolders = function () {
+			return ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/GetFolders",
+					model: JSON.stringify({
+						adminMode: self.adminMode(),
+						applyClientInAdmin: self.appSettings.useClientIdInAdmin
+					})
+				},
+				noBlocking: true
+			});
+		};
 
 		return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
-			var setup = [];
-			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
-			if (allReports[0].d) { allReports[0] = allReports[0].d; }
-			if (allFolders[0].result) { allFolders[0] = allFolders[0].result; }
-			if (allReports[0].result) { allReports[0] = allReports[0].result; }
+		var setup = [];
+		if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
+		if (allReports[0].d) { allReports[0] = allReports[0].d; }
+		if (allFolders[0].result) { allFolders[0] = allFolders[0].result; }
+		if (allReports[0].result) { allReports[0] = allReports[0].result; }
 
-				// Show the full path so sub folders are nested and same named folders under
-				// different parents stay distinguishable.
-				var folderMap = {};
-				_.forEach(allFolders[0], function (f) { folderMap[f.Id] = f; });
-				var pathNames = function (f) {
-					var names = [], cur = f, guard = 0;
-					while (cur && guard++ < 20) {
-						names.unshift(cur.FolderName);
-						cur = cur.ParentFolderId ? folderMap[cur.ParentFolderId] : null;
-					}
-					return names;
-				};
+			// full path, so same named sub folders stay distinguishable
+			var folderMap = {};
+			_.forEach(allFolders[0], function (f) { folderMap[f.Id] = f; });
+			var pathNames = function (f) {
+				var names = [], cur = f, guard = 0;
+				while (cur && guard++ < 20) {
+					names.unshift(cur.FolderName);
+					cur = cur.ParentFolderId ? folderMap[cur.ParentFolderId] : null;
+				}
+				return names;
+			};
 
-				_.forEach(allFolders[0], function (x) {
-					var folderReports = _.filter(allReports[0], { folderId: x.Id });
-					var names = pathNames(x);
-					setup.push({
-						folderId: x.Id,
-						folder: names[names.length - 1],
-						folderPath: names.join(' › '),
-						depth: names.length - 1,
-						reports: _.map(folderReports, function (r) {
-							return {
-								reportId: r.reportId,
-								reportName: r.reportName,
-								reportDescription: r.reportDescription,
-								reportType: r.reportType,
-								selected: ko.observable(false)
-							};
-						})
-					});
+			_.forEach(allFolders[0], function (x) {
+				var folderReports = _.filter(allReports[0], { folderId: x.Id });
+				var names = pathNames(x);
+				setup.push({
+					folderId: x.Id,
+					folder: names[names.length - 1],
+					folderPath: names.join(' › '),
+					depth: names.length - 1,
+					reports: _.map(folderReports, function (r) {
+						return {
+							reportId: r.reportId,
+							reportName: r.reportName,
+							reportDescription: r.reportDescription,
+							reportType: r.reportType,
+							selected: ko.observable(false)
+						};
+					})
 				});
-				self.reportsAndFolders(_.sortBy(setup, 'folderPath'));
-				self.savedReports = allReports[0];
 			});
+			self.reportsAndFolders(_.sortBy(setup, 'folderPath'));
+			self.savedReports = allReports[0];
 		});
 	};
 
@@ -15850,15 +16275,15 @@ var dashboardViewModel = function (options) {
 	};
 
 	function updateZoomDashboard() {
-		document.querySelector('.grid-stack').style.transform = `scale(${self.zoomLevelDashboard()})`;
-		document.querySelector('.grid-stack').style.transformOrigin = "top center";
+		document.querySelector('.grid-stack:not(.dash-preview-grid)').style.transform = `scale(${self.zoomLevelDashboard()})`;
+		document.querySelector('.grid-stack:not(.dash-preview-grid)').style.transformOrigin = "top center";
 	}
 
 	// Apply initial zoom on page load
 	updateZoomDashboard();
 
 	self.gridResponsive = function () {
-		const gridEl = document.querySelector('.grid-stack');
+		const gridEl = document.querySelector('.grid-stack:not(.dash-preview-grid)');
 		if (!gridEl) return;
 		if (window.innerWidth < 768) {
 			gridEl.classList.add('grid-stack-one-column-mode');
@@ -15868,7 +16293,7 @@ var dashboardViewModel = function (options) {
 	}
 	var eventHandlers = {};
 	self.arrangeDashboard.subscribe(function (newValue) {
-		const grid = document.querySelector('.grid-stack')?.gridstack;
+		const grid = document.querySelector('.grid-stack:not(.dash-preview-grid)')?.gridstack;
 
 		if (!grid) return;
 
