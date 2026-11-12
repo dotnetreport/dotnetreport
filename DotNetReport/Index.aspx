@@ -19,6 +19,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
         $(document).ready(function () {
             ajaxcall({ url: '/DotNetReport/ReportService.asmx/GetUsersAndRoles', type: 'POST' }).done(function (data) {
                 if (data.d) data = data.d;
+                showUsersAccessLink(data);
                 var svc = "/DotNetReport/ReportService.asmx/";
                 var vm = new reportViewModel({
                     runReportUrl: "/DotNetReport/Report.aspx",
@@ -102,7 +103,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     </a>
                                 </div>
                             </li>
-                            <li class="nav-item dropdown" data-bind="visible: adminMode() && SelectedFolder() ==null">
+                            <li class="nav-item dropdown" data-bind="visible: canManageHeaderFooter() && SelectedFolder() ==null">
                                 <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     <span class="fa fa-window-maximize"></span> Header / Footer
                                 </a>
@@ -233,7 +234,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <textarea id="report-header-editor"></textarea>
                             </div>
                             <div class="card-footer bg-white d-flex align-items-center flex-wrap gap-2 py-2">
-                                <button type="button" class="btn btn-sm btn-link text-decoration-none px-0" data-bind="visible: !showClientScope(), click: function() { showClientScope(true); }">
+                                <button type="button" class="btn btn-sm btn-link text-decoration-none px-0" data-bind="visible: !showClientScope() && !isTenantScoped(), click: function() { showClientScope(true); }">
                                     <i class="fa fa-user"></i> <span data-bind="text: headerClientId() ? 'Change client (' + headerClientId() + ')' : 'Restrict to a Client Id'"></span>
                                 </button>
                                 <!-- ko if: showClientScope --><div class="input-group input-group-sm" style="max-width: 400px;">
@@ -311,7 +312,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <textarea id="report-footer-editor"></textarea>
                             </div>
                             <div class="card-footer bg-white d-flex align-items-center flex-wrap gap-2 py-2">
-                                <button type="button" class="btn btn-sm btn-link text-decoration-none px-0" data-bind="visible: !showClientScope(), click: function() { showClientScope(true); }">
+                                <button type="button" class="btn btn-sm btn-link text-decoration-none px-0" data-bind="visible: !showClientScope() && !isTenantScoped(), click: function() { showClientScope(true); }">
                                     <i class="fa fa-user"></i> <span data-bind="text: footerClientId() ? 'Change client (' + footerClientId() + ')' : 'Restrict to a Client Id'"></span>
                                 </button>
                                 <!-- ko if: showClientScope --><div class="input-group input-group-sm" style="max-width: 400px;">
@@ -348,7 +349,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         css: isSelected() ? 'fa fa-check-square text-primary me-2' : 'fa fa-square-o me-2'"></span>
                                     <span class="fa fa-3x fa-folder text-secondary"></span>
                                     <span class="desc" data-bind="text: FolderName"></span>
-                                    <div data-bind="visible: $root.adminMode" style="font-size: 0.75em; margin-top: 4px;" onclick="event.stopPropagation()">
+                                    <div data-bind="visible: $root.canManageAccess" style="font-size: 0.75em; margin-top: 4px;" onclick="event.stopPropagation()">
                                         <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                     </div>
                                 </li>
@@ -383,7 +384,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <li data-bind="click: function(){ $parent.SelectedFolder($data); $parent.searchReports(''); }">
                                             <span class="fa fa-3x fa-folder text-secondary"></span>
                                             <span class="desc" data-bind="highlightedText: { text: FolderName, highlight: $parent.searchReports, css: 'highlight' }"></span>
-                                            <div data-bind="visible: $root.adminMode" style="font-size: 0.75em; margin-top: 4px;" onclick="event.stopPropagation()">
+                                            <div data-bind="visible: $root.canManageAccess" style="font-size: 0.75em; margin-top: 4px;" onclick="event.stopPropagation()">
                                                 <div class="d-flex flex-wrap gap-1">
                                                     <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                                 </div>
@@ -399,7 +400,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <li data-bind="click: function(){ $parent.SelectedFolder($data); }">
                                             <span class="fa fa-3x fa-folder text-secondary"></span>
                                             <span class="desc" data-bind="text: FolderName"></span>
-                                            <div data-bind="visible: $root.adminMode"
+                                            <div data-bind="visible: $root.canManageAccess"
                                                  style="font-size: 0.75em; margin-top: 4px;"
                                                  onclick="event.stopPropagation()">
                                                 <div data-bind="template: { name: 'access-badges', data: $data }"></div>
@@ -554,7 +555,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <div class="row fw-bold border-bottom py-2 w-100">
                                         <div class="col-md-3">Name</div>
                                         <div class="col-md-1"></div>
-                                        <div class="col-md-8" data-bind="visible: adminMode">Access</div>
+                                        <div class="col-md-8" data-bind="visible: canManageAccess">Access</div>
                                     </div>
                                     <div class="" data-bind="foreach: rootFolders">
                                         <div class="row py-2 border-bottom align-items-center w-100 row-hover">
@@ -565,7 +566,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <span data-bind="text: FolderName"></span>
                                             </div>
                                             <div class="col-md-1" onclick="event.stopPropagation()">
-                                                <div class="dropdown hover-ellipsis" data-bind="visible: ($root.CanManageFolders() || $root.adminMode()) && (canEdit || canDelete || $root.adminMode())">
+                                                <div class="dropdown hover-ellipsis" data-bind="visible: (($root.CanManageFolders() || $root.adminMode()) && (canEdit || canDelete || $root.adminMode())) || ($root.canManageAccess() && Id)">
                                                     <button class="btn btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                                         <span class="fa fa-ellipsis-h"></span>
                                                     </button>
@@ -587,7 +588,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                 <span class="fa fa-folder"></span> Add Sub Folder
                                                             </a>
                                                         </li>
-                                                        <li data-bind="visible: $root.adminMode() && Id">
+                                                        <li data-bind="visible: $root.canManageAccess() && Id">
                                                             <a class="dropdown-item" href="#" data-bind="click: function(){ $root.openFolderAccessModal($data); }">
                                                                 <span class="fa fa-key"></span> Manage Access
                                                             </a>
@@ -595,7 +596,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     </ul>
                                                 </div>
                                             </div>
-                                            <div class="col-md-8" data-bind="visible: $parent.adminMode">
+                                            <div class="col-md-8" data-bind="visible: $parent.canManageAccess">
                                                 <div class="d-flex flex-wrap gap-1 align-items-center">
                                                     <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                                 </div>
@@ -624,7 +625,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <div class="row fw-bold py-1 border-bottom mt-2 w-100">
                                             <div class="col-md-3"><span class="fa fa-folder"></span> Matching Folders</div>
                                             <div class="col-md-1"></div>
-                                            <div class="col-md-8" data-bind="visible: $root.adminMode">Access</div>
+                                            <div class="col-md-8" data-bind="visible: $root.canManageAccess">Access</div>
                                         </div>
                                         <div data-bind="foreach: foldersInSearch">
                                             <div class="row border-bottom py-2 align-items-center w-100">
@@ -633,7 +634,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     <a href="#" data-bind="click: function(){ $parent.SelectedFolder($data); $parent.searchReports(''); }, highlightedText: { text: FolderName, highlight: $parent.searchReports, css: 'highlight' }" style="cursor: pointer"></a>
                                                 </div>
                                                 <div class="col-md-1" onclick="event.stopPropagation()">
-                                                    <div class="dropdown hover-ellipsis" data-bind="visible: ($root.CanManageFolders() || $root.adminMode()) && (canEdit || canDelete || $root.adminMode())">
+                                                    <div class="dropdown hover-ellipsis" data-bind="visible: (($root.CanManageFolders() || $root.adminMode()) && (canEdit || canDelete || $root.adminMode())) || ($root.canManageAccess() && Id)">
                                                         <button class="btn btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                                             <span class="fa fa-ellipsis-h"></span>
                                                         </button>
@@ -655,7 +656,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                     <span class="fa fa-folder"></span> Add Sub Folder
                                                                 </a>
                                                             </li>
-                                                            <li data-bind="visible: $root.adminMode() && Id">
+                                                            <li data-bind="visible: $root.canManageAccess() && Id">
                                                                 <a class="dropdown-item" href="#" data-bind="click: function(){ $root.openFolderAccessModal($data); }">
                                                                     <span class="fa fa-key"></span> Manage Access
                                                                 </a>
@@ -663,7 +664,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                         </ul>
                                                     </div>
                                                 </div>
-                                                <div class="col-md-8" data-bind="visible: $root.adminMode">
+                                                <div class="col-md-8" data-bind="visible: $root.canManageAccess">
                                                     <div class="small text-muted d-flex flex-wrap gap-1 align-items-center">
                                                         <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                                     </div>
@@ -681,7 +682,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <div class="col-md-2">Modified</div>
                                             <div class="col-md-2">Modified By</div>
                                             <div class="col-md-2" data-bind="visible: searchReports()">Folder</div>
-                                            <div class="col-md-2" data-bind="visible: adminMode">Access</div>
+                                            <div class="col-md-2" data-bind="visible: canManageAccess">Access</div>
                                             <div class="col-md-1" data-bind="visible: adminMode">Direct Link</div>
                                         </div>
 
@@ -695,7 +696,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 </div>
                                                 <div class="col-md-1" onclick="event.stopPropagation()">
                                                     <div class="dropdown hover-ellipsis"
-                                                         data-bind="visible: ($root.CanManageFolders() || $root.adminMode()) && (canEdit || canDelete || $root.adminMode())">
+                                                         data-bind="visible: (($root.CanManageFolders() || $root.adminMode()) && (canEdit || canDelete || $root.adminMode())) || ($root.canManageAccess() && Id)">
                                                         <button class="btn btn-sm" type="button"
                                                                 data-bs-toggle="dropdown" aria-expanded="false">
                                                             <span class="fa fa-ellipsis-h"></span>
@@ -722,7 +723,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                     <span class="fa fa-folder"></span> Add Sub Folder
                                                                 </a>
                                                             </li>
-                                                            <li data-bind="visible: $root.adminMode() && Id">
+                                                            <li data-bind="visible: $root.canManageAccess() && Id">
                                                                 <a class="dropdown-item" href="#" data-bind="click: function(){ $root.openFolderAccessModal($data); }">
                                                                     <span class="fa fa-key"></span> Manage Access
                                                                 </a>
@@ -732,7 +733,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 </div>
                                                 <div class="col-md-2"></div>
                                                 <div class="col-md-2"></div>
-                                                <div class="col-md-2" data-bind="visible: $root.adminMode">
+                                                <div class="col-md-2" data-bind="visible: $root.canManageAccess">
                                                     <div class="d-flex flex-wrap gap-1 align-items-center">
                                                         <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                                     </div>
@@ -832,7 +833,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                                     <span class="fa fa-hourglass"></span> Schedule Report
                                                                 </a>
                                                             </li>
-                                                            <li data-bind="visible: $root.adminMode">
+                                                            <li data-bind="visible: $root.canManageAccess">
                                                                 <a class="dropdown-item" href="#" data-bind="click: function() { $root.openAccessModal($data); }">
                                                                     <span class="fa fa-key"></span> Manage Access
                                                                 </a>
@@ -844,7 +845,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                 <div class="col-md-2 small text-muted" data-bind="text: dateLastUpdated"></div>
                                                 <div class="col-md-2 small text-muted text-truncate" data-bind="text: modifiedBy || '', attr: { title: modifiedBy || '' }"></div>
                                                 <div class="col-md-2" data-bind="text: folderName, visible: $parent.searchReports()"></div>
-                                                <div class="col-md-2" data-bind="visible: $parent.adminMode">
+                                                <div class="col-md-2" data-bind="visible: $parent.canManageAccess">
                                                     <div class="d-flex flex-wrap gap-1 align-items-center mt-1">
                                                         <div data-bind="template: { name: 'access-badges', data: $data }"></div>
                                                     </div>
@@ -888,7 +889,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <i class="fa fa-arrow-circle-left"></i>
                                 <span>Back to Parent Report</span>
                             </button>
-                            <button class="btn btn-light btn-sm" data-bind="visible: $root.CanEdit() && ReportID(), click: function(){ SaveReport(true); }" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                            <button class="btn btn-light btn-sm" data-bind="visible: $root.CanEdit() && ReportID(), click: editLoadedReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                                 <i class="fa fa-edit"></i> Edit Report
                             </button>
 
@@ -999,36 +1000,6 @@ Its Recommended you use it as is, and only change styling as needed to match you
                 <div data-bind="with: ReportResult" class="report-view">
                     <div data-bind="ifnot: HasError">
                         <div data-bind="with: $root">
-                            <div>
-                                <div data-bind="if: EditFiltersOnReport">
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <a data-bs-toggle="collapse" data-bs-target="#filter-panel" href="#">
-                                                <i class="fa fa-filter"></i>Choose Filters
-                                            </a>
-                                        </div>
-                                        <div id="filter-panel" class="card-body collapse">
-                                            <div data-bind="if: useStoredProc">
-                                                <div class="row">
-                                                    <div data-bind="template: {name: 'filter-parameters'}" class="col-md-12"></div>
-                                                </div>
-                                            </div>
-                                            <div data-bind="ifnot: useStoredProc">
-                                                <div class="row">
-                                                    <div data-bind="template: {name: 'filter-group'}" class="col-md-12"></div>
-                                                </div>
-                                            </div>
-                                            <br />
-                                            <button class="btn btn-primary" data-bind="click: SaveFilterAndRunReport">Update Filters</button>
-                                        </div>
-                                    </div>
-                                    <br />
-                                </div>
-                                <div data-bind="ifnot: EditFiltersOnReport">
-                                    <div data-bind="template: {name: 'fly-filter-template'}"></div>
-                                    <br />
-                                </div>
-                            </div>
                             <div class="report-render" data-bind="css: { 'report-expanded': isExpanded }">
                                 <div class="report-menubar bg-light" data-bind="hidden: DontExecuteOnRun() && !reportRan()">
                                     <div class="col-xs-12 col-centered d-flex justify-content-between flex-wrap" data-bind="with: pager">
@@ -1075,7 +1046,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         </div>
                                         <div class="d-flex">
                                             <div class="btn-group btn-group-sm d-flex" role="group">
-                                                <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode">
+                                                <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.canViewSql">
                                                     <i class="fa fa-code"></i> View Report Code
                                                 </button>
                                                 <button class="btn btn-light" data-bind="click: $parent.zoomOut" data-bs-toggle="tooltip" title="Zoom Out">
@@ -1094,9 +1065,42 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         </div>
                                     </div>
                                 </div>
-                                <div class="report-canvas" data-bind="hidden: DontExecuteOnRun() && !reportRan()">
+                                <div class="report-canvas">
                                     <div class="report-container bg-light">
-                                           <div class="report-inner" data-bind="style: { backgroundColor: (ReportResult() && ReportResult().ReportData() && ReportResult().ReportData().BackColor ? ReportResult().ReportData().BackColor() : '') || pageBackColor() || '#fff' }">
+                                        <div class="dr-report-filters">
+                                            <div>
+                                                <div data-bind="if: EditFiltersOnReport">
+                                                    <div class="dr-filter-bar">
+                                                        <button type="button" class="dr-filter-toggle" data-bs-toggle="collapse" data-bs-target="#filter-panel" aria-expanded="false">
+                                                            <i class="fa fa-filter"></i> Filters <i class="fa fa-chevron-down dr-filter-chevron"></i>
+                                                        </button>
+                                                        <div id="filter-panel" class="card-body collapse dr-filter-bar-body">
+                                                            <div class="dr-filter-source" data-bind="visible: userIdForFilter && usingUserFilters() !== null">
+                                                                <span data-bind="text: usingUserFilters() ? 'Showing your saved filters' : 'Showing the report\'s filters'"></span>
+                                                                <!-- ko if: usingUserFilters -->
+                                                                &middot; <a href="#" data-bind="click: resetToReportFilters" title="Remove your filters and use the report's filters">Reset to report filters</a>
+                                                                <!-- /ko -->
+                                                            </div>
+                                                            <div data-bind="if: useStoredProc">
+                                                                <div class="row">
+                                                                    <div data-bind="template: {name: 'filter-parameters'}" class="col-md-12"></div>
+                                                                </div>
+                                                            </div>
+                                                            <div data-bind="ifnot: useStoredProc">
+                                                                <div class="row">
+                                                                    <div data-bind="template: {name: 'filter-group'}" class="col-md-12"></div>
+                                                                </div>
+                                                            </div>
+                                                            <button class="btn btn-primary btn-sm mt-2" data-bind="click: SaveFilterAndRunReport">Update Filters</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div data-bind="ifnot: EditFiltersOnReport">
+                                                    <div data-bind="template: {name: 'fly-filter-template'}"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                           <div class="report-inner" data-bind="hidden: DontExecuteOnRun() && !reportRan(), style: { backgroundColor: (ReportResult() && ReportResult().ReportData() && ReportResult().ReportData().BackColor ? ReportResult().ReportData().BackColor() : '') || pageBackColor() || '#fff' }">
                                             <div data-bind="if: $root.CanEdit() && ReportType()!='Html' && ReportType()!='Single'">
                                                 <div data-bind="template: 'chart-settings', data: $data"></div>
                                             </div>
@@ -1137,7 +1141,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                         <b>Error Details</b>
                         <div data-bind="text: Exception"></div>
                         <br />
-                        <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode">
+                        <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.canViewSql">
                             <i class="fa fa-code"></i> View Report Code
                         </button>
                         <button class="btn btn-light" data-bind="click: function() { $root.RunReport(false, true);}">
@@ -1168,13 +1172,13 @@ Its Recommended you use it as is, and only change styling as needed to match you
 
 <!-- Folder Edit Modal -->
 <div class="modal" id="manage-access-modal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-dialog manage-access-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fa fa-key"></i> Manage Access <span class="text-muted ms-1" data-bind="text: accessModalTitle"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body manage-access-body">
                 <div data-bind="template: { name: 'manage-access-template', data: manageAccess }"></div>
             </div>
             <div class="modal-footer">

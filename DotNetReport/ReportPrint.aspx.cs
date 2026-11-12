@@ -69,6 +69,24 @@ namespace ReportBuilder.WebForms.DotNetReport
                 AllowedTags = { "b", "i", "u", "p", "span", "div", "img", "table", "tr", "td" },
                 AllowedAttributes = { "style", "class", "src", "alt", "width", "height" }
             };
+
+            // sanitize each value, not the raw json text, otherwise the json may get corrupted
+            var decodedReportData = HttpUtility.UrlDecode(reportData);
+            string safeReportData;
+            try
+            {
+                var reportDataJson = Newtonsoft.Json.Linq.JToken.Parse(string.IsNullOrEmpty(decodedReportData) ? "{}" : decodedReportData);
+                foreach (var value in reportDataJson.SelectTokens("..*").OfType<Newtonsoft.Json.Linq.JValue>().Where(x => x.Type == Newtonsoft.Json.Linq.JTokenType.String))
+                {
+                    value.Value = sanitizer.Sanitize((string)value.Value);
+                }
+                safeReportData = reportDataJson.ToString(Newtonsoft.Json.Formatting.None);
+            }
+            catch (Newtonsoft.Json.JsonException)
+            {
+                safeReportData = sanitizer.Sanitize(decodedReportData);
+            }
+
             Model = new DotNetReportPrintModel
             {
                 ReportId = reportId,
@@ -87,7 +105,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 ClientId = clientId,
                 CurrentUserRoles = currentUserRole,
                 DataFilters = dataFilters,
-                ReportData = sanitizer.Sanitize(HttpUtility.UrlDecode(reportData))
+                ReportData = safeReportData
             };
 
         }

@@ -430,6 +430,7 @@
     <Content Include="DotNetReport\ReportPrint.aspx" />
     <Content Include="DotNetReport\ReportService.asmx" />
     <Content Include="DotNetReport\Setup.aspx" />
+    <Content Include="DotNetReport\Users.aspx" />
     <Content Include="Content\tribute.css" />
     <Content Include="favicon.ico" />
     <Content Include="fonts\fontawesome-webfont.svg" />
@@ -452,6 +453,7 @@
     <Content Include="Scripts\bootstrap.min.js" />
     <Content Include="Scripts\dotnetreport-helper.js" />
     <Content Include="Scripts\dotnetreport-setup.js" />
+    <Content Include="Scripts\dotnetreport-users.js" />
     <Content Include="Scripts\dotnetreport-wizard.js" />
     <Content Include="Scripts\dotnetreport.js" />
     <Content Include="Content\toastr.scss" />
@@ -725,6 +727,13 @@
     <Compile Include="DotNetReport\Setup.aspx.designer.cs">
       <DependentUpon>Setup.aspx</DependentUpon>
     </Compile>
+    <Compile Include="DotNetReport\Users.aspx.cs">
+      <DependentUpon>Users.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="DotNetReport\Users.aspx.designer.cs">
+      <DependentUpon>Users.aspx</DependentUpon>
+    </Compile>
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
@@ -754,6 +763,7 @@
     <Content Include="fonts\fontawesome-webfont.eot" />
     <Content Include="Views\DotNetReport\Dashboard.cshtml" />
     <Content Include="Views\DotNetSetup\Index.cshtml" />
+    <Content Include="Views\DotNetSetup\Users.cshtml" />
     <Content Include="Views\DotNetReport\ReportPrint.cshtml" />
     <Content Include="Scripts\umd\popper.min.js.map" />
     <Content Include="Scripts\umd\popper.js.map" />

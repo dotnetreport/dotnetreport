@@ -9,6 +9,11 @@
     #dashboard-tabs > li:hover .tab-hover-icon { visibility: visible; width: auto; }
     #dashboard-tabs .drop-highlight { border: 2px dashed #dee2e6; border-radius: .25rem .25rem 0 0; background: #f8f9fa; min-width: 80px; min-height: 36px; }
 
+        #dash-live-preview { max-height: calc(100vh - 240px); overflow-y: auto; }
+        #dash-live-preview .dash-preview-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
+        #dash-live-preview .dash-preview-holder { position: relative; overflow: hidden; }
+        #dash-live-preview .report-chart { min-height: 180px; }
+
     .expanded {
         position: fixed !important;
         padding: 0 !important;
@@ -52,6 +57,7 @@
 
                 ajaxcall({ url: svc + 'GetUsersAndRoles' }).done(function (data) {
                     if (data.d) { data = data.d; }
+                    showUsersAccessLink(data);
 
                     var vm = new dashboardViewModel({
                         runReportUrl: svc + "Report",
@@ -67,6 +73,7 @@
                         linkModal: $("#linkModal"),
                         fieldOptionsModal: $("#fieldOptionsModal"),
                         dashboards: dashboards,
+                        userSettings: data,
                         users: data.users,
                         userRoles: data.userRoles,
                         currentUserId: data.currentUserId,
@@ -81,13 +88,13 @@
                         previewEmailListUrl: svc+ 'PreviewEmailList'
                     });
                     vm.init().done(function () {
-                        vm.loadDashboard(dashboardId).done(function () {
+                        vm.loadDashboard(dashboardId).done(function() {
                             if ($.unblockUI) {
                                 $.unblockUI();
                             }
                             ko.applyBindings(vm);
                             setTimeout(() => {
-                                $('.grid-stack').show();
+                                $('.grid-stack:not(.dash-preview-grid)').show();
                                 const grid = GridStack.init({
                                     cellHeight: 60,
                                     margin: 10,
@@ -95,7 +102,7 @@
                                         handles: 'se, sw, ne, nw, n, e, s, w'
                                     },
                                     oneColumnSize: 768
-                                });
+                                }, '.grid-stack:not(.dash-preview-grid)');
 
                                 grid.on('change', function (event, items) {
                                     if (!vm.arrangeDashboard()) return;
@@ -110,7 +117,7 @@
                                 grid.on('resizestop', function (event, el) {
                                     const e = el.querySelector('.report-chart');
                                     if (e) {
-                                        vm.drawChart();
+                                    vm.drawChart();
                                     }
                                 });
 
@@ -128,10 +135,6 @@
                             vm.gridResponsive();
                             vm.drawChart();
                         });
-                    });
-                    window.addEventListener('resize', function () {
-                        vm.gridResponsive();
-                        vm.drawChart();
                     });
                 });
 
@@ -181,10 +184,11 @@
                             <span>Manage</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end small">
-                            <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode()) && (CanSaveReports() || adminMode())">
-                                <a href="#" class="dropdown-item" data-bind="click: function() { newReport() }" title="Create a new report and add it to the Dashboard">
-                                    <span class="fa fa-plus"></span> Add New Report
-                                </a>
+                            <li data-bind="visible: CanCreateDashboards() || adminMode()">
+                                <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
+                                    <i class="fa fa-dashboard"></i>
+                                    <span>New Dashboard</span>
+                                </button>
                             </li>
                             <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode())">
                                 <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: editDashboard">
@@ -192,11 +196,10 @@
                                     <span>Edit Dashboard</span>
                                 </button>
                             </li>
-                            <li data-bind="visible: CanCreateDashboards() || adminMode()">
-                                <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#add-dashboard-modal" data-bind="click: newDashboard">
-                                    <i class="fa fa-dashboard"></i>
-                                    <span>Create a New Dashboard</span>
-                                </button>
+                            <li data-bind="visible: hasDashboard() && (currentDashboard().canManage || adminMode()) && (CanSaveReports() || adminMode())">
+                                <a href="#" class="dropdown-item" data-bind="click: function() { newReport() }" title="Create a new report and add it to the Dashboard">
+                                    <span class="fa fa-plus"></span> Add New Report
+                                </a>
                             </li>
                             <li data-bind="visible: hasDashboard()">
                                 <button class="dropdown-item" data-bind="click: RefreshAllReports">
@@ -229,7 +232,7 @@
                                     <span>Schedule</span>
                                 </button>
                             </li>                            
-                            <li data-bind="visible: hasDashboard() && adminMode()">
+                            <li data-bind="visible: hasDashboard() && canManageAccess()">
                                 <button class="dropdown-item" data-bind="click: openDashboardAccessModal">
                                     <i class="fa fa-key"></i>
                                     <span>Manage Access</span>
@@ -268,18 +271,13 @@
 <div class="d-flex justify-content-between">
     <div class="row" style="display: none" data-bind="visible: currentDashboard">
         <div data-bind="with: currentDashboard">
-            <p data-bind="text: description"></p>
+            <p class="mb-1" data-bind="text: description"></p>
         </div>
     </div>
 </div>
 
-<div class="padded-top"></div>
-
-<div class="row">
-    <div class="col-md-12">
-        <div data-bind="template: {name: 'fly-filter-template'}"></div>
-        <br />
-    </div>
+<div class="dr-dash-filters">
+    <div data-bind="template: {name: 'fly-filter-template'}"></div>
 </div>
 
 <div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 && (CanCreateDashboards() || adminMode())">
@@ -291,6 +289,144 @@
     No Dashboards are available to you yet.
 </div>
 
+<script type="text/html" id="dash-report-chooser">
+<div class="mb-3 card card-body">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <h6 class="mb-0 me-auto"><i class="fa fa-paperclip"></i> Choose Reports for the Dashboard
+            <span class="badge bg-secondary ms-1" data-bind="text: $parent.selectedReportCount(), attr: { title: $parent.selectedReportCount() + ' selected' }, visible: $parent.selectedReportCount() > 0"></span>
+        </h6>
+        <div class="input-group input-group-sm" style="max-width: 360px;">
+            <span class="input-group-text"><i class="fa fa-search"></i></span>
+            <input type="text" class="form-control" placeholder="Search Report by Name or Description..." data-bind="textInput: $parent.searchReports" />
+            <button class="btn btn-outline-secondary" type="button" title="Clear" data-bind="visible: $parent.searchReports(), click: function() { $parent.searchReports(''); }"><i class="fa fa-times"></i></button>
+        </div>
+    </div>
+
+    <div data-bind="if: $parent.searchReports() && $parent.reportsInSearch().length==0">
+        <div class="card card-body">
+            No reports found matching your search.
+        </div>
+    </div>
+    <div data-bind="if: $parent.searchReports() &&  $parent.reportsInSearch().length>0">
+        <ul class="list-group" data-bind="foreach: $parent.reportsInSearch">
+            <li class="list-group-item">
+                <div class="checkbox">
+                    <label class="list-group-item-heading">
+                        <input type="checkbox" data-bind="checked: selected">
+                        <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie', 'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-restore': reportType=='Treemap', 'fa-code': reportType=='Html'}" style="font-size: 14pt; color: #808080"></span>
+                        <span data-bind="highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }"></span>
+                    </label>
+                </div>
+                <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
+            </li>
+        </ul>
+    </div>
+
+    <!-- ko if: $parent.aiDraftWidgets().length > 0 -->
+    <div class="list-group mb-3">
+        <div class="list-group-item bg-light small">
+            <i class="fa fa-magic text-primary"></i> <b>New widgets from AI Assist</b>
+            <span class="text-muted">- saved as reports when you save the dashboard</span>
+        </div>
+        <!-- ko foreach: $parent.aiDraftWidgets -->
+        <div class="list-group-item">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" data-bind="checked: selected, attr: { id: 'draft-check-' + key }">
+                <label class="form-check-label" data-bind="attr: { for: 'draft-check-' + key }">
+                    <i class="fa" data-bind="css: icon" style="font-size: 14pt; color: #808080"></i>
+                    <span data-bind="text: name"></span>
+                </label>
+            </div>
+            <small class="text-muted" data-bind="text: description"></small>
+        </div>
+        <!-- /ko -->
+    </div>
+    <!-- /ko -->
+
+    <div data-bind="if: !$parent.searchReports()" class="list-group mb-3">
+        <div data-bind="foreach: $parent.reportsAndFolders">
+            <div class="list-group-item">
+                <a role="button" class="d-flex justify-content-between align-items-center text-body" data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }" style="text-decoration: none; font-weight: normal;">
+                    <div class="d-flex align-items-center" data-bind="style: { paddingLeft: (depth * 20) + 'px' }">
+                        <i class="fa fa-folder me-2 text-secondary"></i>
+                        <span class="text-nowrap" data-bind="text: folder"></span>
+                        <span class="text-muted small ms-2 text-truncate" style="max-width: 260px;" data-bind="visible: depth > 0, text: folderPath, attr: { title: folderPath }"></span>
+                        <span class="badge rounded-pill bg-primary ms-2" data-bind="text: _.filter(reports, function(r) { return r.selected(); }).length, visible: _.some(reports, function(r) { return r.selected(); })"></span>
+                        <span class="text-muted small ms-2" data-bind="text: reports.length + (reports.length == 1 ? ' report' : ' reports')"></span>
+                    </div>
+                    <i class="fa fa-chevron-down text-muted small"></i>
+                </a>
+                <div class="collapse mt-2" data-bind="attr: {id: 'folder-' + folderId }">
+                    <ul class="list-group list-group-flush" data-bind="foreach: reports">
+                        <li class="list-group-item">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" data-bind="checked: selected">
+                                <label class="form-check-label">
+                                    <i class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie', 'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-restore': reportType=='Treemap', 'fa-code': reportType=='Html'}" style="font-size: 14pt; color: #808080"></i>
+                                    <span data-bind="text: reportName"></span>
+                                </label>
+                            </div>
+                            <small class="text-muted" data-bind="text: reportDescription"></small>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+</script>
+
+<script type="text/html" id="dash-ai-panel">
+    <div class="card mb-2 ai-assistant-panel" data-bind="visible: aiAssistantEnabled()" style="display:none; font-size: 12px;">
+        <div class="card-header p-2 d-flex align-items-center bg-primary text-white">
+            <i class="fa fa-magic me-1"></i> AI Dashboard Builder
+            <span class="badge bg-light text-primary ms-1" data-bind="visible: aiDashboardApplied()" style="font-size:9px;">Modified</span>
+            <button class="btn btn-sm btn-link text-white ms-auto p-0" data-bind="click: clearAiAssistant" title="Clear conversation"><i class="fa fa-trash"></i></button>
+        </div>
+        <div class="card-body p-0">
+            <div class="dash-ai-messages" data-bind="foreach: aiAssistantMessages" style="max-height: 300px; overflow-y: auto; padding: 8px;">
+                <div class="mb-2" data-bind="css: { 'text-end': role === 'user', 'text-start': role !== 'user' }">
+                    <div class="ai-msg-bubble d-inline-block p-2 rounded-3" style="max-width: 90%; white-space: pre-wrap; font-size: 12px;"
+                         data-bind="text: content, css: role === 'user' ? 'bg-primary text-white' : 'bg-light border'"></div>
+                </div>
+            </div>
+            <div class="text-center p-2" data-bind="visible: aiAssistantLoading()">
+                <div class="d-flex align-items-center justify-content-center gap-2">
+                    <i class="fa fa-spinner fa-spin text-primary"></i>
+                    <span class="small text-muted" data-bind="text: aiStatus() || 'Building your dashboard...'"></span>
+                </div>
+            </div>
+            <div class="p-2" data-bind="visible: aiAssistantMessages().length === 0 && !aiAssistantLoading()">
+                <div class="small text-muted mb-2">
+                    <i class="fa fa-magic text-primary"></i> Tell me what dashboard to build. I'll pick from your saved reports and create the widgets that are missing. Or try:
+                </div>
+                <div class="d-flex flex-wrap gap-1" data-bind="foreach: aiQuickPrompts">
+                    <button class="btn btn-sm btn-outline-secondary" data-bind="click: $parent.runAiPrompt, attr: { title: prompt }">
+                        <i class="fa" data-bind="css: icon"></i> <span data-bind="text: label"></span>
+                    </button>
+                </div>
+            </div>
+            <div class="d-flex align-items-center p-2 border-top">
+                <input type="text" class="form-control form-control-sm me-1"
+                       placeholder="Describe the dashboard you want..."
+                       data-bind="value: aiAssistantInput, valueUpdate: 'afterkeydown',
+                                  event: { keypress: function(d,e){ if(e.keyCode===13){ sendAiAssistantMessage(); return false; } return true; } },
+                                  attr: { disabled: aiAssistantLoading() }">
+                <button class="btn btn-sm btn-primary" data-bind="click: sendAiAssistantMessage, enable: aiAssistantInput() && !aiAssistantLoading()">
+                    <i class="fa fa-paper-plane"></i>
+                </button>
+            </div>
+            <div class="p-2 border-top" data-bind="visible: aiDashboardApplied() && !aiAssistantLoading() && aiAssistantMessages().length > 0" style="display:none;">
+                <div class="small text-muted mb-1"><i class="fa fa-comments-o"></i> Follow-up:</div>
+                <div class="d-flex flex-wrap gap-1" data-bind="foreach: aiFollowUpPrompts">
+                    <button class="btn btn-sm btn-outline-primary" data-bind="click: $parent.runAiPrompt, text: label, attr: { title: prompt }"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>
+
 <div class="modal modal-fullscreen" id="add-dashboard-modal" tabindex="-1" aria-labelledby="add-dashboard-modal-label" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content" data-bind="with: dashboard">
@@ -301,6 +437,19 @@
             <div class="modal-body">
                 <div class="row">
                 <div class="col-md-4">
+                <div class="d-flex align-items-center flex-wrap gap-3 mb-2">
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" role="switch" id="dashLivePreviewSwitch" data-bind="checked: $parent.dashLivePreview">
+                        <label class="form-check-label fw-semibold" for="dashLivePreviewSwitch"><i class="fa fa-bolt text-warning"></i> Live Preview</label>
+                    </div>
+                    <div class="form-check form-switch mb-0" data-bind="visible: $parent.hasAiConfigured()">
+                        <input class="form-check-input" type="checkbox" role="switch" id="dashAiAssistSwitch" data-bind="checked: $parent.aiAssistantEnabled">
+                        <label class="form-check-label small" for="dashAiAssistSwitch">
+                            <i class="fa fa-magic text-primary"></i> AI Assist <span style="vertical-align: middle;" title="This feature is still in initial release and might not always be accurate. You can turn it off from settings"><i class="fa fa-info-circle"></i></span>
+                        </label>
+                    </div>
+                </div>
+                <div data-bind="template: { name: 'dash-ai-panel', data: $parent }"></div>
                 <div class="mb-3 card card-body">
                     <div class="mb-3">
                         <label class="form-label h6" for="add-dash-name"><i class="fa fa-dashboard"></i> Dashboard Name</label>
@@ -315,75 +464,49 @@
                     <h5><i class="fa fa-hourglass"></i>&nbsp;Choose Schedule</h5>
                     <div data-bind="template: {name: 'report-schedule'}"></div>
                 </div>
-                </div>
-                <div class="col-md-8">
-                <div class="mb-3 card card-body">
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                        <h6 class="mb-0 me-auto"><i class="fa fa-paperclip"></i> Choose Reports for the Dashboard
-                            <span class="badge bg-secondary ms-1" data-bind="text: $parent.selectedReportCount(), attr: { title: $parent.selectedReportCount() + ' selected' }, visible: $parent.selectedReportCount() > 0"></span>
-                        </h6>
-                        <div class="input-group input-group-sm" style="max-width: 360px;">
-                            <span class="input-group-text"><i class="fa fa-search"></i></span>
-                            <input type="text" class="form-control" placeholder="Search Report by Name or Description..." data-bind="textInput: $parent.searchReports" />
-                            <button class="btn btn-outline-secondary" type="button" title="Clear" data-bind="visible: $parent.searchReports(), click: function() { $parent.searchReports(''); }"><i class="fa fa-times"></i></button>
-                        </div>
-                    </div>
-
-                    <div data-bind="if: $parent.searchReports() && $parent.reportsInSearch().length==0">
-                        <div class="card card-body">
-                            No reports found matching your search.
-                        </div>
-                    </div>
-                    <div data-bind="if: $parent.searchReports() &&  $parent.reportsInSearch().length>0">
-                        <ul class="list-group" data-bind="foreach: $parent.reportsInSearch">
-                            <li class="list-group-item">
-                                <div class="checkbox">
-                                    <label class="list-group-item-heading">
-                                        <input type="checkbox" data-bind="checked: selected">
-                                        <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie', 'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-restore': reportType=='Treemap', 'fa-code': reportType=='Html'}" style="font-size: 14pt; color: #808080"></span>
-                                        <span data-bind="highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }"></span>
-                                    </label>
-                                </div>
-                                <p class="list-group-item-text small" data-bind="text: reportDescription"></p>
-                            </li>
-                        </ul>
-                    </div>
-
-                    <div data-bind="if: !$parent.searchReports()" class="list-group mb-3">
-                        <div data-bind="foreach: $parent.reportsAndFolders">
-                            <div class="list-group-item">
-                                <a role="button" class="d-flex justify-content-between align-items-center text-body" data-bs-toggle="collapse" data-bind="attr: {href: '#folder-' + folderId }" style="text-decoration: none; font-weight: normal;">
-                                    <div class="d-flex align-items-center" data-bind="style: { paddingLeft: (depth * 20) + 'px' }">
-                                        <i class="fa fa-folder me-2 text-secondary"></i>
-                                        <span class="text-nowrap" data-bind="text: folder"></span>
-                                        <span class="text-muted small ms-2 text-truncate" style="max-width: 260px;" data-bind="visible: depth > 0, text: folderPath, attr: { title: folderPath }"></span>
-                                        <span class="badge rounded-pill bg-primary ms-2" data-bind="text: _.filter(reports, function(r) { return r.selected(); }).length, visible: _.some(reports, function(r) { return r.selected(); })"></span>
-                                        <span class="text-muted small ms-2" data-bind="text: reports.length + (reports.length == 1 ? ' report' : ' reports')"></span>
-                                    </div>
-                                    <i class="fa fa-chevron-down text-muted small"></i>
-                                </a>
-                                <div class="collapse mt-2" data-bind="attr: {id: 'folder-' + folderId }">
-                                    <ul class="list-group list-group-flush" data-bind="foreach: reports">
-                                        <li class="list-group-item">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" data-bind="checked: selected">
-                                                <label class="form-check-label">
-                                                    <i class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie', 'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map', 'fa-window-restore': reportType=='Treemap', 'fa-code': reportType=='Html'}" style="font-size: 14pt; color: #808080"></i>
-                                                    <span data-bind="text: reportName"></span>
-                                                </label>
-                                            </div>
-                                            <small class="text-muted" data-bind="text: reportDescription"></small>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
+                <!-- ko if: $parent.dashLivePreview -->
+                <div data-bind="template: { name: 'dash-report-chooser' }"></div>
                 <div data-bind="visible: $parent.adminMode" class="card card-body mb-3">
                     <div data-bind="template: {name: 'manage-access-template', data: manageAccess}"></div>
                 </div>
+                <!-- /ko -->
+                </div>
+                <div class="col-md-8">
+                <!-- ko ifnot: $parent.dashLivePreview -->
+                <div data-bind="template: { name: 'dash-report-chooser' }"></div>
+                <!-- /ko -->
+                <!-- ko if: $parent.dashLivePreview -->
+                <div class="card mb-3">
+                    <div class="card-header py-2 d-flex align-items-center justify-content-between bg-light">
+                        <span><i class="fa fa-desktop"></i> Live Preview</span>
+                        <span class="text-muted small" data-bind="text: Name"></span>
+                    </div>
+                    <div class="card-body" id="dash-live-preview" data-chart-scope="true">
+                        <div class="text-muted small" data-bind="visible: $parent.previewWidgets().length === 0">Choose reports, or ask AI Assist to build the dashboard, to see it here.</div>
+                        <div class="small text-muted mb-2" data-bind="visible: $parent.previewWidgets().length > 0"><i class="fa fa-arrows"></i> Drag and resize to arrange. The layout is saved when you save the dashboard.</div>
+                        <div class="dash-preview-holder">
+                        <div class="grid-stack dash-preview-grid" data-bind="foreach: $parent.previewWidgets">
+                            <div class="grid-stack-item" data-bind="attr: { 'gs-x': previewPos().x, 'gs-y': previewPos().y, 'gs-w': previewPos().w, 'gs-h': previewPos().h, 'data-preview-id': previewKey }">
+                                <div class="grid-stack-item-content card d-flex flex-column">
+                                    <div class="card-header py-1 small fw-semibold" data-bind="text: ReportName"></div>
+                                    <div class="card-body p-2 small dash-preview-body">
+                                        <div data-bind="with: ReportResult">
+                                            <div data-bind="visible: !ReportData()"><div class="report-spinner"></div></div>
+                                            <div data-bind="template: 'report-template', data: $data"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /ko -->
+                <!-- ko ifnot: $parent.dashLivePreview -->
+                <div data-bind="visible: $parent.adminMode" class="card card-body mb-3">
+                    <div data-bind="template: {name: 'manage-access-template', data: manageAccess}"></div>
+                </div>
+                <!-- /ko -->
                 </div>
                 </div>
             </div>
@@ -397,13 +520,13 @@
 </div>
 
 <div class="modal" id="manage-access-modal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-dialog manage-access-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fa fa-key"></i> Manage Access <span class="text-muted ms-1" data-bind="text: currentDashboard() ? currentDashboard().name : ''"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body manage-access-body">
                 <div data-bind="template: { name: 'manage-access-template', data: dashboard.manageAccess }"></div>
             </div>
             <div class="modal-footer">
@@ -489,7 +612,7 @@
                             </a>
                         </li>
                         <li>
-                            <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode, click: getCode">
+                            <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.canViewSql, click: getCode">
                                 <span class="fa fa-code"></span> Report Code
                             </a>
                         </li>

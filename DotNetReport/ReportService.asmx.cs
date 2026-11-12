@@ -36,7 +36,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             {
                 ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"],
                 AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"], // Your Account Api Token from your http://dotnetreport.com Account
-                DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] // Your Data Connect Api Token from your http://dotnetreport.com Account
+                DataConnectApiToken = DotNetReportHelper.CurrentDataConnect // Your Data Connect Api Token from your http://dotnetreport.com Account
             };
 
             // Populate the values below using your Application Roles/Claims if applicable
@@ -50,7 +50,12 @@ namespace ReportBuilder.WebForms.DotNetReport
             settings.UserRoles = new List<string>(); // Populate all your application's user roles, ex  { "Admin", "Normal" }       
             settings.ClientIds = new List<string>() { }; // Populate all your application's client/tenant ids, ex  { "ACME", "CONTOSO" }
             settings.CanUseAdminMode = true; // Set to true only if current user can use Admin mode to setup reports and dashboard
+            settings.Permissions = new List<string>(); // optional, ex { DotNetReportPermissions.ManageAccess }
             settings.DataFilters = new { }; // add global data filters to apply as needed https://dotnetreport.com/docs/advance-topics/global-filters/
+
+            // View Only wins over Admin Mode
+            if (GetUserPermissions(settings).Contains(DotNetReportPermissions.ViewOnly)) settings.CanUseAdminMode = false;
+
             DotNetReportHelper.CurrentDataFilters = JsonConvert.SerializeObject(settings.DataFilters);
 
             return settings;
@@ -227,9 +232,28 @@ namespace ReportBuilder.WebForms.DotNetReport
         public async Task<object> CallReportApi(string method, string model,string userId = null)
         {
             var settings = GetSettings();
-            if (!settings.CanUseAdminMode && AdminOnlyApiMethods.Contains((method ?? "").Trim(), StringComparer.OrdinalIgnoreCase))
+            var methodName = (method ?? "").Trim();
+            // Only plain /ReportApi/Name, so the lists below can't be side-stepped
+            if (!Regex.IsMatch(methodName, "^/ReportApi/[A-Za-z0-9_]+$", RegexOptions.IgnoreCase))
+            {
+                throw new Exception("Invalid method");
+            }
+            if (ServerOnlyApiMethods.Contains(methodName, StringComparer.OrdinalIgnoreCase)
+                || (!settings.CanUseAdminMode && AdminOnlyApiMethods.Contains(methodName, StringComparer.OrdinalIgnoreCase))
+                || (!settings.CanUseAdminMode && PermissionApiMethods.TryGetValue(methodName, out var requiredPermission) && !GetUserPermissions(settings).Contains(requiredPermission)))
             {
                 throw new Exception("You are not authorized to perform this action");
+            }
+
+            // View Only: run reports, never change anything
+            var viewOnly = GetUserPermissions(settings).Contains(DotNetReportPermissions.ViewOnly);
+            if (viewOnly && methodName.Equals("/ReportApi/UpdateReportColumnWidth", StringComparison.OrdinalIgnoreCase))
+            {
+                return new { }; // resizing a column while viewing, nothing is saved
+            }
+            if (viewOnly && DotNetReportPermissions.IsChangeMethod(methodName))
+            {
+                throw new Exception("You have view only access");
             }
             if (!string.IsNullOrEmpty(settings.UserId) && settings.UserId != userId)
             {
@@ -247,41 +271,79 @@ namespace ReportBuilder.WebForms.DotNetReport
                     { "userIdForFilter", settings.UserIdForFilter },
                     { "userRole", string.Join(",", settings.CurrentUserRole) },
                     { "dataFilters", JsonConvert.SerializeObject(settings.DataFilters) },
-                    { "useParameters", DotNetReportHelper.dbtype=="MS SQL" ? "true" : "false" }
+                    { "useParameters", DotNetReportHelper.dbtype=="MS SQL" ? "true" : "false" },
+                    // so the Api can check permissions
+                    { "userPermissions", string.Join(",", settings.Permissions ?? new List<string>()) },
+                    { "enforcePermissions", "true" }
                 };
 
                 var data = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(model);
+                if (methodName.Equals("/ReportApi/ChangeAccountSettings", StringComparison.OrdinalIgnoreCase)
+                    && data.TryGetValue("settings", out var accountSettings) && (object)accountSettings is string accountSettingsJson)
+                {
+                    data["settings"] = WithoutEmailSettings(accountSettingsJson);
+                }
                 var adminMode = false; var dashboardId = 0; var folderId = 0; var reportId = 0;
                 foreach (var key in data.Keys)
                 {
                     if (key == "dataConnect" && data[key] != null)
                     {
                         requestData["dataConnect"] = data[key];
+                        continue;
                     }
-                    else if (key == "account" && data[key] != null)
+                    if (key == "account" && data[key] != null)
                     {
                         requestData["account"] = data[key];
+                        continue;
                     }
-                    else if (key != "adminMode" || (key == "adminMode" && settings.CanUseAdminMode))
+                    // the Api ignores case
+                    if (ServerOnlyApiKeys.Contains(key, StringComparer.OrdinalIgnoreCase)) continue;
+                    if (string.Equals(key, "adminMode", StringComparison.OrdinalIgnoreCase))
                     {
-                        requestData[key] = data[key];
+                        if (settings.CanUseAdminMode && bool.TryParse(Convert.ToString((object)data[key]), out bool am))
+                        {
+                            adminMode = am;
+                            requestData["adminMode"] = am;
+                        }
+                        continue;
                     }
-                    if (key == "adminMode" && settings.CanUseAdminMode)
+                    if (viewOnly && string.Equals(key, "SaveReport", StringComparison.OrdinalIgnoreCase))
                     {
-                        adminMode = data[key];
+                        requestData[key] = false; // run without saving
+                        continue;
                     }
-                    if (key == "dashboardId")
+                    requestData[key] = data[key];
+                    if (string.Equals(key, "dashboardId", StringComparison.OrdinalIgnoreCase))
                     {
                         dashboardId = Convert.ToInt32(data[key]);
                     }
-                    if (key == "folderId")
+                    if (string.Equals(key, "folderId", StringComparison.OrdinalIgnoreCase))
                     {
                         folderId = Convert.ToInt32(data[key]);
                     }
-                    if (key == "reportId")
+                    if (string.Equals(key, "reportId", StringComparison.OrdinalIgnoreCase))
                     {
                         reportId = Convert.ToInt32(data[key]);
                     }
+                }
+
+                if (methodName.Equals("/ReportApi/RunReport", StringComparison.OrdinalIgnoreCase)
+                    && data.TryGetValue("SaveReport", out var saveReport) && (object)saveReport is bool saving && saving)
+                {
+                    requestData["userIdForFilter"] = "";
+                }
+
+                // the designer edits the report's filters, not the user's own
+                if (methodName.Equals("/ReportApi/LoadReport", StringComparison.OrdinalIgnoreCase)
+                    && data.TryGetValue("reportFilters", out var reportFilters) && (object)reportFilters is bool forReport && forReport)
+                {
+                    requestData["userIdForFilter"] = "";
+                }
+
+                if (methodName.Equals("/ReportApi/ChangeAccountSettings", StringComparison.OrdinalIgnoreCase)
+                    && GivesViewOnlyTo(settings, data.TryGetValue("settings", out var posted) ? Convert.ToString((object)posted) : null))
+                {
+                    throw new Exception("You can't give View Only to yourself or a role you have, you would lose Admin Mode");
                 }
                 if (!adminMode)
                 {
@@ -292,8 +354,15 @@ namespace ReportBuilder.WebForms.DotNetReport
                 var jsonContent = JsonConvert.SerializeObject(requestData);
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                var response = client.PostAsync(new Uri(settings.ApiUrl + method), content).Result;
+                var response = client.PostAsync(new Uri(settings.ApiUrl + methodName), content).Result;
                 var stringContent = response.Content.ReadAsStringAsync().Result;
+                if (viewOnly && response.IsSuccessStatusCode) stringContent = DotNetReportPermissions.HideChangeOptions(stringContent);
+
+                // Permission grants may have just changed
+                if (response.IsSuccessStatusCode && methodName.Equals("/ReportApi/ChangeAccountSettings", StringComparison.OrdinalIgnoreCase))
+                {
+                    ClearPermissionCache();
+                }
 
                 Context.Response.StatusCode = (int)response.StatusCode;
                 return new JavaScriptSerializer { MaxJsonLength = int.MaxValue }.Deserialize<dynamic>(stringContent);
@@ -303,11 +372,130 @@ namespace ReportBuilder.WebForms.DotNetReport
         // Account level changes are only available in Admin Mode, the front end flag can be tampered with so check it here too
         private static readonly string[] AdminOnlyApiMethods = new[]
         {
-            "/ReportApi/SaveReportHeader",
             "/ReportApi/SaveFolderData",
             "/ReportApi/DeleteFolder",
-            "/ReportApi/SaveReportAccess"
+            "/ReportApi/ChangeAccountSettings",
+            "/ReportApi/GetAccountInfo",
+            "/ReportApi/SaveAccountRole",
+            "/ReportApi/DeleteAccountRole"
         };
+
+        // Admin Mode or the matching permission; the Api checks again
+        private static readonly Dictionary<string, string> PermissionApiMethods = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "/ReportApi/SaveReportAccess", DotNetReportPermissions.ManageAccess },
+            { "/ReportApi/SaveFolderAccess", DotNetReportPermissions.ManageAccess },
+            { "/ReportApi/SaveDashboardAccess", DotNetReportPermissions.ManageAccess },
+            { "/ReportApi/SaveReportHeader", DotNetReportPermissions.ManageHeaderFooter },
+            { "/ReportApi/SaveReportFooter", DotNetReportPermissions.ManageHeaderFooter },
+            { "/ReportApi/DeleteReportHeader", DotNetReportPermissions.ManageHeaderFooter },
+            { "/ReportApi/SaveAccountUser", DotNetReportPermissions.ManageUsers },
+            { "/ReportApi/DeleteAccountUser", DotNetReportPermissions.ManageUsers },
+            { "/ReportApi/SetAccountUserPassword", DotNetReportPermissions.ManageUsers }
+        };
+
+        // Called only by this server, never forwarded from the browser
+        private static readonly string[] ServerOnlyApiMethods = new[]
+        {
+            "/ReportApi/LoginAccountUser",
+            "/ReportApi/CreatePasswordResetToken",
+            "/ReportApi/ResetAccountUserPassword",
+            "/ReportApi/GetSignInSettings"
+        };
+
+        // Set only from GetSettings, never from the browser
+        private static readonly string[] ServerOnlyApiKeys = new[] { "clientId", "userId", "userRole", "userPermissions", "enforcePermissions" };
+
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (DateTime expires, List<string> permissions)> PermissionCache
+            = new System.Collections.Concurrent.ConcurrentDictionary<string, (DateTime, List<string>)>();
+
+        public static void ClearPermissionCache() => PermissionCache.Clear();
+
+        // Cached for a minute per user
+        public List<string> GetUserPermissions(DotNetReportSettings settings)
+        {
+            var codePermissions = settings.Permissions ?? new List<string>();
+            if (string.IsNullOrEmpty(settings.AccountApiToken) || string.IsNullOrEmpty(settings.ApiUrl)) return DotNetReportPermissions.ApplyViewOnly(codePermissions);
+
+            var roles = string.Join(",", settings.CurrentUserRole ?? new List<string>());
+            var cacheKey = string.Join("|", settings.AccountApiToken, settings.DataConnectApiToken, settings.UserId, roles, string.Join(",", codePermissions));
+            if (PermissionCache.TryGetValue(cacheKey, out var cached) && cached.expires > DateTime.UtcNow) return cached.permissions;
+
+            var permissions = codePermissions;
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    var content = new FormUrlEncodedContent(new[]
+                    {
+                        new KeyValuePair<string, string>("account", settings.AccountApiToken),
+                        new KeyValuePair<string, string>("dataConnect", settings.DataConnectApiToken),
+                        new KeyValuePair<string, string>("clientId", settings.ClientId ?? ""),
+                        new KeyValuePair<string, string>("userId", settings.UserId ?? ""),
+                        new KeyValuePair<string, string>("userRole", roles),
+                        new KeyValuePair<string, string>("userPermissions", string.Join(",", codePermissions))
+                    });
+                    // off the request thread, so the blocking wait can't deadlock
+                    var response = Task.Run(() => client.PostAsync(new Uri(settings.ApiUrl + "/ReportApi/GetUserPermissions"), content)).Result;
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var result = JsonConvert.DeserializeObject<UserPermissionsResult>(Task.Run(() => response.Content.ReadAsStringAsync()).Result);
+                        if (result?.permissions != null) permissions = result.permissions;
+                    }
+                }
+            }
+            catch
+            {
+                // Api not reachable: code permissions only
+            }
+
+            permissions = DotNetReportPermissions.ApplyViewOnly(permissions);
+            PermissionCache[cacheKey] = (DateTime.UtcNow.AddMinutes(1), permissions);
+            return permissions;
+        }
+
+        // Stops an admin giving View Only to themselves
+        private static bool GivesViewOnlyTo(DotNetReportSettings settings, string postedSettings)
+        {
+            try
+            {
+                var grant = JObject.Parse(postedSettings ?? "{}")["permissions"]?[DotNetReportPermissions.ViewOnly];
+                if (grant == null) return false;
+                var users = grant["users"]?.Select(x => x.ToString()) ?? Enumerable.Empty<string>();
+                var roles = grant["roles"]?.Select(x => x.ToString()) ?? Enumerable.Empty<string>();
+                return (!string.IsNullOrWhiteSpace(settings.UserId) && users.Contains(settings.UserId, StringComparer.OrdinalIgnoreCase))
+                    || (settings.CurrentUserRole ?? new List<string>()).Any(r => roles.Contains(r, StringComparer.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private class UserPermissionsResult
+        {
+            public List<string> permissions { get; set; }
+        }
+
+        // Email settings are kept in appsettings.dotnetreport.json on this server, so they are taken out of the
+        // Account Settings sent to Dotnet Report.
+        private static string WithoutEmailSettings(string settingsJson)
+        {
+            try
+            {
+                var values = JObject.Parse(settingsJson ?? "{}");
+                foreach (var key in values.Properties().Select(p => p.Name).ToList())
+                {
+                    if (key.StartsWith("email", StringComparison.OrdinalIgnoreCase) || key.StartsWith("sendGrid", StringComparison.OrdinalIgnoreCase))
+                        values.Remove(key);
+                }
+                return values.ToString(Formatting.None);
+            }
+            catch
+            {
+                return settingsJson;
+            }
+        }
         public class RunReportParameters
         {
             public string reportSql { get; set; }
@@ -347,9 +535,8 @@ namespace ReportBuilder.WebForms.DotNetReport
             }
             return keys;
         }
-        [WebMethod(EnableSession = true)]
-        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public async Task<DotNetReportResultModel> ExecuteRunReport(RunReportParameters data)
+        // SQL only for Admin Mode or View SQL
+        private async Task<DotNetReportResultModel> ExecuteRunReport(RunReportParameters data, bool showSql = false)
         {
             string reportSql = data.reportSql;
             string connectKey = data.connectKey;
@@ -689,7 +876,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 {
                     ReportData = DotNetReportHelper.DataTableToDotNetReportDataModel(dtPaged, fields),
                     //Warnings = GetWarnings(sql),
-                    ReportSql = adminmode ? sql : " ",
+                    ReportSql = showSql ? sql : " ",
                     ReportDebug = Context.Request.Url.Host.Contains("localhost"),
                     Pager = new DotNetReportPagerModel
                     {
@@ -709,7 +896,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 var model = new DotNetReportResultModel
                 {
                     ReportData = new DotNetReportDataModel(),
-                    ReportSql = adminmode ? sql : " ",
+                    ReportSql = showSql ? sql : " ",
                     HasError = true,
                     Exception = ex.Message,
                     ReportDebug = Context.Request.Url.Host.Contains("localhost"),
@@ -748,7 +935,7 @@ namespace ReportBuilder.WebForms.DotNetReport
             ValidateAccess(settings.UserId, HttpUtility.HtmlDecode(firstSql), adminMode: data.adminmode);
             DotNetReportHelper.CurrentDataFilters = JsonConvert.SerializeObject(settings.DataFilters ?? new { });
 
-            return await ExecuteRunReport(data);
+            return await ExecuteRunReport(data, data.adminmode || GetUserPermissions(settings).Contains(DotNetReportPermissions.ViewSql));
         }
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
@@ -823,7 +1010,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 throw new Exception("Unauthorized");
             settings.ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"];
             settings.AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"]; // Your Account Api Token from your http://dotnetreport.com Account
-            settings.DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"]; // Your Data Connect Api Token from your http://dotnetreport.com Account
+            settings.DataConnectApiToken = DotNetReportHelper.CurrentDataConnect; // Your Data Connect Api Token from your http://dotnetreport.com Account
             settings.CanUseAdminMode = true;
             DotNetReportHelper.CurrentDataFilters = JsonConvert.SerializeObject(settings.DataFilters ?? new { });
             using (var client = new HttpClient())
@@ -977,6 +1164,7 @@ namespace ReportBuilder.WebForms.DotNetReport
 
                 var response = client.PostAsync(new Uri(settings.ApiUrl + $"/ReportApi/GetDashboards"), content).Result;
                 var stringContent = response.Content.ReadAsStringAsync().Result;
+                if (GetUserPermissions(settings).Contains(DotNetReportPermissions.ViewOnly)) stringContent = DotNetReportPermissions.HideChangeOptions(stringContent);
 
                 var model = (new JavaScriptSerializer()).Deserialize<List<dynamic>>(stringContent);
                 return model;
@@ -1294,6 +1482,7 @@ namespace ReportBuilder.WebForms.DotNetReport
                 currentUserRoles = settings.CurrentUserRole,
                 currentUserName = settings.UserName,
                 allowAdminMode = settings.CanUseAdminMode,
+                permissions = GetUserPermissions(settings),
                 userIdForSchedule = settings.UserIdForSchedule,
                 userIdForFilter = settings.UserIdForFilter,
                 dataFilters = new { }, // don't expose to front end
@@ -1321,7 +1510,13 @@ namespace ReportBuilder.WebForms.DotNetReport
                     Selected = true
                 };
 
-                value = TryDecrypt(value);
+                var decrypted = TryDecrypt(value);
+                // Outside Admin Mode only server-encrypted SQL
+                if (!GetSettings().CanUseAdminMode && decrypted == value)
+                {
+                    throw new Exception("You are not authorized to perform this action");
+                }
+                value = decrypted;
 
                 if (!DotNetReportHelper.IsReadOnlySelectSql(value, out var sqlReason))
                 {
@@ -1356,8 +1551,14 @@ namespace ReportBuilder.WebForms.DotNetReport
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public object GetPreviewFromSql(string value, string accountKey, string dataConnectKey)
+        public object GetPreviewFromSql(string value, string accountKey, string dataConnectKey, bool dynamicColumns = false)
         {
+            // Admin Mode only
+            if (!GetSettings().CanUseAdminMode)
+            {
+                Context.Response.StatusCode = 403;
+                return new { Message = "You are not authorized to perform this action" };
+            }
             string reportSql = value;
             int pageNumber = 1;
             int pageSize = 100;
@@ -1886,7 +2087,9 @@ namespace ReportBuilder.WebForms.DotNetReport
                     DatabaseApiKey = connect.DatabaseApiKey,
                     Tables = tables,
                     Procedures = procedures,
-                    Functions = functions
+                    Functions = functions,
+                    DbConfig = GetDbConfigForPage(connect.AccountApiKey, connect.DatabaseApiKey),
+                    CurrentUserId = settings.UserId
                 };
 
                 return model;
@@ -1895,6 +2098,202 @@ namespace ReportBuilder.WebForms.DotNetReport
             {
                 Context.Response.StatusCode = 500;
                 return new { ex.Message };
+            }
+        }
+
+        private object Forbidden()
+        {
+            Context.Response.StatusCode = 403;
+            return new { success = false, message = "You are not authorized to perform this action" };
+        }
+
+        // The email settings for the Setup page, with the password and SendGrid key masked. Admin Mode only.
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public object GetEmailSettings(string userId = null)
+        {
+            if (!GetSettings().CanUseAdminMode) return Forbidden();
+            return DotNetReportHelper.GetEmailSettings(maskSecrets: true);
+        }
+
+        // Saves the email settings in appsettings.dotnetreport.json on this server. Admin Mode only.
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public object SaveEmailSettings(string emailProvider, string emailAddress, string emailName, string emailServer, string emailPort,
+            string emailUserName, string emailPassword, bool emailEnableSsl, string sendGridApiKey, string userId = null)
+        {
+            if (!GetSettings().CanUseAdminMode) return Forbidden();
+            try
+            {
+                DotNetReportHelper.SaveEmailSettings(new DotNetReportEmailSettings
+                {
+                    emailProvider = emailProvider,
+                    emailAddress = emailAddress,
+                    emailName = emailName,
+                    emailServer = emailServer,
+                    emailPort = emailPort,
+                    emailUserName = emailUserName,
+                    emailPassword = emailPassword,
+                    emailEnableSsl = emailEnableSsl,
+                    sendGridApiKey = sendGridApiKey
+                });
+                return new { success = true };
+            }
+            catch (Exception ex)
+            {
+                return new { success = false, message = ex.Message };
+            }
+        }
+
+        // Switches the whole app to another Workspace of this account, saved in appsettings.dotnetreport.json. Admin Mode only.
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public object SwitchWorkspace(string dataConnect, string userId = null)
+        {
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode) return Forbidden();
+
+            dataConnect = (dataConnect ?? "").Trim();
+            if (string.IsNullOrEmpty(dataConnect)) return new { success = false, message = "Please choose a Workspace" };
+
+            try
+            {
+                // Only a Workspace of this account, so the app can't be pointed at something else
+                using (var client = new HttpClient())
+                {
+                    var response = Task.Run(() => client.GetAsync($"{settings.ApiUrl}/ReportApi/GetDataConnectKey?account={Uri.EscapeDataString(settings.AccountApiToken ?? "")}&dataConnect={Uri.EscapeDataString(dataConnect)}")).Result;
+                    if (!response.IsSuccessStatusCode) return new { success = false, message = "That Workspace was not found in your account" };
+                }
+
+                DotNetReportHelper.SwitchWorkspace(dataConnect);
+                ClearPermissionCache();
+                return new { success = true, message = "The app now uses this Workspace" };
+            }
+            catch (Exception ex)
+            {
+                return new { success = false, message = ex.Message };
+            }
+        }
+
+        // Sends a test email with the saved email settings. Admin Mode only.
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public object SendTestEmail(string email, string userId = null)
+        {
+            if (!GetSettings().CanUseAdminMode) return Forbidden();
+
+            email = (email ?? "").Trim();
+            if (string.IsNullOrEmpty(email)) return new { success = false, message = "Email is required" };
+
+            try
+            {
+                using (var mail = new System.Net.Mail.MailMessage
+                {
+                    Subject = "Dotnet Report test email",
+                    IsBodyHtml = true,
+                    Body = "<p>Your email settings are working.</p>"
+                })
+                {
+                    mail.To.Add(email);
+                    Task.Run(() => DotNetReportEmail.SendAsync(mail)).Wait();
+                }
+                return new { success = true };
+            }
+            catch (Exception ex)
+            {
+                return new { success = false, message = (ex.InnerException ?? ex).Message };
+            }
+        }
+
+        // The server and database a connection string points to, for the setup page. The rest stays on the server.
+        private static (string server, string database) DescribeConnectionString(string connectionString)
+        {
+            try
+            {
+                var builder = new System.Data.Common.DbConnectionStringBuilder { ConnectionString = connectionString ?? "" };
+                string pick(params string[] keys) => keys.Select(k => builder.TryGetValue(k, out var v) ? v?.ToString() : null).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? "";
+                return (pick("Server", "Data Source", "Host", "Address", "Addr", "Network Address"), pick("Database", "Initial Catalog"));
+            }
+            catch
+            {
+                return ("", "");
+            }
+        }
+
+        private static (string server, string database) DescribeDbConnection(JObject saved)
+        {
+            if (saved["ConnectionType"]?.ToString() == "Build")
+                return (saved["DatabaseHost"]?.ToString() ?? "", saved["DatabaseName"]?.ToString() ?? "");
+
+            // A key in Web.config is read now, so a changed connection string shows straight away
+            var key = saved["ConnectionKey"]?.ToString();
+            var connectionString = string.IsNullOrEmpty(key) ? null : DotNetReportHelper.GetAppConnectionString(key, false);
+            return DescribeConnectionString(string.IsNullOrEmpty(connectionString) ? saved["ConnectionString"]?.ToString() : connectionString);
+        }
+
+        // The workspace's saved database connection for the setup page, without the connection string or password
+        private static Dictionary<string, string> GetDbConfigForPage(string accountApiKey, string databaseApiKey)
+        {
+            var result = new Dictionary<string, string>();
+            try
+            {
+                if (DotNetReportHelper.GetDbConnectionSettings(accountApiKey, databaseApiKey) is JObject saved)
+                {
+                    foreach (var key in new[] { "DatabaseType", "ConnectionType", "ConnectionKey", "DatabaseHost", "DatabasePort", "DatabaseName", "Username", "AuthenticationType", "ProviderName" })
+                        result[key] = saved[key]?.ToString() ?? "";
+                    result["HasPassword"] = string.IsNullOrEmpty(saved["Password"]?.ToString()) ? "false" : "true";
+                    var (server, database) = DescribeDbConnection(saved);
+                    result["ConnectedServer"] = server;
+                    result["ConnectedDatabase"] = database;
+                }
+            }
+            catch
+            {
+                // No saved connection: the app's own connection string is used
+            }
+            return result;
+        }
+
+        // Tests or saves the workspace's database connection, stored in appsettings.dotnetreport.json. Admin Mode only.
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public object UpdateDbConnection(string account, string dataConnect, string dbType, string connectionType, string connectionKey, string providerName,
+            string dbServer, string dbPort, string dbName, string dbUsername, string dbPassword, string dbAuthType, bool testOnly, string userId = null)
+        {
+            if (!GetSettings().CanUseAdminMode) return Forbidden();
+
+            var model = new UpdateDbConnectionModel
+            {
+                account = account ?? "", dataConnect = dataConnect ?? "", dbType = dbType ?? "", connectionType = connectionType ?? "",
+                connectionKey = connectionKey ?? "", providerName = providerName ?? "", dbServer = dbServer ?? "", dbPort = dbPort ?? "",
+                dbName = dbName ?? "", dbUsername = dbUsername ?? "", dbPassword = dbPassword ?? "", dbAuthType = dbAuthType ?? "", testOnly = testOnly
+            };
+            try
+            {
+                // The saved password is never sent to the page, so a blank one means keep it
+                if (model.connectionType == "Build" && string.Equals(model.dbAuthType, "Username", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(model.dbPassword)
+                    && DotNetReportHelper.GetDbConnectionSettings(model.account, model.dataConnect) is JObject saved)
+                {
+                    model.dbPassword = saved["Password"]?.ToString() ?? "";
+                }
+
+                DotNetReportHelper.UpdateDbConnection(model);
+
+                var (server, database) = model.connectionType == "Build"
+                    ? (model.dbServer, model.dbName)
+                    : DescribeConnectionString(DotNetReportHelper.GetAppConnectionString(model.connectionKey, false));
+                var where = string.Join(", ", new[] { server, database }.Where(x => !string.IsNullOrWhiteSpace(x)));
+                return new
+                {
+                    success = true,
+                    message = (model.testOnly ? "Connected to the database" : "Database connection saved") + (where == "" ? "" : " (" + where + ")"),
+                    connectedServer = server,
+                    connectedDatabase = database
+                };
+            }
+            catch (Exception ex)
+            {
+                return new { success = false, message = ex.Message };
             }
         }
 
