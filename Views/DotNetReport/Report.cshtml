@@ -100,7 +100,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                             <i class="fa fa-arrow-circle-left"></i>
                             <span>Back to Parent Report</span>
                         </button>
-                        <a href="#" class="btn btn-light btn-sm" data-bind="visible: $root.CanEdit()" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
+                        <a href="#" class="btn btn-light btn-sm" data-bind="visible: $root.CanEdit(), click: editLoadedReport" data-bs-toggle="modal" data-bs-target="#modal-reportbuilder">
                             <i class="fa fa-edit"></i>
                             <span>Edit Report</span>
                         </a>
@@ -183,34 +183,6 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                 <div data-bind="ifnot: HasError">
                     <div data-bind="with: $root">
 
-                        <div data-bind="if: EditFiltersOnReport">
-                            <div class="card">
-                                <div class="card-header">
-                                    <a data-bs-toggle="collapse" data-bs-target="#filter-panel" href="#">
-                                        <i class="fa fa-filter"></i>Choose Filters
-                                    </a>
-                                </div>
-                                <div id="filter-panel" class="card-body collapse">
-                                    <div data-bind="if: useStoredProc">
-                                        <div class="row">
-                                            <div data-bind="template: {name: 'filter-parameters'}" class="col-md-12"></div>
-                                        </div>
-                                    </div>
-                                    <div data-bind="ifnot: useStoredProc">
-                                        <div class="row">
-                                            <div data-bind="template: {name: 'filter-group'}" class="col-md-12"></div>
-                                        </div>
-                                    </div>
-                                    <br />
-                                    <button class="btn btn-primary" data-bind="click: SaveFilterAndRunReport">Update Filters</button>
-                                </div>
-                            </div>
-                            <br />
-                        </div>
-                        <div data-bind="ifnot: EditFiltersOnReport">
-                            <div data-bind="template: {name: 'fly-filter-template'}"></div>
-                            <br />
-                        </div>
                         <div class="report-render" data-bind="css: { 'report-expanded': isExpanded }">
                             <div class="report-menubar">
                                 <div class="col-xs-12 col-centered" data-bind="with: pager">
@@ -256,7 +228,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                                         <div data-bind="template: 'pager-template', data: $data"></div>
                                     </div>
                                     <div class="btn-group btn-group-sm pull-right" role="group">
-                                        <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode">
+                                        <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.canViewSql">
                                             <i class="fa fa-code"></i> View Report Code
                                         </button>
                                         <button class="btn btn-light" data-bind="click: $parent.zoomOut" data-bs-toggle="tooltip" title="Zoom Out">
@@ -273,6 +245,37 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                             </div>
                             <div class="report-canvas">
                                 <div class="report-container">
+                                    <div class="dr-report-filters">
+                                        <div data-bind="if: EditFiltersOnReport">
+                                            <div class="dr-filter-bar">
+                                                <button type="button" class="dr-filter-toggle" data-bs-toggle="collapse" data-bs-target="#filter-panel" aria-expanded="false">
+                                                    <i class="fa fa-filter"></i> Filters <i class="fa fa-chevron-down dr-filter-chevron"></i>
+                                                </button>
+                                                <div id="filter-panel" class="card-body collapse dr-filter-bar-body">
+                                                    <div class="dr-filter-source" data-bind="visible: userIdForFilter && usingUserFilters() !== null">
+                                                        <span data-bind="text: usingUserFilters() ? 'Showing your saved filters' : 'Showing the report\'s filters'"></span>
+                                                        <!-- ko if: usingUserFilters -->
+                                                        &middot; <a href="#" data-bind="click: resetToReportFilters" title="Remove your filters and use the report's filters">Reset to report filters</a>
+                                                        <!-- /ko -->
+                                                    </div>
+                                                    <div data-bind="if: useStoredProc">
+                                                        <div class="row">
+                                                            <div data-bind="template: {name: 'filter-parameters'}" class="col-md-12"></div>
+                                                        </div>
+                                                    </div>
+                                                    <div data-bind="ifnot: useStoredProc">
+                                                        <div class="row">
+                                                            <div data-bind="template: {name: 'filter-group'}" class="col-md-12"></div>
+                                                        </div>
+                                                    </div>
+                                                    <button class="btn btn-primary btn-sm mt-2" data-bind="click: SaveFilterAndRunReport">Update Filters</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div data-bind="ifnot: EditFiltersOnReport">
+                                            <div data-bind="template: {name: 'fly-filter-template'}"></div>
+                                        </div>
+                                    </div>
                                     <div class="report-inner">
                                         <div data-bind="if: CanEdit() && ReportType() != 'Html' && ReportType() != 'Single'"><div data-bind="template: 'chart-settings', data: $data"></div></div>
                                         <div data-bind="visible: UseReportHeader">
@@ -303,7 +306,7 @@ Note: To allow bigger file downloads in Excel, Please increase maxRequestLength 
                     <b>Error Details</b>
                     <div data-bind="text: Exception"></div>
                     <br />
-                    <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.adminMode">
+                    <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#sqlModal" data-bind="visible: $parent.canViewSql">
                         <i class="fa fa-code"></i> View Report Code
                     </button>
                     <button class="btn btn-light" data-bind="click: $root.RunReport">

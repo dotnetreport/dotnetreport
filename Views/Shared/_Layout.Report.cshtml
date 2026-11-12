@@ -23,6 +23,15 @@
     @await Html.PartialAsync("_DotnetReportHeaderPartial")
     @RenderSection("head", required: false)
     <link type="text/css" rel="stylesheet" media="all" href="/css/default.min.css" id="theme-css" />
+    <style type="text/css">
+        /* icon rail: icons centered in square buttons that fit the narrow rail */
+        #sidebarMenu { width: 48px !important; padding: 8px 0 0 !important; }
+        #sidebarMenu .nav { align-items: center; gap: 4px; }
+        #sidebarMenu .nav-item { width: 100%; display: flex; justify-content: center; }
+        #sidebarMenu .nav-link { width: 34px; height: 34px; margin: 0 !important; padding: 0 !important; justify-content: center; gap: 0; }
+        #sidebarMenu .nav-link .fa { width: auto; font-size: 0.95rem; line-height: 1; }
+        body main[role="main"] { padding-left: 56px !important; }
+    </style>
 </head>
 
 <body>
@@ -48,6 +57,10 @@
                                 <i class="fa fa-user-circle"></i> @User.Identity.Name
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                @if (ViewBag.ShowUsersPage == true)
+                                {
+                                    <li><a class="dropdown-item" href="/DotnetSetup/Users"><span class="fa fa-users"></span> Users &amp; Access</a></li>
+                                }
                                 @if (ClaimsHelper.HasAnyRequiredClaim(User as System.Security.Claims.ClaimsPrincipal, ClaimsStore.AllowSetupPageAccess))
                                 {
                                     <li><a class="dropdown-item" href="/DotnetSetup"><span class="fa fa-gear"></span> Configure Database</a></li>
@@ -86,6 +99,14 @@
                                     <i class="fa fa-fw fa-bar-chart"></i> <span class="menu-text">Reports</span>
                                 </a>
                             </li>
+                            @if (ViewBag.ShowUsersPage == true)
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-secondary" href="/DotnetSetup/Users" title="Users &amp; Access">
+                                        <i class="fa fa-fw fa-users"></i> <span class="menu-text">Users &amp; Access</span>
+                                    </a>
+                                </li>
+                            }
                             @if (ClaimsHelper.HasAnyRequiredClaim(User as System.Security.Claims.ClaimsPrincipal, ClaimsStore.AllowSetupPageAccess))
                             {
                                 <li class="nav-item">
@@ -97,6 +118,18 @@
                         </ul>
                     </div>
                 </nav>
+                <script>
+                    (function () {
+                        // highlight the current page: the longest matching link wins, so /DotnetSetup/Users isn't also Setup
+                        var path = location.pathname.toLowerCase().replace(/\/+$/, '');
+                        var best = null, bestLen = -1;
+                        document.querySelectorAll('#sidebarMenu .nav-link').forEach(function (a) {
+                            var href = a.getAttribute('href').toLowerCase().replace(/\/+$/, '');
+                            if ((path === href || path.indexOf(href + '/') === 0) && href.length > bestLen) { best = a; bestLen = href.length; }
+                        });
+                        if (best) best.classList.add('active');
+                    })();
+                </script>
 
                 <!-- Main Content -->
                 <main role="main" class="col-12 ms-sm-auto" style="padding-bottom: 60px;">
@@ -117,7 +150,7 @@
 
     <div class="report-layout-footer">
         <!-- ########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
-        <p>Ad Hoc Reporting and Dashboard powered by <a href="https://www.dotNetReport.com" target="_blank">dotnetreport</a>. Copyright &copy; www.dotnetreport.com. v6.3.5</p>
+        <p>Ad Hoc Reporting and Dashboard powered by <a href="https://www.dotNetReport.com" target="_blank">dotnetreport</a>. Copyright &copy; www.dotnetreport.com. v6.4.0</p>
         <!--########################## IMPORTANT - PLEASE DO NOT REMOVE WITHOUT PURCHASING LICENSE ########################### -->
     </div>
 

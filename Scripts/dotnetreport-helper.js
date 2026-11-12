@@ -219,6 +219,49 @@ ko.bindingHandlers.stopBindings = {
     }
 };
 
+// KPI vertical alignment: stretches the KPI to the free height of its dashboard tile
+ko.bindingHandlers.kpiVerticalAlign = {
+    init: function (element) {
+        var body = $(element).closest('.list-overflow-auto, .dash-preview-body')[0];
+        if (!body || !window.ResizeObserver) return;
+        element._kpiBody = body;
+        var observer = new ResizeObserver(function () { ko.bindingHandlers.kpiVerticalAlign.fit(element); });
+        observer.observe(body);
+        // content above the KPI (filter summary, description) can change after it renders
+        Array.prototype.forEach.call(body.children, function (child) { observer.observe(child); });
+        ko.utils.domNodeDisposal.addDisposeCallback(element, function () { observer.disconnect(); });
+    },
+    update: function (element, valueAccessor) {
+        element._kpiAlign = ko.unwrap(valueAccessor()) || 'top';
+        ko.bindingHandlers.kpiVerticalAlign.fit(element);
+    },
+    fit: function (element) {
+        var body = element._kpiBody, align = element._kpiAlign;
+        element.style.minHeight = '';
+        element.style.display = '';
+        if (!body || !align || align === 'top') return;
+
+        // the KPI gets whatever height the rest of the tile doesn't use
+        var bodyTop = body.getBoundingClientRect().top + body.clientTop - body.scrollTop;
+        var contentBottom = 0;
+        Array.prototype.forEach.call(body.children, function (child) {
+            contentBottom = Math.max(contentBottom, child.getBoundingClientRect().bottom + parseFloat(getComputedStyle(child).marginBottom || 0));
+        });
+        var used = contentBottom - bodyTop + parseFloat(getComputedStyle(body).paddingBottom || 0);
+        var free = element.offsetHeight + body.clientHeight - used - 1;
+        if (free <= element.offsetHeight) return;
+
+        element.style.display = 'flex';
+        element.style.flexDirection = 'column';
+        element.style.justifyContent = align === 'middle' ? 'center' : 'flex-end';
+        element.style.minHeight = free + 'px';
+
+        // large fonts can spill past their box; take back whatever still overflows
+        var over = body.scrollHeight - body.clientHeight;
+        if (over > 0) element.style.minHeight = Math.max(free - over, 0) + 'px';
+    }
+};
+
 ko.bindingHandlers.bsPopover = {
     init: function (element, valueAccessor) {
         var opts = valueAccessor() || {};
@@ -828,6 +871,61 @@ function htmlDecode(input) {
     e.innerHTML = input;
     return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
 }
+
+// Bootbox renders the message and title as html and is no longer maintained, so every dialog is
+// sanitized here instead of at each call site. Formatting tags are kept, scripts and events are not.
+(function () {
+    if (typeof bootbox === 'undefined' || !bootbox.dialog) return;
+
+    var allowedTags = ['A', 'B', 'BR', 'CODE', 'DIV', 'EM', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HR', 'I', 'LI',
+        'OL', 'P', 'PRE', 'SMALL', 'SPAN', 'STRONG', 'TABLE', 'TBODY', 'TD', 'TH', 'THEAD', 'TR', 'U', 'UL'];
+    var allowedAttributes = ['class', 'style', 'title', 'colspan', 'rowspan', 'href', 'target'];
+    var dropContentTags = ['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'LINK', 'META', 'FORM', 'INPUT'];
+
+    function clean(node) {
+        var children = Array.prototype.slice.call(node.children);
+        for (var i = 0; i < children.length; i++) {
+            var child = children[i];
+            if (dropContentTags.indexOf(child.tagName) > -1) {
+                child.parentNode.removeChild(child);
+                continue;
+            }
+            if (allowedTags.indexOf(child.tagName) === -1) {
+                // keep the text, drop the tag
+                child.parentNode.replaceChild(document.createTextNode(child.textContent || ''), child);
+                continue;
+            }
+            var attributes = Array.prototype.slice.call(child.attributes);
+            for (var j = 0; j < attributes.length; j++) {
+                var name = attributes[j].name.toLowerCase();
+                var value = attributes[j].value || '';
+                if (allowedAttributes.indexOf(name) === -1 || /^\s*javascript:/i.test(value)) {
+                    child.removeAttribute(attributes[j].name);
+                }
+            }
+            clean(child);
+        }
+    }
+
+    function sanitizeHtml(html) {
+        if (html === null || html === undefined) return html;
+        if (typeof html !== 'string') return html;
+        // parsed in a separate inert document so nothing runs or loads while we clean it
+        var doc = document.implementation.createHTMLDocument('');
+        doc.body.innerHTML = html;
+        clean(doc.body);
+        return doc.body.innerHTML;
+    }
+
+    var originalDialog = bootbox.dialog;
+    bootbox.dialog = function (options) {
+        if (options) {
+            options.message = sanitizeHtml(options.message);
+            options.title = sanitizeHtml(options.title);
+        }
+        return originalDialog.apply(this, arguments);
+    };
+})();
 
 function pagerViewModel(args) {
     args = args || {};

@@ -196,3 +196,6 @@ ModelManifest.xml
 /src
 /*.tgz
 /electron-app
+
+# Local Dotnet Report settings written by the app (workspace, connections, email); never commit
+appsettings.dotnetreport.json
