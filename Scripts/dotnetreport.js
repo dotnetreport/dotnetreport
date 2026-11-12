@@ -2252,6 +2252,7 @@ var reportViewModel = function (options) {
 	self.SortByField = ko.observable();
 	self.SortDesc = ko.observable(false);
 	self.EditFiltersOnReport = ko.observable(false);
+	self.usingUserFilters = ko.observable(null);
 	self.UseReportHeader = ko.observable(false);
 	self.HideReportHeader = ko.observable(false);
 	self.UseReportFooter = ko.observable(false);
@@ -5090,7 +5091,7 @@ var reportViewModel = function (options) {
 		});
 
 		// Load sub report immediately — don't wait for save
-		self.LoadReport(item.reportId, false, '', true).done(function () {
+		self.LoadReport(item.reportId, false, '', true, undefined, true).done(function () {
 			self._editingSubReportLoading(false);
 			self.editingSubReportParentId(parentId);
 			self.editingSubReportParentName(parentName);
@@ -5117,7 +5118,7 @@ var reportViewModel = function (options) {
 				});
 			} else {
 				// Came from Edit button in designer — stay in editor modal
-				self.LoadReport(parentId, false, '', true).done(function () {
+				self.LoadReport(parentId, false, '', true, undefined, true).done(function () {
 					self.SaveReport(true);
 					self.ReportMode("generate");
 					if (options.reportWizard) options.reportWizard.modal('show');
@@ -7933,14 +7934,43 @@ var reportViewModel = function (options) {
 			return;
 		}
 
+		var reportData = self.BuildReportData();
+		// no filters left means back to the report's filters
+		if (self.userIdForFilter && !self.useStoredProc() && !_.some(reportData.Filters, function (g) { return g.Filters && g.Filters.length; })) {
+			self.resetToReportFilters();
+			return;
+		}
+
 		self.pager.currentPage(1);
-		ajaxcall({
+		saveUserFilters(reportData).done(function () {
+			if (self.userIdForFilter) self.usingUserFilters(true);
+			self.ExecuteReport();
+		});
+	}
+
+	// Edit from the run view: the designer saves the report's filters, so show those, not the user's
+	self.editLoadedReport = function () {
+		if (!self.userIdForFilter || self.usingUserFilters() === false || !self.ReportID()) {
+			self.SaveReport(true);
+			return true;
+		}
+		self._skipPopulateReportRun = true;
+		self.LoadReport(self.ReportID(), false, '', false, undefined, true).always(function () {
+			self._skipPopulateReportRun = false;
+		}).done(function () {
+			self.SaveReport(true);
+		});
+		return true;
+	};
+
+	var saveUserFilters = function (reportData) {
+		return ajaxcall({
 			url: options.runReportApiUrl,
 			type: "POST",
 			data: JSON.stringify({
 				method: "/ReportApi/SaveReportFilter",
 				SaveReport: false,
-				ReportJson: JSON.stringify(self.BuildReportData()),
+				ReportJson: JSON.stringify(reportData),
 				adminMode: self.adminMode(),
 				userIdForFilter: self.userIdForFilter,
 				SubTotalMode: false,
@@ -7948,11 +7978,22 @@ var reportViewModel = function (options) {
 				pivotColumn: '',
 				pivotFunction: ''
 			})
-		}).done(function () {
-			self.ExecuteReport();
 		});
+	};
 
-	}
+	self.resetToReportFilters = function () {
+		var reportData = self.BuildReportData();
+		reportData.Filters = [];
+		self.pager.currentPage(1);
+		saveUserFilters(reportData).done(function () {
+			self._skipPopulateReportRun = true;
+			self.LoadReport(self.ReportID(), true, '').always(function () {
+				self._skipPopulateReportRun = false;
+			}).done(function () {
+				self.ExecuteReport();
+			});
+		});
+	};
 
 	self.copySqlToClipboard = function (button) {
 		var sqlText = document.getElementById('reportSqlCode').innerText;
@@ -10111,6 +10152,7 @@ var reportViewModel = function (options) {
 			document.querySelector('.report-inner').style.transform = `scale(${self.zoomLevel()})`;
 			document.querySelector('.report-inner').style.transformOrigin = "top center";
 		}
+		document.documentElement.style.setProperty('--dr-report-zoom', self.zoomLevel());
 	}
 
 	if (self.ReportMode() != 'subreport') {
@@ -10438,6 +10480,9 @@ var reportViewModel = function (options) {
 		self.updateKpi();
 	});
 	self.kpiSettings().alignment.subscribe(function (newVal) {
+		self.updateKpi();
+	});
+	self.kpiSettings().verticalAlignment.subscribe(function (newVal) {
 		self.updateKpi();
 	});
 	self.clearKpiSettings = function (clear) {
@@ -12684,7 +12729,8 @@ var reportViewModel = function (options) {
 		self.lastPickedField(null);
 	}
 
-	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock, buildSql) {
+	// reportFilters: load the report's own filters, not the user's saved ones (for editing)
+	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock, buildSql, reportFilters) {
 		self.SelectedTable(null);
 		self.isFormulaField(false);
 		self.isFunctionField(false);
@@ -12696,7 +12742,8 @@ var reportViewModel = function (options) {
 					reportId: reportId,
 					adminMode: self.adminMode(),
 					userIdForSchedule: self.userIdForSchedule,
-					buildSql: buildSql === true
+					buildSql: buildSql === true,
+					reportFilters: reportFilters === true
 				})
 			},
 			noBlocking: dontBlock === true
@@ -12704,6 +12751,7 @@ var reportViewModel = function (options) {
 			self.clearTableSettings();
 			if (report.d) { report = report.d; }
 			if (report.result) { report = report.result; }
+			self.usingUserFilters(typeof report.UsingUserFilters === 'boolean' ? report.UsingUserFilters : null); // null: older Api
 
 			self.manageAccess.clientId(report.ClientId || '');
 			self.manageAccess.setupList(self.manageAccess.users, report.UserId || '');
@@ -12773,7 +12821,7 @@ var reportViewModel = function (options) {
 					}
 					var saveReportFlag = self.SaveReport();
 					// Load report
-					return self.LoadReport(e.reportId).done(function () {
+					return self.LoadReport(e.reportId, undefined, undefined, undefined, undefined, !e.runMode).done(function () {
 						if (!self.CanEdit() && !self.appSettings.canCopyReport() && !e.runMode) {
 							options.reportWizard.modal('hide');
 							toastr.error('No access to edit report');
@@ -12858,7 +12906,7 @@ var reportViewModel = function (options) {
 						return;
 					}
 					self.isDirty(false);
-					self.LoadReport(e.reportId).done(function () {
+					self.LoadReport(e.reportId, undefined, undefined, undefined, undefined, true).done(function () {
 						self.SaveReport(true);
 						self.editReportAi();
 					});
@@ -15107,8 +15155,24 @@ var dashboardViewModel = function (options) {
 			return $.when.apply($, promises);
 		};
 
+		// the designer edits the report's filters; put the user's back on close
+		report.loadForEdit = function () {
+			var editReportFilters = report.userIdForFilter && report.usingUserFilters() !== false && report.ReportID();
+			if (!editReportFilters) return report.ensureReportData();
+			var $designer = $('#modal-reportbuilder');
+			$designer.off('hidden.bs.modal.userFilters').on('hidden.bs.modal.userFilters', function (e) {
+				if (e.target !== this) return;
+				$designer.off('hidden.bs.modal.userFilters');
+				report.LoadReport(report.ReportID(), true, '', true).then(function () {
+					applyFlyFilters(report);
+					return report.RunReport(false, true, true);
+				});
+			});
+			return $.when(report.ensureReportData(), report.LoadReport(report.ReportID(), true, '', true, undefined, true));
+		};
+
 		report.editReportAi = function () {
-			report.ensureReportData().done(function () {
+			report.loadForEdit().done(function () {
 				report.Tables(self.tables);
 				report.Procs(self.procs);
 				report.Folders(self.folders);
@@ -15134,7 +15198,7 @@ var dashboardViewModel = function (options) {
 				toastr.error('No access to edit report');
 				return;
 			}
-			report.ensureReportData().done(function () {
+			report.loadForEdit().done(function () {
 				report.Tables(self.tables);
 				report.Procs(self.procs);
 				report.Folders(self.folders);
@@ -16137,29 +16201,33 @@ var dashboardViewModel = function (options) {
 		}, 'docx', dashboardName);
 	}
 
-	self.RunReport = function () {
-		_.forEach(self.reports(), function (report) {
-			var filterApplied = false;
-			_.forEach(self.FlyFilters(), function (combinedFilter) {
-				_.forEach(report.FilterGroups(), function (fg) {
-					_.forEach(fg.Filters(), function (f) {
-						if (f.IsFilterOnFly && combinedFilter.Field().fieldId == f.Field().fieldId
-							|| (f.Field().hasForeignKey && combinedFilter.Field().hasForeignKey && f.Field().foreignTable == combinedFilter.Field().foreignTable && f.Field().foreignKey == combinedFilter.Field().foreignKey)
-						) {
-							f.Operator(combinedFilter.Operator());
-							f.Value(combinedFilter.Value());
-							f.Value2(combinedFilter.Value2());
-							f.ValueIn(combinedFilter.ValueIn());
-							f.ParentIn(combinedFilter.ParentIn());
-							f.LookupList(combinedFilter.LookupList());
+	// copies the dashboard's filter values into the report's filters
+	var applyFlyFilters = function (report) {
+		var filterApplied = false;
+		_.forEach(self.FlyFilters(), function (combinedFilter) {
+			_.forEach(report.FilterGroups(), function (fg) {
+				_.forEach(fg.Filters(), function (f) {
+					if (f.IsFilterOnFly && combinedFilter.Field().fieldId == f.Field().fieldId
+						|| (f.Field().hasForeignKey && combinedFilter.Field().hasForeignKey && f.Field().foreignTable == combinedFilter.Field().foreignTable && f.Field().foreignKey == combinedFilter.Field().foreignKey)
+					) {
+						f.Operator(combinedFilter.Operator());
+						f.Value(combinedFilter.Value());
+						f.Value2(combinedFilter.Value2());
+						f.ValueIn(combinedFilter.ValueIn());
+						f.ParentIn(combinedFilter.ParentIn());
+						f.LookupList(combinedFilter.LookupList());
 
-							filterApplied = true;
-						}
-					});
+						filterApplied = true;
+					}
 				});
 			});
+		});
+		return filterApplied;
+	};
 
-			if (filterApplied) {
+	self.RunReport = function () {
+		_.forEach(self.reports(), function (report) {
+			if (applyFlyFilters(report)) {
 				report.RunReport(false, false, true);
 			}
 		});
@@ -16277,6 +16345,7 @@ var dashboardViewModel = function (options) {
 	function updateZoomDashboard() {
 		document.querySelector('.grid-stack:not(.dash-preview-grid)').style.transform = `scale(${self.zoomLevelDashboard()})`;
 		document.querySelector('.grid-stack:not(.dash-preview-grid)').style.transformOrigin = "top center";
+		document.documentElement.style.setProperty('--dr-dash-zoom', self.zoomLevelDashboard());
 	}
 
 	// Apply initial zoom on page load

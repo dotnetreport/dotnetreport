@@ -227,6 +227,8 @@ ko.bindingHandlers.kpiVerticalAlign = {
         element._kpiBody = body;
         var observer = new ResizeObserver(function () { ko.bindingHandlers.kpiVerticalAlign.fit(element); });
         observer.observe(body);
+        // content above the KPI (filter summary, description) can change after it renders
+        Array.prototype.forEach.call(body.children, function (child) { observer.observe(child); });
         ko.utils.domNodeDisposal.addDisposeCallback(element, function () { observer.disconnect(); });
     },
     update: function (element, valueAccessor) {
@@ -239,14 +241,24 @@ ko.bindingHandlers.kpiVerticalAlign = {
         element.style.display = '';
         if (!body || !align || align === 'top') return;
 
-        var top = element.getBoundingClientRect().top - body.getBoundingClientRect().top - body.clientTop + body.scrollTop;
-        var free = body.clientHeight - parseFloat(getComputedStyle(body).paddingBottom || 0) - top - 1;
+        // the KPI gets whatever height the rest of the tile doesn't use
+        var bodyTop = body.getBoundingClientRect().top + body.clientTop - body.scrollTop;
+        var contentBottom = 0;
+        Array.prototype.forEach.call(body.children, function (child) {
+            contentBottom = Math.max(contentBottom, child.getBoundingClientRect().bottom + parseFloat(getComputedStyle(child).marginBottom || 0));
+        });
+        var used = contentBottom - bodyTop + parseFloat(getComputedStyle(body).paddingBottom || 0);
+        var free = element.offsetHeight + body.clientHeight - used - 1;
         if (free <= element.offsetHeight) return;
 
         element.style.display = 'flex';
         element.style.flexDirection = 'column';
         element.style.justifyContent = align === 'middle' ? 'center' : 'flex-end';
         element.style.minHeight = free + 'px';
+
+        // large fonts can spill past their box; take back whatever still overflows
+        var over = body.scrollHeight - body.clientHeight;
+        if (over > 0) element.style.minHeight = Math.max(free - over, 0) + 'px';
     }
 };
 

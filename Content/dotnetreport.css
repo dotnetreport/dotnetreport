@@ -2857,6 +2857,24 @@ th .dropdown > [data-bs-toggle="dropdown"].show { visibility: visible; }
 .dr-fly-editor { margin-top: 6px; }
 .dr-filter-pill-off { opacity: 0.55; }
 
+/* Report and dashboard filter panel: a small toggle that opens a light panel */
+.dr-filter-bar { margin-bottom: 4px; }
+.dr-filter-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; font-size: 13px; font-weight: 500; line-height: 1.4; color: var(--bs-body-color, #344054); background: var(--bs-body-bg, #fff); border: 1px solid var(--bs-border-color, #d0d5dd); border-radius: 999px; }
+.dr-filter-toggle:hover, .dr-filter-toggle:focus-visible { border-color: #0d6efd; color: #0d6efd; }
+.dr-filter-toggle .fa-filter { font-size: 12px; color: #0d6efd; }
+.dr-filter-chevron { font-size: 10px; color: #98a2b3; transition: transform .15s ease; }
+.dr-filter-toggle[aria-expanded="true"] .dr-filter-chevron { transform: rotate(180deg); }
+.dr-filter-count { min-width: 18px; padding: 0 5px; border-radius: 999px; background: #eef4ff; color: #0d6efd; font-size: 11px; font-weight: 600; text-align: center; }
+.dr-filter-bar-body.card-body { margin-top: 6px; padding: 10px 12px; border: 1px solid var(--bs-border-color, #e4e7ec); border-radius: 8px; background: var(--bs-tertiary-bg, #f9fafb); }
+.dr-filter-bar-fit .dr-filter-bar-body { width: fit-content; min-width: 280px; max-width: 100%; }
+.dr-filter-source { margin-bottom: 6px; font-size: 12px; color: var(--bs-secondary-color, #6c757d); }
+/* line up with the widgets: the grid is scaled from its top center, and each widget sits 10px in */
+.dr-dash-filters { padding: 0 calc((1 - var(--dr-dash-zoom, 0.9)) * 50% + 10px * var(--dr-dash-zoom, 0.9)); margin-bottom: 8px; }
+.dr-dash-filters .dr-filter-bar-body, .dr-report-filters .dr-filter-bar-body { width: auto; }
+/* same for the report page, which is scaled from its top center */
+.dr-report-filters { padding: 0 calc((1 - var(--dr-report-zoom, 0.9)) * 50%); }
+.dr-report-filters:has(.dr-filter-bar:not([style*="display: none"])) { margin-bottom: 10px; }
+
 /* Separate-tables group heading */
 .dr-group-heading { display: flex; align-items: center; gap: 8px; border-radius: 4px; }
 .dr-group-heading h6 { flex: 1; font-weight: inherit; color: inherit; text-align: inherit; }

@@ -480,6 +480,14 @@ namespace ReportBuilder.Web.Controllers
                     keyvalues.Add(new KeyValuePair<string, string>("userIdForFilter", ""));
                 }
 
+                // the designer edits the report's filters, not the user's own
+                if (methodName.Equals("/ReportApi/LoadReport", StringComparison.OrdinalIgnoreCase)
+                    && data.TryGetValue("reportFilters", out var reportFilters) && reportFilters is JsonElement rf && rf.ValueKind == JsonValueKind.True)
+                {
+                    keyvalues.RemoveAll(kv => kv.Key == "userIdForFilter");
+                    keyvalues.Add(new KeyValuePair<string, string>("userIdForFilter", ""));
+                }
+
                 if (methodName.Equals("/ReportApi/ChangeAccountSettings", StringComparison.OrdinalIgnoreCase)
                     && GivesViewOnlyTo(settings, data.TryGetValue("settings", out var posted) ? posted?.ToString() : null))
                 {

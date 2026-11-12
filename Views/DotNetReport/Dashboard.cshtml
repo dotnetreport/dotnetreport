@@ -268,18 +268,13 @@
 <div class="d-flex justify-content-between">
     <div class="row" style="display: none" data-bind="visible: currentDashboard">
         <div data-bind="with: currentDashboard">
-            <p data-bind="text: description"></p>
+            <p class="mb-1" data-bind="text: description"></p>
         </div>
     </div>
 </div>
 
-<div class="padded-top"></div>
-
-<div class="row">
-    <div class="col-md-12">
-        <div data-bind="template: {name: 'fly-filter-template'}"></div>
-        <br />
-    </div>
+<div class="dr-dash-filters">
+    <div data-bind="template: {name: 'fly-filter-template'}"></div>
 </div>
 
 <div class="centered" style="display: none;" data-bind="visible: dashboards().length == 0 && (CanCreateDashboards() || adminMode())">
