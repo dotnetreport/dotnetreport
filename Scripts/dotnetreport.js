@@ -10515,6 +10515,7 @@ var reportViewModel = function (options) {
 		showYAxisLabel: true,
 		showSmallValuesOnLabel: false,
 		fillEmptyDates: false,
+		showMapScale: false,
 		annotations : {
 			alwaysOutside: true,
 			textStyle: {
@@ -10741,20 +10742,9 @@ var reportViewModel = function (options) {
 	self.updateChart = function () {
 		self.DrawChart();
 	};
+	// formats only the chart's value axis, not the field itself; next tick so the dropdown's new value is read
 	self.updateYAxisFormat = function () {
-		var fmt = self.chartOptions().yAxisFormat;
-		if (!fmt) return; // "Auto" — don't override field settings
-		var reportData = self.ReportResult() ? self.ReportResult().ReportData() : null;
-		if (!reportData || !reportData.Columns) return;
-		for (var ci = 1; ci < reportData.Columns.length; ci++) {
-			var col = reportData.Columns[ci];
-			if (col.IsNumeric && !col.groupInGraph()) {
-				if (col.fieldFormat && ko.isObservable(col.fieldFormat)) {
-					col.fieldFormat(fmt);
-				}
-				break;
-			}
-		}
+		setTimeout(self.DrawChart, 0);
 	};
 	self.updateLegend = function (selectedValue) {
 		self.chartOptions().legendPosition = selectedValue;
@@ -10880,8 +10870,12 @@ var reportViewModel = function (options) {
 			var chartContainer = (parentDiv && parentDiv.children[0]) ? parentDiv.children[0].children[0] : null;
 			if (chartContainer) {
 				chartContainer.addEventListener('pointerdown', handlePointerDown);
-				if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
+				// Arrange mode is checked on each move: charts drawn before it was turned on (like maps) still resize
 				chartContainer.addEventListener('pointermove', function (e) {
+					if (options.arrangeDashboard && options.arrangeDashboard() == false) {
+						isNearEdge = false;
+						return;
+					}
 					var rect = chartContainer.getBoundingClientRect();
 					var nearRight = (rect.right - e.clientX) <= edgeThreshold;
 					var nearBottom = (rect.bottom - e.clientY) <= edgeThreshold;
@@ -11047,12 +11041,6 @@ var reportViewModel = function (options) {
 						type: 'number',
 						name: e.fieldLabel() || e.ColumnName
 					});
-					if (self.chartOptions().showSmallValuesOnLabel) {
-						data.columns.push({
-							type: 'annotation',
-							name: e.fieldLabel() || e.ColumnName
-						});
-					}
 				}
 			});
 		}
@@ -11104,9 +11092,6 @@ var reportViewModel = function (options) {
 					}
 				} else if ((isNumeric || self.ReportType() === 'Treemap') && !column.groupInGraph()) {
 					itemArray.push(value);
-					if (self.chartOptions().showSmallValuesOnLabel) {
-						itemArray.push(value.toString());
-					}
 				}
 			});
 
@@ -11224,7 +11209,7 @@ var reportViewModel = function (options) {
 
 		var yAxisFormatter = null;
 
-		// Auto-detect y-axis format from the first value column's fieldFormat
+		// Y-Axis Format from the chart settings, or Auto: the first value column's own format
 		var valueCol = null;
 		for (var ci = 1; ci < reportData.Columns.length; ci++) {
 			if (reportData.Columns[ci].IsNumeric && !reportData.Columns[ci].groupInGraph()) {
@@ -11232,27 +11217,32 @@ var reportViewModel = function (options) {
 				break;
 			}
 		}
-		if (valueCol) {
-			var vFormat = valueCol.fieldFormat ? valueCol.fieldFormat() : null;
-			var vDecimals = valueCol.decimalPlaces ? valueCol.decimalPlaces() : null;
-			var vCurrency = valueCol.currencyFormat ? valueCol.currencyFormat() : null;
+		if (valueCol || chartOptions.yAxisFormat) {
+			var vFormat = chartOptions.yAxisFormat || (valueCol && valueCol.fieldFormat ? valueCol.fieldFormat() : null);
+			var vDecimals = valueCol && valueCol.decimalPlaces ? valueCol.decimalPlaces() : null;
+			var vCurrency = (valueCol && valueCol.currencyFormat ? valueCol.currencyFormat() : null) || (vFormat === 'Currency' ? '$' : null);
+			var hasDecimals = vDecimals != null && vDecimals !== '';
 
 			if (vFormat === 'Currency' && vCurrency) {
 				yAxisFormatter = function (value) {
-					var dp = (vDecimals != null && vDecimals !== '') ? Number(vDecimals) : 2;
+					var dp = hasDecimals ? Number(vDecimals) : 2;
 					return vCurrency + Number(value).toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
 				};
 			} else if (vFormat === 'Percentage') {
 				yAxisFormatter = function (value) {
-					if (vDecimals != null && vDecimals !== '') {
+					if (hasDecimals) {
 						value = Number(value).toFixed(Number(vDecimals));
 					}
 					return value + '%';
 				};
-			} else if (vFormat === 'Decimal' && vDecimals != null && vDecimals !== '') {
-				var dp = Number(vDecimals);
+			} else if (vFormat === 'Decimal' && (hasDecimals || chartOptions.yAxisFormat === 'Decimal')) {
+				var dp = hasDecimals ? Number(vDecimals) : 2;
 				yAxisFormatter = function (value) {
 					return Number(value).toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
+				};
+			} else if (vFormat === 'Number' && chartOptions.yAxisFormat === 'Number') {
+				yAxisFormatter = function (value) {
+					return Number(value).toLocaleString(undefined, { maximumFractionDigits: hasDecimals ? Number(vDecimals) : 0 });
 				};
 			}
 		}
@@ -11387,7 +11377,8 @@ var reportViewModel = function (options) {
 				geoJsonUrl = GEOJSON_URLS['world'];
 			}
 
-			var colors = self.colorScheme().length ? self.colorScheme() : ['#e0f3f8', '#abd9e9', '#74add1', '#4575b4', '#313695'];
+			// low to high, blue through yellow to red
+			var colors = self.colorScheme().length ? self.colorScheme() : ['#313695', '#4575b4', '#74add1', '#abd9e9', '#e0f3f8', '#ffffbf', '#fee090', '#fdae61', '#f46d43', '#d73027', '#a50026'];
 
 			function renderEChartsMap(registeredMapName) {
 				var mapOption;
@@ -11431,9 +11422,21 @@ var reportViewModel = function (options) {
 					// Choropleth mode — first column is region name, second is value
 					var regionData = [];
 					var minVal = Infinity, maxVal = -Infinity;
+					// common country names in data -> names used by the world map
+					var worldAliases = {
+						'usa': 'United States', 'us': 'United States', 'u.s.': 'United States', 'u.s.a.': 'United States', 'united states of america': 'United States', 'america': 'United States',
+						'uk': 'United Kingdom', 'u.k.': 'United Kingdom', 'great britain': 'United Kingdom', 'britain': 'United Kingdom', 'england': 'United Kingdom',
+						'czech republic': 'Czech Rep.', 'czechia': 'Czech Rep.', 'south korea': 'Korea', 'republic of korea': 'Korea', 'north korea': 'Dem. Rep. Korea',
+						'russian federation': 'Russia', 'viet nam': 'Vietnam', 'laos': 'Lao PDR', 'dominican republic': 'Dominican Rep.',
+						'central african republic': 'Central African Rep.', 'democratic republic of the congo': 'Dem. Rep. Congo', 'dr congo': 'Dem. Rep. Congo',
+						'republic of the congo': 'Congo', 'bosnia and herzegovina': 'Bosnia and Herz.', 'south sudan': 'S. Sudan', 'equatorial guinea': 'Eq. Guinea',
+						'north macedonia': 'Macedonia', 'eswatini': 'Swaziland', 'solomon islands': 'Solomon Is.', 'falkland islands': 'Falkland Is.', 'western sahara': 'W. Sahara',
+						'uae': 'United Arab Emirates', 'holland': 'Netherlands', 'the netherlands': 'Netherlands'
+					};
 					_.forEach(reportData.Rows, function (row) {
 						if (!row.Items || row.Items.length < 2) return;
 						var regionName = row.Items[0].FormattedValue || row.Items[0].Value || '';
+						if (mapName === 'world') regionName = worldAliases[String(regionName).trim().toLowerCase()] || regionName;
 						var val = parseFloat(row.Items[1].Value);
 						if (isNaN(val)) val = 0;
 						if (val < minVal) minVal = val;
@@ -11457,11 +11460,19 @@ var reportViewModel = function (options) {
 							}
 						},
 						visualMap: {
+							show: chartOptions.showMapScale === true,
 							min: minVal,
 							max: maxVal,
-							text: [String(maxVal), String(minVal)],
+							text: ['High', 'Low'],
+							right: 10,
+							bottom: 10,
+							itemWidth: 10,
+							itemHeight: 110,
+							textGap: 6,
+							textStyle: { fontSize: 11, color: chartOptions.fontColor || '#555' },
 							realtime: false,
 							calculable: true,
+							formatter: function (v) { return Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }); },
 							inRange: { color: colors.length >= 2 ? colors : ['#e0f3f8', '#313695'] }
 						},
 						series: [{
@@ -11472,7 +11483,9 @@ var reportViewModel = function (options) {
 							center: geoCenter || undefined,
 							zoom: geoZoom || 1,
 							data: regionData,
-							emphasis: { label: { show: true } }
+							itemStyle: { areaColor: '#eef0f3', borderColor: '#c3c8d0', borderWidth: 0.5 },
+							emphasis: { label: { show: true }, itemStyle: { borderColor: '#555', borderWidth: 1 } },
+							select: { disabled: true }
 						}]
 					};
 				}
@@ -11976,6 +11989,25 @@ var reportViewModel = function (options) {
 			}
 		}
 
+		// Show Small Values On Label: value labels on bars and line points
+		if (chartOptions.showSmallValuesOnLabel && !noAxisChart) {
+			var labelHorizontal = self.barChartHorizontal() === true && self.ReportType() === 'Bar';
+			_.forEach(option.series, function (s) {
+				if (s.type !== 'bar' && s.type !== 'line') return;
+				s.label = {
+					show: true,
+					position: s.type === 'bar' && labelHorizontal ? 'right' : (s.type === 'bar' && s.stack ? 'inside' : 'top'),
+					fontSize: Math.max(9, (Number(chartOptions.fontSize) || 12) - 1),
+					color: chartOptions.fontColor || undefined,
+					formatter: function (p) {
+						var v = Array.isArray(p.value) ? p.value[p.value.length - 1] : p.value;
+						if (v === null || v === undefined || v === '') return '';
+						return yAxisFormatter ? yAxisFormatter(v) : Number(v).toLocaleString();
+					}
+				};
+			});
+		}
+
 		// Apply saved dimensions
 		if (self.ReportMode() != 'print') retrieveDimensions();
 
@@ -12029,7 +12061,7 @@ var reportViewModel = function (options) {
 			option.grid = $.extend({}, option.grid, {
 				left: 10 + (legendPos === 'left' ? sideLegend : 0),
 				right: 16 + (legendPos === 'right' ? sideLegend : 0),
-				top: 10 + (option.title ? gridFont + 14 : 0) + (legendShown && !sideLegend && legendPos !== 'bottom' ? gridFont + 14 : 0),
+				top: 10 + (option.title ? gridFont + 14 : 0) + (legendShown && !sideLegend && legendPos !== 'bottom' ? gridFont + 14 : 0) + (chartOptions.showSmallValuesOnLabel ? gridFont + 6 : 0),
 				bottom: 8 + (legendShown && legendPos === 'bottom' ? gridFont + 14 : 0)
 			});
 		}
