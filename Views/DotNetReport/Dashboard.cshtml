@@ -91,6 +91,7 @@
                             }
                             ko.applyBindings(vm);
                             setTimeout(() => {
+                                vm.gridResponsive();
                                 $('.grid-stack:not(.dash-preview-grid)').show();
                                 const grid = GridStack.init({
                                     cellHeight: 60,
