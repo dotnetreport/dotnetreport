@@ -222,6 +222,14 @@ namespace ReportBuilder.Web.Controllers
             return await ExecuteCallReportApi(method, model, null, settings);
         }
 
+        // For front ends not served by the Razor views (Angular, React), which have no token on the page
+        [HttpGet]
+        public IActionResult GetAntiForgeryToken([FromServices] Microsoft.AspNetCore.Antiforgery.IAntiforgery antiforgery)
+        {
+            var tokens = antiforgery.GetAndStoreTokens(HttpContext);
+            return Ok(new { token = tokens.RequestToken });
+        }
+
         [ValidateAntiForgeryToken]
         [HttpPost]
         public async Task<IActionResult> PostReportApi(PostReportApiCallMode data)
