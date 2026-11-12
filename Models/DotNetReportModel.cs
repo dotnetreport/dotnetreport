@@ -453,6 +453,82 @@ namespace ReportBuilder.Web.Models
         /// Set true if the current user can enter Admin Mode
         /// </summary>
         public bool CanUseAdminMode { get; set; }
+
+        public List<string> Permissions { get; set; } = new List<string>(); // granted in code, see DotNetReportPermissions
+    }
+
+    // Granted without Admin Mode, limited to the user's own Client Id
+    public static class DotNetReportPermissions
+    {
+        public const string ManageAccess = "ManageAccess";
+        public const string ManageHeaderFooter = "ManageHeaderFooter";
+        public const string ViewSql = "ViewSql";
+        public const string ManageUsers = "ManageUsers";
+        public const string ViewOnly = "ViewOnly"; // wins over every other grant and Admin Mode
+
+        public static List<string> ApplyViewOnly(List<string> permissions)
+        {
+            return permissions != null && permissions.Contains(ViewOnly)
+                ? permissions.Where(p => p == ViewOnly || p == ViewSql).ToList()
+                : permissions;
+        }
+
+        private static readonly string[] ChangeVerbs = { "Save", "Delete", "Add", "Update", "Copy", "Change", "Set", "Remove", "Import", "Move" };
+        private static readonly string[] ViewOnlyAllowed = { "AddFavorite", "RemoveFavorite" };
+        private static readonly string[] AiReportBuilders = { "RunQueryAi", "RunQueryAiAlt", "RunQueryAiAlt2", "RunAiReportAssistant", "RunAiDashboardAssistant", "RunAiAssistant" };
+
+        public static bool IsChangeMethod(string method)
+        {
+            var name = (method ?? "").Substring((method ?? "").LastIndexOf('/') + 1);
+            if (ViewOnlyAllowed.Contains(name, StringComparer.OrdinalIgnoreCase)) return false;
+            return AiReportBuilders.Contains(name, StringComparer.OrdinalIgnoreCase)
+                || ChangeVerbs.Any(v => name.StartsWith(v, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Turned off in Api responses for View Only users
+        private static readonly string[] ChangeFlags =
+        {
+            "canEdit", "canDelete", "canManage", "allowUsersToCreateReports", "allowUsersToManageFolders",
+            "allowUsersToCreateDashboards", "canCopyReport", "showImportExport", "showScheduling", "aiEnabled", "usePromptBuilder"
+        };
+
+        public static string HideChangeOptions(string json)
+        {
+            try
+            {
+                var node = System.Text.Json.Nodes.JsonNode.Parse(json);
+                if (node == null) return json;
+                HideChangeOptions(node);
+                return node.ToJsonString();
+            }
+            catch
+            {
+                return json;
+            }
+        }
+
+        private static void HideChangeOptions(System.Text.Json.Nodes.JsonNode node)
+        {
+            if (node is System.Text.Json.Nodes.JsonObject obj)
+            {
+                foreach (var key in obj.Select(p => p.Key).ToList())
+                {
+                    if (ChangeFlags.Contains(key, StringComparer.OrdinalIgnoreCase) && obj[key] is System.Text.Json.Nodes.JsonValue value
+                        && value.TryGetValue<bool>(out _))
+                    {
+                        obj[key] = false;
+                    }
+                    else if (obj[key] != null)
+                    {
+                        HideChangeOptions(obj[key]);
+                    }
+                }
+            }
+            else if (node is System.Text.Json.Nodes.JsonArray array)
+            {
+                foreach (var item in array) if (item != null) HideChangeOptions(item);
+            }
+        }
     }
 
     public class ReportHeaderColumn
@@ -485,6 +561,7 @@ namespace ReportBuilder.Web.Models
         public string dateFormat { get; set; }
         public string customDateFormat { get; set; }
         public string fieldType { get; set; }
+        public string selectedAggregate { get; set; }
     }
     public class LinkFieldItem
     {
@@ -836,9 +913,83 @@ namespace ReportBuilder.Web.Models
         }
 
 
+        /// <summary>
+        /// appsettings.dotnetreport.json in the app folder, saved by the Setup page (Workspace, database connection, email).
+        /// When it has a setting, it wins over Web.config.
+        /// </summary>
+        public static string LocalSettingsPath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _configFileName);
+
+        private static readonly object _localSettingsLock = new object();
+        private static JObject _localSettings;
+        private static DateTime _localSettingsStamp;
+
+        // Read again whenever the file changes
+        private static JObject LocalSettings
+        {
+            get
+            {
+                lock (_localSettingsLock)
+                {
+                    var path = LocalSettingsPath;
+                    var stamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : DateTime.MinValue;
+                    if (_localSettings == null || stamp != _localSettingsStamp)
+                    {
+                        try { _localSettings = stamp == DateTime.MinValue ? new JObject() : JObject.Parse(File.ReadAllText(path)); }
+                        catch { _localSettings = new JObject(); }
+                        _localSettingsStamp = stamp;
+                    }
+                    return _localSettings;
+                }
+            }
+        }
+
+        /// <summary>Reads appsettings.dotnetreport.json again straight after the Setup page saves it.</summary>
+        public static void ReloadLocalSettings()
+        {
+            lock (_localSettingsLock) _localSettings = null;
+        }
+
+        /// <summary>A dotNetReport setting from appsettings.dotnetreport.json, or else Web.config ("dotNetReport.key").</summary>
+        public static string GetSetting(string key)
+        {
+            var local = (LocalSettings["dotNetReport"] as JObject)?[key]?.ToString();
+            return string.IsNullOrEmpty(local) ? ConfigurationManager.AppSettings["dotNetReport." + key] : local;
+        }
+
+        /// <summary>The Workspace (data connect token) the whole app uses.</summary>
+        public static string CurrentDataConnect => GetSetting("dataconnectApiToken");
+
+        /// <summary>
+        /// The connection entered on the Setup page for a Workspace ("Enter the server details"), or null when the
+        /// Workspace uses a connection string from the app's own settings.
+        /// </summary>
+        public static string GetWorkspaceConnectionString(string dataConnect)
+        {
+            if (string.IsNullOrEmpty(dataConnect)) return null;
+            var section = (LocalSettings["dotNetReport"] as JObject)?[dataConnect] as JObject;
+            if (section?["ConnectionType"]?.ToString() != "Build") return null;
+            var connectionString = section["ConnectionString"]?.ToString();
+            return string.IsNullOrEmpty(connectionString) ? null : connectionString;
+        }
+
+        /// <summary>
+        /// Connection string for running reports. A connection entered on the Setup page for the current Workspace
+        /// wins, otherwise the key is read from the app's connection strings.
+        /// </summary>
         public static string GetConnectionString(string key, bool addOledbProvider = false)
         {
-            var connString = ConfigurationManager.ConnectionStrings[key].ConnectionString;
+            var workspace = GetWorkspaceConnectionString(CurrentDataConnect);
+            if (!string.IsNullOrEmpty(workspace))
+            {
+                return addOledbProvider && !workspace.ToLower().StartsWith("provider") ? "Provider=sqloledb;" + workspace : workspace;
+            }
+            return GetAppConnectionString(key, addOledbProvider);
+        }
+
+        /// <summary>A connection string from Web.config (connectionStrings section).</summary>
+        public static string GetAppConnectionString(string key, bool addOledbProvider = false)
+        {
+            var connString = ConfigurationManager.ConnectionStrings[key]?.ConnectionString;
             if (connString == null)
             {
                 return "";
@@ -860,7 +1011,7 @@ namespace ReportBuilder.Web.Models
             {
                 ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"],
                 AccountApiKey = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"], // Your Account Api Token from your http://dotnetreport.com Account
-                DatabaseApiKey = string.IsNullOrEmpty(databaseApiKey) ? ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] : databaseApiKey
+                DatabaseApiKey = string.IsNullOrEmpty(databaseApiKey) ? CurrentDataConnect : databaseApiKey
             };
         }
 
@@ -868,6 +1019,12 @@ namespace ReportBuilder.Web.Models
         {
             if (connect.AccountApiKey == "Your Account API Key" || string.IsNullOrEmpty(connect.AccountApiKey) || string.IsNullOrEmpty(connect.DatabaseApiKey))
                 return "";
+
+            var workspace = GetWorkspaceConnectionString(connect.DatabaseApiKey);
+            if (!string.IsNullOrEmpty(workspace))
+            {
+                return addOledbProvider && !workspace.ToLower().StartsWith("provider") ? "Provider=sqloledb;" + workspace : workspace;
+            }
 
             using (var client = new HttpClient())
             {
@@ -879,9 +1036,28 @@ namespace ReportBuilder.Web.Models
                 }
 
                 var content = await response.Content.ReadAsStringAsync();
-                return DotNetReportHelper.GetConnectionString(content.Replace("\"", ""), addOledbProvider);
+                return DotNetReportHelper.GetAppConnectionString(content.Replace("\"", ""), addOledbProvider);
             }
 
+        }
+
+        private static string NumberPattern(string decimalZeros) =>
+            string.IsNullOrEmpty(decimalZeros) ? "###,###,##0" : "###,###,##0." + decimalZeros;
+
+        /// <summary>
+        ///  use database provider type for formatting
+        /// </summary>
+        public static bool IsWholeNumberField(DataColumn dc, ReportHeaderColumn formatColumn)
+        {
+            if (formatColumn == null || (dc.DataType != typeof(decimal) && dc.DataType != typeof(double))) return false;
+            if (formatColumn.decimalPlacesDigit.GetValueOrDefault() > 0) return false;
+            var format = formatColumn.fieldFormating;
+            if (!string.IsNullOrEmpty(format) && format != "Auto" && format != "Number") return false;
+
+            var aggregate = formatColumn.selectedAggregate ?? formatColumn.aggregateFunction ?? "";
+            if (aggregate.StartsWith("Count")) return true;
+            if (aggregate.StartsWith("Avg") || aggregate.StartsWith("Average")) return false;
+            return string.Equals(formatColumn.fieldType, "Int", StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsNumericType(Type type)
@@ -1183,11 +1359,11 @@ namespace ReportBuilder.Web.Models
                 {
                     ws.Cells[rowstart, i].Value = formatColumn.fieldLabel2;
                 }
-                if (dc.DataType == typeof(decimal) || (formatColumn != null && formatColumn.fieldFormating == "Decimal"))
+                if ((dc.DataType == typeof(decimal) && !IsWholeNumberField(dc, formatColumn)) || (formatColumn != null && formatColumn.fieldFormating == "Decimal"))
                 {
                     if (formatColumn != null && formatColumn.decimalPlacesDigit != null)
                     {
-                        ws.Column(i).Style.Numberformat.Format = "###,###,##0." + decimalFormat;
+                        ws.Column(i).Style.Numberformat.Format = NumberPattern(decimalFormat);
                     }
                     else
                     {
@@ -1202,7 +1378,7 @@ namespace ReportBuilder.Web.Models
                 {
                     if (formatColumn.currencySymbol != null && formatColumn.decimalPlacesDigit != null)
                     {
-                        ws.Column(i).Style.Numberformat.Format = formatColumn.currencySymbol + "###,###,##0." + decimalFormat;
+                        ws.Column(i).Style.Numberformat.Format = formatColumn.currencySymbol + NumberPattern(decimalFormat);
                     }
                     else if (formatColumn.currencySymbol != null)
                     {
@@ -1382,7 +1558,7 @@ namespace ReportBuilder.Web.Models
             {
                 ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"],
                 AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"], // Your Account Api Token from your http://dotnetreport.com Account
-                DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] // Your Data Connect Api Token from your http://dotnetreport.com Account
+                DataConnectApiToken = DotNetReportHelper.CurrentDataConnect // Your Data Connect Api Token from your http://dotnetreport.com Account
             };
 
             return await GetApiFunctions(settings.AccountApiToken, settings.DataConnectApiToken);
@@ -1409,7 +1585,7 @@ namespace ReportBuilder.Web.Models
                 {
                     ApiUrl = ConfigurationManager.AppSettings["dotNetReport.apiUrl"],
                     AccountApiToken = ConfigurationManager.AppSettings["dotNetReport.accountApiToken"], // Your Account Api Token from your http://dotnetreport.com Account
-                    DataConnectApiToken = ConfigurationManager.AppSettings["dotNetReport.dataconnectApiToken"] // Your Data Connect Api Token from your http://dotnetreport.com Account
+                    DataConnectApiToken = DotNetReportHelper.CurrentDataConnect // Your Data Connect Api Token from your http://dotnetreport.com Account
                 };
                 var keyvalues = new List<KeyValuePair<string, string>>
                 {
@@ -3067,12 +3243,12 @@ namespace ReportBuilder.Web.Models
                     string decFmt = new string('0', fc?.decimalPlacesDigit ?? 2);
                     bool colIsNumeric = dc.DataType.Name.StartsWith("Int") || dc.DataType.Name == "Double" || dc.DataType.Name == "Decimal";
 
-                    if (dc.DataType == typeof(decimal) || fc?.fieldFormating == "Decimal")
-                        ws.Column(colIdx).Style.Numberformat.Format = "###,###,##0." + decFmt;
+                    if ((dc.DataType == typeof(decimal) && !IsWholeNumberField(dc, fc)) || fc?.fieldFormating == "Decimal")
+                        ws.Column(colIdx).Style.Numberformat.Format = NumberPattern(decFmt);
                     if (dc.DataType == typeof(DateTime))
                         ws.Column(colIdx).Style.Numberformat.Format = GetExcelDateFormat(fc);
                     if (fc?.fieldFormating == "Currency")
-                        ws.Column(colIdx).Style.Numberformat.Format = (fc.currencySymbol ?? "$") + "###,###,##0." + decFmt;
+                        ws.Column(colIdx).Style.Numberformat.Format = (fc.currencySymbol ?? "$") + NumberPattern(decFmt);
 
                     bool alignRight = fc?.fieldAlign == "Right" ||
                         (colIsNumeric && (fc?.fieldAlign == "Auto" || string.IsNullOrEmpty(fc?.fieldAlign)));
@@ -3120,9 +3296,9 @@ namespace ReportBuilder.Web.Models
 
                             string decFmt = new string('0', fc?.decimalPlacesDigit ?? 2);
                             if (fc?.fieldFormating == "Currency")
-                                ws.Cells[currentRow, colIdx].Style.Numberformat.Format = (fc.currencySymbol ?? "$") + "###,###,##0." + decFmt;
+                                ws.Cells[currentRow, colIdx].Style.Numberformat.Format = (fc.currencySymbol ?? "$") + NumberPattern(decFmt);
                             else if (fc?.fieldFormating == "Decimal")
-                                ws.Cells[currentRow, colIdx].Style.Numberformat.Format = "###,###,##0." + decFmt;
+                                ws.Cells[currentRow, colIdx].Style.Numberformat.Format = NumberPattern(decFmt);
 
                             if (isGrandTotal)
                             {
@@ -3457,9 +3633,9 @@ namespace ReportBuilder.Web.Models
 
                         string decFmt = new string('0', fc?.decimalPlacesDigit ?? 2);
                         if (fc?.fieldFormating == "Currency")
-                            ws.Cells[tblRow, tblCol + 1].Style.Numberformat.Format = (fc.currencySymbol ?? "$") + "###,###,##0." + decFmt;
+                            ws.Cells[tblRow, tblCol + 1].Style.Numberformat.Format = (fc.currencySymbol ?? "$") + NumberPattern(decFmt);
                         else if (fc?.fieldFormating == "Decimal")
-                            ws.Cells[tblRow, tblCol + 1].Style.Numberformat.Format = "###,###,##0." + decFmt;
+                            ws.Cells[tblRow, tblCol + 1].Style.Numberformat.Format = NumberPattern(decFmt);
 
                         tblRow++;
                     }
@@ -3574,11 +3750,11 @@ namespace ReportBuilder.Web.Models
             string decimalFormat = new string('0', formatColumn.decimalPlacesDigit.GetValueOrDefault());
             try
             {
-                if (dc.DataType == typeof(decimal) || (formatColumn != null && (formatColumn.fieldFormating == "Decimal" || formatColumn.fieldFormating == "Double")))
+                if ((dc.DataType == typeof(decimal) && !IsWholeNumberField(dc, formatColumn)) || (formatColumn != null && (formatColumn.fieldFormating == "Decimal" || formatColumn.fieldFormating == "Double")))
                 {
                     if (formatColumn.decimalPlacesDigit != null)
                     {
-                        value = Convert.ToDecimal(value).ToString("###,###,##0." + decimalFormat);
+                        value = Convert.ToDecimal(value).ToString(NumberPattern(decimalFormat));
                     }
                     else
                     {
@@ -3590,7 +3766,7 @@ namespace ReportBuilder.Web.Models
                 {
                     if (formatColumn.currencySymbol != null && formatColumn.decimalPlacesDigit != null)
                     {
-                        value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + "###,###,##0." + decimalFormat);
+                        value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + NumberPattern(decimalFormat));
                     }
                     else if (formatColumn.currencySymbol != null)
                     {
@@ -7049,7 +7225,7 @@ namespace ReportBuilder.Web.Models
 
         public static dynamic GetDbConnectionSettings(string account, string dataConnect, bool addOledbProvider = true)
         {
-            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            var _configFilePath = LocalSettingsPath;
             if (!System.IO.File.Exists(_configFilePath))
             {
                 var emptyConfig = new JObject();
@@ -7103,7 +7279,7 @@ namespace ReportBuilder.Web.Models
             }
             else
             {
-                connectionString = DotNetReportHelper.GetConnectionString(model.connectionKey, false);
+                connectionString = DotNetReportHelper.GetAppConnectionString(model.connectionKey, false);
 
                 if (string.IsNullOrEmpty(connectionString))
                 {
@@ -7126,7 +7302,7 @@ namespace ReportBuilder.Web.Models
 
             if (!model.testOnly)
             {
-                var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+                var _configFilePath = LocalSettingsPath;
                 if (!System.IO.File.Exists(_configFilePath))
                 {
                     var emptyConfig = new JObject();
@@ -7171,18 +7347,21 @@ namespace ReportBuilder.Web.Models
 
                 if (model.isDefault)
                 {
+                    // The whole app uses this Workspace from now on
                     dotNetReportSection["DefaultConnection"] = model.dataConnect;
+                    dotNetReportSection["dataconnectApiToken"] = model.dataConnect;
                 }
 
                 // Save the updated JSON back to the file
                 File.WriteAllText(_configFilePath, config.ToString());
+                ReloadLocalSettings();
             }
 
         }
 
         public static void UpdateUserConfigSetting(UpdateUserConfigModel model)
         {
-            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            var _configFilePath = LocalSettingsPath;
             if (!System.IO.File.Exists(_configFilePath))
             {
                 var emptyConfig = new JObject();
@@ -7214,7 +7393,7 @@ namespace ReportBuilder.Web.Models
         public static void UpdateConfigurationFile(string accountApiKey, string privateApiKey, string dataConnectKey, bool onlyIfEmpty = false)
         {
             var _configFileName = "appsettings.json";
-            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            var _configFilePath = LocalSettingsPath;
 
             JObject existingConfig;
             if (System.IO.File.Exists(_configFilePath))
@@ -7251,9 +7430,137 @@ namespace ReportBuilder.Web.Models
             return list;
         }
 
+        private static JObject ReadLocalSettings()
+        {
+            return System.IO.File.Exists(LocalSettingsPath) ? JObject.Parse(System.IO.File.ReadAllText(LocalSettingsPath)) : new JObject();
+        }
+
+        private static void WriteLocalSettings(JObject config)
+        {
+            System.IO.File.WriteAllText(LocalSettingsPath, config.ToString(Newtonsoft.Json.Formatting.Indented));
+            ReloadLocalSettings();
+        }
+
+        /// <summary>
+        /// Switches the whole app (reports, dashboards, schedules) to a Workspace, saved in appsettings.dotnetreport.json.
+        /// </summary>
+        public static void SwitchWorkspace(string dataConnect)
+        {
+            var config = ReadLocalSettings();
+            if (!(config["dotNetReport"] is JObject dotNetReport)) config["dotNetReport"] = dotNetReport = new JObject();
+            dotNetReport["dataconnectApiToken"] = dataConnect;
+            dotNetReport["DefaultConnection"] = dataConnect;
+            WriteLocalSettings(config);
+        }
+
+        private const string EncryptedPrefix = "enc:";
+        private const string MaskedSecret = "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022";
+
+        // Secrets saved in appsettings.dotnetreport.json are encrypted with a key made from the private Api token
+        private static byte[] LocalSecretKey()
+        {
+            var token = GetSetting("privateApiToken") ?? "";
+            using (var sha = System.Security.Cryptography.SHA256.Create())
+            {
+                return sha.ComputeHash(Encoding.UTF8.GetBytes("dotnetreport-local-settings:" + token));
+            }
+        }
+
+        private static string EncryptSecret(string value)
+        {
+            using (var aes = System.Security.Cryptography.Aes.Create())
+            {
+                aes.Key = LocalSecretKey();
+                aes.GenerateIV();
+                var plain = Encoding.UTF8.GetBytes(value);
+                var cipher = aes.CreateEncryptor().TransformFinalBlock(plain, 0, plain.Length);
+                return EncryptedPrefix + Convert.ToBase64String(aes.IV.Concat(cipher).ToArray());
+            }
+        }
+
+        private static string ReadSecret(string value)
+        {
+            if (string.IsNullOrEmpty(value) || !value.StartsWith(EncryptedPrefix)) return value ?? "";
+            try
+            {
+                var bytes = Convert.FromBase64String(value.Substring(EncryptedPrefix.Length));
+                using (var aes = System.Security.Cryptography.Aes.Create())
+                {
+                    aes.Key = LocalSecretKey();
+                    aes.IV = bytes.Take(16).ToArray();
+                    var cipher = bytes.Skip(16).ToArray();
+                    return Encoding.UTF8.GetString(aes.CreateDecryptor().TransformFinalBlock(cipher, 0, cipher.Length));
+                }
+            }
+            catch
+            {
+                return ""; // the private Api token changed, the secret has to be entered again
+            }
+        }
+
+        /// <summary>
+        /// Email settings from appsettings.dotnetreport.json (saved on the Setup page), or else the "email.*" keys in
+        /// Web.config. They stay on this server and are never sent to Dotnet Report.
+        /// </summary>
+        public static DotNetReportEmailSettings GetEmailSettings(bool maskSecrets = false)
+        {
+            var local = LocalSettings["dotNetReport"]?["AppSetting"]?["email"] as JObject;
+            var useLocal = !string.IsNullOrWhiteSpace(local?["fromemail"]?.ToString());
+            string setting(string key) => useLocal ? local[key]?.ToString() : ConfigurationManager.AppSettings["email." + key];
+            string secret(string key)
+            {
+                var value = ReadSecret(setting(key));
+                return maskSecrets && !string.IsNullOrEmpty(value) ? MaskedSecret : value;
+            }
+            return new DotNetReportEmailSettings
+            {
+                emailProvider = setting("provider") ?? "smtp",
+                emailAddress = setting("fromemail") ?? "",
+                emailName = setting("fromname") ?? "",
+                emailServer = setting("server") ?? "",
+                emailPort = setting("port") ?? "",
+                emailUserName = setting("username") ?? "",
+                emailPassword = secret("password"),
+                emailEnableSsl = bool.TryParse(setting("enablessl"), out var ssl) && ssl,
+                sendGridApiKey = secret("sendgridapikey")
+            };
+        }
+
+        /// <summary>
+        /// Saves the email settings in appsettings.dotnetreport.json, with the password and SendGrid key encrypted.
+        /// A blank or masked secret keeps the saved one.
+        /// </summary>
+        public static void SaveEmailSettings(DotNetReportEmailSettings model)
+        {
+            var config = ReadLocalSettings();
+            if (!(config["dotNetReport"] is JObject dotNetReport)) config["dotNetReport"] = dotNetReport = new JObject();
+            if (!(dotNetReport["AppSetting"] is JObject appSetting)) dotNetReport["AppSetting"] = appSetting = new JObject();
+            var saved = appSetting["email"] as JObject ?? new JObject();
+
+            string secret(string value, string key)
+            {
+                if (string.IsNullOrEmpty(value) || value.StartsWith("\u2022")) return saved[key]?.ToString() ?? "";
+                return EncryptSecret(value);
+            }
+
+            appSetting["email"] = new JObject
+            {
+                ["provider"] = model.emailProvider ?? "smtp",
+                ["fromemail"] = model.emailAddress ?? "",
+                ["fromname"] = model.emailName ?? "",
+                ["server"] = model.emailServer ?? "",
+                ["port"] = model.emailPort ?? "",
+                ["username"] = model.emailUserName ?? "",
+                ["password"] = secret(model.emailPassword, "password"),
+                ["enablessl"] = model.emailEnableSsl,
+                ["sendgridapikey"] = secret(model.sendGridApiKey, "sendgridapikey")
+            };
+            WriteLocalSettings(config);
+        }
+
         public static AppSettingModel GetAppSettings()
         {
-            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            var _configFilePath = LocalSettingsPath;
             if (!System.IO.File.Exists(_configFilePath))
             {
                 var emptyConfig = new JObject();
@@ -7285,7 +7592,7 @@ namespace ReportBuilder.Web.Models
 
         public static void SaveAppSettings(AppSettingModel model)
         {
-            var _configFilePath = Path.Combine(Directory.GetCurrentDirectory(), _configFileName);
+            var _configFilePath = LocalSettingsPath;
             if (!System.IO.File.Exists(_configFilePath))
             {
                 var emptyConfig = new JObject();
@@ -7960,4 +8267,112 @@ namespace ReportBuilder.Web.Models
         }
     }
 
+    /// <summary>
+    /// Email settings saved on the setup page (Email tab). When nothing is saved there, the email section in
+    /// Web.config is used, as before.
+    /// </summary>
+    public class DotNetReportEmailSettings
+    {
+        public string emailProvider { get; set; } = "";
+        public string emailAddress { get; set; } = "";
+        public string emailName { get; set; } = "";
+        public string emailServer { get; set; } = "";
+        public string emailPort { get; set; } = "";
+        public string emailUserName { get; set; } = "";
+        public string emailPassword { get; set; } = "";
+        public bool emailEnableSsl { get; set; }
+        public string sendGridApiKey { get; set; } = "";
+
+        public bool UseSendGrid => string.Equals(emailProvider, "sendgrid", StringComparison.OrdinalIgnoreCase);
+
+        public bool IsConfigured => !string.IsNullOrWhiteSpace(emailAddress)
+            && (UseSendGrid ? !string.IsNullOrWhiteSpace(sendGridApiKey) : !string.IsNullOrWhiteSpace(emailServer));
+    }
+
+    /// <summary>
+    /// Sends the app's emails (scheduled reports, password resets) with SMTP or SendGrid.
+    /// </summary>
+    public static class DotNetReportEmail
+    {
+        /// <summary>Email settings from appsettings.dotnetreport.json, or else Web.config.</summary>
+        public static DotNetReportEmailSettings GetSettings()
+        {
+            return DotNetReportHelper.GetEmailSettings();
+        }
+
+        /// <summary>
+        /// Sends the message. The From address is filled in from the settings when the message has none.
+        /// </summary>
+        public static async Task SendAsync(System.Net.Mail.MailMessage mail, DotNetReportEmailSettings settings = null)
+        {
+            settings = settings ?? GetSettings();
+            if (!settings.IsConfigured)
+                throw new Exception("Email is not set up, add the email settings on the Setup page");
+
+            if (mail.From == null) mail.From = new System.Net.Mail.MailAddress(settings.emailAddress, settings.emailName ?? "");
+
+            if (settings.UseSendGrid)
+            {
+                await SendWithSendGrid(settings, mail);
+                return;
+            }
+
+            using (var smtp = new System.Net.Mail.SmtpClient(settings.emailServer))
+            {
+                smtp.Port = int.TryParse(settings.emailPort, out var port) && port > 0 ? port : 587;
+                if (!string.IsNullOrEmpty(settings.emailUserName))
+                    smtp.Credentials = new System.Net.NetworkCredential(settings.emailUserName, settings.emailPassword);
+                smtp.EnableSsl = settings.emailEnableSsl;
+                await smtp.SendMailAsync(mail);
+            }
+        }
+
+        private static async Task SendWithSendGrid(DotNetReportEmailSettings settings, System.Net.Mail.MailMessage mail)
+        {
+            var attachments = new List<object>();
+            foreach (var attachment in mail.Attachments)
+            {
+                using (var ms = new MemoryStream())
+                {
+                    attachment.ContentStream.Position = 0;
+                    await attachment.ContentStream.CopyToAsync(ms);
+                    attachments.Add(new
+                    {
+                        content = Convert.ToBase64String(ms.ToArray()),
+                        filename = attachment.Name,
+                        type = attachment.ContentType?.MediaType ?? "application/octet-stream"
+                    });
+                }
+            }
+
+            var payload = new Dictionary<string, object>
+            {
+                ["personalizations"] = new[]
+                {
+                    new
+                    {
+                        to = mail.To.Select(t => new { email = t.Address }).ToArray(),
+                        cc = mail.CC.Count > 0 ? mail.CC.Select(t => new { email = t.Address }).ToArray() : null,
+                        bcc = mail.Bcc.Count > 0 ? mail.Bcc.Select(t => new { email = t.Address }).ToArray() : null
+                    }
+                },
+                ["from"] = new { email = mail.From.Address, name = mail.From.DisplayName },
+                ["subject"] = mail.Subject ?? "",
+                ["content"] = new[] { new { type = mail.IsBodyHtml ? "text/html" : "text/plain", value = string.IsNullOrEmpty(mail.Body) ? " " : mail.Body } }
+            };
+            if (attachments.Count > 0) payload["attachments"] = attachments;
+
+            using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) })
+            {
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", settings.sendGridApiKey);
+                var json = JsonConvert.SerializeObject(payload, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+                var response = await client.PostAsync("https://api.sendgrid.com/v3/mail/send", new StringContent(json, Encoding.UTF8, "application/json"));
+                if (!response.IsSuccessStatusCode)
+                {
+                    var body = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"SendGrid could not send the email ({(int)response.StatusCode}): {body}");
+                }
+            }
+        }
+    }
 }

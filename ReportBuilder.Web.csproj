@@ -440,6 +440,7 @@
     <Content Include="Scripts\bootstrap.min.js" />
     <Content Include="Scripts\dotnetreport-helper.js" />
     <Content Include="Scripts\dotnetreport-setup.js" />
+    <Content Include="Scripts\dotnetreport-users.js" />
     <Content Include="Scripts\dotnetreport-wizard.js" />
     <Content Include="Scripts\dotnetreport.js" />
     <Content Include="Content\toastr.scss" />
@@ -683,6 +684,7 @@
     <Content Include="fonts\fontawesome-webfont.eot" />
     <Content Include="Views\DotNetReport\Dashboard.cshtml" />
     <Content Include="Views\DotNetSetup\Index.cshtml" />
+    <Content Include="Views\DotNetSetup\Users.cshtml" />
     <Content Include="Views\DotNetReport\ReportPrint.cshtml" />
     <Content Include="Scripts\umd\popper.min.js.map" />
     <Content Include="Scripts\umd\popper.js.map" />

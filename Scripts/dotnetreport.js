@@ -1369,6 +1369,11 @@ var headerDesigner = function (options) {
 	self.selectedHeaderClientId = ko.observable('');
 	self.headerClientId = ko.observable('');
 	self.executeMode = false;
+	// Users who manage headers and footers through the permission rather than Admin Mode can only work on
+	// their own Client Id's. The server enforces this too.
+	self.isTenantScoped = function () { return options.isAdmin ? !options.isAdmin() : false; };
+	self.tenantClientId = function () { return ((options.userClientId || '') + '').split(',')[0].trim(); };
+	var adminModeFlag = function () { return options.isAdmin ? options.isAdmin() : false; };
 
 	// Named-header support (multiple headers per client/global scope, one default).
 	self.headersList = ko.observableArray([]);
@@ -1421,6 +1426,10 @@ var headerDesigner = function (options) {
 			tableresize: true
 		});
 		self.executeMode = executeMode;
+		if (!executeMode && self.isTenantScoped()) {
+			self.headerClientId(self.tenantClientId());
+			self.loadedHeaderClientId = self.tenantClientId();
+		}
 		// Runtime rendering resolves a single header; the admin designer manages the list.
 		return executeMode ? self.loadHtmlHeader(false) : self.loadHeadersList();
 	};
@@ -1447,7 +1456,7 @@ var headerDesigner = function (options) {
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetReportHeadersList",
-				model: JSON.stringify({ headerClientId: self.headerClientId(), forceGlobal: !self.executeMode })
+				model: JSON.stringify({ headerClientId: self.headerClientId(), forceGlobal: !self.executeMode && !self.isTenantScoped() })
 			}
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
@@ -1538,7 +1547,7 @@ var headerDesigner = function (options) {
 				url: options.apiUrl,
 				data: {
 					method: "/ReportApi/DeleteReportHeader",
-					model: JSON.stringify({ id: id })
+					model: JSON.stringify({ id: id, adminMode: adminModeFlag() })
 				}
 			}).done(function () {
 				toastr.success('Header deleted');
@@ -1576,7 +1585,8 @@ var headerDesigner = function (options) {
 				headerJson: data,
 				useReportHeader: self.UseReportHeader(),
 				includeOnEveryPage: self.IncludeOnEveryPage(),
-				headerClientId: self.headerClientId() || ''
+				headerClientId: self.isTenantScoped() ? self.tenantClientId() : (self.headerClientId() || ''),
+				adminMode: adminModeFlag()
 			})
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
@@ -1637,6 +1647,11 @@ var footerDesigner = function (options) {
 	self.showClientScope = ko.observable(false);
 	self.loadedFooterClientId = '';
 	self.executeMode = false;
+	// Users who manage headers and footers through the permission rather than Admin Mode can only work on
+	// their own Client Id's. The server enforces this too.
+	self.isTenantScoped = function () { return options.isAdmin ? !options.isAdmin() : false; };
+	self.tenantClientId = function () { return ((options.userClientId || '') + '').split(',')[0].trim(); };
+	var adminModeFlag = function () { return options.isAdmin ? options.isAdmin() : false; };
 	self.init = function (executeMode) {
 		$('#report-footer-editor').summernote({
 			height: 150,
@@ -1675,6 +1690,10 @@ var footerDesigner = function (options) {
 			tableresize: true
 		});
 		self.executeMode = executeMode;
+		if (!executeMode && self.isTenantScoped()) {
+			self.footerClientId(self.tenantClientId());
+			self.loadedFooterClientId = self.tenantClientId();
+		}
 		return self.loadHtmlFooter(false);
 	};
 
@@ -1700,7 +1719,8 @@ var footerDesigner = function (options) {
 				footerJson: data,
 				useReportFooter: self.UseReportFooter(),
 				includeOnEveryPage: self.IncludeOnEveryPage(),
-				footerClientId: self.footerClientId() || ''
+				footerClientId: self.isTenantScoped() ? self.tenantClientId() : (self.footerClientId() || ''),
+				adminMode: adminModeFlag()
 			})
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
@@ -1745,7 +1765,7 @@ var footerDesigner = function (options) {
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/GetReportFooter",
-				model: JSON.stringify({ footerClientId: self.footerClientId(), forceGlobal: !self.executeMode })
+				model: JSON.stringify({ footerClientId: self.footerClientId(), forceGlobal: !self.executeMode && !self.isTenantScoped() })
 			}
 		}).done(function (result) {
 			if (result.d) { result = result.d; }
@@ -1789,6 +1809,44 @@ function attachFilterLookup(options, field, filter) {
 		});
 	}
 }
+
+// AI quick prompts, shared by the report and dashboard builders
+var aiFieldKind = function (f) {
+	var type = (ko.unwrap(f.fieldType) || '').toLowerCase();
+	var fmt = ko.unwrap(f.fieldFormat) || '';
+	if (/date|time/.test(type) || fmt === 'Date' || fmt === 'Date and Time') return 'date';
+	if (/int|decimal|money|float|double|numeric|real|currency|number/.test(type) || ['Currency', 'Percentage', 'Decimal', 'Number'].indexOf(fmt) >= 0) return 'number';
+	if (/char|text|string/.test(type)) return 'text';
+	return '';
+};
+var aiIsIdField = function (name) { return /^id$|[_ ]id$|[a-z]Id$|ID$|key$/i.test(name || '') && !/paid$/i.test(name || ''); };
+var aiIsFlagField = function (name) { return /^([Ii]s|[Hh]as|[Nn]o|[Cc]an|[Ww]as)([\s_]|[A-Z])/.test(name || ''); };
+var aiPickField = function (fields, kind, preferred) {
+	var list = _.filter(fields, function (f) {
+		var name = ko.unwrap(f.fieldName);
+		return aiFieldKind(f) === kind && !aiIsIdField(name) && !(kind === 'number' && aiIsFlagField(name));
+	});
+	return _.find(list, function (f) { return preferred.test(ko.unwrap(f.fieldName)); }) || list[0];
+};
+var aiTableName = function (t) { return t ? (t.displayName || t.tableName || '') : ''; };
+var aiMeasureName = /amount|total|price|sales|revenue|cost|freight|qty|quantity|balance|value/i;
+var aiTableShape = function (t, fields) {
+	fields = fields || t.fields || [];
+	var name = function (f) { return f ? (ko.unwrap(f.fieldLabel) || ko.unwrap(f.fieldName)) : ''; };
+	var number = name(aiPickField(fields, 'number', aiMeasureName));
+	return {
+		table: aiTableName(t),
+		number: number,
+		measure: aiMeasureName.test(number),
+		category: name(aiPickField(fields, 'text', /name|category|type|status|region|country|state|city|department|group/i)),
+		date: name(aiPickField(fields, 'date', /date|created|order|time/i))
+	};
+};
+var aiBestTable = function (tables) {
+	return _.maxBy(_.map(tables, function (t) { return aiTableShape(t); }), function (x) {
+		return (x.measure ? 3 : x.number ? 1 : 0) + (x.category ? 1 : 0) + (x.date ? 1 : 0);
+	}) || null;
+};
 
 var reportViewModel = function (options) {
 	var self = this;
@@ -2194,6 +2252,7 @@ var reportViewModel = function (options) {
 	self.SortByField = ko.observable();
 	self.SortDesc = ko.observable(false);
 	self.EditFiltersOnReport = ko.observable(false);
+	self.usingUserFilters = ko.observable(null);
 	self.UseReportHeader = ko.observable(false);
 	self.HideReportHeader = ko.observable(false);
 	self.UseReportFooter = ko.observable(false);
@@ -2228,7 +2287,52 @@ var reportViewModel = function (options) {
 	self.lineChartArea = ko.observable();
 	self.barChartStacked = ko.observable();
 	self.comboChartType = ko.observable('bars');
+	self.gaugeStyles = [
+		{ value: 'gauge', text: 'Gauge' },
+		{ value: 'half', text: 'Half Circle' },
+		{ value: 'ring', text: 'Progress Ring' },
+		{ value: 'bar', text: 'Progress Bar' }
+	];
+	self.gaugeOptions = {
+		style: ko.observable('gauge'),
+		min: ko.observable(0),
+		max: ko.observable(100),
+		showPercent: ko.observable(false)
+	};
+	self.funnelOptions = {
+		sort: ko.observable('descending'),
+		showPercent: ko.observable(false)
+	};
+	self.resetChartTypeOptions = function () {
+		self.gaugeOptions.style('gauge');
+		self.gaugeOptions.min(0);
+		self.gaugeOptions.max(100);
+		self.gaugeOptions.showPercent(false);
+		self.funnelOptions.sort('descending');
+		self.funnelOptions.showPercent(false);
+	};
+	self.loadChartTypeOptions = function (reportSettings) {
+		self.resetChartTypeOptions();
+		var g = reportSettings.gaugeOptions;
+		if (g) {
+			if (g.style) self.gaugeOptions.style(g.style);
+			if (g.min !== undefined && g.min !== null && g.min !== '') self.gaugeOptions.min(g.min);
+			if (g.max !== undefined && g.max !== null && g.max !== '') self.gaugeOptions.max(g.max);
+			self.gaugeOptions.showPercent(g.showPercent === true);
+		}
+		var f = reportSettings.funnelOptions;
+		if (f) {
+			if (f.sort) self.funnelOptions.sort(f.sort);
+			self.funnelOptions.showPercent(f.showPercent === true);
+		}
+	};
 	self.DefaultPageSize = ko.observable(30);
+	// Keeps a saved size that isn't one of the standard choices
+	self.DefaultPageSizeOptions = ko.pureComputed(function () {
+		var size = parseInt(self.DefaultPageSize());
+		var list = [1, 10, 30, 50, 100, 150, 200, 500, 1000];
+		return size && list.indexOf(size) < 0 ? _.sortBy(list.concat([size])) : list;
+	});
 	self.FilterGroups = ko.observableArray();
 	self.PivotColumns = ko.observable();
 	self.PivotColumnsWidth = ko.observable();
@@ -2759,12 +2863,12 @@ var reportViewModel = function (options) {
 		self.DrawChart();
 	}
 	self.removeZoomDashboard = function () {
-		const grid = document.querySelector('.grid-stack');
+		const grid = document.querySelector('.grid-stack:not(.dash-preview-grid)');
 		if (grid) grid.style.transform = 'none';
 	};
 
 	self.applyZoomDashboard = function () {
-		const grid = document.querySelector('.grid-stack');
+		const grid = document.querySelector('.grid-stack:not(.dash-preview-grid)');
 		if (grid) {
 			grid.style.transform = `scale(0.9)`;
 			grid.style.transformOrigin = 'top center';
@@ -2786,12 +2890,16 @@ var reportViewModel = function (options) {
 	self.designingHeader = ko.observable(false);
 	self.headerDesigner = new headerDesigner({
 		apiUrl: options.apiUrl,
-		isExpanded: self.isExpanded
+		isExpanded: self.isExpanded,
+		isAdmin: function () { return self.adminMode(); },
+		userClientId: options.userSettings ? options.userSettings.clientId : ''
 	});
 	self.designingFooter = ko.observable(false);
 	self.footerDesigner = new footerDesigner({
 		apiUrl: options.apiUrl,
-		isExpanded: self.isExpanded
+		isExpanded: self.isExpanded,
+		isAdmin: function () { return self.adminMode(); },
+		userClientId: options.userSettings ? options.userSettings.clientId : ''
 	});
 	self.dateFormatMappings = {
 		'United States': 'mm/dd/yy',
@@ -3183,6 +3291,13 @@ var reportViewModel = function (options) {
 	self.currentSql = ko.observable();
 	self.currentConnectKey = ko.observable();
 	self.adminMode = ko.observable(false);
+	// Permissions granted without Admin Mode (Users & Access page). They only show the matching options;
+	// the server checks every one of them again, limited to the user's own Client Id.
+	self.permissions = ko.observableArray((options.userSettings && options.userSettings.permissions) || []);
+	self.hasPermission = function (key) { return self.permissions().indexOf(key) >= 0; };
+	self.canManageAccess = ko.pureComputed(function () { return self.adminMode() || self.hasPermission('ManageAccess'); });
+	self.canManageHeaderFooter = ko.pureComputed(function () { return self.adminMode() || self.hasPermission('ManageHeaderFooter'); });
+	self.canViewSql = ko.pureComputed(function () { return self.adminMode() || self.hasPermission('ViewSql'); });
 	self.allExpanded = ko.observable(false);
 	self.pager.currentPage(1);
 
@@ -3381,6 +3496,52 @@ var reportViewModel = function (options) {
 	self.aiConversationHistory = [];
 	self.aiReportApplied = ko.observable(false);
 
+	// the selected table, or else the one with the most to show: a number, a category and a date
+	self.aiFocusTable = ko.pureComputed(function () {
+		var focus = self.SelectedTable();
+		if (focus) return aiTableShape(focus, self.ChooseFields().length ? self.ChooseFields() : null);
+		return aiBestTable(self.Tables());
+	});
+	self.aiExampleTable = ko.pureComputed(function () {
+		return (self.aiFocusTable() && self.aiFocusTable().table) || 'Orders';
+	});
+	self.aiQuickPrompts = ko.pureComputed(function () {
+		var shape = self.aiFocusTable();
+		if (!shape || !shape.table) {
+			return [
+				{ icon: 'fa-bar-chart', label: 'Summary report', prompt: 'Build a summary report with a bar chart' },
+				{ icon: 'fa-line-chart', label: 'Trend analysis', prompt: 'Show me a trend line chart of data over time' },
+				{ icon: 'fa-tachometer', label: 'KPI widget', prompt: 'Create a KPI dashboard widget showing a key metric' }
+			];
+		}
+		var t = shape.table, prompts = [];
+		if (shape.number && shape.category) prompts.push({ icon: 'fa-bar-chart', label: shape.number + ' by ' + shape.category, prompt: 'Show total ' + shape.number + ' by ' + shape.category + ' from the ' + t + ' table as a bar chart' });
+		if (shape.number && shape.date) prompts.push({ icon: 'fa-line-chart', label: shape.number + ' over time', prompt: 'Show total ' + shape.number + ' by month using ' + shape.date + ' from the ' + t + ' table as a line chart' });
+		if (shape.number && shape.category) prompts.push({ icon: 'fa-list-ol', label: 'Top 10 ' + shape.category, prompt: 'Show the top 10 ' + shape.category + ' by total ' + shape.number + ' from the ' + t + ' table' });
+		if (shape.number) prompts.push({ icon: 'fa-tachometer', label: 'Total ' + shape.number, prompt: 'Create a KPI showing total ' + shape.number + ' from the ' + t + ' table' });
+		if (!shape.number && shape.category) prompts.push({ icon: 'fa-pie-chart', label: t + ' by ' + shape.category, prompt: 'Show the count of ' + t + ' by ' + shape.category + ' as a pie chart' });
+		if (!shape.number && shape.date) prompts.push({ icon: 'fa-line-chart', label: t + ' over time', prompt: 'Show the count of ' + t + ' by month using ' + shape.date + ' as a line chart' });
+		prompts.push({ icon: 'fa-table', label: 'List of ' + t, prompt: 'Build a list report of the ' + t + ' table' });
+		return prompts.slice(0, 4);
+	});
+	self.aiFollowUpPrompts = ko.pureComputed(function () {
+		var shape = aiTableShape({}, self.SelectedFields());
+		var prompts = [];
+		if (shape.date) {
+			prompts.push({ label: '+ Filter this year', prompt: 'Add a filter for this year on ' + shape.date });
+			prompts.push({ label: 'By month', prompt: 'Break it down by month using ' + shape.date });
+		}
+		if (shape.number && shape.category) prompts.push({ label: 'Top 10', prompt: 'Show only the top 10 ' + shape.category + ' by ' + shape.number });
+		prompts.push(self.ReportType() === 'List'
+			? { label: 'As a bar chart', prompt: 'Change to a bar chart' }
+			: { label: 'Change chart type', prompt: 'Change to a different chart type that fits this data better' });
+		return prompts;
+	});
+	self.runAiPrompt = function (p) {
+		self.aiAssistantInput(p.prompt);
+		self.sendAiAssistantMessage();
+	};
+
 	self.hasAiConfigured = ko.computed(function () {
 		if (self.appSettings.aiEnabled) {
 			var enabled = ko.isObservable(self.appSettings.aiEnabled) ? self.appSettings.aiEnabled() : self.appSettings.aiEnabled;
@@ -3512,7 +3673,8 @@ var reportViewModel = function (options) {
 
 	// ── Apply AI actions by driving existing UI functions ──
 	// Fields go through loadTableFields → setupField — the exact same path as manual use.
-	self.applyAiActions = function (actions) {
+	self.applyAiActions = function (actions, runOpts) {
+		var applied = $.Deferred();
 		try {
 			console.log('AI: applying actions:', JSON.stringify(actions));
 
@@ -3554,7 +3716,7 @@ var reportViewModel = function (options) {
 					if (tableIndex >= tableNames.length) {
 						console.log('AI: all tables processed, SelectedFields count:', self.SelectedFields().length);
 						// All tables processed — now apply report type, filters, settings, and run
-						self._applyAiPostFields(actions);
+						self._applyAiPostFields(actions, runOpts, applied);
 						return;
 					}
 
@@ -3663,7 +3825,7 @@ var reportViewModel = function (options) {
 				processNextTable();
 			} else {
 				// No new fields — just apply type/filters/settings changes
-				self._applyAiPostFields(actions);
+				self._applyAiPostFields(actions, runOpts, applied);
 			}
 
 		} catch (e) {
@@ -3672,11 +3834,13 @@ var reportViewModel = function (options) {
 				role: 'assistant',
 				content: 'Had trouble applying the changes to the designer. Error: ' + e.message
 			});
+			applied.reject(e);
 		}
+		return applied.promise();
 	};
 
 	// ── Apply report type, filters, settings after fields are loaded ──
-	self._applyAiPostFields = function (actions) {
+	self._applyAiPostFields = function (actions, runOpts, applied) {
 		try {
 			// Set report type
 			if (actions.reportType) {
@@ -3868,6 +4032,10 @@ var reportViewModel = function (options) {
 			}
 
 			self.aiReportApplied(true);
+			if (runOpts && runOpts.noRun) {
+				if (applied) applied.resolve();
+				return;
+			}
 
 			// Auto-run the report so user sees results immediately
 			// For Html reports, delay to let the template get applied first
@@ -3881,9 +4049,11 @@ var reportViewModel = function (options) {
 			}
 
 			toastr.success('AI has updated your report');
+			if (applied) applied.resolve();
 
 		} catch (e) {
 			console.error('Error in _applyAiPostFields:', e);
+			if (applied) applied.reject(e);
 		}
 	};
 
@@ -3993,6 +4163,8 @@ var reportViewModel = function (options) {
 	var _svgTreemap = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="110" height="65" rx="2" fill="#0d6efd"/><rect x="125" y="10" width="65" height="35" rx="2" fill="#6ea8fe"/><rect x="125" y="50" width="65" height="25" rx="2" fill="#3d8bfd"/><rect x="10" y="80" width="70" height="30" rx="2" fill="#9ec5fe"/><rect x="85" y="80" width="50" height="30" rx="2" fill="#0a58ca"/><rect x="140" y="80" width="50" height="30" rx="2" fill="#6ea8fe" opacity="0.7"/><text x="50" y="48" font-size="9" fill="white" text-anchor="middle">Product A</text><text x="157" y="32" font-size="7" fill="white" text-anchor="middle">Product B</text></svg>';
 	var _svgScatter = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><line x1="20" y1="105" x2="185" y2="105" stroke="#adb5bd" stroke-width="1"/><line x1="20" y1="10" x2="20" y2="105" stroke="#adb5bd" stroke-width="1"/><circle cx="40" cy="80" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="60" cy="65" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="55" cy="75" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="85" cy="50" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="100" cy="40" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="95" cy="55" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="120" cy="35" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="140" cy="25" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="130" cy="45" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="160" cy="20" r="4" fill="#0d6efd" opacity="0.7"/><circle cx="75" cy="60" r="4" fill="#0d6efd" opacity="0.7"/><line x1="35" y1="85" x2="165" y2="18" stroke="#dc3545" stroke-width="1" stroke-dasharray="4"/></svg>';
 	var _svgGauge = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><path d="M40,90 A60,60 0 0,1 160,90" fill="none" stroke="#e9ecef" stroke-width="14" stroke-linecap="round"/><path d="M40,90 A60,60 0 0,1 136,42" fill="none" stroke="#198754" stroke-width="14" stroke-linecap="round"/><text x="100" y="85" font-size="22" font-weight="bold" fill="#495057" text-anchor="middle">73%</text><text x="100" y="100" font-size="8" fill="#6c757d" text-anchor="middle">Performance</text></svg>';
+	var _svgHalfGauge = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><path d="M40,95 A60,60 0 0,1 160,95" fill="none" stroke="#e9ecef" stroke-width="16" stroke-linecap="round"/><path d="M40,95 A60,60 0 0,1 142,53" fill="none" stroke="#0d6efd" stroke-width="16" stroke-linecap="round"/><text x="100" y="92" font-size="20" font-weight="bold" text-anchor="middle" fill="#333">72%</text></svg>';
+	var _svgProgressBar = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><text x="20" y="45" font-size="18" font-weight="bold" fill="#333">72%</text><rect x="20" y="58" width="160" height="18" rx="9" fill="#e9ecef"/><rect x="20" y="58" width="115" height="18" rx="9" fill="#0d6efd"/><text x="180" y="95" font-size="10" text-anchor="end" fill="#888">of 100</text></svg>';
 	var _svgFunnel = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><polygon points="20,15 180,15 170,35 30,35" fill="#0d6efd"/><polygon points="35,40 165,40 150,60 50,60" fill="#3d8bfd"/><polygon points="55,65 145,65 135,85 65,85" fill="#6ea8fe"/><polygon points="70,90 130,90 120,110 80,110" fill="#9ec5fe"/><text x="100" y="28" font-size="8" fill="white" text-anchor="middle">Leads: 1000</text><text x="100" y="53" font-size="8" fill="white" text-anchor="middle">Qualified: 450</text><text x="100" y="78" font-size="8" fill="white" text-anchor="middle">Proposals: 180</text><text x="100" y="103" font-size="7" fill="#0d6efd" text-anchor="middle">Won: 45</text></svg>';
 	var _svgRadar = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><polygon points="100,20 155,45 145,90 55,90 45,45" fill="none" stroke="#dee2e6" stroke-width="0.5"/><polygon points="100,35 140,52 133,82 67,82 60,52" fill="none" stroke="#dee2e6" stroke-width="0.5"/><polygon points="100,50 125,60 120,75 80,75 75,60" fill="none" stroke="#dee2e6" stroke-width="0.5"/><polygon points="100,28 148,50 125,88 60,78 52,42" fill="#0d6efd" opacity="0.2" stroke="#0d6efd" stroke-width="1.5"/><circle cx="100" cy="28" r="2.5" fill="#0d6efd"/><circle cx="148" cy="50" r="2.5" fill="#0d6efd"/><circle cx="125" cy="88" r="2.5" fill="#0d6efd"/><circle cx="60" cy="78" r="2.5" fill="#0d6efd"/><circle cx="52" cy="42" r="2.5" fill="#0d6efd"/></svg>';
 	var _svgWaterfall = '<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="25" width="24" height="80" rx="2" fill="#0d6efd"/><rect x="48" y="25" width="24" height="30" rx="2" fill="#198754"/><line x1="48" y1="55" x2="72" y2="55" stroke="#adb5bd" stroke-width="0.5" stroke-dasharray="2"/><rect x="81" y="35" width="24" height="20" rx="2" fill="#198754"/><rect x="114" y="55" width="24" height="25" rx="2" fill="#dc3545"/><rect x="147" y="20" width="24" height="85" rx="2" fill="#0d6efd"/><line x1="10" y1="107" x2="180" y2="107" stroke="#adb5bd" stroke-width="1"/></svg>';
@@ -4094,15 +4266,28 @@ var reportViewModel = function (options) {
 			bestFor: 'Price vs quantity, age vs income, any two-variable correlation',
 			needs: '2 numeric fields (one for each axis)',
 			svg: _svgScatter },
-		{ category: 'Advanced', id: 'Gauge', name: 'Gauge', icon: 'fa-tachometer', desc: 'Single value against a target range', available: false,
-			detail: 'A speedometer-style gauge showing a single value against min/max ranges. Great for KPI dashboards with targets.',
+		{ category: 'Advanced', id: 'Gauge', name: 'Gauge', icon: 'fa-tachometer', desc: 'Single value against a target range', available: true,
+			detail: 'A speedometer-style gauge showing a single value between a min and max. Switch the style to Half Circle, Progress Ring or Progress Bar in the chart options.',
 			bestFor: 'Achievement vs target, system health %, completion rate',
-			needs: '1 numeric field with aggregate + configured min/max range',
-			svg: _svgGauge },
-		{ category: 'Advanced', id: 'Funnel', name: 'Funnel', icon: 'fa-filter', desc: 'Sequential stages with drop-off', available: false,
+			needs: '1 numeric field with aggregate. Add a 2nd numeric field to use it as the target (max), otherwise set Min/Max in the chart options.',
+			svg: _svgGauge,
+			modifier: function () { self.setReportType('Gauge'); self.gaugeOptions.style('gauge'); } },
+		{ category: 'Advanced', id: 'Gauge-half', name: 'Half Circle Gauge', icon: 'fa-adjust', desc: 'Progress toward a target on a half circle', available: true,
+			detail: 'A half circle that fills up as the value approaches the target, with the value in the middle. Great for dashboards.',
+			bestFor: 'Sales vs quota, percent complete, goal tracking',
+			needs: '1 numeric field with aggregate. Add a 2nd numeric field to use it as the target (max), otherwise set Min/Max in the chart options.',
+			svg: _svgHalfGauge,
+			modifier: function () { self.setReportType('Gauge'); self.gaugeOptions.style('half'); } },
+		{ category: 'Advanced', id: 'Gauge-bar', name: 'Progress Bar', icon: 'fa-tasks', desc: 'Progress toward a target as a bar', available: true,
+			detail: 'A horizontal bar that fills up as the value approaches the target. Compact, and reads well in small dashboard widgets.',
+			bestFor: 'Percent complete, budget used, tickets closed vs target',
+			needs: '1 numeric field with aggregate. Add a 2nd numeric field to use it as the target (max), otherwise set Min/Max in the chart options.',
+			svg: _svgProgressBar,
+			modifier: function () { self.setReportType('Gauge'); self.gaugeOptions.style('bar'); } },
+		{ category: 'Advanced', id: 'Funnel', name: 'Funnel', icon: 'fa-filter', desc: 'Sequential stages with drop-off', available: true,
 			detail: 'Shows values decreasing through stages of a process. Each stage is narrower than the previous, showing conversion/drop-off.',
 			bestFor: 'Sales pipeline, conversion funnel, recruitment process stages',
-			needs: '1 categorical field (stages) + 1 numeric field (values), sorted by stage order',
+			needs: '1 categorical field (stages) + 1 numeric field with aggregate. Sorted largest first by default, or keep the report order in the chart options.',
 			svg: _svgFunnel },
 		{ category: 'Advanced', id: 'Waterfall', name: 'Waterfall', icon: 'fa-sort-amount-desc', desc: 'Show cumulative additions/subtractions', available: false,
 			detail: 'Shows how an initial value is affected by a series of positive and negative changes, ending at a final value.',
@@ -4129,6 +4314,25 @@ var reportViewModel = function (options) {
 		});
 		return cats;
 	});
+
+	var stripChartTypes = ['List', 'Summary', 'Bar', 'Pie', 'Line', 'Combo', 'Html', 'Map', 'Single'];
+	var shortChartNames = { 'HeatMap': 'Heat Map', 'Radar': 'Radar', 'Polar': 'Polar', 'Gauge-half': 'Half Gauge', 'Gauge-bar': 'Progress' };
+	self.extraChartType = ko.pureComputed(function () {
+		var type = self.ReportType();
+		if (!type || stripChartTypes.indexOf(type) >= 0 || type.indexOf('Map') === 0) return null;
+		var id = type;
+		if (type === 'Gauge') {
+			var style = self.gaugeOptions.style();
+			id = style === 'half' ? 'Gauge-half' : (style === 'bar' ? 'Gauge-bar' : 'Gauge');
+		}
+		var chart = _.find(self.moreChartTypes, { id: id }) || _.find(self.moreChartTypes, { id: type });
+		return chart ? { id: chart.id, icon: chart.icon, name: shortChartNames[chart.id] || chart.name, title: chart.name, modifier: chart.modifier } : null;
+	});
+	self.selectExtraChartType = function () {
+		var chart = self.extraChartType();
+		if (!chart) return;
+		if (chart.modifier) chart.modifier(); else self.setReportType(chart.id);
+	};
 
 	self.getChartsForCategory = function (category) {
 		return _.filter(self.moreChartTypes, { category: category });
@@ -4510,6 +4714,10 @@ var reportViewModel = function (options) {
 		self.manageAccess.setupList(self.manageAccess.deleteOnlyUserRoles, folder.DeleteOnlyUserRoles || '');
 		$('#manage-access-modal').modal('show');
 	};
+	var accessSaveError = function (x) {
+		var r = x && x.responseJSON;
+		toastr.error((r && (r.Message || r.message || r.result)) || 'Failed to save access changes');
+	};
 	self.saveFolderAccessModal = function (folder) {
 		var folderToSave = {
 			Id: folder.Id,
@@ -4527,9 +4735,18 @@ var reportViewModel = function (options) {
 		return ajaxcall({
 			url: options.apiUrl,
 			data: {
-				method: "/ReportApi/SaveFolderData",
+				method: "/ReportApi/SaveFolderAccess",
 				model: JSON.stringify({
-					folderData: JSON.stringify(folderToSave),
+					folderId: folder.Id,
+					accessJson: JSON.stringify({
+						clientId: folderToSave.ClientId,
+						userId: folderToSave.UserId,
+						userRole: folderToSave.UserRoles,
+						viewOnlyUserId: folderToSave.ViewOnlyUserId,
+						viewOnlyUserRole: folderToSave.ViewOnlyUserRoles,
+						deleteOnlyUserId: folderToSave.DeleteOnlyUserId,
+						deleteOnlyUserRole: folderToSave.DeleteOnlyUserRoles
+					}),
 					adminMode: self.adminMode()
 				})
 			}
@@ -4538,7 +4755,20 @@ var reportViewModel = function (options) {
 			_.extend(folder, _.pick(folderToSave, 'ClientId', 'UserId', 'UserRoles', 'ViewOnlyUserId', 'ViewOnlyUserRoles', 'DeleteOnlyUserId', 'DeleteOnlyUserRoles'));
 			$('#manage-access-modal').modal('hide');
 			self.loadFolders();
-		}).fail(function () { toastr.error('Failed to save access changes'); });
+		}).fail(function (x) {
+			// An older Api without SaveFolderAccess: admins save the way they did before
+			if (x && x.status >= 500 && self.adminMode()) {
+				return ajaxcall({
+					url: options.apiUrl,
+					data: { method: "/ReportApi/SaveFolderData", model: JSON.stringify({ folderData: JSON.stringify(folderToSave), adminMode: true }) }
+				}).done(function () {
+					toastr.success('Access changes saved');
+					$('#manage-access-modal').modal('hide');
+					self.loadFolders();
+				}).fail(accessSaveError);
+			}
+			accessSaveError(x);
+		});
 	};
 	self.saveAccessModal = function () {
 		if (self.accessModalFolder()) return self.saveFolderAccessModal(self.accessModalFolder());
@@ -4558,7 +4788,8 @@ var reportViewModel = function (options) {
 						UserRoles: self.manageAccess.getAsList(self.manageAccess.userRoles),
 						ViewOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.viewOnlyUserRoles),
 						DeleteOnlyUserRoles: self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles)
-					})
+					}),
+					adminMode: self.adminMode()
 				})
 			}
 		}).done(function () {
@@ -4573,7 +4804,7 @@ var reportViewModel = function (options) {
 			report.deleteOnlyUserRole = self.manageAccess.getAsList(self.manageAccess.deleteOnlyUserRoles);
 			$('#manage-access-modal').modal('hide');
 			self.LoadAllSavedReports(true);
-		}).fail(function () { toastr.error('Failed to save access changes'); });
+		}).fail(accessSaveError);
 	};
 
 	self.pager.currentPage.subscribe(function () {
@@ -4860,7 +5091,7 @@ var reportViewModel = function (options) {
 		});
 
 		// Load sub report immediately — don't wait for save
-		self.LoadReport(item.reportId, false, '', true).done(function () {
+		self.LoadReport(item.reportId, false, '', true, undefined, true).done(function () {
 			self._editingSubReportLoading(false);
 			self.editingSubReportParentId(parentId);
 			self.editingSubReportParentName(parentName);
@@ -4887,7 +5118,7 @@ var reportViewModel = function (options) {
 				});
 			} else {
 				// Came from Edit button in designer — stay in editor modal
-				self.LoadReport(parentId, false, '', true).done(function () {
+				self.LoadReport(parentId, false, '', true, undefined, true).done(function () {
 					self.SaveReport(true);
 					self.ReportMode("generate");
 					if (options.reportWizard) options.reportWizard.modal('show');
@@ -6278,6 +6509,7 @@ var reportViewModel = function (options) {
 		self.lineChartArea(false);
 		self.barChartStacked(false);
 		self.comboChartType('bars');
+		self.resetChartTypeOptions();
 		self.heatMapOptions.showMarker(false);
 		self.selectedStyle('default');
 		self.reportHtml('');
@@ -7518,6 +7750,8 @@ var reportViewModel = function (options) {
 				lineChartArea: self.lineChartArea(),
 				comboChartType: self.comboChartType(),
 				heatMapOptions: ko.toJS(self.heatMapOptions),
+				gaugeOptions: ko.toJS(self.gaugeOptions),
+				funnelOptions: ko.toJS(self.funnelOptions),
 				DefaultPageSize: self.DefaultPageSize() || 30,
 				noHeaderRow: self.noHeaderRow(),
 				noDashboardBorders: self.noDashboardBorders(),
@@ -7700,14 +7934,43 @@ var reportViewModel = function (options) {
 			return;
 		}
 
+		var reportData = self.BuildReportData();
+		// no filters left means back to the report's filters
+		if (self.userIdForFilter && !self.useStoredProc() && !_.some(reportData.Filters, function (g) { return g.Filters && g.Filters.length; })) {
+			self.resetToReportFilters();
+			return;
+		}
+
 		self.pager.currentPage(1);
-		ajaxcall({
+		saveUserFilters(reportData).done(function () {
+			if (self.userIdForFilter) self.usingUserFilters(true);
+			self.ExecuteReport();
+		});
+	}
+
+	// Edit from the run view: the designer saves the report's filters, so show those, not the user's
+	self.editLoadedReport = function () {
+		if (!self.userIdForFilter || self.usingUserFilters() === false || !self.ReportID()) {
+			self.SaveReport(true);
+			return true;
+		}
+		self._skipPopulateReportRun = true;
+		self.LoadReport(self.ReportID(), false, '', false, undefined, true).always(function () {
+			self._skipPopulateReportRun = false;
+		}).done(function () {
+			self.SaveReport(true);
+		});
+		return true;
+	};
+
+	var saveUserFilters = function (reportData) {
+		return ajaxcall({
 			url: options.runReportApiUrl,
 			type: "POST",
 			data: JSON.stringify({
 				method: "/ReportApi/SaveReportFilter",
 				SaveReport: false,
-				ReportJson: JSON.stringify(self.BuildReportData()),
+				ReportJson: JSON.stringify(reportData),
 				adminMode: self.adminMode(),
 				userIdForFilter: self.userIdForFilter,
 				SubTotalMode: false,
@@ -7715,11 +7978,22 @@ var reportViewModel = function (options) {
 				pivotColumn: '',
 				pivotFunction: ''
 			})
-		}).done(function () {
-			self.ExecuteReport();
 		});
+	};
 
-	}
+	self.resetToReportFilters = function () {
+		var reportData = self.BuildReportData();
+		reportData.Filters = [];
+		self.pager.currentPage(1);
+		saveUserFilters(reportData).done(function () {
+			self._skipPopulateReportRun = true;
+			self.LoadReport(self.ReportID(), true, '').always(function () {
+				self._skipPopulateReportRun = false;
+			}).done(function () {
+				self.ExecuteReport();
+			});
+		});
+	};
 
 	self.copySqlToClipboard = function (button) {
 		var sqlText = document.getElementById('reportSqlCode').innerText;
@@ -7761,7 +8035,7 @@ var reportViewModel = function (options) {
 			}).done(function (linkedReport) {
 				if (linkedReport.d) { linkedReport = linkedReport.d; }
 				if (linkedReport.result) { linkedReport = linkedReport.result; }
-				self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, '', true);
+				self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, '');
 			}).always(function () { _resetSaving(); });
 		}
 		var saveAlertFlag = false;
@@ -9010,6 +9284,7 @@ var reportViewModel = function (options) {
 		if (self.ReportType() == 'Single' && self.kpiSettings() && Object.keys(self.kpiSettings()).length > 0) {
 			result.ReportData.FontSize = ko.observable(self.kpiSettings()?.fontSize() + "px");
 			result.ReportData.Alignment = ko.observable(self.kpiSettings()?.alignment());
+			result.ReportData.VerticalAlignment = ko.observable(self.kpiSettings()?.verticalAlignment());
 			result.ReportData.FontColor = ko.observable(self.kpiSettings()?.fontColor());
 			result.ReportData.BackColor = ko.observable(self.kpiSettings()?.backColor());
 			result.ReportData.PositiveColor = ko.observable(self.kpiSettings()?.positiveColor());
@@ -9736,7 +10011,14 @@ var reportViewModel = function (options) {
 		
 		var pivotData = self.preparePivotData();
 		var reportData = pivotData.pivotColumn != null ? self.BuildReportData() : '';
-		if (!isPageSizeClick) self.pager.pageSize(self.DefaultPageSize());
+		if (!isPageSizeClick) {
+			// A saved size missing from the dropdown would otherwise be reset by the pager's select
+			var _defaultSize = parseInt(self.DefaultPageSize()) || 30;
+			if (self.pager.pageSizeOptions.indexOf(_defaultSize) < 0) {
+				self.pager.pageSizeOptions(_.sortBy(self.pager.pageSizeOptions().concat([_defaultSize])));
+			}
+			self.pager.pageSize(_defaultSize);
+		}
 		return ajaxcall({
 			url: options.execReportUrl,
 			type: "POST",
@@ -9745,7 +10027,7 @@ var reportViewModel = function (options) {
 				connectKey: connectKey,
 				reportType: self.ReportType(),
 				pageNumber: self.pager.currentPage(),
-				pageSize: isPageSizeClick ? self.pager.pageSize() : self.DefaultPageSize(),
+				pageSize: isPageSizeClick ? self.pager.pageSize() : (parseInt(self.DefaultPageSize()) || 30),
 				sortBy: self.pager.sortColumn() || '',
 				desc: self.pager.sortDescending() || false,
 				reportSeries: reportSeries || "",
@@ -9871,6 +10153,7 @@ var reportViewModel = function (options) {
 			document.querySelector('.report-inner').style.transform = `scale(${self.zoomLevel()})`;
 			document.querySelector('.report-inner').style.transformOrigin = "top center";
 		}
+		document.documentElement.style.setProperty('--dr-report-zoom', self.zoomLevel());
 	}
 
 	if (self.ReportMode() != 'subreport') {
@@ -9895,7 +10178,7 @@ var reportViewModel = function (options) {
 		if (heatPoints && heatPoints.length > 0) {
 			const latLngs = heatPoints.map(p => L.latLng(p[0], p[1]));
 			const bounds = L.latLngBounds(latLngs);
-			map.fitBounds(bounds, { padding: [20, 20] });
+			map.fitBounds(bounds, { padding: [20, 20], maxZoom: 12 }); // one town shouldn't open at street level
 		} 
 
 		const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -9919,15 +10202,29 @@ var reportViewModel = function (options) {
 			1.0: opts.gradient3()  
 		};
 
-		const scaledPoints = heatPoints.map(p => [p[0], p[1], p[2] * 100]);
-		const maxPlotValue = Math.max(...heatPoints.map(p => p[2])); 
+		const maxPlotValue = Math.max(...heatPoints.map(p => p[2]));
 
-		L.heatLayer(scaledPoints, {
-			radius: 50,
-			blur: 15, 
-			max: maxPlotValue,
+		// Square root scale, so a few very large values don't wash out everything else
+		const weighted = heatPoints.map(p => [p[0], p[1], Math.sqrt(Math.abs(p[2]) / (maxPlotValue || 1))]);
+		// Point size follows how wide the data appears, so tile and expanded views match
+		const heatBounds = L.latLngBounds(heatPoints.map(p => L.latLng(p[0], p[1])));
+		const heatRadius = () => {
+			const span = map.latLngToContainerPoint(heatBounds.getNorthEast()).x - map.latLngToContainerPoint(heatBounds.getSouthWest()).x;
+			return Math.max(18, Math.min(45, span / 23));
+		};
+
+		// maxZoom 0 stops leaflet.heat fading values by zoom level
+		const heat = L.heatLayer(weighted, {
+			radius: heatRadius(),
+			blur: heatRadius(),
+			minOpacity: 0.3,
+			max: 1,
+			maxZoom: 0,
 			gradient: gradient
 		}).addTo(map);
+
+		// Keep each point the same size on the ground as the map zooms
+		map.on('zoomend', () => heat.setOptions({ radius: heatRadius(), blur: heatRadius() }));
 
 		if (opts.showMarker() && markers) {			
 			markers.addTo(map);
@@ -10054,7 +10351,7 @@ var reportViewModel = function (options) {
 		const intensities = heatPoints.map(p => p[2]);
 		const minValue = Math.min(...intensities);
 		const maxValue = Math.max(...intensities);
-		const midValue = (minValue + maxValue) / 2;
+		const midValue = maxValue * 0.25; // halfway along the square root scale
 		const legend = L.control({ position: 'bottomleft' });
 
 		legend.onAdd = function (map) {
@@ -10102,6 +10399,7 @@ var reportViewModel = function (options) {
 	self.kpiSettings = ko.observable({
 		fontSize: ko.observable(48),
 		alignment: ko.observable("center"),
+		verticalAlignment: ko.observable("top"),
 		fontColor: ko.observable("#000000"),
 		backColor: ko.observable("#fffff"),
 		positiveColor: ko.observable("#28a745"),
@@ -10129,9 +10427,10 @@ var reportViewModel = function (options) {
 	self.updateKpi = function (clear) {
 		if (clear != true) {
 			var result = self.ReportResult().ReportData();
-			if (result) {
+			if (result && result.FontSize) {
 				result.FontSize(self.kpiSettings().fontSize() + "px");
 				result.Alignment(self.kpiSettings().alignment());
+				if (result.VerticalAlignment) result.VerticalAlignment(self.kpiSettings().verticalAlignment());
 				result.FontColor(self.kpiSettings().fontColor());
 				result.BackColor(self.kpiSettings().backColor());
 				result.PositiveColor(self.kpiSettings().positiveColor());
@@ -10146,6 +10445,7 @@ var reportViewModel = function (options) {
 		window.copiedKpiFormatGlobal({
 			fontSize: self.kpiSettings().fontSize(),
 			alignment: self.kpiSettings().alignment(),
+			verticalAlignment: self.kpiSettings().verticalAlignment(),
 			fontColor: self.kpiSettings().fontColor(),
 			backColor: self.kpiSettings().backColor(),
 			positiveColor: self.kpiSettings().positiveColor(),
@@ -10162,6 +10462,7 @@ var reportViewModel = function (options) {
 		if (format) {
 			self.kpiSettings().fontSize(format.fontSize);
 			self.kpiSettings().alignment(format.alignment);
+			self.kpiSettings().verticalAlignment(format.verticalAlignment || "top");
 			self.kpiSettings().fontColor(format.fontColor);
 			self.kpiSettings().backColor(format.backColor);
 			self.kpiSettings().positiveColor(format.positiveColor);
@@ -10182,9 +10483,13 @@ var reportViewModel = function (options) {
 	self.kpiSettings().alignment.subscribe(function (newVal) {
 		self.updateKpi();
 	});
+	self.kpiSettings().verticalAlignment.subscribe(function (newVal) {
+		self.updateKpi();
+	});
 	self.clearKpiSettings = function (clear) {
 		self.kpiSettings().fontSize(48);
 		self.kpiSettings().alignment("center");
+		self.kpiSettings().verticalAlignment("top");
 		self.kpiSettings().fontColor("#000000");//black
 		self.kpiSettings().backColor("#fff");//white
 		self.kpiSettings().positiveColor("#28a745");//green
@@ -10211,6 +10516,7 @@ var reportViewModel = function (options) {
 		showYAxisLabel: true,
 		showSmallValuesOnLabel: false,
 		fillEmptyDates: false,
+		showMapScale: false,
 		annotations : {
 			alwaysOutside: true,
 			textStyle: {
@@ -10437,20 +10743,9 @@ var reportViewModel = function (options) {
 	self.updateChart = function () {
 		self.DrawChart();
 	};
+	// formats only the chart's value axis, not the field itself; next tick so the dropdown's new value is read
 	self.updateYAxisFormat = function () {
-		var fmt = self.chartOptions().yAxisFormat;
-		if (!fmt) return; // "Auto" — don't override field settings
-		var reportData = self.ReportResult() ? self.ReportResult().ReportData() : null;
-		if (!reportData || !reportData.Columns) return;
-		for (var ci = 1; ci < reportData.Columns.length; ci++) {
-			var col = reportData.Columns[ci];
-			if (col.IsNumeric && !col.groupInGraph()) {
-				if (col.fieldFormat && ko.isObservable(col.fieldFormat)) {
-					col.fieldFormat(fmt);
-				}
-				break;
-			}
-		}
+		setTimeout(self.DrawChart, 0);
 	};
 	self.updateLegend = function (selectedValue) {
 		self.chartOptions().legendPosition = selectedValue;
@@ -10471,8 +10766,13 @@ var reportViewModel = function (options) {
 				chartDiv = modal.querySelector('[id="' + chartDivId + '"]');
 			}
 		}
+		if (!chartDiv && options.chartContainer) {
+			var scope = document.querySelector(options.chartContainer);
+			chartDiv = scope ? scope.querySelector('[id="' + chartDivId + '"]') : null;
+			if (!chartDiv) return;
+		}
 		if (!chartDiv) {
-			chartDiv = document.getElementById(chartDivId);
+			chartDiv = _.find(document.querySelectorAll('[id="' + chartDivId + '"]'), function (el) { return !el.closest('[data-chart-scope]'); });
 		}
 		if (!chartDiv || !reportData) return;
 		if (chartDiv._echart) {
@@ -10510,7 +10810,7 @@ var reportViewModel = function (options) {
 			chartHeight = event.clientY - chartDiv.getBoundingClientRect().top;
 			chartWidth = Math.max(100, chartWidth);
 			chartHeight = Math.max(100, chartHeight);
-			var el = document.getElementById('chart_div_' + self.ReportID());
+			var el = chartDiv;
 			el.style.width = chartWidth + 'px';
 			el.style.height = chartHeight + 'px';
 			if (el._echart) el._echart.resize();
@@ -10571,8 +10871,12 @@ var reportViewModel = function (options) {
 			var chartContainer = (parentDiv && parentDiv.children[0]) ? parentDiv.children[0].children[0] : null;
 			if (chartContainer) {
 				chartContainer.addEventListener('pointerdown', handlePointerDown);
-				if (options.arrangeDashboard && options.arrangeDashboard() == false) return;
+				// Arrange mode is checked on each move: charts drawn before it was turned on (like maps) still resize
 				chartContainer.addEventListener('pointermove', function (e) {
+					if (options.arrangeDashboard && options.arrangeDashboard() == false) {
+						isNearEdge = false;
+						return;
+					}
 					var rect = chartContainer.getBoundingClientRect();
 					var nearRight = (rect.right - e.clientX) <= edgeThreshold;
 					var nearBottom = (rect.bottom - e.clientY) <= edgeThreshold;
@@ -10606,6 +10910,14 @@ var reportViewModel = function (options) {
 		if (self.ReportType() === "HeatMap") {
 			if (chartDiv.offsetHeight === 0) {
 				chartDiv.style.height = '400px';
+			}
+			if (self.isExpanded()) {
+				if (chartDiv._collapsedHeight === undefined) chartDiv._collapsedHeight = chartDiv.style.height;
+				chartDiv.style.width = '100%';
+				chartDiv.style.height = Math.max(400, window.innerHeight - chartDiv.getBoundingClientRect().top - 40) + 'px';
+			} else if (chartDiv._collapsedHeight !== undefined) {
+				chartDiv.style.height = chartDiv._collapsedHeight;
+				chartDiv._collapsedHeight = undefined;
 			}
 			if (chartDiv._leaflet_map) {
 				chartDiv._leaflet_map.remove();
@@ -10730,12 +11042,6 @@ var reportViewModel = function (options) {
 						type: 'number',
 						name: e.fieldLabel() || e.ColumnName
 					});
-					if (self.chartOptions().showSmallValuesOnLabel) {
-						data.columns.push({
-							type: 'annotation',
-							name: e.fieldLabel() || e.ColumnName
-						});
-					}
 				}
 			});
 		}
@@ -10787,9 +11093,6 @@ var reportViewModel = function (options) {
 					}
 				} else if ((isNumeric || self.ReportType() === 'Treemap') && !column.groupInGraph()) {
 					itemArray.push(value);
-					if (self.chartOptions().showSmallValuesOnLabel) {
-						itemArray.push(value.toString());
-					}
 				}
 			});
 
@@ -10907,7 +11210,7 @@ var reportViewModel = function (options) {
 
 		var yAxisFormatter = null;
 
-		// Auto-detect y-axis format from the first value column's fieldFormat
+		// Y-Axis Format from the chart settings, or Auto: the first value column's own format
 		var valueCol = null;
 		for (var ci = 1; ci < reportData.Columns.length; ci++) {
 			if (reportData.Columns[ci].IsNumeric && !reportData.Columns[ci].groupInGraph()) {
@@ -10915,27 +11218,32 @@ var reportViewModel = function (options) {
 				break;
 			}
 		}
-		if (valueCol) {
-			var vFormat = valueCol.fieldFormat ? valueCol.fieldFormat() : null;
-			var vDecimals = valueCol.decimalPlaces ? valueCol.decimalPlaces() : null;
-			var vCurrency = valueCol.currencyFormat ? valueCol.currencyFormat() : null;
+		if (valueCol || chartOptions.yAxisFormat) {
+			var vFormat = chartOptions.yAxisFormat || (valueCol && valueCol.fieldFormat ? valueCol.fieldFormat() : null);
+			var vDecimals = valueCol && valueCol.decimalPlaces ? valueCol.decimalPlaces() : null;
+			var vCurrency = (valueCol && valueCol.currencyFormat ? valueCol.currencyFormat() : null) || (vFormat === 'Currency' ? '$' : null);
+			var hasDecimals = vDecimals != null && vDecimals !== '';
 
 			if (vFormat === 'Currency' && vCurrency) {
 				yAxisFormatter = function (value) {
-					var dp = (vDecimals != null && vDecimals !== '') ? Number(vDecimals) : 2;
+					var dp = hasDecimals ? Number(vDecimals) : 2;
 					return vCurrency + Number(value).toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
 				};
 			} else if (vFormat === 'Percentage') {
 				yAxisFormatter = function (value) {
-					if (vDecimals != null && vDecimals !== '') {
+					if (hasDecimals) {
 						value = Number(value).toFixed(Number(vDecimals));
 					}
 					return value + '%';
 				};
-			} else if (vFormat === 'Decimal' && vDecimals != null && vDecimals !== '') {
-				var dp = Number(vDecimals);
+			} else if (vFormat === 'Decimal' && (hasDecimals || chartOptions.yAxisFormat === 'Decimal')) {
+				var dp = hasDecimals ? Number(vDecimals) : 2;
 				yAxisFormatter = function (value) {
 					return Number(value).toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
+				};
+			} else if (vFormat === 'Number' && chartOptions.yAxisFormat === 'Number') {
+				yAxisFormatter = function (value) {
+					return Number(value).toLocaleString(undefined, { maximumFractionDigits: hasDecimals ? Number(vDecimals) : 0 });
 				};
 			}
 		}
@@ -11070,7 +11378,8 @@ var reportViewModel = function (options) {
 				geoJsonUrl = GEOJSON_URLS['world'];
 			}
 
-			var colors = self.colorScheme().length ? self.colorScheme() : ['#e0f3f8', '#abd9e9', '#74add1', '#4575b4', '#313695'];
+			// low to high, blue through yellow to red
+			var colors = self.colorScheme().length ? self.colorScheme() : ['#313695', '#4575b4', '#74add1', '#abd9e9', '#e0f3f8', '#ffffbf', '#fee090', '#fdae61', '#f46d43', '#d73027', '#a50026'];
 
 			function renderEChartsMap(registeredMapName) {
 				var mapOption;
@@ -11088,6 +11397,7 @@ var reportViewModel = function (options) {
 						scatterData.push({ name: label, value: [lon, lat, isNaN(val) ? 1 : val] });
 					});
 
+					var maxScatter = Math.max.apply(null, scatterData.map(function (d) { return Math.abs(d.value[2]); }).concat([1]));
 					mapOption = {
 						backgroundColor: chartOptions.backgroundColor || '#fff',
 						title: chartOptions.title ? { text: chartOptions.title, textStyle: { fontSize: chartOptions.fontSize, color: chartOptions.fontColor } } : null,
@@ -11104,7 +11414,7 @@ var reportViewModel = function (options) {
 							type: 'scatter',
 							coordinateSystem: 'geo',
 							data: scatterData,
-							symbolSize: function (val) { return Math.max(6, Math.min(30, Math.sqrt(Math.abs(val[2])) * 3)); },
+							symbolSize: function (val) { return 5 + 21 * Math.sqrt(Math.abs(val[2]) / maxScatter); },
 							itemStyle: { color: colors[3] || '#4575b4', opacity: 0.8 },
 							emphasis: { itemStyle: { color: colors[4] || '#313695' } }
 						}]
@@ -11113,9 +11423,21 @@ var reportViewModel = function (options) {
 					// Choropleth mode — first column is region name, second is value
 					var regionData = [];
 					var minVal = Infinity, maxVal = -Infinity;
+					// common country names in data -> names used by the world map
+					var worldAliases = {
+						'usa': 'United States', 'us': 'United States', 'u.s.': 'United States', 'u.s.a.': 'United States', 'united states of america': 'United States', 'america': 'United States',
+						'uk': 'United Kingdom', 'u.k.': 'United Kingdom', 'great britain': 'United Kingdom', 'britain': 'United Kingdom', 'england': 'United Kingdom',
+						'czech republic': 'Czech Rep.', 'czechia': 'Czech Rep.', 'south korea': 'Korea', 'republic of korea': 'Korea', 'north korea': 'Dem. Rep. Korea',
+						'russian federation': 'Russia', 'viet nam': 'Vietnam', 'laos': 'Lao PDR', 'dominican republic': 'Dominican Rep.',
+						'central african republic': 'Central African Rep.', 'democratic republic of the congo': 'Dem. Rep. Congo', 'dr congo': 'Dem. Rep. Congo',
+						'republic of the congo': 'Congo', 'bosnia and herzegovina': 'Bosnia and Herz.', 'south sudan': 'S. Sudan', 'equatorial guinea': 'Eq. Guinea',
+						'north macedonia': 'Macedonia', 'eswatini': 'Swaziland', 'solomon islands': 'Solomon Is.', 'falkland islands': 'Falkland Is.', 'western sahara': 'W. Sahara',
+						'uae': 'United Arab Emirates', 'holland': 'Netherlands', 'the netherlands': 'Netherlands'
+					};
 					_.forEach(reportData.Rows, function (row) {
 						if (!row.Items || row.Items.length < 2) return;
 						var regionName = row.Items[0].FormattedValue || row.Items[0].Value || '';
+						if (mapName === 'world') regionName = worldAliases[String(regionName).trim().toLowerCase()] || regionName;
 						var val = parseFloat(row.Items[1].Value);
 						if (isNaN(val)) val = 0;
 						if (val < minVal) minVal = val;
@@ -11139,11 +11461,19 @@ var reportViewModel = function (options) {
 							}
 						},
 						visualMap: {
+							show: chartOptions.showMapScale === true,
 							min: minVal,
 							max: maxVal,
-							text: [String(maxVal), String(minVal)],
+							text: ['High', 'Low'],
+							right: 10,
+							bottom: 10,
+							itemWidth: 10,
+							itemHeight: 110,
+							textGap: 6,
+							textStyle: { fontSize: 11, color: chartOptions.fontColor || '#555' },
 							realtime: false,
 							calculable: true,
+							formatter: function (v) { return Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }); },
 							inRange: { color: colors.length >= 2 ? colors : ['#e0f3f8', '#313695'] }
 						},
 						series: [{
@@ -11154,7 +11484,9 @@ var reportViewModel = function (options) {
 							center: geoCenter || undefined,
 							zoom: geoZoom || 1,
 							data: regionData,
-							emphasis: { label: { show: true } }
+							itemStyle: { areaColor: '#eef0f3', borderColor: '#c3c8d0', borderWidth: 0.5 },
+							emphasis: { label: { show: true }, itemStyle: { borderColor: '#555', borderWidth: 1 } },
+							select: { disabled: true }
 						}]
 					};
 				}
@@ -11473,6 +11805,146 @@ var reportViewModel = function (options) {
 			option.grid = null;
 		}
 
+		if (self.ReportType() == 'Gauge') {
+			// Gauge / progress: first numeric field is the value, an optional second numeric field is the target (max)
+			var gaugeCols = [];
+			_.forEach(reportData.Columns, function (col, i) {
+				if (col.IsNumeric && !col.groupInGraph()) gaugeCols.push(i);
+			});
+			var gaugeRow = reportData.Rows && reportData.Rows.length > 0 ? reportData.Rows[0] : null;
+			if (gaugeCols.length === 0 || !gaugeRow) {
+				if (!self.activeDesign()) {
+					toastr.error('Gauge requires a numeric field with an aggregate.');
+				}
+				return;
+			}
+			var gaugeColor = (chartOptions.seriesColors && chartOptions.seriesColors.length)
+				? chartOptions.seriesColors[0]
+				: (self.colorScheme().length > 1 ? self.colorScheme()[1] : '#0d6efd');
+			var gaugeFont = chartOptions.fontFamily || undefined;
+			var gaugeTextColor = chartOptions.fontColor || '#333';
+			var gaugeValueItem = gaugeRow.Items[gaugeCols[0]];
+			var gaugeValue = parseFloat(gaugeValueItem.Value) || 0;
+			var gaugeMin = parseFloat(self.gaugeOptions.min());
+			if (isNaN(gaugeMin)) gaugeMin = 0;
+			var gaugeMax = gaugeCols.length > 1 ? parseFloat(gaugeRow.Items[gaugeCols[1]].Value) : parseFloat(self.gaugeOptions.max());
+			if (isNaN(gaugeMax) || gaugeMax <= gaugeMin) gaugeMax = Math.max(gaugeMin + 1, gaugeValue);
+			var gaugePct = Math.round((gaugeValue - gaugeMin) / (gaugeMax - gaugeMin) * 100);
+			var gaugeValueText = self.gaugeOptions.showPercent() ? gaugePct + '%' : (gaugeValueItem.FormattedValue || String(gaugeValue));
+			var gaugeLabel = reportData.Columns[0].IsNumeric
+				? (reportData.Columns[gaugeCols[0]].fieldLabel() || reportData.Columns[gaugeCols[0]].ColumnName)
+				: (gaugeRow.Items[0].FormattedValue || gaugeRow.Items[0].Value || '');
+			var gaugeMaxText = gaugeCols.length > 1 ? (gaugeRow.Items[gaugeCols[1]].FormattedValue || String(gaugeMax)) : String(gaugeMax);
+			var gaugeTooltip = gaugeLabel + ': ' + (gaugeValueItem.FormattedValue || gaugeValue) + ' / ' + gaugeMaxText;
+			var gaugeStyle = self.gaugeOptions.style() || 'gauge';
+			var gaugeData = Math.min(Math.max(gaugeValue, gaugeMin), gaugeMax);
+
+			if (gaugeStyle === 'bar') {
+				option = {
+					title: {
+						text: gaugeValueText,
+						subtext: gaugeLabel + (self.gaugeOptions.showPercent() ? '' : '  (' + gaugePct + '% of ' + gaugeMaxText + ')'),
+						left: 'center',
+						top: '18%',
+						textStyle: { fontSize: 32, fontWeight: 'bold', fontFamily: gaugeFont, color: gaugeTextColor },
+						subtextStyle: { fontSize: 13, fontFamily: gaugeFont, color: gaugeTextColor }
+					},
+					tooltip: { trigger: 'item', formatter: gaugeTooltip },
+					grid: { left: '8%', right: '8%', top: '50%', bottom: '30%', containLabel: false },
+					xAxis: { type: 'value', min: gaugeMin, max: gaugeMax, show: false },
+					yAxis: { type: 'category', data: [gaugeLabel], show: false },
+					series: [{
+						type: 'bar',
+						data: [gaugeData],
+						barWidth: 28,
+						showBackground: true,
+						backgroundStyle: { color: '#e9ecef', borderRadius: 14 },
+						itemStyle: { color: gaugeColor, borderRadius: 14 }
+					}]
+				};
+			} else {
+				var isHalf = gaugeStyle === 'half', isRing = gaugeStyle === 'ring', isProgress = isHalf || isRing;
+				option = {
+					title: option.title,
+					tooltip: { trigger: 'item', formatter: gaugeTooltip },
+					series: [{
+						type: 'gauge',
+						min: gaugeMin,
+						max: gaugeMax,
+						startAngle: isHalf ? 180 : (isRing ? 90 : 225),
+						endAngle: isHalf ? 0 : (isRing ? -270 : -45),
+						center: isHalf ? ['50%', '70%'] : ['50%', '55%'],
+						radius: isHalf ? '100%' : '85%',
+						progress: { show: true, roundCap: isProgress, width: isProgress ? 24 : 14, itemStyle: { color: gaugeColor } },
+						axisLine: { roundCap: isProgress, lineStyle: { width: isProgress ? 24 : 14, color: [[1, '#e9ecef']] } },
+						pointer: { show: !isProgress, itemStyle: { color: gaugeColor } },
+						anchor: { show: !isProgress, size: 14, itemStyle: { borderWidth: 2, borderColor: gaugeColor } },
+						axisTick: { show: !isProgress },
+						splitLine: { show: !isProgress, length: 12 },
+						splitNumber: 5,
+						axisLabel: { show: !isProgress, distance: 22, fontFamily: gaugeFont, color: gaugeTextColor, formatter: function (v) { return Number(v).toLocaleString(undefined, { notation: 'compact', maximumFractionDigits: 1 }); } },
+						title: { show: true, offsetCenter: [0, isHalf ? '20%' : (isRing ? '30%' : '90%')], fontSize: 14, fontFamily: gaugeFont, color: gaugeTextColor },
+						detail: {
+							valueAnimation: false,
+							offsetCenter: [0, isHalf ? '-15%' : (isRing ? '-5%' : '62%')],
+							fontSize: 30,
+							fontWeight: 'bold',
+							fontFamily: gaugeFont,
+							color: gaugeTextColor,
+							formatter: function () { return gaugeValueText; }
+						},
+						data: [{ value: gaugeData, name: gaugeLabel + (isProgress && !self.gaugeOptions.showPercent() ? '\n' + gaugePct + '% of ' + gaugeMaxText : '') }]
+					}]
+				};
+			}
+			if (chartOptions.backgroundColor) option.backgroundColor = chartOptions.backgroundColor;
+		}
+
+		if (self.ReportType() == 'Funnel') {
+			var funnelValCol = valColumns.length > 0 ? valColumns[0] : null;
+			if (!funnelValCol) {
+				if (!self.activeDesign()) {
+					toastr.error('Funnel requires a category field and a numeric field with an aggregate.');
+				}
+				return;
+			}
+			var funnelData = data.rows.map(function (r, idx) {
+				return { name: r[0], value: r[funnelValCol.index], rowIndex: idx };
+			});
+			var funnelTop = _.max(funnelData.map(function (d) { return d.value || 0; })) || 1;
+			var funnelShowPercent = self.funnelOptions.showPercent();
+			option.series = [{
+				name: funnelValCol.column,
+				type: 'funnel',
+				left: '10%',
+				width: '80%',
+				top: chartOptions.title ? 40 : 20,
+				bottom: 20,
+				minSize: '25%',
+				sort: self.funnelOptions.sort() || 'descending',
+				gap: 2,
+				label: {
+					show: true,
+					position: 'inside',
+					color: '#fff',
+					textBorderColor: 'rgba(0, 0, 0, 0.35)',
+					textBorderWidth: 2,
+					fontFamily: chartOptions.fontFamily || undefined,
+					formatter: function (p) {
+						return p.name + ': ' + (funnelShowPercent ? Math.round((p.value || 0) / funnelTop * 100) + '%' : p.value);
+					}
+				},
+				itemStyle: { borderColor: '#fff', borderWidth: 1 },
+				data: funnelData
+			}];
+			option.tooltip = { trigger: 'item', formatter: '{b}: {c}' };
+			// each stage is already labelled inside the funnel
+			option.legend = { show: false };
+			option.xAxis = null;
+			option.yAxis = null;
+			option.grid = null;
+		}
+
 		chart.off('finished');
 		chart.on('finished', function () {
 			var img = chart.getDataURL({
@@ -11484,10 +11956,12 @@ var reportViewModel = function (options) {
 			window.chartImageUrl = img;
 		});
 
-		if (self.ReportType() != 'Treemap' && self.ReportType() != 'Radar' && self.ReportType() != 'Polar') {
+		var noAxisChart = ['Treemap', 'Radar', 'Polar', 'Gauge', 'Funnel'].indexOf(self.ReportType()) >= 0;
+		if (['Treemap', 'Radar', 'Polar', 'Gauge'].indexOf(self.ReportType()) < 0) {
 			chart.off('click');
 			chart.on('click', function (params) {
-				var rowIndex = params && params.dataIndex != null ? (chartRowMap ? chartRowMap[params.dataIndex] : params.dataIndex) : -1;
+				var rowIndex = params && params.data && params.data.rowIndex != null ? params.data.rowIndex
+					: (params && params.dataIndex != null ? (chartRowMap ? chartRowMap[params.dataIndex] : params.dataIndex) : -1);
 				if (rowIndex >= 0) {
 					self.ChartDrillDownData(null);
 					self.ReportResult().ReportData().Rows[rowIndex].expand();
@@ -11496,7 +11970,7 @@ var reportViewModel = function (options) {
 			});
 		}
 
-		if (yAxisFormatter) {
+		if (yAxisFormatter && !noAxisChart) {
 			var isHorizontalBar = self.barChartHorizontal() === true && self.ReportType() === 'Bar';
 			if (isHorizontalBar) {
 				// For horizontal bars, value axis is xAxis
@@ -11514,6 +11988,25 @@ var reportViewModel = function (options) {
 			if (existingTooltip.trigger === 'axis') {
 				option.tooltip.valueFormatter = yAxisFormatter;
 			}
+		}
+
+		// Show Small Values On Label: value labels on bars and line points
+		if (chartOptions.showSmallValuesOnLabel && !noAxisChart) {
+			var labelHorizontal = self.barChartHorizontal() === true && self.ReportType() === 'Bar';
+			_.forEach(option.series, function (s) {
+				if (s.type !== 'bar' && s.type !== 'line') return;
+				s.label = {
+					show: true,
+					position: s.type === 'bar' && labelHorizontal ? 'right' : (s.type === 'bar' && s.stack ? 'inside' : 'top'),
+					fontSize: Math.max(9, (Number(chartOptions.fontSize) || 12) - 1),
+					color: chartOptions.fontColor || undefined,
+					formatter: function (p) {
+						var v = Array.isArray(p.value) ? p.value[p.value.length - 1] : p.value;
+						if (v === null || v === undefined || v === '') return '';
+						return yAxisFormatter ? yAxisFormatter(v) : Number(v).toLocaleString();
+					}
+				};
+			});
 		}
 
 		// Apply saved dimensions
@@ -11559,6 +12052,21 @@ var reportViewModel = function (options) {
 			delete option.tooltip.confine;
 		}
 
+		// ECharts' default margins (60px top, 70px bottom, 10% sides) leave a small chart mostly empty
+		if (option.grid) {
+			var legendPos = chartOptions.legendPosition;
+			var legendShown = option.legend && option.legend.show;
+			var gridFont = Number(chartOptions.fontSize) || 12;
+			var sideLegend = legendShown && (legendPos === 'right' || legendPos === 'left')
+				? Math.ceil((_.max(_.map(option.series, function (s) { return String(s.name || '').length; })) || 0) * gridFont * 0.6) + 40 : 0;
+			option.grid = $.extend({}, option.grid, {
+				left: 10 + (legendPos === 'left' ? sideLegend : 0),
+				right: 16 + (legendPos === 'right' ? sideLegend : 0),
+				top: 10 + (option.title ? gridFont + 14 : 0) + (legendShown && !sideLegend && legendPos !== 'bottom' ? gridFont + 14 : 0) + (chartOptions.showSmallValuesOnLabel ? gridFont + 6 : 0),
+				bottom: 8 + (legendShown && legendPos === 'bottom' ? gridFont + 14 : 0)
+			});
+		}
+
 		chart.setOption(option);
 		chart.resize();
 
@@ -11577,6 +12085,8 @@ var reportViewModel = function (options) {
 		var d = self.pieChartDonut();
 		var a = self.lineChartArea();
 		var c = self.comboChartType();
+		ko.toJS(self.gaugeOptions);
+		ko.toJS(self.funnelOptions);
 		self.DrawChart();
 	});
 
@@ -12010,6 +12520,7 @@ var reportViewModel = function (options) {
 		self.pieChartDonut(reportSettings.pieChartDonut === true ? true : false);
 		self.lineChartArea(reportSettings.lineChartArea === true ? true : false);
 		self.comboChartType(reportSettings.comboChartType || 'bars');
+		self.loadChartTypeOptions(reportSettings);
 		if (reportSettings.heatMapOptions) {
 			self.heatMapOptions.showMarker(reportSettings.heatMapOptions.showMarker);
 			self.heatMapOptions.gradient1(reportSettings.heatMapOptions.gradient1);
@@ -12024,6 +12535,7 @@ var reportViewModel = function (options) {
 			var kpisetting = reportSettings.kpiSettings;
 			self.kpiSettings().fontSize(kpisetting.fontSize);
 			self.kpiSettings().alignment(kpisetting.alignment);
+			self.kpiSettings().verticalAlignment(kpisetting.verticalAlignment || "top");
 			self.kpiSettings().fontColor(kpisetting.fontColor);
 			self.kpiSettings().backColor(kpisetting.backColor);
 			self.kpiSettings().positiveColor(kpisetting.positiveColor);
@@ -12167,7 +12679,7 @@ var reportViewModel = function (options) {
 					if (linkedReport.result) { linkedReport = linkedReport.result; }
 					if (!override && queryParams.noparent == 'true') self.ReportMode('execute');
 
-					return self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, reportSeries, true);
+					return self.ExecuteReportQuery(linkedReport.ReportSql, linkedReport.ConnectKey, reportSeries);
 				});
 			}
 			else {
@@ -12250,7 +12762,8 @@ var reportViewModel = function (options) {
 		self.lastPickedField(null);
 	}
 
-	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock, buildSql) {
+	// reportFilters: load the report's own filters, not the user's saved ones (for editing)
+	self.LoadReport = function (reportId, filterOnFly, reportSeries, dontBlock, buildSql, reportFilters) {
 		self.SelectedTable(null);
 		self.isFormulaField(false);
 		self.isFunctionField(false);
@@ -12262,7 +12775,8 @@ var reportViewModel = function (options) {
 					reportId: reportId,
 					adminMode: self.adminMode(),
 					userIdForSchedule: self.userIdForSchedule,
-					buildSql: buildSql === true
+					buildSql: buildSql === true,
+					reportFilters: reportFilters === true
 				})
 			},
 			noBlocking: dontBlock === true
@@ -12270,6 +12784,7 @@ var reportViewModel = function (options) {
 			self.clearTableSettings();
 			if (report.d) { report = report.d; }
 			if (report.result) { report = report.result; }
+			self.usingUserFilters(typeof report.UsingUserFilters === 'boolean' ? report.UsingUserFilters : null); // null: older Api
 
 			self.manageAccess.clientId(report.ClientId || '');
 			self.manageAccess.setupList(self.manageAccess.users, report.UserId || '');
@@ -12339,7 +12854,7 @@ var reportViewModel = function (options) {
 					}
 					var saveReportFlag = self.SaveReport();
 					// Load report
-					return self.LoadReport(e.reportId).done(function () {
+					return self.LoadReport(e.reportId, undefined, undefined, undefined, undefined, !e.runMode).done(function () {
 						if (!self.CanEdit() && !self.appSettings.canCopyReport() && !e.runMode) {
 							options.reportWizard.modal('hide');
 							toastr.error('No access to edit report');
@@ -12424,7 +12939,7 @@ var reportViewModel = function (options) {
 						return;
 					}
 					self.isDirty(false);
-					self.LoadReport(e.reportId).done(function () {
+					self.LoadReport(e.reportId, undefined, undefined, undefined, undefined, true).done(function () {
 						self.SaveReport(true);
 						self.editReportAi();
 					});
@@ -12445,6 +12960,11 @@ var reportViewModel = function (options) {
 				}
 				e.hasDrilldown = ["List", "Pivot", "Treemap"].indexOf(e.reportType) < 0;
 				e.deleteReport = function () {
+					var folderVisible = !e.folderId || !self.allFolders || _.some(self.allFolders, function (f) { return f.Id == e.folderId; });
+					if (!self.adminMode() && (!e.canDelete || !folderVisible)) {
+						toastr.error("You do not have access to Delete this Report");
+						return;
+					}
 					bootbox.confirm("Are you sure you would like to Delete this Report?", function (r) {
 						if (r) {
 							ajaxcall({
@@ -12765,14 +13285,14 @@ var reportViewModel = function (options) {
 			if (fromContext && toContext) {
 				var configuredDefault = fromContext.$root.appSettings && fromContext.$root.appSettings.defaultDateFormat;
 				var defaultFormat = (configuredDefault && fromContext.$root.dateFormatMappings[configuredDefault]) || "mm/dd/yyyy";
-				var fromDateFormat = fromContext.$data.dateFormat() ? fromContext.$root.dateFormatMappings[fromContext.$data.dateFormat()] : defaultFormat;
-				var toDateFormat = toContext.$data.dateFormat() ? toContext.$root.dateFormatMappings[toContext.$data.dateFormat()] : defaultFormat;
+				var fromDateFormat = fromContext.$root.dateFormatMappings[fromContext.$data.dateFormat()] || defaultFormat;
+				var toDateFormat = toContext.$root.dateFormatMappings[toContext.$data.dateFormat()] || defaultFormat;
 				var fromDateValue = fromInput.value;
 				var toDateValue = toInput.value;
-				if (fromDateValue && toDateValue) {
-					var fromDateParsed = parseDate(fromDateValue, fromDateFormat).toISOString();
-					var toDateParsed = parseDate(toDateValue, toDateFormat).toISOString();
-					if (new Date(toDateParsed) < new Date(fromDateParsed)) {
+				var fromDateParsed = fromDateValue ? parseDate(fromDateValue, fromDateFormat) : null;
+				var toDateParsed = toDateValue ? parseDate(toDateValue, toDateFormat) : null;
+				if (fromDateParsed && toDateParsed) {
+					if (toDateParsed < fromDateParsed) {
 						isValid = false;
 						toastr.error("The 'To' date cannot be earlier than the 'From' date.");
 						toInput.classList.add("is-invalid");
@@ -13108,24 +13628,55 @@ var reportViewModel = function (options) {
 		iframe.style.border = "0";
 		document.body.appendChild(iframe);
 
+		var styles = _.map(document.querySelectorAll('link[rel="stylesheet"]'), function (l) {
+			return '<link href="' + l.href + '" rel="stylesheet" />';
+		}).join('');
+
+		var reportInner = document.querySelector('.report-inner');
+		var reportCopy = reportInner.cloneNode(true);
+		var canvases = reportInner.querySelectorAll('canvas');
+		_.forEach(reportCopy.querySelectorAll('canvas'), function (c, i) {
+			var img = document.createElement('img');
+			img.src = canvases[i].toDataURL('image/png');
+			img.style.cssText = 'display: block; width: ' + canvases[i].offsetWidth + 'px; max-width: 100%; height: auto;';
+			var wrapper = c.parentNode;
+			wrapper.replaceChild(img, c);
+			wrapper.style.width = 'auto';
+			wrapper.style.height = 'auto';
+			if (wrapper.parentNode) { wrapper.parentNode.style.height = 'auto'; wrapper.parentNode.style.maxWidth = '100%'; wrapper.parentNode.style.minHeight = '0'; }
+		});
+
 		var doc = iframe.contentWindow.document;
 		doc.open();
 		doc.write(
 			'<html><head>' +
 			'<title>' + reportTitle + '</title>' +
-			'<link href="/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" />' +
-			'<style>a[href]:after {content: none !important;}</style>' +
+			styles +
+			'<style>a[href]:after {content: none !important;} @media print { body * { visibility: visible !important; } }' +
+			' * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }' +
+			' .dr-title-hide, .chart-settings-btn, .dr-header-edit, .dr-band-edit, th .dropdown, .dropdown-menu, td > a > .fa-plus, td > a > .fa-minus { display: none !important; }</style>' +
 			'</head><body>' +
-			document.querySelector('.report-inner').innerHTML +
+			reportCopy.outerHTML +
 			'</body></html>'
 		);
 		doc.close();
 
-		setTimeout(function () {
+		var printed = false;
+		var doPrint = function () {
+			if (printed) return;
+			printed = true;
 			iframe.contentWindow.focus();
 			iframe.contentWindow.print();
 			document.body.removeChild(iframe); // clean up
-		}, 250);
+		};
+		var links = doc.querySelectorAll('link[rel="stylesheet"]');
+		var pending = links.length;
+		_.forEach(links, function (link) {
+			if (link.sheet) { pending--; return; }
+			link.onload = link.onerror = function () { if (--pending <= 0) setTimeout(doPrint, 100); };
+		});
+		if (pending <= 0) setTimeout(doPrint, 250);
+		setTimeout(doPrint, 5000);
 	};
 
 	self.getExportJson = function (pageSize, pageOrientation, expand) {
@@ -13793,6 +14344,13 @@ var dashboardViewModel = function (options) {
 	options.isDashboard = true;
 	self.dashboards = ko.observableArray(options.dashboards || []);
 	self.adminMode = ko.observable(false);
+	// Permissions granted without Admin Mode (Users & Access page). They only show the matching options;
+	// the server checks every one of them again, limited to the user's own Client Id.
+	self.permissions = ko.observableArray((options.userSettings && options.userSettings.permissions) || []);
+	self.hasPermission = function (key) { return self.permissions().indexOf(key) >= 0; };
+	self.canManageAccess = ko.pureComputed(function () { return self.adminMode() || self.hasPermission('ManageAccess'); });
+	self.canManageHeaderFooter = ko.pureComputed(function () { return self.adminMode() || self.hasPermission('ManageHeaderFooter'); });
+	self.canViewSql = ko.pureComputed(function () { return self.adminMode() || self.hasPermission('ViewSql'); });
 	self.currentUserId = options.userSettings.currentUserId || options.currentUserId;
 	window.currentUserId = self.currentUserId || window.currentUserId;
 	self.currentUserRole = (options.userSettings.currentUserRoles || options.currentUserRole || []).join();
@@ -14112,6 +14670,7 @@ var dashboardViewModel = function (options) {
 	});
 
 	self.newDashboard = function () {
+		self.clearAiAssistant();
 		$("#add-dash-name").removeClass("is-invalid");
 		self.dashboard.Id(0);
 		self.dashboard.Name('');
@@ -14127,6 +14686,7 @@ var dashboardViewModel = function (options) {
 	};
 
 	self.editDashboard = function () {
+		self.clearAiAssistant();
 		$("#add-dash-name").removeClass("is-invalid");
 		self.dashboard.Id(self.currentDashboard().id);
 		self.dashboard.Name(self.currentDashboard().name);
@@ -14154,7 +14714,39 @@ var dashboardViewModel = function (options) {
 		$('#manage-access-modal').modal('show');
 	};
 	self.saveDashboardAccess = function () {
-		if (self.saveDashboard()) $('#manage-access-modal').modal('hide');
+		var current = self.currentDashboard();
+		if (!current) return;
+		var access = self.dashboard.manageAccess;
+		var saved = {
+			clientId: access.clientId() || '',
+			userId: access.getAsList(access.users),
+			userRole: access.getAsList(access.userRoles),
+			viewOnlyUserId: access.getAsList(access.viewOnlyUsers),
+			viewOnlyUserRole: access.getAsList(access.viewOnlyUserRoles)
+		};
+		return ajaxcall({
+			url: options.apiUrl,
+			data: {
+				method: "/ReportApi/SaveDashboardAccess",
+				model: JSON.stringify({ dashboardId: current.id, accessJson: JSON.stringify(saved), adminMode: self.adminMode() })
+			}
+		}).done(function () {
+			toastr.success('Access changes saved');
+			current.clientId = saved.clientId;
+			current.userId = saved.userId;
+			current.userRoles = saved.userRole;
+			current.viewOnlyUserId = saved.viewOnlyUserId;
+			current.viewOnlyUserRoles = saved.viewOnlyUserRole;
+			$('#manage-access-modal').modal('hide');
+		}).fail(function (x) {
+			// An older Api without SaveDashboardAccess: admins save the way they did before
+			if (x && x.status >= 500 && self.adminMode()) {
+				if (self.saveDashboard()) $('#manage-access-modal').modal('hide');
+				return;
+			}
+			var r = x && x.responseJSON;
+			toastr.error((r && (r.Message || r.message || r.result)) || 'Failed to save access changes');
+		});
 	};
 
 	self.removeReportFromDashboard = function (reportId) {
@@ -14340,12 +14932,25 @@ var dashboardViewModel = function (options) {
 			return false;
 		}
 
+		var drafts = _.filter(self.aiDraftWidgets(), function (d) { return d.selected(); });
+		if (!drafts.length) {
+			saveDashboardNow([]);
+		} else {
+			saveAiDrafts(drafts)
+				.done(function (ids) { saveDashboardNow(ids); })
+				.fail(function (why) { toastr.error('Could not save the new widgets: ' + why); });
+		}
+		return true;
+	};
+
+	var saveDashboardNow = function (newReportIds) {
 		var list = '';
 		_.forEach(self.reportsAndFolders(), function (f) {
 			_.forEach(f.reports, function (r) {
 				if (r.selected()) list += (list ? ',' : '') + r.reportId;
 			});
 		});
+		_.forEach(newReportIds, function (id) { list += (list ? ',' : '') + id; });
 		var model = {
 			id: self.dashboard.Id() || 0,
 			name: self.dashboard.Name(),
@@ -14386,15 +14991,17 @@ var dashboardViewModel = function (options) {
 			}
 
 			toastr.success("Dashboard saved successfully");
-			$('#add-dashboard-modal').modal('hide');
-			setTimeout(function () {
-				self.lineSeparators([]);
-				self.textWidgets([]);
-				self.loadDashboard(result.id);
-			}, 500);
+			savePreviewLayout(result.id).always(function () {
+				self.aiDraftWidgets([]);
+				$('#add-dashboard-modal').modal('hide');
+				setTimeout(function () {
+					self.lineSeparators([]);
+					self.textWidgets([]);
+					var loaded = self.loadDashboard(result.id);
+					if (loaded && loaded.done) loaded.done(function () { setTimeout(self.drawChart, 1500); });
+				}, 500);
+			});
 		});
-
-		return true;
 	};
 
 	self.deleteDashboard = function () {
@@ -14455,7 +15062,7 @@ var dashboardViewModel = function (options) {
 		return document.querySelector('.grid-stack-item[gs-id="0"]') !== null;
 	}
 	function removeNewReportWidget() {
-		const grid = document.querySelector('.grid-stack')?.gridstack;
+		const grid = document.querySelector('.grid-stack:not(.dash-preview-grid)')?.gridstack;
 		if (!grid) return;
 
 		const zeroWidgets = document.querySelectorAll('.grid-stack-item[gs-id="null"]');
@@ -14477,7 +15084,7 @@ var dashboardViewModel = function (options) {
 			return;
 		}
 
-		const grid = document.querySelector('.grid-stack')?.gridstack;
+		const grid = document.querySelector('.grid-stack:not(.dash-preview-grid)')?.gridstack;
 		if (!grid) return;
 
 		grid.removeAll(false);
@@ -14509,8 +15116,8 @@ var dashboardViewModel = function (options) {
 		self.skipGridRefresh = false;
 	}
 
-	function buildReport(x, i) {
-		var report = new reportViewModel({
+	function reportOptions(x, extra) {
+		return _.extend({
 			runReportUrl: options.runReportUrl,
 			runExportUrl: options.runExportUrl,
 			execReportUrl: options.execReportUrl,
@@ -14536,7 +15143,11 @@ var dashboardViewModel = function (options) {
 			arrangeDashboard: self.arrangeDashboard,
 			appSettings: self.appSettings,
 			dashboardId: self.currentDashboard().id
-		});
+		}, extra || {});
+	}
+
+	function buildReport(x, i) {
+		var report = new reportViewModel(reportOptions(x));
 
 		report.x = ko.observable(x.x);
 		report.y = ko.observable(x.y);
@@ -14577,8 +15188,24 @@ var dashboardViewModel = function (options) {
 			return $.when.apply($, promises);
 		};
 
+		// the designer edits the report's filters; put the user's back on close
+		report.loadForEdit = function () {
+			var editReportFilters = report.userIdForFilter && report.usingUserFilters() !== false && report.ReportID();
+			if (!editReportFilters) return report.ensureReportData();
+			var $designer = $('#modal-reportbuilder');
+			$designer.off('hidden.bs.modal.userFilters').on('hidden.bs.modal.userFilters', function (e) {
+				if (e.target !== this) return;
+				$designer.off('hidden.bs.modal.userFilters');
+				report.LoadReport(report.ReportID(), true, '', true).then(function () {
+					applyFlyFilters(report);
+					return report.RunReport(false, true, true);
+				});
+			});
+			return $.when(report.ensureReportData(), report.LoadReport(report.ReportID(), true, '', true, undefined, true));
+		};
+
 		report.editReportAi = function () {
-			report.ensureReportData().done(function () {
+			report.loadForEdit().done(function () {
 				report.Tables(self.tables);
 				report.Procs(self.procs);
 				report.Folders(self.folders);
@@ -14604,7 +15231,7 @@ var dashboardViewModel = function (options) {
 				toastr.error('No access to edit report');
 				return;
 			}
-			report.ensureReportData().done(function () {
+			report.loadForEdit().done(function () {
 				report.Tables(self.tables);
 				report.Procs(self.procs);
 				report.Folders(self.folders);
@@ -14678,6 +15305,381 @@ var dashboardViewModel = function (options) {
 		if (report && report.initChartTooltips) {
 			report.initChartTooltips(document.getElementById('modal-reportbuilder'));
 		}
+	});
+
+	// AI Assist is hidden until a later release
+	self.hasAiConfigured = function () { return false; };
+	self.aiAssistantEnabled = ko.observable(false);
+	self.aiAssistantMessages = ko.observableArray([]);
+	self.aiAssistantLoading = ko.observable(false);
+	self.aiAssistantInput = ko.observable('');
+	self.aiStatus = ko.observable('');
+	self.aiDashboardApplied = ko.observable(false);
+	self.aiConversationHistory = [];
+	self.aiTables = ko.observableArray([]);
+
+	var allReportEntries = function () { return _.flatMap(self.reportsAndFolders(), function (f) { return f.reports; }); };
+	var selectedReportEntries = function () { return _.filter(allReportEntries(), function (r) { return r.selected(); }); };
+
+	var loadAiTables = function () {
+		if (self.tables.length) { self.aiTables(self.tables); return $.when(); }
+		return ajaxcall({
+			url: options.apiUrl,
+			data: { method: "/ReportApi/GetTables", model: JSON.stringify({ adminMode: self.adminMode(), includeColumns: true }) },
+			noBlocking: true
+		}).done(function (x) {
+			if (x.d) x = x.d;
+			if (x.result) x = x.result;
+			self.tables = _.sortBy(x, 'tableName');
+			self.aiTables(self.tables);
+		});
+	};
+	self.aiAssistantEnabled.subscribe(function (on) { if (on) loadAiTables(); });
+
+	self.aiFocusTable = ko.pureComputed(function () {
+		return aiBestTable(self.aiTables());
+	});
+	self.aiQuickPrompts = ko.pureComputed(function () {
+		var s = self.aiFocusTable();
+		var prompts = [];
+		if (s && s.table) {
+			var t = s.table;
+			prompts.push({ icon: 'fa-dashboard', label: t + ' dashboard', prompt: 'Build a dashboard for ' + t + ' with KPIs for the key totals'
+				+ (s.number && s.category ? ', ' + s.number + ' by ' + s.category : '') + (s.number && s.date ? ' and ' + s.number + ' over time' : '') });
+			if (s.number) prompts.push({ icon: 'fa-tachometer', label: 'KPI widgets', prompt: 'Add KPI widgets for total ' + s.number + ' and the count of ' + t });
+			if (s.number && s.date) prompts.push({ icon: 'fa-line-chart', label: s.number + ' trend', prompt: 'Add a line chart of total ' + s.number + ' by month using ' + s.date + ' from the ' + t + ' table' });
+			else if (s.category) prompts.push({ icon: 'fa-pie-chart', label: t + ' by ' + s.category, prompt: 'Add a pie chart of the count of ' + t + ' by ' + s.category });
+		} else {
+			prompts.push({ icon: 'fa-dashboard', label: 'Overview dashboard', prompt: 'Build an overview dashboard with KPIs and charts for my main data' });
+		}
+		if (allReportEntries().length) prompts.push({ icon: 'fa-th-large', label: 'Use my reports', prompt: 'Pick the saved reports that make a good ' + (s && s.table ? s.table + ' ' : '') + 'dashboard' });
+		return prompts.slice(0, 4);
+	});
+	self.aiFollowUpPrompts = ko.pureComputed(function () {
+		var s = self.aiFocusTable() || {};
+		var prompts = [{ label: '+ KPI', prompt: 'Add one more KPI widget' + (s.number ? ' for the average ' + s.number : '') }];
+		if (s.category && s.number) prompts.push({ label: '+ Top 10', prompt: 'Add a bar chart of the top 10 ' + s.category + ' by ' + s.number });
+		prompts.push({ label: 'Name it', prompt: 'Suggest a name and description for this dashboard' });
+		return prompts;
+	});
+	self.runAiPrompt = function (p) {
+		self.aiAssistantInput(p.prompt);
+		self.sendAiAssistantMessage();
+	};
+	self.clearAiAssistant = function () {
+		self.aiAssistantMessages([]);
+		self.aiConversationHistory = [];
+		self.aiDashboardApplied(false);
+		if (self.aiDraftWidgets) self.aiDraftWidgets([]);
+	};
+	self.aiAssistantMessages.subscribe(function () {
+		setTimeout(function () {
+			var el = document.querySelector('.dash-ai-messages');
+			if (el) el.scrollTop = el.scrollHeight;
+		}, 50);
+	});
+
+	var aiSay = function (text) {
+		self.aiAssistantMessages.push({ role: 'assistant', content: text });
+		self.aiConversationHistory.push({ role: 'assistant', content: text });
+	};
+
+	self.sendAiAssistantMessage = function () {
+		var msg = (self.aiAssistantInput() || '').trim();
+		if (!msg || self.aiAssistantLoading()) return;
+
+		self.aiAssistantMessages.push({ role: 'user', content: msg });
+		self.aiConversationHistory.push({ role: 'user', content: msg });
+		self.aiAssistantInput('');
+		self.aiAssistantLoading(true);
+
+		var current = {
+			name: self.dashboard.Name() || '',
+			description: self.dashboard.Description() || '',
+			reports: _.map(selectedReportEntries(), function (r) { return { id: r.reportId, name: r.reportName, type: r.reportType }; }),
+			newWidgets: _.map(_.filter(self.aiDraftWidgets(), function (d) { return d.selected(); }), function (d) { return { name: d.name, type: d.reportType }; })
+		};
+		var available = _.map(allReportEntries(), function (r) {
+			return { id: r.reportId, name: r.reportName, description: r.reportDescription || '', type: r.reportType || '' };
+		});
+
+		ajaxcall({
+			url: options.apiUrl.replace('CallReportApi', 'CallPostReportApi'),
+			type: 'POST',
+			data: JSON.stringify({
+				method: "/ReportApi/RunAiDashboardAssistant",
+				model: JSON.stringify({
+					userMessage: msg,
+					conversationHistory: JSON.stringify(self.aiConversationHistory),
+					currentDashboardJson: JSON.stringify(current),
+					availableReportsJson: JSON.stringify(available)
+				})
+			}),
+			noBlocking: true
+		}).done(function (result) {
+			if (result && result.d) result = result.d;
+			if (result && result.result) result = result.result;
+			if (!result || result.success === false) {
+				aiSay((result && result.message) || 'Error processing request.');
+				self.aiAssistantLoading(false);
+				return;
+			}
+			aiSay(result.message || 'Done.');
+			var actions = result.actions;
+			if (typeof actions === 'string') { try { actions = JSON.parse(actions); } catch (e) { actions = null; } }
+			if (!actions) { self.aiAssistantLoading(false); return; }
+			self.applyAiDashboardActions(actions).always(function () {
+				self.aiStatus('');
+				self.aiAssistantLoading(false);
+			});
+		}).fail(function (xhr) {
+			var errMsg = 'AI request failed';
+			try {
+				var resp = typeof xhr.responseJSON === 'object' ? xhr.responseJSON : JSON.parse(xhr.responseText);
+				if (resp && (resp.message || resp.result)) errMsg = resp.message || resp.result;
+			} catch (e) { }
+			aiSay('Error: ' + errMsg);
+			self.aiAssistantLoading(false);
+		});
+	};
+
+	self.aiDraftWidgets = ko.observableArray([]);
+	var draftCount = 0;
+
+	var createAiWidget = function (widget) {
+		var d = $.Deferred();
+		var key = 'draft-' + (++draftCount);
+		var r = new reportViewModel(reportOptions({ reportId: 0 }, { dashboardId: 0, skipDraw: false, chartContainer: '[data-preview-id="' + key + '"]' }));
+		r.adminMode(self.adminMode());
+		r.Tables(self.tables);
+		r.createNewReport();
+		r.ReportMode('dashboard');
+		r.SaveReport(false);
+		r.previewKey = key;
+		r.previewPos = ko.observable({ x: 0, y: 0, w: 6, h: 6 });
+
+		r.applyAiActions(_.extend({}, widget, { clearExisting: true }), { noRun: true }).done(function () {
+			if (!r.SelectedFields().length) { d.reject('none of its fields were found'); return; }
+			r.ReportResult().ReportData.subscribe(function (data) { if (data) setTimeout(r.DrawChart, 300); });
+			r.RunReport(false, true, true);
+			var type = widget.reportType || 'List';
+			d.resolve({
+				key: key,
+				vm: r,
+				name: widget.reportName || 'Widget',
+				description: widget.reportDescription || '',
+				reportType: type,
+				icon: type === 'Single' ? 'fa-tachometer' : type === 'Line' ? 'fa-line-chart' : type === 'Pie' ? 'fa-pie-chart' : type === 'List' ? 'fa-file' : 'fa-bar-chart',
+				selected: ko.observable(true),
+				savedId: 0
+			});
+		}).fail(function (e) { d.reject((e && e.message) || 'it could not be built'); });
+
+		return d.promise();
+	};
+
+	var createAiWidgets = function (widgets) {
+		var created = [], failed = [], i = 0, done = $.Deferred();
+		var next = function () {
+			if (i >= widgets.length) { done.resolve(created, failed); return; }
+			var w = widgets[i++];
+			self.aiStatus('Building ' + (w.reportName || 'widget') + ' (' + i + ' of ' + widgets.length + ')...');
+			createAiWidget(w)
+				.done(function (draft) { created.push(draft); })
+				.fail(function (why) { failed.push((w.reportName || 'Widget') + ': ' + why); })
+				.always(next);
+		};
+		loadAiTables().always(next);
+		return done.promise();
+	};
+
+	var saveAiDraft = function (draft) {
+		var d = $.Deferred(), r = draft.vm;
+		if (draft.savedId) return d.resolve(draft.savedId).promise();
+		r.SaveReport(true);
+		var sub = r.ReportID.subscribe(function (id) {
+			if (id > 0) { clearTimeout(timer); sub.dispose(); draft.savedId = id; d.resolve(id); }
+		});
+		var timer = setTimeout(function () { sub.dispose(); d.reject(draft.name + ' did not save'); }, 45000);
+		var run = r.RunReport(true, true);
+		if (!run) { clearTimeout(timer); sub.dispose(); d.reject(draft.name + ' could not be saved'); return d.promise(); }
+		run.done(function (isValid) {
+			if (isValid === false) { clearTimeout(timer); sub.dispose(); d.reject(draft.name + ': its tables do not join'); }
+		});
+		return d.promise();
+	};
+	var saveAiDrafts = function (drafts) {
+		var ids = [], i = 0, done = $.Deferred();
+		var next = function () {
+			if (i >= drafts.length) { done.resolve(ids); return; }
+			saveAiDraft(drafts[i++]).done(function (id) { ids.push(id); next(); }).fail(function (why) { done.reject(why); });
+		};
+		next();
+		return done.promise();
+	};
+
+	self.applyAiDashboardActions = function (actions) {
+		if (actions.dashboardName) self.dashboard.Name(actions.dashboardName);
+		if (actions.dashboardDescription) self.dashboard.Description(actions.dashboardDescription);
+
+		var entries = allReportEntries();
+		var find = function (id) { return _.find(entries, function (r) { return r.reportId == id; }); };
+		_.forEach(actions.removeReportIds || [], function (id) { var r = find(id); if (r) r.selected(false); });
+		_.forEach(actions.addReportIds || [], function (id) { var r = find(id); if (r) r.selected(true); });
+		self.aiDashboardApplied(true);
+
+		var widgets = _.filter(actions.newWidgets || [], function (w) { return w && w.fields && w.fields.length; });
+		if (!widgets.length) return $.when();
+
+		return createAiWidgets(widgets).done(function (created, failed) {
+			if (created.length) {
+				_.forEach(created, function (draft) { self.aiDraftWidgets.push(draft); });
+				aiSay('Added ' + created.length + ' new ' + (created.length === 1 ? 'widget' : 'widgets') + ': ' + _.map(created, 'name').join(', ')
+					+ '. They are saved as reports when you save the dashboard.');
+			}
+			if (failed.length) aiSay('Could not build: ' + failed.join('; '));
+		});
+	};
+
+	self.dashLivePreview = ko.observable(false);
+	self.previewWidgets = ko.observableArray([]);
+	var previewCache = {};
+
+	var savedLayout = function () {
+		var placed = {};
+		if (!self.dashboard.Id() || self.dashboard.Id() !== self.currentDashboard().id) return placed;
+		var grid = document.querySelector('.grid-stack:not(.dash-preview-grid)');
+		_.forEach(grid && grid.gridstack ? grid.gridstack.engine.nodes : [], function (n) {
+			if (n.el && n.el.getAttribute('data-type') === 'report') placed[n.el.getAttribute('gs-id')] = { x: n.x, y: n.y, w: n.w, h: n.h };
+		});
+		if (!_.size(placed)) {
+			_.forEach(self.reports(), function (r) {
+				placed[r.ReportID()] = { x: ko.unwrap(r.x) || 0, y: ko.unwrap(r.y) || 0, w: ko.unwrap(r.width) || 6, h: ko.unwrap(r.height) || 6 };
+			});
+		}
+		return placed;
+	};
+
+	var previewLayout = {};
+	var previewGrid = null;
+
+	// lay out at the dashboard's width, then scale down to fit
+	var scalePreview = function () {
+		var el = document.querySelector('#dash-live-preview .grid-stack');
+		var holder = el && el.parentElement;
+		if (!holder) return;
+		var dashGrid = document.querySelector('.grid-stack:not(.dash-preview-grid)');
+		var fullWidth = Math.max((dashGrid && dashGrid.offsetWidth) || 0, window.innerWidth - 40, 900);
+		var scale = Math.min(1, holder.clientWidth / fullWidth);
+		el.style.width = fullWidth + 'px';
+		el.style.transform = 'scale(' + scale + ')';
+		el.style.transformOrigin = '0 0';
+		holder.style.height = Math.ceil(el.offsetHeight * scale) + 'px';
+	};
+	$(window).on('resize', _.debounce(scalePreview, 200));
+
+	var initPreviewGrid = function () {
+		var el = document.querySelector('#dash-live-preview .grid-stack');
+		if (!el || typeof GridStack === 'undefined') return;
+		if (!previewGrid || previewGrid.el !== el) {
+			previewGrid = GridStack.init({ column: 12, cellHeight: 60, margin: 10, resizable: { handles: 'se, sw, ne, nw, n, e, s, w' } }, el);
+			previewGrid.on('change', function (event, items) {
+				_.forEach(items, function (n) {
+					previewLayout[n.el.getAttribute('data-preview-id')] = { x: n.x, y: n.y, w: n.w, h: n.h };
+				});
+				scalePreview();
+			});
+			previewGrid.on('resizestop', function (event, item) {
+				var r = _.find(self.previewWidgets(), function (x) { return x.previewKey === item.getAttribute('data-preview-id'); });
+				if (r) r.DrawChart();
+			});
+		}
+		scalePreview();
+		previewGrid.batchUpdate();
+		previewGrid.removeAll(false);
+		_.forEach(el.querySelectorAll('.grid-stack-item'), function (item) { previewGrid.makeWidget(item); });
+		previewGrid.batchUpdate(false);
+		scalePreview();
+	};
+
+	var refreshPreview = _.debounce(function () {
+		if (!self.dashLivePreview() || !$('#add-dashboard-modal').hasClass('show')) return;
+		var placed = savedLayout();
+		_.forEach(previewLayout, function (p, key) { if (key.indexOf('report-') === 0) placed[key.substring(7)] = p; });
+		var rowY = _.max(_.map(placed, function (p) { return p.y + p.h; })) || 0, cursorX = 0, rowH = 0;
+		var nextSpot = function (reportType) {
+			var kpi = reportType === 'Single';
+			var w = kpi ? 3 : 6, h = kpi ? 4 : 8;
+			if (cursorX + w > 12) { cursorX = 0; rowY += rowH; rowH = 0; }
+			var spot = { x: cursorX, y: rowY, w: w, h: h };
+			cursorX += w;
+			rowH = Math.max(rowH, h);
+			return spot;
+		};
+		var list = _.map(selectedReportEntries(), function (entry) {
+			var p = placed[entry.reportId] || nextSpot(entry.reportType);
+			var r = previewCache[entry.reportId];
+			if (!r) {
+				r = new reportViewModel(reportOptions({ reportId: entry.reportId }, { dashboardId: 0, skipDraw: false, chartContainer: '#dash-live-preview' }));
+				r.adminMode(self.adminMode());
+				previewCache[entry.reportId] = r;
+				r.ReportResult().ReportData.subscribe(function (data) { if (data) setTimeout(r.DrawChart, 300); });
+				r.LoadReport(entry.reportId, true, '', true, false).then(function () { return r.RunReport(false, true, true); });
+				r.previewPos = ko.observable(p);
+				r.previewKey = 'report-' + entry.reportId;
+			}
+			r.previewPos(p);
+			return r;
+		});
+		_.forEach(_.filter(self.aiDraftWidgets(), function (d) { return d.selected(); }), function (draft) {
+			draft.vm.previewPos(previewLayout[draft.key] || nextSpot(draft.reportType));
+			list.push(draft.vm);
+		});
+		list =_.sortBy(list, function (r) { var p = r.previewPos(); return p.y * 100 + p.x; });
+		self.previewWidgets(list);
+		setTimeout(function () {
+			initPreviewGrid();
+			setTimeout(function () { _.forEach(list, function (r) { r.DrawChart(); }); }, 300);
+		}, 100);
+	}, 400);
+
+	var savePreviewLayout = function (dashboardId) {
+		if (!previewGrid || !dashboardId) return $.when();
+		var calls = [];
+		_.forEach(previewGrid.engine.nodes, function (n) {
+			var key = n.el.getAttribute('data-preview-id') || '';
+			var draft = _.find(self.aiDraftWidgets(), function (d) { return d.key === key; });
+			var reportId = draft ? draft.savedId : parseInt(key.replace('report-', ''));
+			var p = { x: n.x, y: n.y, w: n.w, h: n.h };
+			if (!reportId) return;
+			calls.push(ajaxcall({
+				url: options.apiUrl.replace('CallReportApi', 'CallPostReportApi'),
+				type: 'POST',
+				noBlocking: true,
+				data: JSON.stringify({
+					method: '/ReportApi/UpdateDashboardReportPosition',
+					model: JSON.stringify({
+						x: p.x, y: p.y, width: p.w, height: p.h,
+						dashboardId: dashboardId,
+						reportId: reportId,
+						widgetSettings: JSON.stringify(self.buildWidgetSettings({ id: reportId, w: p.w, h: p.h })),
+						adminMode: self.adminMode()
+					})
+				})
+			}));
+		});
+		return $.when.apply($, calls);
+	};
+	self.dashLivePreview.subscribe(refreshPreview);
+	self.selectedReportCount.subscribe(refreshPreview);
+	self.reportsAndFolders.subscribe(refreshPreview);
+	ko.computed(function () { return _.map(self.aiDraftWidgets(), function (d) { return d.selected(); }); }).subscribe(refreshPreview);
+	$('#add-dashboard-modal').on('shown.bs.modal', refreshPreview);
+	$('#add-dashboard-modal').on('hidden.bs.modal', function () {
+		self.previewWidgets([]);
+		previewCache = {};
+		previewLayout = {};
+		if (previewGrid) { previewGrid.destroy(false); previewGrid = null; }
 	});
 
 	self.loadDashboardReports = function (reports, skipGridRefresh) {
@@ -14857,6 +15859,15 @@ var dashboardViewModel = function (options) {
 	}
 
 	self.PrintDashboard = function () {
+		var grid = document.querySelector('.grid-stack:not(.dash-preview-grid)');
+		var width = grid ? grid.offsetWidth : 0;
+		var style = document.createElement('style');
+		style.textContent = '@media print { @page { size: landscape; }' +
+			(width ? ' .grid-stack { width: ' + width + 'px !important; zoom: ' + Math.min(1, 960 / width) + '; }' : '') +
+			' * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }' +
+			' .grid-stack .fa-ellipsis-v, .grid-stack .fa-expand, .grid-stack .fa-compress, .grid-stack .dr-header-edit, .grid-stack .dr-band-edit, .grid-stack .dropdown-menu, .grid-stack td > a > .fa-plus, .grid-stack td > a > .fa-minus { display: none !important; } }';
+		document.head.appendChild(style);
+		window.addEventListener('afterprint', function () { style.remove(); }, { once: true });
 		window.print();
 	};
 	self.onWidgetChange = function (data) {
@@ -15225,29 +16236,33 @@ var dashboardViewModel = function (options) {
 		}, 'docx', dashboardName);
 	}
 
-	self.RunReport = function () {
-		_.forEach(self.reports(), function (report) {
-			var filterApplied = false;
-			_.forEach(self.FlyFilters(), function (combinedFilter) {
-				_.forEach(report.FilterGroups(), function (fg) {
-					_.forEach(fg.Filters(), function (f) {
-						if (f.IsFilterOnFly && combinedFilter.Field().fieldId == f.Field().fieldId
-							|| (f.Field().hasForeignKey && combinedFilter.Field().hasForeignKey && f.Field().foreignTable == combinedFilter.Field().foreignTable && f.Field().foreignKey == combinedFilter.Field().foreignKey)
-						) {
-							f.Operator(combinedFilter.Operator());
-							f.Value(combinedFilter.Value());
-							f.Value2(combinedFilter.Value2());
-							f.ValueIn(combinedFilter.ValueIn());
-							f.ParentIn(combinedFilter.ParentIn());
-							f.LookupList(combinedFilter.LookupList());
+	// copies the dashboard's filter values into the report's filters
+	var applyFlyFilters = function (report) {
+		var filterApplied = false;
+		_.forEach(self.FlyFilters(), function (combinedFilter) {
+			_.forEach(report.FilterGroups(), function (fg) {
+				_.forEach(fg.Filters(), function (f) {
+					if (f.IsFilterOnFly && combinedFilter.Field().fieldId == f.Field().fieldId
+						|| (f.Field().hasForeignKey && combinedFilter.Field().hasForeignKey && f.Field().foreignTable == combinedFilter.Field().foreignTable && f.Field().foreignKey == combinedFilter.Field().foreignKey)
+					) {
+						f.Operator(combinedFilter.Operator());
+						f.Value(combinedFilter.Value());
+						f.Value2(combinedFilter.Value2());
+						f.ValueIn(combinedFilter.ValueIn());
+						f.ParentIn(combinedFilter.ParentIn());
+						f.LookupList(combinedFilter.LookupList());
 
-							filterApplied = true;
-						}
-					});
+						filterApplied = true;
+					}
 				});
 			});
+		});
+		return filterApplied;
+	};
 
-			if (filterApplied) {
+	self.RunReport = function () {
+		_.forEach(self.reports(), function (report) {
+			if (applyFlyFilters(report)) {
 				report.RunReport(false, false, true);
 			}
 		});
@@ -15255,74 +16270,76 @@ var dashboardViewModel = function (options) {
 
 	self.init = function () {
 		return self.loadAppSettings().done(function () {
-			
-			var getReports = function () {
-				return ajaxcall({
-					url: options.apiUrl,
-					data: {
-						method: "/ReportApi/GetSavedReports",
-						model: JSON.stringify({ adminMode: self.adminMode(), applyClientInAdmin: self.appSettings.useClientIdInAdmin })
-					},
-					noBlocking: true
-				});
-			};
+			self.loadReportLists();
+		});
+	};
 
-			var getFolders = function () {
-				return ajaxcall({
-					url: options.apiUrl,
-					data: {
-						method: "/ReportApi/GetFolders",
-						model: JSON.stringify({
-							adminMode: self.adminMode(),
-							applyClientInAdmin: self.appSettings.useClientIdInAdmin
-						})
-					},
-					noBlocking: true
-				});
-			};
+	self.loadReportLists = function () {
+		var getReports = function () {
+			return ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/GetSavedReports",
+					model: JSON.stringify({ adminMode: self.adminMode(), applyClientInAdmin: self.appSettings.useClientIdInAdmin })
+				},
+				noBlocking: true
+			});
+		};
+
+		var getFolders = function () {
+			return ajaxcall({
+				url: options.apiUrl,
+				data: {
+					method: "/ReportApi/GetFolders",
+					model: JSON.stringify({
+						adminMode: self.adminMode(),
+						applyClientInAdmin: self.appSettings.useClientIdInAdmin
+					})
+				},
+				noBlocking: true
+			});
+		};
 
 		return $.when(getReports(), getFolders()).done(function (allReports, allFolders) {
-			var setup = [];
-			if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
-			if (allReports[0].d) { allReports[0] = allReports[0].d; }
-			if (allFolders[0].result) { allFolders[0] = allFolders[0].result; }
-			if (allReports[0].result) { allReports[0] = allReports[0].result; }
+		var setup = [];
+		if (allFolders[0].d) { allFolders[0] = allFolders[0].d; }
+		if (allReports[0].d) { allReports[0] = allReports[0].d; }
+		if (allFolders[0].result) { allFolders[0] = allFolders[0].result; }
+		if (allReports[0].result) { allReports[0] = allReports[0].result; }
 
-				// Show the full path so sub folders are nested and same named folders under
-				// different parents stay distinguishable.
-				var folderMap = {};
-				_.forEach(allFolders[0], function (f) { folderMap[f.Id] = f; });
-				var pathNames = function (f) {
-					var names = [], cur = f, guard = 0;
-					while (cur && guard++ < 20) {
-						names.unshift(cur.FolderName);
-						cur = cur.ParentFolderId ? folderMap[cur.ParentFolderId] : null;
-					}
-					return names;
-				};
+			// full path, so same named sub folders stay distinguishable
+			var folderMap = {};
+			_.forEach(allFolders[0], function (f) { folderMap[f.Id] = f; });
+			var pathNames = function (f) {
+				var names = [], cur = f, guard = 0;
+				while (cur && guard++ < 20) {
+					names.unshift(cur.FolderName);
+					cur = cur.ParentFolderId ? folderMap[cur.ParentFolderId] : null;
+				}
+				return names;
+			};
 
-				_.forEach(allFolders[0], function (x) {
-					var folderReports = _.filter(allReports[0], { folderId: x.Id });
-					var names = pathNames(x);
-					setup.push({
-						folderId: x.Id,
-						folder: names[names.length - 1],
-						folderPath: names.join(' › '),
-						depth: names.length - 1,
-						reports: _.map(folderReports, function (r) {
-							return {
-								reportId: r.reportId,
-								reportName: r.reportName,
-								reportDescription: r.reportDescription,
-								reportType: r.reportType,
-								selected: ko.observable(false)
-							};
-						})
-					});
+			_.forEach(allFolders[0], function (x) {
+				var folderReports = _.filter(allReports[0], { folderId: x.Id });
+				var names = pathNames(x);
+				setup.push({
+					folderId: x.Id,
+					folder: names[names.length - 1],
+					folderPath: names.join(' › '),
+					depth: names.length - 1,
+					reports: _.map(folderReports, function (r) {
+						return {
+							reportId: r.reportId,
+							reportName: r.reportName,
+							reportDescription: r.reportDescription,
+							reportType: r.reportType,
+							selected: ko.observable(false)
+						};
+					})
 				});
-				self.reportsAndFolders(_.sortBy(setup, 'folderPath'));
-				self.savedReports = allReports[0];
 			});
+			self.reportsAndFolders(_.sortBy(setup, 'folderPath'));
+			self.savedReports = allReports[0];
 		});
 	};
 
@@ -15361,15 +16378,16 @@ var dashboardViewModel = function (options) {
 	};
 
 	function updateZoomDashboard() {
-		document.querySelector('.grid-stack').style.transform = `scale(${self.zoomLevelDashboard()})`;
-		document.querySelector('.grid-stack').style.transformOrigin = "top center";
+		document.querySelector('.grid-stack:not(.dash-preview-grid)').style.transform = `scale(${self.zoomLevelDashboard()})`;
+		document.querySelector('.grid-stack:not(.dash-preview-grid)').style.transformOrigin = "top center";
+		document.documentElement.style.setProperty('--dr-dash-zoom', self.zoomLevelDashboard());
 	}
 
 	// Apply initial zoom on page load
 	updateZoomDashboard();
 
 	self.gridResponsive = function () {
-		const gridEl = document.querySelector('.grid-stack');
+		const gridEl = document.querySelector('.grid-stack:not(.dash-preview-grid)');
 		if (!gridEl) return;
 		if (window.innerWidth < 768) {
 			gridEl.classList.add('grid-stack-one-column-mode');
@@ -15379,7 +16397,7 @@ var dashboardViewModel = function (options) {
 	}
 	var eventHandlers = {};
 	self.arrangeDashboard.subscribe(function (newValue) {
-		const grid = document.querySelector('.grid-stack')?.gridstack;
+		const grid = document.querySelector('.grid-stack:not(.dash-preview-grid)')?.gridstack;
 
 		if (!grid) return;
 

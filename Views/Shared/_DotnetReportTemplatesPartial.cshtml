@@ -104,7 +104,7 @@
         <select required class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, lookupSearch: $parent.SearchLookupList, options: $parent.LookupList, optionsText: 'text', optionsValue:   $parent.IsConditionalFilter ? 'text': 'id', value: $parent.Value, optionsCaption: 'Please Choose'"></select>
         <!-- /ko -->
         <!-- ko if: $parent.Operator()=='in' || $parent.Operator()=='not in'-->
-        <select required multiple class="form-control" data-bind="select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, lookupSearch: $parent.SearchLookupList, options: $parent.LookupList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ValueIn"></select>
+        <select multiple class="form-control" data-bind="attr: { required: !$parent.IsFilterOnFly }, select2: { dropdownParent: '#filter-'+uiId, placeholder: 'Please Choose', allowClear: true }, lookupSearch: $parent.SearchLookupList, options: $parent.LookupList, optionsText: 'text', optionsValue: $parent.IsConditionalFilter ? 'text': 'id', selectedOptions: $parent.ValueIn"></select>
         <button type="button" class="btn btn-link btn-sm p-0" data-bind="click: $parent.SelectAllLookup, visible: $parent.LookupList().length > 0 && $parent.ValueIn().length < $parent.LookupList().length">Select all</button>
         <!-- /ko -->
         <!-- /ko -->
@@ -242,7 +242,7 @@
 </script>
 
 <script type="text/html" id="report-widget">
-    <div data-bind="style: { 'font-size': (FontSize ? FontSize : '48px'),'text-align': Alignment ? Alignment : 'center','color': FontColor ? FontColor : '#000000','background-color':BackColor ? BackColor : '#fff' }" style="width: 100%;">
+    <div data-bind="style: { 'font-size': (FontSize ? FontSize : '48px'),'text-align': Alignment ? Alignment : 'center','color': FontColor ? FontColor : '#000000','background-color':BackColor ? BackColor : '#fff' }, kpiVerticalAlign: typeof VerticalAlignment !== 'undefined' ? VerticalAlignment : 'top'" style="width: 100%;">
         <span data-bind="visible: Rows.length < 1" title="No data found">/</span>
 
         <div data-bind="if: Rows.length > 0">
@@ -303,6 +303,15 @@
                             <option value="left">Left</option>
                             <option value="center">Center</option>
                             <option value="right">Right</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Vertical Alignment</label>
+                        <select class="form-select form-select-sm"
+                                data-bind="value: kpiSettings().verticalAlignment, event: { change: updateKpi }">
+                            <option value="top">Top</option>
+                            <option value="middle">Middle</option>
+                            <option value="bottom">Bottom</option>
                         </select>
                     </div>
                     <div class="mb-2">
@@ -485,7 +494,7 @@
             <thead style="position: sticky; top: -1px; z-index: 2;" data-bind="if: !$parents[2].noHeaderRow(), attr: {id: 'report-table-head' + $parents[2].ReportID()}">
                 <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">
                     <!-- ko if: $parentContext.$parentContext.$parent.canDrilldown() && !IsDrillDown() && !CanExpandOption() && (!$parents[2].hasPivotColumn() || ($parents[2].hasPivotColumn() && $parents[2].appSettings.useAltPivot)) -->
-                    <th style="width: 30px; border-left: 1px solid;" data-bind="style: {'background-color': Columns[0].headerBackColor}"></th>
+                    <th style="width: 30px; border-left: 1px solid;" data-bind="style: {'background-color': ko.unwrap(Columns[0].headerBackColor) || ($data.headerStyle ? $data.headerStyle.backColor() : ''), 'border-top': $data.headerBorderCss ? $data.headerBorderCss() : '', 'border-bottom': $data.headerBorderCss ? $data.headerBorderCss() : '', 'border-left': ($data.headerBorderCss && $data.headerBorderCss()) || '1px solid'}"></th>
                     <!-- /ko -->
                     <!-- ko template: 'report-column-header', data: $data -->
                     <!-- /ko-->
@@ -547,7 +556,7 @@
                                     &nbsp;
                                     <a href="#" title="Download Excel" data-bind="click: $parent.exportExcel"><span class="fa fa-file-excel-o"></span></a>
                                     &nbsp;
-                                    <a href="#" title="View Code" data-bs-toggle="modal" data-bs-target="#sqlDrillDownModal" data-bind="visible: $root.adminMode">
+                                    <a href="#" title="View Code" data-bs-toggle="modal" data-bs-target="#sqlDrillDownModal" data-bind="visible: $root.canViewSql">
                                         <span class="fa fa-code"></span>
                                     </a>
                                 </div>
@@ -759,7 +768,7 @@
 
     <div data-bind="foreach: outerGroupData">
         <!-- ko if: rows.length > 0 || ($parent.outerGroupData && $parent.outerGroupData().length == 1) -->
-        <!-- ko ifnot: $data.bands -->
+        <!-- ko if: !$data.bands && display -->
         <br />
         <div class="dr-group-heading" data-bind="attr: { style: $parents[1].groupHeadingCss ? $parents[1].groupHeadingCss() : '' }">
             <h6 class="mb-0" data-bind="html: display"></h6>
@@ -779,10 +788,10 @@
         <!-- /ko -->
         <div data-bind="visible: $data.bands" style="padding-top: 4px;"></div>
 
-        <!-- ko if: $parents[1].ReportType() != 'Single'-->
+        <!-- ko if: $parents[1].ReportType() != 'Single' || !ko.unwrap($parent.ReportData).FontSize -->
         <div data-bind="template: {name: 'report-table', data: $parent.ReportData }"></div>
         <!-- /ko -->
-        <!-- ko if: $parents[1].ReportType() == 'Single'-->
+        <!-- ko if: $parents[1].ReportType() == 'Single' && ko.unwrap($parent.ReportData).FontSize -->
         <div data-bind="template: {name: 'report-widget', data: $parent.ReportData }"></div>
         <!-- /ko -->
         <!-- /ko -->
@@ -886,12 +895,18 @@
     </div>
 </script>
 <script type="text/html" id="manage-access-template">
-    <h5><span class="fa fa-key"></span>Manage Access</h5>
+    <h5 class="manage-access-heading"><span class="fa fa-key"></span>Manage Access</h5>
     <div class="panel panel-default panel-body" style="margin-left: 20px;">
 
         <div class="form-group row">
             <label class="col-md-3 col-sm-3 control-label" data-bind="text: ($root.clientIdLabelText ? $root.clientIdLabelText() : 'Client Id') + ' to Restrict Access'"></label>
             <div class="col-md-6 col-sm-6">
+                <!-- ko if: $root.adminMode && !$root.adminMode() -->
+                <!-- Without Admin Mode the item stays with the user's own Client Id; the server enforces this -->
+                <div class="form-control-plaintext py-1" data-bind="text: clientId() || '-'"></div>
+                <div class="form-text">Only an admin can change this.</div>
+                <!-- /ko -->
+                <!-- ko ifnot: $root.adminMode && !$root.adminMode() -->
                 <!-- ko if: $root.clientIdOptions && $root.clientIdOptions().length > 0 -->
                 <select class="form-select form-select-sm"
                         data-bind="options: $root.clientIdOptions().filter(function(c){ return selectedClientIds().indexOf(c.id) < 0; }),
@@ -922,6 +937,7 @@
                 </div>
                 <!-- /ko -->
                 <div class="form-text" data-bind="visible: selectedClientIds().length === 0">Not restricted, available to all.</div>
+                <!-- /ko -->
                 <!-- /ko -->
             </div>
             <div class="col-md-1 col-sm-1">
@@ -1182,13 +1198,13 @@
 </script>
 
 <script type="text/html" id="fly-filter-template">
-    <div class="card" data-bind="visible: FlyFilters().length>0 || DontExecuteOnRun">
-        <div class="card-header">
-            <a data-bs-toggle="collapse" data-bind="attr: {'data-bs-target': '#filter-panel-' + ReportID() }" href="#">
-                <i class="fa fa-filter"></i> Choose Filters
-            </a>
-        </div>
-        <div data-bind="attr: {id: 'filter-panel-' + ReportID() }, css: {collpased: !DontExecuteOnRun(), collapse: !DontExecuteOnRun()}" class="card-body">
+    <div class="dr-filter-bar dr-filter-bar-fit" data-bind="visible: FlyFilters().length>0 || DontExecuteOnRun">
+        <button type="button" class="dr-filter-toggle" data-bs-toggle="collapse" data-bind="attr: {'data-bs-target': '#filter-panel-' + ReportID(), 'aria-expanded': DontExecuteOnRun() ? 'true' : 'false' }">
+            <i class="fa fa-filter"></i> Filters
+            <span class="dr-filter-count" data-bind="visible: FlyFilters().length > 0, text: FlyFilters().length"></span>
+            <i class="fa fa-chevron-down dr-filter-chevron"></i>
+        </button>
+        <div data-bind="attr: {id: 'filter-panel-' + ReportID() }, css: {collpased: !DontExecuteOnRun(), collapse: !DontExecuteOnRun()}" class="card-body dr-filter-bar-body">
             <div class="dr-fly-filters">
                 <!-- ko foreach: FlyFilters -->
                 <div class="dr-fly-row" data-bind="attr: { 'data-fly-filter-id': uiId }, css: { 'dr-fly-row-editing': flyEditing }">
@@ -1394,98 +1410,116 @@
             </script>
 
 <script type="text/html" id="report-schedule">
-    <div data-bind="with: scheduleBuilder" id="schedule-builder-div">
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" data-bind="checked: hasSchedule" id="scheduleReportCheckbox">
+    <div data-bind="with: scheduleBuilder" id="schedule-builder-div" class="dr-sched">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" data-bind="checked: hasSchedule" id="scheduleReportCheckbox">
             <label class="form-check-label" for="scheduleReportCheckbox">
                 Set Schedule to send by Email
             </label>
         </div>
         <div data-bind="if: hasSchedule">
-            <div class="d-flex align-items-center">
-                <div class="me-3 d-flex align-items-center">
-                    <span data-bind="text: selectedOption() != 'once' ? 'Every ' : ''"></span>&nbsp;
-                    <select class="form-select" required data-bind="options: options, value: selectedOption" style="min-width: 80px;"></select>
+            <div class="dr-sched-body">
+                <div class="dr-sched-row">
+                    <label class="dr-sched-label">Repeat</label>
+                    <div class="dr-sched-control">
+                        <span class="dr-sched-word" data-bind="visible: selectedOption() != 'once'">Every</span>
+                        <select class="form-select form-select-sm dr-sched-narrow" required data-bind="options: options, value: selectedOption"></select>
+                    </div>
                 </div>
-                <div data-bind="if: selectedOption() == 'once'" class="me-3 d-flex align-items-center">
-                    &nbsp;on&nbsp;<input data-bind="datepicker: selectedDate, datepickerOptions: {value: selectedDate}" class="form-control" required />
+
+                <div class="dr-sched-row" data-bind="visible: selectedOption() == 'once'">
+                    <label class="dr-sched-label">On</label>
+                    <div class="dr-sched-control" data-bind="if: selectedOption() == 'once'">
+                        <input class="form-control form-control-sm dr-sched-date" data-bind="datepicker: selectedDate, datepickerOptions: {value: selectedDate}" required />
+                    </div>
                 </div>
-                <div class="d-flex align-items-center">
-                    <div data-bind="if: showDays" class="d-flex align-items-center">
-                        &nbsp;on&nbsp;
-                        <select multiple class="form-select ms-2" required data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
+
+                <div class="dr-sched-row" data-bind="visible: showDays">
+                    <label class="dr-sched-label">On</label>
+                    <div class="dr-sched-control" data-bind="if: showDays">
+                        <select multiple class="form-select" style="width: 100%;" required data-bind="select2: { placeholder: 'Choose Days', allowClear: true }, options: days, selectedOptions: selectedDays"></select>
                     </div>
-                    <div data-bind="if: showDates" class="d-flex align-items-center">
-                        &nbsp;on&nbsp;
-                        <select multiple class="form-select" required data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
+                </div>
+
+                <div class="dr-sched-row" data-bind="visible: showDates">
+                    <label class="dr-sched-label">On</label>
+                    <div class="dr-sched-control" data-bind="if: showDates">
+                        <select multiple class="form-select" style="width: 100%;" required data-bind="select2: { placeholder: 'Choose Dates', allowClear: true }, options: dates, selectedOptions: selectedDates"></select>
                     </div>
-                    <div data-bind="if: showMonths" class="d-flex align-items-center">
-                        &nbsp;on&nbsp;
-                        <select multiple class="form-select" required data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
+                </div>
+
+                <div class="dr-sched-row" data-bind="visible: showMonths">
+                    <label class="dr-sched-label">In</label>
+                    <div class="dr-sched-control" data-bind="if: showMonths">
+                        <select multiple class="form-select" style="width: 100%;" required data-bind="select2: { placeholder: 'Choose Months', allowClear: true }, options: months, selectedOptions: selectedMonths"></select>
                     </div>
-                    <div data-bind="if: showAtTime" class="d-flex align-items-center ms-3">
-                        &nbsp;at&nbsp;
-                        <select class="form-select me-2" style="min-width: 60px;" data-bind="options: hours, value: selectedHour"></select>
-                        <select class="form-select me-2" style="min-width: 60px;" data-bind="options: minutes, value: selectedMinute"></select>
-                        <select class="form-select" style="min-width: 80px;" data-bind="value: selectedAmPm">
+                </div>
+
+                <div class="dr-sched-row" data-bind="visible: showAtTime">
+                    <label class="dr-sched-label">At</label>
+                    <div class="dr-sched-control">
+                        <select class="form-select form-select-sm dr-sched-time" data-bind="options: hours, value: selectedHour"></select>
+                        <span class="dr-sched-word">:</span>
+                        <select class="form-select form-select-sm dr-sched-time" data-bind="options: minutes, value: selectedMinute"></select>
+                        <select class="form-select form-select-sm dr-sched-time" data-bind="value: selectedAmPm">
                             <option>AM</option>
                             <option>PM</option>
                         </select>
                     </div>
                 </div>
-            </div>
 
-            <div class="alert alert-info">
-                Report will be run and emailed <span data-bind="text: selectedOption() != 'once' ? 'every' : ''"></span> <span data-bind="text: selectedOption"></span>
-                <span data-bind="if: selectedOption() == 'once'">
-                    on <span class="error" data-bind="visible: !selectedDate()">Please pick a Date</span> <span data-bind="text: selectedDate"></span>
-                </span>
-                <span data-bind="if: showDays">
-                    on <span class="error" data-bind="visible: selectedDays().length == 0">Please pick Day(s)</span> <span data-bind="text: selectedDays"></span>
-                </span>
-                <span data-bind="if: showDates">
-                    on <span class="error" data-bind="visible: selectedDates().length == 0">Please pick Date(s)</span>
-                    <span data-bind="foreach: selectedDates"><span data-bind="visible: $index()>0">, </span><span data-bind="text: $data == 1 ? '1st': ($data == 2 ? '2nd' : ($data == 3 ? '3rd' : ($data == 31 ? '31st' : $data+'th')))"></span></span>
-                </span>
-                <span data-bind="if: showMonths">
-                    of <span class="error" data-bind="visible: selectedMonths().length == 0">Please pick Month(s)</span> <span data-bind="text: selectedMonths"></span>
-                </span>
-                <span data-bind="if: showAtTime">
-                    at <span data-bind="text: selectedHour"></span>:<span data-bind="text: selectedMinute"></span> <span data-bind="text: selectedAmPm"></span>
-                </span>
-            </div>
-            <div class="mb-3">
-                <div class="row g-2 align-items-center">
-                    <div class="col-12 col-sm-3">
-                        <label class="col-form-label pb-0">Email to</label>
-                        <div class="form-check small">
-                            <label class="form-check-label text-muted" title="Send to a saved Email List instead of typing addresses">
-                                <input class="form-check-input" type="checkbox" data-bind="checked: useEmailQuery" />
-                                Email List
-                            </label>
-                        </div>
-                    </div>
+                <div class="dr-sched-summary">
+                    <i class="fa fa-clock-o"></i>
+                    <span>
+                        Report will be run and emailed <span data-bind="text: selectedOption() != 'once' ? 'every' : ''"></span> <span data-bind="text: selectedOption"></span>
+                        <span data-bind="if: selectedOption() == 'once'">
+                            on <span class="error" data-bind="visible: !selectedDate()">Please pick a Date</span> <span data-bind="text: selectedDate"></span>
+                        </span>
+                        <span data-bind="if: showDays">
+                            on <span class="error" data-bind="visible: selectedDays().length == 0">Please pick Day(s)</span> <span data-bind="text: selectedDays"></span>
+                        </span>
+                        <span data-bind="if: showDates">
+                            on <span class="error" data-bind="visible: selectedDates().length == 0">Please pick Date(s)</span>
+                            <span data-bind="foreach: selectedDates"><span data-bind="visible: $index()>0">, </span><span data-bind="text: $data == 1 ? '1st': ($data == 2 ? '2nd' : ($data == 3 ? '3rd' : ($data == 31 ? '31st' : $data+'th')))"></span></span>
+                        </span>
+                        <span data-bind="if: showMonths">
+                            of <span class="error" data-bind="visible: selectedMonths().length == 0">Please pick Month(s)</span> <span data-bind="text: selectedMonths"></span>
+                        </span>
+                        <span data-bind="if: showAtTime">
+                            at <span data-bind="text: selectedHour"></span>:<span data-bind="text: selectedMinute"></span> <span data-bind="text: selectedAmPm"></span>
+                        </span>
+                    </span>
+                </div>
 
-                    <div class="col-12 col-sm-6">
+                <div class="dr-sched-row">
+                    <label class="dr-sched-label">Email to</label>
+                    <div class="dr-sched-control dr-sched-stack">
                         <!-- ko ifnot: useEmailQuery -->
-                        <input type="text" class="form-control"
+                        <input type="text" class="form-control form-control-sm"
                                data-bind="value: emailTo"
                                placeholder="Enter Email Addresses separated by comma" />
                         <!-- /ko -->
                         <!-- ko if: useEmailQuery -->
-                        <div class="d-flex align-items-center gap-2">
-                            <select class="form-select" data-bind="options: emailQueries, optionsText: 'name', optionsValue: 'id', value: emailQueryId, optionsCaption: 'Choose Email List...'"></select>
+                        <div class="d-flex gap-2 w-100">
+                            <select class="form-select form-select-sm" data-bind="options: emailQueries, optionsText: 'name', optionsValue: 'id', value: emailQueryId, optionsCaption: 'Choose Email List...'"></select>
                             <button type="button" class="btn btn-light btn-sm text-nowrap"
                                     data-bind="click: previewRecipients, enable: emailQueryId() > 0"
                                     title="Show who this Email List currently returns">View</button>
                         </div>
                         <!-- /ko -->
+                        <div class="form-check small mb-0">
+                            <label class="form-check-label text-muted" title="Send to a saved Email List instead of typing addresses">
+                                <input class="form-check-input" type="checkbox" data-bind="checked: useEmailQuery" />
+                                Use a saved Email List
+                            </label>
+                        </div>
                     </div>
+                </div>
 
-                    <label class="col-6 col-sm-1 col-form-label">Format</label>
-
-                    <div class="col-6 col-sm-2">
-                        <select class="form-select" data-bind="value: format,event: { change: onFormatChange }">
+                <div class="dr-sched-row">
+                    <label class="dr-sched-label">Format</label>
+                    <div class="dr-sched-control">
+                        <select class="form-select form-select-sm dr-sched-narrow" data-bind="value: format,event: { change: onFormatChange }">
                             <option value="EXCEL">Excel</option>
                             <option data-bind="visible: $parent.canDrilldown && $parent.canDrilldown()" value="EXCEL-SUB">Excel (Expanded)</option>
                             <option value="CSV">CSV</option>
@@ -1495,13 +1529,11 @@
                         </select>
                     </div>
                 </div>
-            </div>
-            <div class="mb-3">
-                <div class="row g-2 align-items-center">
-                    <label class="col-12 col-sm-3 col-form-label">Pick Time Zone</label>
 
-                    <div class="col-12 col-sm-9">
-                        <select class="form-select"
+                <div class="dr-sched-row">
+                    <label class="dr-sched-label">Time Zone</label>
+                    <div class="dr-sched-control">
+                        <select class="form-select" style="width: 100%;"
                                 data-bind="options: timezonOption,
                                            optionsText: 'displayName',
                                            optionsValue: 'timeZoneId',
@@ -1510,48 +1542,44 @@
                         </select>
                     </div>
                 </div>
-            </div>
 
-            <div class="mb-3">
-                <div class="row g-2">
-                    <div class="col-6 col-sm-3">
-                        <div class="form-check" title="Set a date to start sending scheduled report">
+                <div class="dr-sched-row">
+                    <label class="dr-sched-label">Start Date</label>
+                    <div class="dr-sched-control">
+                        <div class="form-check mb-0" title="Set a date to start sending scheduled report">
                             <input class="form-check-input" type="checkbox"
                                    data-bind="checked: hasScheduleStart"
                                    id="scheduleStartCheckbox">
-                            <label class="form-check-label" for="scheduleStartCheckbox">
-                                Schedule Start Date
+                            <label class="form-check-label small" for="scheduleStartCheckbox" title="Optional. Sends right away if not set.">
+                                Set a start date
                             </label>
                         </div>
-                    </div>
-
-                    <div class="col-6 col-sm-4" data-bind="if: hasScheduleStart">
-                        <input type="text" class="form-control"
+                        <!-- ko if: hasScheduleStart -->
+                        <input type="text" class="form-control form-control-sm dr-sched-date"
                                data-bind="datepicker: scheduleStart, datepickerOptions: {value: scheduleStart}"
                                title="Scheduled Report will not be sent before this date"
                                required />
+                        <!-- /ko -->
                     </div>
                 </div>
-            </div>
 
-            <div class="mb-3">
-                <div class="row g-2">
-                    <div class="col-6 col-sm-3">
-                        <div class="form-check"  title="Set a date to stop sending scheduled report">
+                <div class="dr-sched-row">
+                    <label class="dr-sched-label">End Date</label>
+                    <div class="dr-sched-control">
+                        <div class="form-check mb-0" title="Set a date to stop sending scheduled report">
                             <input class="form-check-input" type="checkbox"
                                    data-bind="checked: hasScheduleEnd"
                                    id="scheduleEndCheckbox">
-                            <label class="form-check-label" for="scheduleEndCheckbox">
-                                Schedule End Date
+                            <label class="form-check-label small" for="scheduleEndCheckbox" title="Optional. Keeps sending if not set.">
+                                Set an end date
                             </label>
                         </div>
-                    </div>
-
-                    <div class="col-6 col-sm-4" data-bind="if: hasScheduleEnd">
-                        <input type="text" class="form-control"
+                        <!-- ko if: hasScheduleEnd -->
+                        <input type="text" class="form-control form-control-sm dr-sched-date"
                                data-bind="datepicker: scheduleEnd, datepickerOptions: {value: scheduleEnd}"
                                title="Scheduled Report will not be sent after this date"
                                required />
+                        <!-- /ko -->
                     </div>
                 </div>
             </div>
@@ -1800,10 +1828,18 @@
             <span class="fa fa-2x fa-globe"></span>
             <p>Map</p>
         </button>
+        <!-- ko ifnot: extraChartType -->
         <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Single'); }, css: { active: ReportType()=='Single',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Single' }">
             <span class="fa fa-2x fa-window-maximize"></span>
             <p>KPI</p>
         </button>
+        <!-- /ko -->
+        <!-- ko with: extraChartType -->
+        <button class="btn btn-outline-secondary chart-type-btn active" data-bind="click: $parent.selectExtraChartType, attr: { 'data-chart-id': id, title: title }">
+            <span class="fa fa-2x" data-bind="css: icon"></span>
+            <p data-bind="text: name"></p>
+        </button>
+        <!-- /ko -->
         <button class="btn btn-outline-secondary" data-bind="click: showMoreCharts" title="Explore more visualization options">
             <span class="fa fa-2x fa-th-large"></span>
             <p>More...</p>
@@ -1811,7 +1847,7 @@
     </div>
     </div>
     <!-- Smart Suggestion -->
-    <div class="smart-suggestion mt-2" data-bind="visible: smartSuggestion() && (showHints() || activeDesign())">
+    <div class="smart-suggestion mt-2" data-bind="visible: smartSuggestion() && showHints()">
         <i class="fa fa-lightbulb-o text-warning"></i>
         <span data-bind="text: smartSuggestion"></span>
         <a href="#" class="ms-2 small" data-bind="click: applySuggestion">
@@ -1977,6 +2013,52 @@
         <div data-bind="visible: ReportType()=='Polar'" class="card card-body">
             <div class="alert alert-info small py-1 mb-0">
             <span class="fa fa-lightbulb-o"></span>&nbsp;For Polar Stacked Bar, the first field is the category. Each numeric field becomes a stacked segment on the circular axis.
+            </div>
+        </div>
+        <div data-bind="visible: ReportType()=='Gauge'" class="card card-body">
+            <div class="alert alert-info small py-1 mb-2">
+            <span class="fa fa-lightbulb-o"></span>&nbsp;For Gauge, the first numeric field is the value. Add a second numeric field to use it as the target, otherwise the Max below is the target.
+            </div>
+            <div class="form-group row small">
+            <div class="col-6 mb-2">
+                <label class="form-label mb-0">Style</label>
+                <select class="form-select form-select-sm" data-bind="options: gaugeStyles, optionsText: 'text', optionsValue: 'value', value: gaugeOptions.style"></select>
+            </div>
+            <div class="checkbox col-6 mb-2 pt-3">
+                <label>
+                <input type="checkbox" data-bind="checked: gaugeOptions.showPercent" />
+                Show as Percent
+                </label>
+            </div>
+            <div class="col-6">
+                <label class="form-label mb-0">Min</label>
+                <input type="number" class="form-control form-control-sm" data-bind="value: gaugeOptions.min" />
+            </div>
+            <div class="col-6">
+                <label class="form-label mb-0">Max / Target</label>
+                <input type="number" class="form-control form-control-sm" data-bind="value: gaugeOptions.max" />
+            </div>
+            </div>
+        </div>
+        <div data-bind="visible: ReportType()=='Funnel'" class="card card-body">
+            <div class="alert alert-info small py-1 mb-2">
+            <span class="fa fa-lightbulb-o"></span>&nbsp;For Funnel, the first field is the stage and the first numeric field is the value of each stage.
+            </div>
+            <div class="form-group row small">
+            <div class="col-6">
+                <label class="form-label mb-0">Order</label>
+                <select class="form-select form-select-sm" data-bind="value: funnelOptions.sort">
+                    <option value="descending">Largest first</option>
+                    <option value="ascending">Smallest first</option>
+                    <option value="none">Report order</option>
+                </select>
+            </div>
+            <div class="checkbox col-6 pt-3">
+                <label>
+                <input type="checkbox" data-bind="checked: funnelOptions.showPercent" />
+                Show as Percent
+                </label>
+            </div>
             </div>
         </div>
         <div data-bind="visible: ReportType()=='Treemap'" class="card card-body">
@@ -2498,8 +2580,8 @@
                     data-bind="visible: changePageSize,
                                 css: { 'text-muted': subReports().length > 0 }">
                 <select style="width: 150px;" class="form-select"
-                        data-bind="options: [1,10,30,50,100,150,200,500,1000],
-                                    value: DefaultPageSize,
+                        data-bind="options: DefaultPageSizeOptions,
+                                    value: DefaultPageSize, valueAllowUnset: true,
                                     disable: subReports().length > 0">
                 </select>
                 </div>
@@ -3212,21 +3294,14 @@
                                         <i class="fa fa-magic text-primary"></i> Tell me what report to build, or try:
                                     </div>
                                     <div class="small text-muted mb-2" style="background: #f0f7ff; padding: 6px 8px; border-radius: 4px; border-left: 3px solid #0d6efd;">
-                                        <i class="fa fa-lightbulb-o text-warning"></i> <strong>Tip:</strong> For best results, mention the data table name (e.g., "build a report using the Orders table")
+                                        <i class="fa fa-lightbulb-o text-warning"></i> <strong>Tip:</strong> For best results, mention the data table name (e.g., "build a report using the <span data-bind="text: aiExampleTable"></span> table")
                                     </div>
                                     <div class="d-flex flex-wrap gap-1">
-                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: function(){ aiAssistantInput('Build a sales summary report with a bar chart'); sendAiAssistantMessage(); }">
-                                            <i class="fa fa-bar-chart"></i> Sales summary
+                                        <!-- ko foreach: aiQuickPrompts -->
+                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: $parent.runAiPrompt, attr: { title: prompt }">
+                                            <i class="fa" data-bind="css: icon"></i> <span data-bind="text: label"></span>
                                         </button>
-                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: function(){ aiAssistantInput('Create an invoice report using HTML template'); sendAiAssistantMessage(); }">
-                                            <i class="fa fa-file-text-o"></i> Invoice report
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: function(){ aiAssistantInput('Show me a trend line chart of data over time'); sendAiAssistantMessage(); }">
-                                            <i class="fa fa-line-chart"></i> Trend analysis
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-secondary" data-bind="click: function(){ aiAssistantInput('Create a KPI dashboard widget showing a key metric'); sendAiAssistantMessage(); }">
-                                            <i class="fa fa-tachometer"></i> KPI widget
-                                        </button>
+                                        <!-- /ko -->
                                         <button class="btn btn-sm btn-outline-secondary" data-bind="click: getAiRecommendation, visible: SelectedFields().length > 0">
                                             <i class="fa fa-lightbulb-o"></i> Recommend chart
                                         </button>
@@ -3246,19 +3321,8 @@
                                 <!-- Follow-up suggestions (shown after AI applies a report) -->
                                 <div class="p-2 border-top" data-bind="visible: aiReportApplied() && !aiAssistantLoading() && aiAssistantMessages().length > 0" style="display:none;">
                                     <div class="small text-muted mb-1"><i class="fa fa-comments-o"></i> Follow-up:</div>
-                                    <div class="d-flex flex-wrap gap-1">
-                                        <button class="btn btn-sm btn-outline-primary" data-bind="click: function(){ aiAssistantInput('Add a filter for this year'); sendAiAssistantMessage(); }">
-                                            + Filter this year
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-primary" data-bind="click: function(){ aiAssistantInput('Change to a bar chart'); sendAiAssistantMessage(); }">
-                                            Change chart type
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-primary" data-bind="click: function(){ aiAssistantInput('Break it down by month'); sendAiAssistantMessage(); }">
-                                            By month
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-primary" data-bind="click: function(){ aiAssistantInput('Add a top 10 limit'); sendAiAssistantMessage(); }">
-                                            Top 10
-                                        </button>
+                                    <div class="d-flex flex-wrap gap-1" data-bind="foreach: aiFollowUpPrompts">
+                                        <button class="btn btn-sm btn-outline-primary" data-bind="click: $parent.runAiPrompt, text: label, attr: { title: prompt }"></button>
                                     </div>
                                 </div>
                             </div>
@@ -3749,6 +3813,43 @@
                             </div>
                         </div>
                     </div>
+                    <div data-bind="visible: ReportType()=='Gauge'">
+        <div class="form-group row small">
+        <div class="col-6 mb-2">
+            <label class="form-label mb-0">Style</label>
+            <select class="form-select form-select-sm" data-bind="options: gaugeStyles, optionsText: 'text', optionsValue: 'value', value: gaugeOptions.style"></select>
+        </div>
+        <div class="checkbox col-6 mb-2 pt-3">
+            <label>
+            <input type="checkbox" data-bind="checked: gaugeOptions.showPercent" />
+            Show as Percent
+            </label>
+        </div>
+        <div class="col-6">
+            <label class="form-label mb-0">Min</label>
+            <input type="number" class="form-control form-control-sm" data-bind="value: gaugeOptions.min" />
+        </div>
+        <div class="col-6">
+            <label class="form-label mb-0">Max / Target</label>
+            <input type="number" class="form-control form-control-sm" data-bind="value: gaugeOptions.max" />
+        </div>
+        </div>
+                    </div>
+                    <div data-bind="visible: ReportType()=='Funnel'">
+                        <div class="form-group row small">
+                            <div class="col-6">
+                                <label class="form-label mb-0">Order</label>
+                                <select class="form-select form-select-sm" data-bind="value: funnelOptions.sort">
+                                    <option value="descending">Largest first</option>
+                                    <option value="ascending">Smallest first</option>
+                                    <option value="none">Report order</option>
+                                </select>
+                            </div>
+                            <div class="checkbox col-6 pt-3">
+                                <label><input type="checkbox" data-bind="checked: funnelOptions.showPercent" /> Percent</label>
+                            </div>
+                        </div>
+                    </div>
                     <div class="mb-2">
                         <label class="form-label small">Background Color</label>
                         <div class="d-flex align-items-center flex-wrap">
@@ -3805,15 +3906,19 @@
                         </div>
                         <div class="form-check form-switch small mb-1">
                             <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showSmallValuesOnLabel, event: { change: updateChart }">
-                            <label class="form-check-label">Show Small Values On Label</label>
+                            <label class="form-check-label">Show Values On Label</label>
                         </div>
                         <div class="form-check form-switch small mb-1" data-bind="visible: ['Line', 'Bar', 'Combo'].indexOf(ReportType()) >= 0" title="Add the missing days (or hours, weeks, months, years) between the first and last date as zero points">
                             <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().fillEmptyDates, event: { change: updateChart }">
                             <label class="form-check-label">Show Dates with No Data</label>
                         </div>
+                        <div class="form-check form-switch small mb-1" data-bind="visible: ReportType() === 'Map'" title="Show the High / Low color scale on the map">
+                            <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showMapScale, event: { change: updateChart }">
+                            <label class="form-check-label">Show Color Scale</label>
+                        </div>
                         <div class="form-group small mb-1">
                             <label class="form-label">Y-Axis Format</label>
-                            <select class="form-select form-select-sm" data-bind="value: chartOptions().yAxisFormat, event: { change: function() { updateYAxisFormat(); updateChart(); } }">
+                            <select class="form-select form-select-sm" data-bind="value: chartOptions().yAxisFormat, event: { change: updateYAxisFormat }">
                                 <option value="">Auto (from Field)</option>
                                 <option value="Currency">Currency</option>
                                 <option value="Percentage">Percentage</option>
@@ -3963,7 +4068,7 @@
                         </div>
                         <div class="pull-left">
                             <button class="btn btn-xs" title="Download Excel" data-bind="click: $parent.exportExcel"><span class="fa fa-file-excel-o"></span></button>
-                            <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#sqlDrillDownModal" data-bind="visible: $root.adminMode">
+                            <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#sqlDrillDownModal" data-bind="visible: $root.canViewSql">
                                 <span class="fa fa-code"></span> View Code
                             </button>
                         </div>
