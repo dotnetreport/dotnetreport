@@ -3655,6 +3655,13 @@ var reportViewModel = function (options) {
 			if (f.isFormulaField === true && f.formulaType === 'sql') {
 				entry.isCustomSqlField = true;
 			}
+			var label = f.fieldLabel ? ko.unwrap(f.fieldLabel) : '';
+			if (label) entry.label = label;
+			if (f.disabled && ko.unwrap(f.disabled)) entry.hidden = true;
+			if (f.hideInDetail && ko.unwrap(f.hideInDetail)) entry.hideInDetail = true;
+			if (f.dontSubTotal && ko.unwrap(f.dontSubTotal)) entry.dontSubTotal = true;
+			if (f.filterOnFly && ko.unwrap(f.filterOnFly)) entry.filterOnFly = true;
+			if (f.matrixRole && ko.unwrap(f.matrixRole)) entry.matrixRole = ko.unwrap(f.matrixRole);
 			fieldList.push(entry);
 		});
 
@@ -3679,11 +3686,25 @@ var reportViewModel = function (options) {
 			}
 		}
 
+		var sortList = [];
+		var sortField = _.find(fields, function (f) { return f.fieldId === self.SortByField(); });
+		if (sortField) sortList.push({ table: sortField.tableName, field: sortField.fieldName, descending: !!self.SortDesc() });
+		_.forEach(self.SortFields(), function (s) {
+			var sf = _.find(fields, function (f) { return f.fieldId === s.sortByFieldId(); });
+			if (sf) sortList.push({ table: sf.tableName, field: sf.fieldName, descending: !!s.sortDesc() });
+		});
+
 		return {
 			reportName: self.ReportName() || '',
 			reportType: self.ReportType() || 'List',
 			fields: fieldList,
-			filters: filterList
+			filters: filterList,
+			sortBy: sortList,
+			settings: {
+				includeSubTotals: !!self.IncludeSubTotal(),
+				showUniqueRecords: !!self.ShowUniqueRecords(),
+				onlyTop: self.OnlyTop ? self.OnlyTop() : null
+			}
 		};
 	};
 
@@ -3773,6 +3794,23 @@ var reportViewModel = function (options) {
 				}
 			}
 
+			// A filter needs its field on the report, so filter-only fields are added as hidden columns
+			var aiNorm = function (s) { return (s || '').toLowerCase().replace(/[\s_]/g, ''); };
+			var aiHasField = function (table, field) {
+				var inActions = _.some(actions.fields || [], function (f) { return aiNorm(f.field) === aiNorm(field) && (!table || !f.table || aiNorm(f.table) === aiNorm(table)); });
+				var inReport = _.some(self.SelectedFields(), function (sf) { return aiNorm(sf.fieldName) === aiNorm(field) && (!table || aiNorm(sf.tableName) === aiNorm(table)); });
+				return inActions || inReport;
+			};
+			var aiType = actions.reportType || self.ReportType();
+			var aiGrouped = ['List', 'Treemap'].indexOf(aiType) < 0 && _.some((actions.fields || []).concat(_.map(self.SelectedFields(), function (sf) { return { aggregate: sf.selectedAggregate() }; })), function (f) {
+				return f.aggregate && ['None', 'Only in Detail', 'Group in Detail', 'Do Not Display'].indexOf(f.aggregate) < 0;
+			});
+			_.forEach(actions.filters || [], function (flt) {
+				if (!flt || !flt.field || flt.remove || aiHasField(flt.table, flt.field)) return;
+				actions.fields = (actions.fields || []).concat([{ table: flt.table, field: flt.field, aggregate: aiGrouped ? 'Max' : 'None', hidden: true, filterOnly: true }]);
+			});
+			hasNewFields = actions.fields && actions.fields.length > 0;
+
 			// ── Load fields from tables using existing UI functions ──
 			if (hasNewFields) {
 				// Group requested fields by table
@@ -3854,6 +3892,9 @@ var reportViewModel = function (options) {
 										// Validate the aggregate is in the field's allowed options
 										var allowedAggs = (chosenField.fieldAggregate || []).concat(chosenField.fieldAggregateWithDrilldown || []);
 										var aggToSet = rf.aggregate;
+										if (rf.filterOnly && aggToSet !== 'None') {
+											aggToSet = _.find(['Max', 'Min', 'Count'], function (a) { return allowedAggs.indexOf(a) >= 0; }) || 'None';
+										}
 										if (aggToSet !== 'None' && allowedAggs.length > 0 && allowedAggs.indexOf(aggToSet) < 0) {
 											// Try case-insensitive match
 											var matched = _.find(allowedAggs, function (a) { return a.toLowerCase() === aggToSet.toLowerCase(); });
@@ -3868,6 +3909,14 @@ var reportViewModel = function (options) {
 									if (rf.groupInGraph && chosenField.groupInGraph) {
 										chosenField.groupInGraph(true);
 									}
+
+									// Column options the AI can set
+									if (typeof rf.hidden === 'boolean' && chosenField.disabled) chosenField.disabled(rf.hidden);
+									if (typeof rf.hideInDetail === 'boolean' && chosenField.hideInDetail) chosenField.hideInDetail(rf.hideInDetail);
+									if (typeof rf.dontSubTotal === 'boolean' && chosenField.dontSubTotal) chosenField.dontSubTotal(rf.dontSubTotal);
+									if (typeof rf.filterOnFly === 'boolean' && chosenField.filterOnFly) chosenField.filterOnFly(rf.filterOnFly);
+									if (rf.totalRowAggregate && chosenField.totalRowAggregate) chosenField.totalRowAggregate(rf.totalRowAggregate);
+									if (typeof rf.matrixRole === 'string' && chosenField.matrixRole) chosenField.matrixRole(rf.matrixRole === 'none' ? '' : rf.matrixRole);
 
 									// Set custom label
 									if (rf.label && chosenField.fieldLabel) {
@@ -3921,9 +3970,11 @@ var reportViewModel = function (options) {
 	// ── Apply report type, filters, settings after fields are loaded ──
 	self._applyAiPostFields = function (actions, runOpts, applied) {
 		try {
-			// Set report type
+			// Set report type (matched to a known type, ignoring case)
 			if (actions.reportType) {
-				self.ReportType(actions.reportType);
+				var knownType = _.find(_.uniq(self.chartTypes.concat(_.map(self.moreChartTypes || [], 'id'))), function (t) { return t.toLowerCase() === String(actions.reportType).trim().toLowerCase(); });
+				if (knownType) { actions.reportType = knownType; self.ReportType(knownType); }
+				else console.warn('AI: unknown report type', actions.reportType);
 			}
 
 			// Apply HTML template for Html report type
@@ -3954,6 +4005,9 @@ var reportViewModel = function (options) {
 					});
 
 					if (matchedField) {
+						var existing = _.filter(fg.Filters(), function (x) { var xf = ko.unwrap(x.Field); return xf && xf.fieldId === matchedField.fieldId; });
+						_.forEach(existing, function (x) { fg.Filters.remove(x); });
+						if (f.remove === true) return;
 						fg.AddFilter({
 							FieldId: matchedField.fieldId,
 							Operator: f.operator || '=',
@@ -3962,7 +4016,8 @@ var reportViewModel = function (options) {
 							AndOr: 'AND'
 						});
 					} else {
-						console.warn('AI: filter field not found in selected fields:', f.field);
+						console.warn('AI: filter field not found:', f.field);
+						self.aiAssistantMessages.push({ role: 'assistant', content: "I couldn't find the field \"" + (f.table ? f.table + ' > ' : '') + f.field + "\" for that filter, so the filter wasn't added. Check the field name and try again." });
 					}
 				});
 			}
@@ -4103,15 +4158,39 @@ var reportViewModel = function (options) {
 			// Detect aggregate report
 			var hasAggregate = _.some(self.SelectedFields(), function (f) {
 				var agg = f.selectedAggregate ? ko.unwrap(f.selectedAggregate) : '';
-				return agg && agg !== 'None' && agg !== '' && agg !== 'Only in Detail' && agg !== 'Group in Detail';
+				var hidden = f.disabled ? ko.unwrap(f.disabled) : false;
+				return !hidden && agg && agg !== 'None' && agg !== '' && agg !== 'Only in Detail' && agg !== 'Group in Detail' && agg !== 'Do Not Display';
 			});
+			var aiSettings = actions.settings || {};
+			// grouped or aggregated fields don't work as a List
+			if (hasAggregate && self.ReportType() === 'List') self.ReportType('Summary');
 			if (hasAggregate && self.IsAggregateReport) {
 				self.IsAggregateReport(true);
-				if (self.IncludeSubTotal) self.IncludeSubTotal(true);
+				if (self.IncludeSubTotal) self.IncludeSubTotal(aiSettings.includeSubTotals !== false);
+			}
+			if (typeof aiSettings.showUniqueRecords === 'boolean' && self.ShowUniqueRecords) self.ShowUniqueRecords(aiSettings.showUniqueRecords);
+
+			// Sorting
+			if (actions.sortBy && actions.sortBy.length) {
+				var sortFields = _.compact(_.map(actions.sortBy, function (s) {
+					var sf = _.find(self.SelectedFields(), function (x) {
+						return (x.fieldName || '').toLowerCase().replace(/[\s_]/g, '') === (s.field || '').toLowerCase().replace(/[\s_]/g, '')
+							&& (!s.table || (x.tableName || '').toLowerCase().replace(/[\s_]/g, '') === (s.table || '').toLowerCase().replace(/[\s_]/g, ''));
+					});
+					return sf ? { id: sf.fieldId, desc: s.descending === true } : null;
+				}));
+				if (sortFields.length) {
+					self.SortByField(sortFields[0].id);
+					self.SortDesc(sortFields[0].desc);
+					self.SortFields([]);
+					_.forEach(sortFields.slice(1), function (s) { self.addSortField(s.id, s.desc); });
+				}
 			}
 
 			self.aiReportApplied(true);
-			if (runOpts && runOpts.noRun) {
+			// without Live Preview, running would save and close the designer; just configure
+			if ((runOpts && runOpts.noRun) || !self.activeDesign()) {
+				if (!(runOpts && runOpts.noRun)) toastr.success('AI has updated your report');
 				if (applied) applied.resolve();
 				return;
 			}
