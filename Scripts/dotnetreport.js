@@ -2038,6 +2038,85 @@ var reportViewModel = function (options) {
 			rowFontColor: self.rowFontColor()
 		}));
 	};
+	// Colors as drawn on screen (theme CSS included), for exports that rebuild the table on the server
+	self.getScreenTableStyle = function () {
+		var out = {};
+		try {
+			// the same id can be rendered more than once; use the visible copy
+			var body = _.find(document.querySelectorAll('[id="report-table-body' + self.ReportID() + '"]'), function (b) { return b.getClientRects().length > 0; });
+			var table = body ? body.closest('table') : null;
+			if (!table) return out;
+			var parse = function (c) {
+				var m = (c || '').match(/rgba?\(([^)]+)\)/);
+				if (!m) return null;
+				var p = m[1].split(/[\s,\/]+/).filter(Boolean).map(parseFloat);
+				return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 };
+			};
+			var hex = function (c) {
+				return c ? '#' + [c.r, c.g, c.b].map(function (v) { return ('0' + Math.round(v).toString(16)).slice(-2); }).join('') : '';
+			};
+			// background plus bootstrap's inset box-shadow stripes, blended up to the first opaque ancestor
+			var bgOf = function (el) {
+				var layers = [];
+				for (var e = el; e && e.nodeType === 1; e = e.parentElement) {
+					var cs = getComputedStyle(e);
+					if (/inset/.test(cs.boxShadow)) layers.push(parse(cs.boxShadow));
+					var bg = parse(cs.backgroundColor);
+					layers.push(bg);
+					if (bg && bg.a >= 1) break;
+				}
+				var c = { r: 255, g: 255, b: 255, a: 1 };
+				for (var i = layers.length - 1; i >= 0; i--) {
+					var t = layers[i];
+					if (!t || !t.a) continue;
+					c = { r: t.r * t.a + c.r * (1 - t.a), g: t.g * t.a + c.g * (1 - t.a), b: t.b * t.a + c.b * (1 - t.a), a: 1 };
+				}
+				return hex(c);
+			};
+			var mode = function (list) {
+				var counts = _.countBy(_.compact(list));
+				return _.maxBy(_.keys(counts), function (k) { return counts[k]; }) || '';
+			};
+			var dataCells = function (tr) {
+				return _.filter(tr.children, function (td) { return !td.querySelector('.fa-plus, .fa-minus') && td.textContent.trim() !== ''; });
+			};
+			var ths = _.filter(table.querySelectorAll('thead tr:first-child > th'), function (th) { return th.textContent.trim() !== ''; });
+			if (ths.length) {
+				out.backColor = mode(_.map(ths, bgOf));
+				out.fontColor = mode(_.map(ths, function (th) { return hex(parse(getComputedStyle(th).color)); }));
+				out.bold = parseInt(getComputedStyle(ths[0]).fontWeight) >= 600;
+			}
+			var rows = _.filter(body.children, function (tr) { return tr.getClientRects().length > 0 && !tr.querySelector('td[colspan]') && dataCells(tr).length > 0; });
+			var rowStyle = function (tr) {
+				var cells = dataCells(tr);
+				return { back: mode(_.map(cells, bgOf)), font: mode(_.map(cells, function (td) { return hex(parse(getComputedStyle(td).color)); })) };
+			};
+			if (rows.length) {
+				var r0 = rowStyle(rows[0]);
+				out.rowBackColor = r0.back;
+				out.rowFontColor = r0.font;
+				if (rows.length > 1) {
+					var r1 = rowStyle(rows[1]);
+					out.altRowBackColor = r1.back;
+					out.altRowFontColor = r1.font;
+				}
+				var cell = dataCells(rows[0])[Math.min(1, dataCells(rows[0]).length - 1)];
+				var cs = getComputedStyle(cell);
+				if (parseFloat(cs.borderBottomWidth) > 0) out.gridColor = hex(parse(cs.borderBottomColor));
+				out.gridVertical = parseFloat(cs.borderLeftWidth) > 0 || parseFloat(cs.borderRightWidth) > 0;
+			}
+		} catch (e) { }
+		return out;
+	};
+	// table style for Word: the report's own settings, falling back to what the screen shows
+	self.getWordTableStyleJson = function () {
+		var style = JSON.parse(self.getTableStyleJson());
+		_.forEach(self.getScreenTableStyle(), function (v, k) {
+			if (k === 'bold' || k === 'gridVertical' || k === 'gridColor') style[k] = v;
+			else if (v && !style[k]) style[k] = v;
+		});
+		return JSON.stringify(style);
+	};
 	self.rowBorderCss = function () {
 		var width = self.rowBorder() === 'thick' ? '2px' : self.rowBorder() === 'thin' ? '1px' : '';
 		return width ? width + ' solid ' + (self.rowBorderColor() || '#000000') : '';
@@ -7756,14 +7835,15 @@ var reportViewModel = function (options) {
 	};
 
 	// Header rows and body rows for the table
-	self.matrixView = ko.pureComputed(function () {
+	// expandAll: ignore collapsed rows (used by exports)
+	self.buildMatrixView = function (expandAll) {
 		var result = self.matrixResult();
 		if (!result || !result.Rows) return null;
 		var valueCount = Math.max(1, (result.ValueFields || []).length);
 		var colDepth = (result.ColumnFields || []).length;
 		var rowDepth = (result.RowFields || []).length;
 		var sort = self.matrixSort();
-		var collapsed = self.matrixCollapsed();
+		var collapsed = expandAll ? {} : self.matrixCollapsed();
 		var rowFields = self.matrixRows(), colFields = self.matrixColumns(), valueFields = self.matrixValues();
 		self.matrixFormatVersion();
 		var fieldLabel = function (field, fallback) { return field ? (field.fieldLabel() || field.fieldName) : (fallback || ''); };
@@ -7897,7 +7977,8 @@ var reportViewModel = function (options) {
 							var style = styleOf(valueFields[vi], false, rowIndex);
 							// rules apply to the data cells, not subtotals or totals
 							if (!hasChildren && !col.isTotal) _.assign(style, self.matrixConditionStyle(valueFields[vi], raw));
-							return { text: hasChildren && !opts.rowSubtotals ? '' : self.formatMatrixValue(vi, raw), isTotal: col.isTotal, style: style };
+							var hide = hasChildren && !opts.rowSubtotals;
+							return { text: hide ? '' : self.formatMatrixValue(vi, raw), value: hide ? null : raw, isTotal: col.isTotal, style: style };
 						});
 					})
 				});
@@ -7908,7 +7989,7 @@ var reportViewModel = function (options) {
 		if (opts.rowGrandTotal) bodyRows.push({
 			id: result.Rows.Id, label: 'Grand Total', depth: 0, hasChildren: false, collapsed: false, isSubtotal: false, isGrandTotal: true, labelStyle: {},
 			cells: _.flatMap(displayCols, function (col) {
-				return _.map(_.range(valueCount), function (vi) { return { text: self.formatMatrixValue(vi, cellValue(result.Rows, col.node.Id, vi)), isTotal: true, style: styleOf(valueFields[vi], false, -1) }; });
+				return _.map(_.range(valueCount), function (vi) { var raw = cellValue(result.Rows, col.node.Id, vi); return { text: self.formatMatrixValue(vi, raw), value: raw, isTotal: true, style: styleOf(valueFields[vi], false, -1) }; });
 			})
 		});
 
@@ -7923,9 +8004,54 @@ var reportViewModel = function (options) {
 			showValueRow: showValueRow,
 			headerRowCount: colDepth + (showValueRow ? 1 : 0),
 			bodyRows: bodyRows,
-			hasNestedRows: rowDepth > 1
+			hasNestedRows: rowDepth > 1,
+			valueCount: valueCount,
+			rowFieldLabels: _.map(result.RowFields || [], function (name, i) { return fieldLabel(rowFields[i], name); })
 		};
-	});
+	};
+	self.matrixView = ko.pureComputed(function () { return self.buildMatrixView(false); });
+
+	// Excel number format matching formatMatrixValue
+	self.matrixExcelFormat = function (valueIndex) {
+		var field = self.matrixValues()[valueIndex];
+		if (!field) return '#,##0.##';
+		var ff = field.fieldFormat ? field.fieldFormat() : '';
+		var dp = field.decimalPlaces ? field.decimalPlaces() : null;
+		var agg = field.selectedAggregate();
+		var places = dp !== null && dp !== '' && dp !== undefined ? parseInt(dp) : (agg === 'Count' || agg === 'Count Distinct' ? 0 : 2);
+		var fmt = '#,##0' + (places > 0 ? '.' + '0'.repeat(places) : '');
+		if (ff === 'Percentage') fmt += '"%"';
+		if (ff === 'Currency') {
+			var symbol = field.currencyFormat ? field.currencyFormat() : '';
+			fmt = '"' + (['€', '£', '₹', 'Rs'].indexOf(symbol) >= 0 ? symbol : '$') + '"' + fmt;
+		}
+		return fmt;
+	};
+
+	// The table as plain data for the server to render as Excel, Word, PDF or CSV
+	self.getMatrixExportModel = function (expandAll) {
+		var view = self.buildMatrixView(expandAll);
+		if (!view) return null;
+		var cleanStyle = function (s) { return _.pick(s || {}, ['color', 'backgroundColor', 'fontWeight', 'textAlign']); };
+		return {
+			rowHeader: view.rowHeader,
+			valueCaption: view.valueCaption,
+			rowHeaderStyle: cleanStyle(view.rowHeaderStyle),
+			headerRows: _.map(view.headerRows, function (row) {
+				return _.map(row, function (h) { return { label: h.label, colspan: h.colspan, rowspan: h.rowspan, isTotal: h.isTotal, style: cleanStyle(h.style) }; });
+			}),
+			valueHeaders: view.showValueRow ? _.map(view.valueHeaders, function (h) { return { label: h.label, isTotal: h.isTotal, style: cleanStyle(h.style) }; }) : [],
+			rows: _.map(view.bodyRows, function (r) {
+				return {
+					label: r.label, depth: r.depth, isSubtotal: r.isSubtotal, isGrandTotal: r.isGrandTotal, labelStyle: cleanStyle(r.labelStyle),
+					cells: _.map(r.cells, function (c) { return { text: c.text, value: typeof c.value === 'number' ? c.value : null, isTotal: c.isTotal, style: cleanStyle(c.style) }; })
+				};
+			}),
+			valueCount: view.valueCount,
+			valueFormats: _.map(_.range(view.valueCount), self.matrixExcelFormat),
+			rowFieldLabels: view.rowFieldLabels
+		};
+	};
 
 	self.isFieldValidForSubGroup = function (i, fieldType) {
 		if (i > 0) {
@@ -7941,7 +8067,7 @@ var reportViewModel = function (options) {
 	});
 
 	self.canDrilldown = ko.computed(function () {
-		return ["List", "Pivot", "Treemap"].indexOf(self.ReportType()) < 0 && !self.useStoredProc();
+		return ["List", "Pivot", "Treemap", "Matrix"].indexOf(self.ReportType()) < 0 && !self.useStoredProc();
 	});
 
 	self.useRenderTable = ko.computed(function () {
@@ -14205,7 +14331,10 @@ var reportViewModel = function (options) {
 			styles +
 			'<style>a[href]:after {content: none !important;} @media print { body * { visibility: visible !important; } }' +
 			' * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }' +
-			' .dr-title-hide, .chart-settings-btn, .dr-header-edit, .dr-band-edit, th .dropdown, .dropdown-menu, td > a > .fa-plus, td > a > .fa-minus { display: none !important; }</style>' +
+			' .dr-title-hide, .chart-settings-btn, .dr-header-edit, .dr-band-edit, th .dropdown, .dropdown-menu, td > a > .fa-plus, td > a > .fa-minus { display: none !important; }' +
+			// matrix: no field panel or sort/expand controls, and the whole table instead of the scroll box
+			' .dr-matrix-toolbar, .dr-matrix-panel, .dr-matrix-sortable .fa, .dr-matrix-rowhead > a { display: none !important; }' +
+			' .dr-matrix-scroll { max-height: none !important; overflow: visible !important; } .dr-matrix-table thead, .dr-matrix-table .dr-matrix-rowhead { position: static !important; }</style>' +
 			'</head><body>' +
 			reportCopy.outerHTML +
 			'</body></html>'
@@ -14278,7 +14407,35 @@ var reportViewModel = function (options) {
 		};
 	}
 
+	// Matrix exports: Standard keeps collapsed rows and sort, Expanded (expandAll) opens every level
+	self.exportMatrix = function (format, expandAll, pageSize, pageOrientation) {
+		var model = self.getMatrixExportModel(expandAll === true);
+		if (!model) { toastr.error('Run the report before exporting.'); return; }
+		var headerHtml = '';
+		if (!self.HideReportHeader()) {
+			if (self.UseCustomReportHeader()) headerHtml = self.customReportHeaderHtml() || '';
+			else if (self.useReportHeader() && self.headerDesigner) headerHtml = self.headerDesigner.headerHtml() || '';
+		}
+		var footerHtml = (!self.HideReportFooter() && self.useReportFooter() && self.footerDesigner) ? (self.footerDesigner.footerHtml() || '') : '';
+		self.downloadExport('DownloadMatrix', {
+			format: format,
+			matrixModel: JSON.stringify(model),
+			reportName: self.ReportName(),
+			reportDescription: typeof self.ReportDescription === 'function' ? (self.ReportDescription() || '') : '',
+			hideReportName: self.HideReportName(),
+			filterDetailsText: self.ShowFilterDetails() ? self.buildFilterDetailsPlainText(self.FilterGroups(), false) : '',
+			pageSize: pageSize || '',
+			pageOrientation: pageOrientation || '',
+			headerHtml: encodeURIComponent(headerHtml),
+			footerHtml: encodeURIComponent(footerHtml),
+			headerEveryPage: self.headerDesigner && self.headerDesigner.IncludeOnEveryPage ? self.headerDesigner.IncludeOnEveryPage() : false,
+			footerEveryPage: self.footerDesigner && self.footerDesigner.IncludeOnEveryPage ? self.footerDesigner.IncludeOnEveryPage() : false,
+			currentUserName: self.currentUserName || self.currentUserId || '',
+			currentUserRoles: self.currentUserRole || ''
+		}, format);
+	};
 	self.downloadPdfAlt = function (pageSize, pageOrientation, expand) {
+		if (self.isMatrix()) return self.exportMatrix('pdf', expand === true, pageSize, pageOrientation);
 		var data = self.getExportJson(pageSize, pageOrientation, expand);
 		self.downloadExport("DownloadPdfAlt", data, 'pdf');
 	}
@@ -14287,6 +14444,7 @@ var reportViewModel = function (options) {
 	}
 
 	self.downloadPdf = function (debug, pageSize, pageOrientation) {
+		if (self.isMatrix()) return self.exportMatrix('pdf', false, pageSize, pageOrientation);
 		if (self.pager.totalRecords() > 100 && self.subReports().length == 0) {
 			self.downloadPdfAlt(pageSize, pageOrientation, self.allExpanded());
 			return;
@@ -14323,6 +14481,8 @@ var reportViewModel = function (options) {
 	}
 	self.PdfPage = new PdfPageViewModel(self.appSettings, self.downloadPdf, self.downloadPdfAlt);
 	self.runExcelDownload = function (expand, hasSubreports) {
+		// matrix: always every level, Excel's own grouping does the collapsing
+		if (self.isMatrix()) return self.exportMatrix('xlsx', true);
 		var hasOnlyAndGroupInDetail = _.find(self.SelectedFields(), function (x) { return x.selectedAggregate() == 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'}) != null;
 		var onlyAndGroupInDetailColumnDetails = _.filter(self.SelectedFields(), function (x) { return x.selectedAggregate() === 'Only in Detail' || x.selectedAggregate() == 'Group in Detail'; });
 		var reportData = self.BuildReportData();
@@ -14368,6 +14528,7 @@ var reportViewModel = function (options) {
 		self.runExcelDownload(false, true);
 	}
 	self.downloadCsv = function () {
+		if (self.isMatrix()) return self.exportMatrix('csv', true);
 		var data = self.getExportJson();
 		self.downloadExport("DownloadCsv", data, 'csv');
 	}
@@ -14413,8 +14574,9 @@ var reportViewModel = function (options) {
 	};
 
 	self.downloadWord = function (pageSize, pageOrientation) {
+		if (self.isMatrix()) return self.exportMatrix('docx', false, pageSize, pageOrientation);
 		var data = self.getExportJson(pageSize, pageOrientation);
-		data.headerStyle = self.getTableStyleJson();
+		data.headerStyle = self.getWordTableStyleJson();
 		data.hideReportName = self.HideReportName();
 		data.outerGroupLayout = self.outerGroupLayout();
 		data.outerGroupPageBreak = self.outerGroupPageBreak();

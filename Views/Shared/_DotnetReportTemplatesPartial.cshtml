@@ -1976,7 +1976,7 @@
         <div class="dr-matrix-zone-box">
             <div class="dr-matrix-zone-title"><i class="fa fa-list"></i> Fields</div>
             <ul class="dr-matrix-zone" data-bind="sortable: { data: matrixAvailable, connectClass: 'dr-matrix-zone', afterMove: matrixFieldMoved, options: { placeholder: 'dr-matrix-drop', cursor: 'move' } }">
-                <li class="dr-matrix-chip" data-bind="attr: { title: selectedFieldName() }"><i class="fa fa-ellipsis-v me-1 text-muted"></i><span data-bind="text: fieldLabel() || fieldName"></span>
+                <li class="dr-matrix-chip" data-bind="attr: { title: selectedFieldName() }"><i class="fa fa-ellipsis-v me-1 text-muted"></i><span data-bind="text: fieldLabel() || fieldName, attr: { title: fieldLabel() || fieldName }"></span>
                     <a href="#" class="text-muted dr-matrix-chip-gear" title="Field options: format, alignment, colors" data-bind="click: setupFieldOptions"><i class="fa fa-gear"></i></a></li>
             </ul>
         </div>
@@ -1984,7 +1984,7 @@
             <div class="dr-matrix-zone-title"><i class="fa fa-bars"></i> Rows</div>
             <ul class="dr-matrix-zone" data-bind="sortable: { data: matrixRows, connectClass: 'dr-matrix-zone', afterMove: matrixFieldMoved, options: { placeholder: 'dr-matrix-drop', cursor: 'move' } }">
                 <li class="dr-matrix-chip">
-                    <i class="fa fa-ellipsis-v me-1 text-muted"></i><span data-bind="text: fieldLabel() || fieldName"></span>
+                    <i class="fa fa-ellipsis-v me-1 text-muted"></i><span data-bind="text: fieldLabel() || fieldName, attr: { title: fieldLabel() || fieldName }"></span>
                     <a href="#" class="text-muted dr-matrix-chip-gear" title="Field options: format, alignment, colors" data-bind="click: setupFieldOptions"><i class="fa fa-gear"></i></a><a href="#" class="text-muted dr-matrix-chip-gear" title="Move back to Fields" data-bind="click: $parent.matrixUnplace"><i class="fa fa-times"></i></a>
                     <!-- ko if: $parent.matrixGroupAggregates($data).length > 1 -->
                     <select class="form-select form-select-sm dr-matrix-agg" data-bind="options: $parent.matrixGroupAggregates($data), value: selectedAggregate, event: { change: $parent.matrixRefresh }"></select>
@@ -1996,7 +1996,7 @@
             <div class="dr-matrix-zone-title"><i class="fa fa-columns"></i> Columns</div>
             <ul class="dr-matrix-zone" data-bind="sortable: { data: matrixColumns, connectClass: 'dr-matrix-zone', afterMove: matrixFieldMoved, options: { placeholder: 'dr-matrix-drop', cursor: 'move' } }">
                 <li class="dr-matrix-chip">
-                    <i class="fa fa-ellipsis-v me-1 text-muted"></i><span data-bind="text: fieldLabel() || fieldName"></span>
+                    <i class="fa fa-ellipsis-v me-1 text-muted"></i><span data-bind="text: fieldLabel() || fieldName, attr: { title: fieldLabel() || fieldName }"></span>
                     <a href="#" class="text-muted dr-matrix-chip-gear" title="Field options: format, alignment, colors" data-bind="click: setupFieldOptions"><i class="fa fa-gear"></i></a><a href="#" class="text-muted dr-matrix-chip-gear" title="Move back to Fields" data-bind="click: $parent.matrixUnplace"><i class="fa fa-times"></i></a>
                     <!-- ko if: $parent.matrixGroupAggregates($data).length > 1 -->
                     <select class="form-select form-select-sm dr-matrix-agg" data-bind="options: $parent.matrixGroupAggregates($data), value: selectedAggregate, event: { change: $parent.matrixRefresh }"></select>
@@ -2008,7 +2008,7 @@
             <div class="dr-matrix-zone-title"><i class="fa fa-calculator"></i> Values</div>
             <ul class="dr-matrix-zone" data-bind="sortable: { data: matrixValues, connectClass: 'dr-matrix-zone', afterMove: matrixFieldMoved, options: { placeholder: 'dr-matrix-drop', cursor: 'move' } }">
                 <li class="dr-matrix-chip">
-                    <i class="fa fa-ellipsis-v me-1 text-muted"></i><span data-bind="text: fieldLabel() || fieldName"></span>
+                    <i class="fa fa-ellipsis-v me-1 text-muted"></i><span data-bind="text: fieldLabel() || fieldName, attr: { title: fieldLabel() || fieldName }"></span>
                     <a href="#" class="text-muted dr-matrix-chip-gear" title="Field options: format, alignment, colors" data-bind="click: setupFieldOptions"><i class="fa fa-gear"></i></a><a href="#" class="text-muted dr-matrix-chip-gear" title="Move back to Fields" data-bind="click: $parent.matrixUnplace"><i class="fa fa-times"></i></a>
                     <select class="form-select form-select-sm dr-matrix-agg" data-bind="options: $parent.matrixValueAggregates($data), value: selectedAggregate, event: { change: $parent.matrixRefresh }"></select>
                 </li>
@@ -2022,18 +2022,11 @@
         <label class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" data-bind="checked: matrixOptions.columnSubtotals" /> Column subtotals</label>
         <label class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" data-bind="checked: matrixOptions.columnGrandTotal" /> Column grand total</label>
     </div>
-    <!-- ko if: ReportMode() == 'generate' -->
-    <div class="form-check mt-2 small">
-        <input class="form-check-input" type="checkbox" data-bind="checked: matrixOptions.allowRearrange, attr: { id: 'matrix-allow-rearrange-' + ReportID() }" />
-        <label class="form-check-label" data-bind="attr: { for: 'matrix-allow-rearrange-' + ReportID() }">Let users rearrange fields when viewing the report</label>
-        <div class="text-muted">Shows a Fields button above the matrix so people can move fields between rows, columns and values, and change totals.</div>
-    </div>
-    <!-- /ko -->
 </script>
 
 <script type="text/html" id="report-matrix">
     <div class="dr-matrix">
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-2 dr-matrix-toolbar">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2 dr-matrix-toolbar d-print-none">
             <button type="button" class="dr-filter-toggle" data-bind="visible: ReportMode() != 'generate' && matrixOptions.allowRearrange(), click: function() { showMatrixFields(!showMatrixFields()); }, attr: { 'aria-expanded': showMatrixFields() ? 'true' : 'false' }">
                 <i class="fa fa-th text-primary"></i> Fields
                 <span class="dr-filter-count" data-bind="text: matrixRows().length + matrixColumns().length + matrixValues().length"></span>
@@ -2044,7 +2037,7 @@
             <button type="button" class="btn btn-sm btn-link text-decoration-none" data-bind="click: function() { matrixExpandAll(false); }"><i class="fa fa-minus-square-o"></i> Collapse all</button>
             <!-- /ko -->
         </div>
-        <div data-bind="visible: showMatrixFields() && ReportMode() != 'generate' && matrixOptions.allowRearrange()" class="mb-2">
+        <div data-bind="visible: showMatrixFields() && ReportMode() != 'generate' && matrixOptions.allowRearrange()" class="mb-2 dr-matrix-panel d-print-none">
             <div data-bind="template: 'matrix-fields'"></div>
             <!-- ko if: matrixLayoutChanged -->
             <div class="d-flex align-items-center gap-2 mt-2 small">
@@ -2322,9 +2315,6 @@
             </div>
         </div>
     </div>
-    <!-- ko if: ReportType() == 'Matrix' -->
-    <div class="card card-body mb-2" data-bind="template: 'matrix-fields'"></div>
-    <!-- /ko -->
     <ul class="list-group" data-bind="sortable: { data: SelectedFields, options: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight' }, strategyMove: true }">
         <li class="list-group-item">
             <div class="row">
@@ -3780,6 +3770,19 @@
                                     </div>
                                 </div>
                             </div>
+                            <!-- ko if: ReportType() == 'Matrix' -->
+                            <br />
+                            <div class="card card-body">
+                                <h5><span class="fa fa-th"></span>&nbsp;Matrix Layout</h5>
+                                <div class="dr-filter-toggles">
+                                    <div class="form-check form-switch mb-0" title="Shows a Fields button above the matrix so people can move fields between rows, columns and values, and change totals">
+                                        <input class="form-check-input" type="checkbox" id="matrix-allow-rearrange" data-bind="checked: matrixOptions.allowRearrange" />
+                                        <label class="form-check-label" for="matrix-allow-rearrange">Let users change grouping on the report</label>
+                                    </div>
+                                </div>
+                                <div class="mt-2" data-bind="template: 'matrix-fields'"></div>
+                            </div>
+                            <!-- /ko -->
                             <br />
                             <div class="card card-body">
                                 <h5><span class="fa fa-filter"></span>&nbsp;Choose Filters</h5>

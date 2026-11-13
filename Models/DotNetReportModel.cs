@@ -553,6 +553,16 @@ namespace ReportBuilder.Web.Models
         public string customDateFormat { get; set; }
         public string fieldType { get; set; }
         public string selectedAggregate { get; set; }
+        public List<FieldConditionFormat> fieldConditionVal { get; set; }
+    }
+    public class FieldConditionFormat
+    {
+        public string value { get; set; }
+        public string value2 { get; set; }
+        public string @operator { get; set; }
+        public string fontColor { get; set; }
+        public string backColor { get; set; }
+        public bool? fontBold { get; set; }
     }
     public class LinkFieldItem
     {
@@ -3679,6 +3689,48 @@ namespace ReportBuilder.Web.Models
             }
         }
         
+        // Same rules as the on-screen conditional formatting; the last matching rule wins
+        public static FieldConditionFormat MatchFieldCondition(ReportHeaderColumn col, object raw)
+        {
+            if (col?.fieldConditionVal == null || col.fieldConditionVal.Count == 0) return null;
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            DateTime? date = raw is DateTime d ? d : (DateTime?)null;
+            string text = raw == null || raw == DBNull.Value ? "" : Convert.ToString(raw, inv);
+            double num = 0;
+            bool isNum = date == null && text != "" && double.TryParse(text, System.Globalization.NumberStyles.Float, inv, out num);
+            int? Cmp(string other)
+            {
+                if (date.HasValue) return DateTime.TryParse(other, out var od) ? date.Value.CompareTo(od) : (int?)null;
+                if (isNum) return double.TryParse(other, System.Globalization.NumberStyles.Float, inv, out var on) ? num.CompareTo(on) : (int?)null;
+                return null;
+            }
+            FieldConditionFormat hit = null;
+            foreach (var c in col.fieldConditionVal)
+            {
+                var list = (c.value ?? "").Split(',').Select(x => x.Trim()).ToList();
+                bool ok = false;
+                switch (c.@operator)
+                {
+                    case "=": { var r = Cmp(c.value); ok = r.HasValue ? r == 0 : text == (c.value ?? ""); break; }
+                    case "not equal": { var r = Cmp(c.value); ok = r.HasValue ? r != 0 : text != (c.value ?? ""); break; }
+                    case "in": ok = list.Contains(text); break;
+                    case "not in": ok = !list.Contains(text); break;
+                    case "all": ok = true; break;
+                    case "like": ok = !isNum && text.Contains(c.value ?? ""); break;
+                    case "not like": ok = !isNum && !text.Contains(c.value ?? ""); break;
+                    case "is blank": ok = text == ""; break;
+                    case "is not blank": ok = text != ""; break;
+                    case ">": ok = Cmp(c.value) > 0; break;
+                    case "<": ok = Cmp(c.value) < 0; break;
+                    case ">=": ok = Cmp(c.value) >= 0; break;
+                    case "<=": ok = Cmp(c.value) <= 0; break;
+                    case "between": ok = Cmp(c.value) >= 0 && Cmp(c.value2) <= 0; break;
+                }
+                if (ok) hit = c;
+            }
+            return hit;
+        }
+
         public static ReportHeaderColumn GetColumnFormatting(DataColumn dc, List<ReportHeaderColumn> columns, ref string value)
         {
             var isCurrency = false;
@@ -3710,6 +3762,11 @@ namespace ReportBuilder.Web.Models
                     else if (formatColumn.currencySymbol != null)
                     {
                         value = Convert.ToDecimal(value).ToString(formatColumn.currencySymbol + "###,###,##0.00");
+                    }
+                    else
+                    {
+                        // no symbol picked shows as $ on screen and in Excel
+                        value = Convert.ToDecimal(value).ToString("$" + (formatColumn.decimalPlacesDigit != null ? NumberPattern(decimalFormat) : "###,###,##0.00"));
                     }
                     isCurrency = true;
                 }
@@ -4578,7 +4635,7 @@ namespace ReportBuilder.Web.Models
                 return ms.ToArray();
             }
         }
-        private static string SubstituteHtmlPlaceholders(string html, string currentUserName, string currentUserRoles, int pageNumber, int totalPages, bool useWordFields = false, string reportName = null)
+        internal static string SubstituteHtmlPlaceholders(string html, string currentUserName, string currentUserRoles, int pageNumber, int totalPages, bool useWordFields = false, string reportName = null)
         {
             if (string.IsNullOrEmpty(html)) return "";
             var now = DateTime.Now;
@@ -4878,13 +4935,7 @@ namespace ReportBuilder.Web.Models
                             var groupTable = new Table();
                             groupTable.AppendChild(new TableProperties(
                                 new Justification() { Val = JustificationValues.Center },
-                                new TableBorders(
-                                    new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
-                                    new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
-                                    new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
-                                    new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
-                                    new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
-                                    new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" }),
+                                WordTableBorders(headerStyle),
                                 new TableLayout() { Type = TableLayoutValues.Fixed }));
                             var grid = new TableGrid();
                             foreach (var gw in groupWidths) grid.Append(new GridColumn() { Width = gw.ToString() });
@@ -4915,7 +4966,7 @@ namespace ReportBuilder.Web.Models
                                     ?? (hc?.fieldAlign != "Auto" ? WordAlign(hc?.fieldAlign) : null)
                                     ?? WordAlign(headerStyle?.align);
                                 var headerCell = new TableCell(CellParagraph(string.IsNullOrEmpty(hc?.fieldLabel) ? dc.ColumnName : hc.fieldLabel,
-                                    WordHex(hc?.headerFontColor) ?? WordHex(headerStyle?.fontColor) ?? "156082", true, headerAlign, "16"));
+                                    WordHex(hc?.headerFontColor) ?? WordHex(headerStyle?.fontColor) ?? "156082", headerStyle?.bold != false || hc?.headerFontBold == true, headerAlign, "16"));
                                 StyleWordCell(headerCell, WordHex(hc?.headerBackColor) ?? WordHex(headerStyle?.backColor), headerStyle?.border, headerStyle?.borderColor);
                                 groupHeaderRow.AppendChild(headerCell);
                             }
@@ -4936,14 +4987,15 @@ namespace ReportBuilder.Web.Models
                                     {
                                         try { groupTotals[k] += Convert.ToDecimal(rows[ri][dc.ColumnName]); } catch { }
                                     }
-                                    var ownFill = WordHex(fc?.backColor);
-                                    var ownFont = WordHex(fc?.fontColor);
+                                    var cond = MatchFieldCondition(fc, rows[ri][dc.ColumnName]);
+                                    var ownFill = WordHex(!string.IsNullOrEmpty(cond?.backColor) ? cond.backColor : fc?.backColor);
+                                    var ownFont = WordHex(!string.IsNullOrEmpty(cond?.fontColor) ? cond.fontColor : fc?.fontColor);
                                     var fill = ownFill != null && ownFill != groupRowFill ? ownFill : ((alt ? groupAltFill : null) ?? groupRowFill);
                                     var font = ownFont != null && ownFont != groupRowFont ? ownFont : ((alt ? groupAltFont : null) ?? groupRowFont);
                                     var align = (fc?.fieldAlign != "Auto" ? WordAlign(fc?.fieldAlign) : null)
                                         ?? WordAlign(headerStyle?.rowAlign)
                                         ?? (fc?.isNumeric == true ? JustificationValues.Right : (JustificationValues?)null);
-                                    var dataCell = new TableCell(CellParagraph(value, font, fc?.fontBold == true, align, "16"));
+                                    var dataCell = new TableCell(CellParagraph(value, font, fc?.fontBold == true || cond?.fontBold == true, align, "16"));
                                     StyleWordCell(dataCell, fill, headerStyle?.rowBorder, headerStyle?.rowBorderColor);
                                     dataRow.AppendChild(dataCell);
                                 }
@@ -5031,14 +5083,7 @@ namespace ReportBuilder.Web.Models
                         Table table = new Table();
                         TableProperties props = new TableProperties(new Justification() { Val = JustificationValues.Center },
                          new TableLayout() { Type = TableLayoutValues.Fixed },
-                         new TableBorders(
-                         new TopBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
-                         new BottomBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
-                         new LeftBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
-                         new RightBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
-                         new InsideHorizontalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" },
-                         new InsideVerticalBorder { Val = new EnumValue<BorderValues>(BorderValues.Single), Size = 4, Color = "000000" }
-                         ));
+                         WordTableBorders(headerStyle));
 
                         // Append table properties
                         table.AppendChild<TableProperties>(props);
@@ -5060,10 +5105,10 @@ namespace ReportBuilder.Web.Models
                                 ?? (headerColumn?.fieldAlign != "Auto" ? WordAlign(headerColumn?.fieldAlign) : null)
                                 ?? WordAlign(headerStyle?.align);
                             RunProperties runProperties = new RunProperties(
-                                new Bold(),
                                 new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = headerFont },
                                 new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "16" } // 8pt
                             );
+                            if (headerStyle?.bold != false || headerColumn?.headerFontBold == true) runProperties.PrependChild(new Bold());
                             Run run = new Run(runProperties, new Text(headerText));
                             ParagraphProperties paragraphProperties = new ParagraphProperties(
                                 new SpacingBetweenLines() { Before = "20", After = "20", Line = "220", LineRule = LineSpacingRuleValues.Auto },
@@ -5219,15 +5264,16 @@ namespace ReportBuilder.Web.Models
                                         subTotals[i] += Convert.ToDecimal(row[column.ColumnName]);
                                     }
                                 }
-                                var ownFill = WordHex(formatColumn?.backColor);
-                                var ownFont = WordHex(formatColumn?.fontColor);
+                                var cond = MatchFieldCondition(formatColumn, row[column.ColumnName]);
+                                var ownFill = WordHex(!string.IsNullOrEmpty(cond?.backColor) ? cond.backColor : formatColumn?.backColor);
+                                var ownFont = WordHex(!string.IsNullOrEmpty(cond?.fontColor) ? cond.fontColor : formatColumn?.fontColor);
                                 var cellFill = ownFill != null && ownFill != tableRowFill ? ownFill : ((altRow ? altRowFill : null) ?? tableRowFill);
                                 var cellFont = ownFont != null && ownFont != tableRowFont ? ownFont : ((altRow ? altRowFont : null) ?? tableRowFont);
                                 var cellAlign = (formatColumn?.fieldAlign != "Auto" ? WordAlign(formatColumn?.fieldAlign) : null)
                                     ?? WordAlign(headerStyle?.rowAlign)
                                     ?? (formatColumn?.isNumeric == true ? JustificationValues.Right : (JustificationValues?)null);
                                 RunProperties dataRunProps = new RunProperties();
-                                if (formatColumn?.fontBold == true) dataRunProps.Append(new Bold());
+                                if (formatColumn?.fontBold == true || cond?.fontBold == true) dataRunProps.Append(new Bold());
                                 if (cellFont != null) dataRunProps.Append(new DocumentFormat.OpenXml.Wordprocessing.Color() { Val = cellFont });
                                 dataRunProps.Append(new DocumentFormat.OpenXml.Wordprocessing.FontSize() { Val = "16" }); // 8pt
                                 Run run = new Run(dataRunProps, new Text(value));
@@ -6368,6 +6414,8 @@ namespace ReportBuilder.Web.Models
         private static string WordHex(string color)
         {
             if (string.IsNullOrWhiteSpace(color)) return null;
+            var rgb = Regex.Match(color, @"^\s*rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)");
+            if (rgb.Success) return string.Concat(Enumerable.Range(1, 3).Select(g => Math.Min(255, int.Parse(rgb.Groups[g].Value)).ToString("X2")));
             var c = color.Trim().TrimStart('#');
             if (c.Length == 3) c = string.Concat(c.Select(ch => new string(ch, 2)));
             return c.Length == 6 && c.All(Uri.IsHexDigit) ? c.ToUpperInvariant() : null;
@@ -6382,6 +6430,19 @@ namespace ReportBuilder.Web.Models
                 case "right": return JustificationValues.Right;
                 default: return null;
             }
+        }
+
+        private static TableBorders WordTableBorders(NestedBandStyle style)
+        {
+            var color = WordHex(style?.gridColor) ?? "000000";
+            var vertical = style?.gridVertical != false ? BorderValues.Single : BorderValues.Nil;
+            return new TableBorders(
+                new TopBorder { Val = BorderValues.Single, Size = 4, Color = color },
+                new LeftBorder { Val = vertical, Size = 4, Color = color },
+                new BottomBorder { Val = BorderValues.Single, Size = 4, Color = color },
+                new RightBorder { Val = vertical, Size = 4, Color = color },
+                new InsideHorizontalBorder { Val = BorderValues.Single, Size = 4, Color = color },
+                new InsideVerticalBorder { Val = vertical, Size = 4, Color = color });
         }
 
         private static void StyleWordCell(TableCell cell, string fill, string border, string borderColor)
@@ -6848,6 +6909,63 @@ namespace ReportBuilder.Web.Models
             catch (Exception)
             {
                 return "";
+            }
+            finally
+            {
+                await SafeDisposeBrowserAsync(browser, page);
+            }
+        }
+
+        // Renders server-built HTML (matrix export) to PDF; only images may load from outside
+        public async static Task<byte[]> GetPdfFromHtml(string html, string pageSize, string pageOrientation)
+        {
+            IBrowser browser = null;
+            IPage page = null;
+            try
+            {
+                browser = await Puppeteer.LaunchAsync(await GetBrowserLaunchOptions(false));
+                page = await browser.NewPageAsync();
+                await page.SetRequestInterceptionAsync(true);
+                page.Request += async (sender, e) =>
+                {
+                    var url = e.Request.Url ?? "";
+                    if (url.StartsWith("data:") || url == "about:blank" || e.Request.ResourceType == ResourceType.Image)
+                        await e.Request.ContinueAsync();
+                    else
+                        await e.Request.AbortAsync();
+                };
+                await page.SetContentAsync(html, new NavigationOptions { WaitUntil = new[] { WaitUntilNavigation.Networkidle0 }, Timeout = 30000 });
+
+                var size = string.IsNullOrEmpty(pageSize) ? "LETTER" : pageSize.ToUpperInvariant();
+                var width = await page.EvaluateExpressionAsync<double>("Math.max.apply(null, Array.from(document.querySelectorAll('table')).map(function(t){ return t.scrollWidth; }).concat([0]))");
+                double MarginIn = 0.4;
+                double Usable(bool landscape) => (GetPaperFormatWidthInches(size, landscape) - MarginIn * 2) * 96.0;
+                // no orientation chosen: go landscape when the table doesn't fit portrait
+                bool isLandscape = string.IsNullOrEmpty(pageOrientation)
+                    ? width > Usable(false)
+                    : pageOrientation.ToUpperInvariant() == "LANDSCAPE";
+
+                var format = size switch
+                {
+                    "A4" => PaperFormat.A4,
+                    "LEGAL" => PaperFormat.Legal,
+                    "A1" => PaperFormat.A1,
+                    "A2" => PaperFormat.A2,
+                    "A3" => PaperFormat.A3,
+                    "TABLOID" => PaperFormat.Tabloid,
+                    _ => PaperFormat.Letter
+                };
+                var pdfOptions = new PdfOptions
+                {
+                    Format = format,
+                    Landscape = isLandscape,
+                    PrintBackground = true,
+                    MarginOptions = new MarginOptions { Top = "0.5in", Bottom = "0.5in", Left = "0.4in", Right = "0.4in" }
+                };
+                var usable = Usable(isLandscape);
+                if (width > usable && width > 0) pdfOptions.Scale = (decimal)Math.Max(0.1, usable / width);
+                await page.EmulateMediaTypeAsync(MediaType.Screen);
+                return await page.PdfDataAsync(pdfOptions);
             }
             finally
             {
@@ -7577,6 +7695,9 @@ namespace ReportBuilder.Web.Models
         public string altRowFontColor { get; set; }
         public string rowBackColor { get; set; }
         public string rowFontColor { get; set; }
+        // grid line color and vertical lines as drawn on screen
+        public string gridColor { get; set; }
+        public bool? gridVertical { get; set; }
 
         public static List<NestedBandStyle> Defaults() => new List<NestedBandStyle>
         {
@@ -8540,5 +8661,515 @@ namespace ReportBuilder.Web.Models
             }
             foreach (var child in rowNode.Children) FillCells(child, colNodes, cells, ref rowId);
         }
+    }
+}
+
+namespace ReportBuilder.Web.Models
+{
+    // Matrix export: the browser sends the table as it builds it on screen, the server renders the file.
+
+    public class MatrixExportStyle
+    {
+        public string Color { get; set; }
+        public string BackgroundColor { get; set; }
+        public string FontWeight { get; set; }
+        public string TextAlign { get; set; }
+    }
+
+    public class MatrixExportHeader
+    {
+        public string Label { get; set; }
+        public int Colspan { get; set; } = 1;
+        public int Rowspan { get; set; } = 1;
+        public bool IsTotal { get; set; }
+        public MatrixExportStyle Style { get; set; }
+    }
+
+    public class MatrixExportCell
+    {
+        public string Text { get; set; }
+        public double? Value { get; set; }
+        public bool IsTotal { get; set; }
+        public MatrixExportStyle Style { get; set; }
+    }
+
+    public class MatrixExportRow
+    {
+        public string Label { get; set; }
+        public int Depth { get; set; }
+        public bool IsSubtotal { get; set; }
+        public bool IsGrandTotal { get; set; }
+        public MatrixExportStyle LabelStyle { get; set; }
+        public List<MatrixExportCell> Cells { get; set; } = new List<MatrixExportCell>();
+    }
+
+    public class MatrixExportModel
+    {
+        public string RowHeader { get; set; }
+        public string ValueCaption { get; set; }
+        public MatrixExportStyle RowHeaderStyle { get; set; }
+        public List<List<MatrixExportHeader>> HeaderRows { get; set; } = new List<List<MatrixExportHeader>>();
+        public List<MatrixExportHeader> ValueHeaders { get; set; } = new List<MatrixExportHeader>();
+        public List<MatrixExportRow> Rows { get; set; } = new List<MatrixExportRow>();
+        public int ValueCount { get; set; } = 1;
+        public List<string> ValueFormats { get; set; } = new List<string>();
+        public List<string> RowFieldLabels { get; set; } = new List<string>();
+
+        public int HeaderRowCount => Math.Max(1, HeaderRows.Count + (ValueHeaders.Count > 0 ? 1 : 0));
+        public int ColumnCount => Rows.Count > 0 ? Rows.Max(r => r.Cells.Count) : ValueHeaders.Count;
+    }
+
+    public static class MatrixExporter
+    {
+        private const string HeaderBack = "#f6f8fa", TotalBack = "#f1f4f8", SubtotalBack = "#fafbfc", GrandBack = "#eef2f7", BorderColor = "#c9ced6";
+
+        private static readonly Regex SafeColor = new Regex(@"^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{3,30}|rgba?\(\s*[\d.]+%?\s*,\s*[\d.]+%?\s*,\s*[\d.]+%?\s*(,\s*[\d.]+\s*)?\))$", RegexOptions.Compiled);
+
+        private static string Color(string c) => !string.IsNullOrWhiteSpace(c) && SafeColor.IsMatch(c.Trim()) ? c.Trim() : null;
+        private static bool IsBold(string w) => w == "bold" || w == "bolder" || (int.TryParse(w, out var n) && n >= 600);
+        private static string Align(string a) => a == "left" || a == "center" || a == "right" ? a : null;
+
+        // Header grid: places every header cell on (row, column), honoring colspan and rowspan
+        private static List<(int row, int col, MatrixExportHeader h)> PlaceHeaders(MatrixExportModel m)
+        {
+            var placed = new List<(int, int, MatrixExportHeader)>();
+            var used = new HashSet<(int, int)>();
+            var rows = new List<List<MatrixExportHeader>>(m.HeaderRows);
+            if (m.ValueHeaders.Count > 0) rows.Add(m.ValueHeaders);
+            for (int r = 0; r < rows.Count; r++)
+            {
+                int c = 0;
+                foreach (var h in rows[r])
+                {
+                    while (used.Contains((r, c))) c++;
+                    int cs = Math.Max(1, h.Colspan), rs = Math.Max(1, h.Rowspan);
+                    for (int i = 0; i < rs; i++) for (int j = 0; j < cs; j++) used.Add((r + i, c + j));
+                    placed.Add((r, c, h));
+                    c += cs;
+                }
+            }
+            return placed;
+        }
+
+        #region HTML (PDF and Word)
+
+        private static string Css(MatrixExportStyle s, string back, bool bold, string align, string extra = "")
+        {
+            var color = Color(s?.Color);
+            var bg = Color(s?.BackgroundColor) ?? back;
+            if (s != null && IsBold(s.FontWeight)) bold = true;
+            align = Align(s?.TextAlign) ?? align;
+            var css = new StringBuilder($"border:1px solid {BorderColor};padding:3px 6px;white-space:nowrap;");
+            if (bg != null) css.Append($"background-color:{bg};");
+            if (color != null) css.Append($"color:{color};");
+            if (bold) css.Append("font-weight:bold;");
+            if (align != null) css.Append($"text-align:{align};");
+            css.Append(extra);
+            return css.ToString();
+        }
+
+        public static string ToHtml(MatrixExportModel m, bool forWord) => ToHtml(m, forWord, 0, m.ColumnCount, null, null, 0, m.Rows.Count);
+
+        // One table for columns [from, to) and rows [rowFrom, rowTo); Word gets a fixed font size and column widths so it doesn't break words
+        private static string ToHtml(MatrixExportModel m, bool forWord, int from, int to, double? fontPt, double[] widthsPt, int rowFrom, int rowTo)
+        {
+            string E(string t) => HttpUtility.HtmlEncode(HttpUtility.HtmlDecode(t ?? ""));
+            string Pt(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "pt";
+            string font = fontPt.HasValue ? $"font-size:{Pt(fontPt.Value)};" : "";
+            // Word gives bare cell text the Normal paragraph spacing and size, so wrap it in a zero-margin paragraph
+            string Cell(string html) => forWord ? $"<p style=\"margin:0;line-height:normal;{(fontPt.HasValue ? font : "font-size:9pt;")}\">{html}</p>" : html;
+            string W(int col) => widthsPt != null ? $"width:{Pt(widthsPt[col + 1])};" : "";
+            string Span(int col, int span) => widthsPt != null ? $"width:{Pt(Enumerable.Range(col, span).Sum(c => widthsPt[c + 1]))};" : "";
+
+            var sb = new StringBuilder();
+            var tableWidth = widthsPt != null ? $"width:{Pt(widthsPt[0] + Enumerable.Range(from, to - from).Sum(c => widthsPt[c + 1]))};table-layout:fixed;" : "";
+            sb.Append($"<table style=\"border-collapse:collapse;{tableWidth}font-size:{(fontPt.HasValue ? Pt(fontPt.Value) : forWord ? "9pt" : "11px")};\" cellspacing=\"0\" cellpadding=\"0\" border=\"1\">");
+            sb.Append("<thead>");
+            bool valueRow = m.ValueHeaders.Count > 0;
+            int headerRowCount = m.HeaderRows.Count + (valueRow ? 1 : 0);
+            var placed = PlaceHeaders(m);
+            for (int r = 0; r < Math.Max(1, headerRowCount); r++)
+            {
+                sb.Append("<tr>");
+                if (r == 0)
+                {
+                    sb.Append($"<th rowspan=\"{Math.Max(1, headerRowCount)}\" style=\"{Css(m.RowHeaderStyle, HeaderBack, true, "left", "vertical-align:middle;" + font + (widthsPt != null ? $"width:{Pt(widthsPt[0])};" : ""))}\">{E(m.RowHeader)}");
+                    if (!string.IsNullOrEmpty(m.ValueCaption)) sb.Append($"<br/><span style=\"font-weight:normal;color:#6c757d;\">{E(m.ValueCaption)}</span>");
+                    sb.Append("</th>");
+                }
+                bool isValueRow = valueRow && r == headerRowCount - 1;
+                // header cells cut to this column range; a group split across tables keeps its label in each
+                foreach (var (row, col, h) in placed.Where(p => p.row == r).OrderBy(p => p.col))
+                {
+                    int start = Math.Max(col, from), end = Math.Min(col + Math.Max(1, h.Colspan), to);
+                    if (end <= start) continue;
+                    var back = h.IsTotal ? TotalBack : HeaderBack;
+                    sb.Append($"<th colspan=\"{end - start}\" rowspan=\"{Math.Max(1, h.Rowspan)}\" style=\"{Css(h.Style, back, true, isValueRow ? "right" : "center", "vertical-align:middle;" + font + Span(start, end - start))}\">{Cell(E(h.Label))}</th>");
+                }
+                sb.Append("</tr>");
+            }
+            sb.Append("</thead><tbody>");
+            foreach (var row in m.Rows.Skip(rowFrom).Take(rowTo - rowFrom))
+            {
+                string rowBack = row.IsGrandTotal ? GrandBack : row.IsSubtotal ? SubtotalBack : null;
+                bool rowBold = row.IsGrandTotal || row.IsSubtotal;
+                string topBorder = row.IsGrandTotal ? "border-top:2px solid #adb5bd;" : "";
+                int indent = Math.Max(row.Depth - 1, 0);
+                var label = forWord ? string.Concat(Enumerable.Repeat("&nbsp;&nbsp;&nbsp;&nbsp;", indent)) + E(row.Label) : E(row.Label);
+                var pad = forWord ? "" : $"padding-left:{indent * 16 + 6}px;";
+                sb.Append("<tr>");
+                sb.Append($"<td style=\"{Css(row.LabelStyle, rowBack, rowBold, "left", pad + topBorder + font + (widthsPt != null ? $"width:{Pt(widthsPt[0])};" : ""))}\">{Cell(label)}</td>");
+                for (int i = from; i < to && i < row.Cells.Count; i++)
+                {
+                    var cell = row.Cells[i];
+                    var back = rowBack ?? (cell.IsTotal ? TotalBack : null);
+                    sb.Append($"<td style=\"{Css(cell.Style, back, rowBold || cell.IsTotal, "right", topBorder + font + W(i))}\">{Cell(E(cell.Text))}</td>");
+                }
+                sb.Append("</tr>");
+            }
+            sb.Append("</tbody></table>");
+            return sb.ToString();
+        }
+
+        private static double PageWidthIn(string size, bool landscape)
+        {
+            switch ((size ?? "").ToUpperInvariant())
+            {
+                case "LEGAL": return landscape ? 14 : 8.5;
+                case "A4": return landscape ? 11.69 : 8.27;
+                case "A3": return landscape ? 16.54 : 11.69;
+                case "TABLOID": return landscape ? 17 : 11;
+                default: return landscape ? 11 : 8.5;
+            }
+        }
+
+        // Rough text width in characters: headers can wrap at spaces, values can't
+        private static (double label, double[] cols) MeasureChars(MatrixExportModel m)
+        {
+            double LongestWord(string s) => string.IsNullOrEmpty(s) ? 0 : s.Split(new[] { ' ', '/', '-' }, StringSplitOptions.RemoveEmptyEntries).Select(w => (double)w.Length).DefaultIfEmpty(0).Max();
+            int n = m.ColumnCount;
+            var cols = new double[n];
+            foreach (var (row, col, h) in PlaceHeaders(m))
+            {
+                int span = Math.Max(1, h.Colspan);
+                var need = LongestWord(h.Label) / span;
+                for (int j = col; j < col + span && j < n; j++) cols[j] = Math.Max(cols[j], need);
+            }
+            foreach (var r in m.Rows)
+                for (int i = 0; i < r.Cells.Count && i < n; i++)
+                    cols[i] = Math.Max(cols[i], (r.Cells[i].Text ?? "").Length);
+            double label = new[] { LongestWord(m.RowHeader), LongestWord(m.ValueCaption) }
+                .Concat(m.Rows.Select(r => Math.Min((r.Label ?? "").Length, Math.Max(LongestWord(r.Label), 22)) + Math.Max(0, r.Depth - 1) * 2.0))
+                .DefaultIfEmpty(8).Max();
+            return (Math.Max(label, 6), cols.Select(c => Math.Max(c, 3)).ToArray());
+        }
+
+        private static double PageHeightIn(string size, bool landscape)
+        {
+            switch ((size ?? "").ToUpperInvariant())
+            {
+                case "LEGAL": return landscape ? 8.5 : 14;
+                case "A4": return landscape ? 8.27 : 11.69;
+                case "A3": return landscape ? 11.69 : 16.54;
+                case "TABLOID": return landscape ? 11 : 17;
+                default: return landscape ? 8.5 : 11;
+            }
+        }
+
+        // Word can't shrink a table to the page: pick a font for the chosen page, then split columns across pages if still too wide
+        public static (string orientation, string html) ToWordHtml(MatrixExportModel m, string pageSize, string pageOrientation)
+        {
+            var (labelChars, colChars) = MeasureChars(m);
+            // with no page size the Word export uses its default landscape page
+            bool sizeChosen = !string.IsNullOrEmpty(pageSize);
+            var orientations = !string.IsNullOrEmpty(pageOrientation) ? new[] { pageOrientation.ToUpperInvariant() == "LANDSCAPE" }
+                : sizeChosen ? new[] { false, true } : new[] { true };
+            string size = sizeChosen ? pageSize : "A4";
+            double[] Widths(double f) => new[] { labelChars }.Concat(colChars).Select(c => c * f * 0.6 + 10).ToArray();
+            double Usable(bool landscape) => (PageWidthIn(size, landscape) - 2.0) * 72;
+
+            foreach (var font in new[] { 9.0, 8.0, 7.0, 6.0 })
+                foreach (var landscape in orientations)
+                {
+                    var w = Widths(font);
+                    if (w.Sum() <= Usable(landscape))
+                        return (landscape ? "LANDSCAPE" : "PORTRAIT", ToHtml(m, true, 0, m.ColumnCount, font, w, 0, m.Rows.Count));
+                }
+
+            // still too wide: column chunks of whole value groups
+            bool wide = orientations.Last();
+            const double chunkFont = 7.0;
+            var widths = Widths(chunkFont);
+            double usable = Usable(wide);
+            int group = Math.Max(1, m.ValueCount), total = m.ColumnCount;
+            var chunks = new List<(int from, int to)>();
+            for (int startCol = 0; startCol < total;)
+            {
+                int endCol = startCol;
+                double used = widths[0];
+                while (endCol < total)
+                {
+                    int next = Math.Min(total, endCol + group);
+                    double add = Enumerable.Range(endCol, next - endCol).Sum(c => widths[c + 1]);
+                    if (endCol > startCol && used + add > usable) break;
+                    used += add;
+                    endCol = next;
+                }
+                chunks.Add((startCol, endCol));
+                startCol = endCol;
+            }
+
+            // rows paginated by hand so each page's column chunks print next to each other
+            // measured in Word: a 7pt row is ~14.6pt, each wrapped line adds ~8.5pt
+            double lineH = chunkFont * 1.25, rowH = lineH + 6;
+            int Lines(string s, double widthPt) => Math.Max(1, (int)Math.Ceiling((s ?? "").Length * 1.1 / Math.Max(1, (widthPt - 10) / (chunkFont * 0.6))));
+            var placed = PlaceHeaders(m);
+            int headerRows = m.HeaderRows.Count + (m.ValueHeaders.Count > 0 ? 1 : 0);
+            double headerH = Enumerable.Range(0, headerRows)
+                .Sum(r => placed.Where(p => p.row == r)
+                    .Select(p => Lines(p.h.Label, Enumerable.Range(p.col, Math.Max(1, p.h.Colspan)).Where(c => c < total).Sum(c => widths[c + 1])))
+                    .DefaultIfEmpty(1).Max() * lineH + 6);
+            headerH = Math.Max(headerH, (string.IsNullOrEmpty(m.ValueCaption) ? 1 : 2) * lineH + 6);
+            double pageH = (PageHeightIn(size, wide) - 2.0) * 72 * 0.92;
+            // first page also holds the title, description and filters
+            double firstPageH = pageH - 90;
+
+            var bands = new List<(int from, int to)>();
+            int rowStart = 0;
+            double avail = firstPageH - headerH, usedH = 0;
+            for (int i = 0; i < m.Rows.Count; i++)
+            {
+                double h = rowH + (Lines(m.Rows[i].Label, widths[0] - Math.Max(0, m.Rows[i].Depth - 1) * chunkFont * 2.4) - 1) * lineH;
+                if (i > rowStart && usedH + h > avail)
+                {
+                    bands.Add((rowStart, i));
+                    rowStart = i;
+                    usedH = 0;
+                    avail = pageH - headerH;
+                }
+                usedH += h;
+            }
+            bands.Add((rowStart, m.Rows.Count));
+
+            var sb = new StringBuilder();
+            bool first = true;
+            foreach (var band in bands)
+                foreach (var chunk in chunks)
+                {
+                    if (!first) sb.Append("<br clear=\"all\" style=\"page-break-before:always\" />");
+                    first = false;
+                    sb.Append(ToHtml(m, true, chunk.from, chunk.to, chunkFont, widths, band.from, band.to));
+                }
+            return (wide ? "LANDSCAPE" : "PORTRAIT", sb.ToString());
+        }
+
+        public static string ToPdfHtml(MatrixExportModel m, string reportName, string reportDescription, string filterDetailsText, bool hideReportName, string headerHtml, string footerHtml)
+        {
+            string E(string t) => HttpUtility.HtmlEncode(HttpUtility.HtmlDecode(t ?? ""));
+            var sb = new StringBuilder();
+            sb.Append("<!DOCTYPE html><html><head><meta charset=\"utf-8\" /><style>");
+            sb.Append("body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;font-size:12px;color:#212529;margin:0;}");
+            sb.Append("*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}");
+            sb.Append("thead{display:table-header-group;} tr{page-break-inside:avoid;}");
+            sb.Append("h2{font-size:18px;margin:0 0 6px 0;text-align:center;} .desc{color:#475467;margin-bottom:4px;} .filters{font-style:italic;color:#475467;font-size:11px;margin-bottom:8px;}");
+            sb.Append("</style></head><body>");
+            if (!string.IsNullOrWhiteSpace(headerHtml)) sb.Append("<div class=\"report-header\">").Append(headerHtml).Append("</div>");
+            if (!hideReportName) sb.Append($"<h2>{E(reportName)}</h2>");
+            if (!string.IsNullOrWhiteSpace(reportDescription)) sb.Append($"<div class=\"desc\">{E(reportDescription)}</div>");
+            if (!string.IsNullOrWhiteSpace(filterDetailsText)) sb.Append($"<div class=\"filters\">Filters: {E(filterDetailsText)}</div>");
+            sb.Append(ToHtml(m, false));
+            if (!string.IsNullOrWhiteSpace(footerHtml)) sb.Append("<div class=\"report-footer\" style=\"margin-top:12px;\">").Append(footerHtml).Append("</div>");
+            sb.Append("</body></html>");
+            return sb.ToString();
+        }
+
+        #endregion
+
+        #region Excel
+
+        private static System.Drawing.Color? ExcelColor(string c)
+        {
+            c = Color(c);
+            if (c == null) return null;
+            try
+            {
+                var m = Regex.Match(c, @"^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)");
+                if (m.Success)
+                    return System.Drawing.Color.FromArgb((int)Math.Min(255, double.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture)),
+                        (int)Math.Min(255, double.Parse(m.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture)),
+                        (int)Math.Min(255, double.Parse(m.Groups[3].Value, System.Globalization.CultureInfo.InvariantCulture)));
+                if (c.StartsWith("#") && c.Length == 9) c = c.Substring(0, 7);
+                var color = System.Drawing.ColorTranslator.FromHtml(c);
+                return color.IsEmpty ? (System.Drawing.Color?)null : color;
+            }
+            catch { return null; }
+        }
+
+        private static void StyleCell(ExcelRange cell, MatrixExportStyle s, string back, bool bold, OfficeOpenXml.Style.ExcelHorizontalAlignment? align)
+        {
+            var bg = ExcelColor(s?.BackgroundColor) ?? ExcelColor(back);
+            if (bg.HasValue)
+            {
+                cell.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                cell.Style.Fill.BackgroundColor.SetColor(bg.Value);
+            }
+            var fc = ExcelColor(s?.Color);
+            if (fc.HasValue) cell.Style.Font.Color.SetColor(fc.Value);
+            if (bold || (s != null && IsBold(s.FontWeight))) cell.Style.Font.Bold = true;
+            switch (Align(s?.TextAlign))
+            {
+                case "left": align = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left; break;
+                case "center": align = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center; break;
+                case "right": align = OfficeOpenXml.Style.ExcelHorizontalAlignment.Right; break;
+            }
+            if (align.HasValue) cell.Style.HorizontalAlignment = align.Value;
+            var border = cell.Style.Border;
+            border.Top.Style = border.Bottom.Style = border.Left.Style = border.Right.Style = OfficeOpenXml.Style.ExcelBorderStyle.Thin;
+            border.Top.Color.SetColor(System.Drawing.Color.FromArgb(201, 206, 214));
+            border.Bottom.Color.SetColor(System.Drawing.Color.FromArgb(201, 206, 214));
+            border.Left.Color.SetColor(System.Drawing.Color.FromArgb(201, 206, 214));
+            border.Right.Color.SetColor(System.Drawing.Color.FromArgb(201, 206, 214));
+        }
+
+        public static byte[] ToExcel(MatrixExportModel m, string reportName, string reportDescription, string filterDetailsText, bool hideReportName)
+        {
+            using (var xp = new ExcelPackage())
+            {
+                var sheetName = Regex.Replace(string.IsNullOrWhiteSpace(reportName) ? "Matrix" : reportName, @"[\[\]\*\?/\\:]", "");
+                if (sheetName.Length > 31) sheetName = sheetName.Substring(0, 31);
+                var ws = xp.Workbook.Worksheets.Add(string.IsNullOrWhiteSpace(sheetName) ? "Matrix" : sheetName);
+                int lastCol = 1 + m.ColumnCount;
+                int r = 1;
+                if (!hideReportName)
+                {
+                    ws.Cells[r, 1].Value = reportName;
+                    ws.Cells[r, 1].Style.Font.Bold = true;
+                    ws.Cells[r, 1].Style.Font.Size = 14;
+                    r++;
+                }
+                if (!string.IsNullOrWhiteSpace(reportDescription)) { ws.Cells[r, 1].Value = reportDescription; r++; }
+                if (!string.IsNullOrWhiteSpace(filterDetailsText))
+                {
+                    ws.Cells[r, 1].Value = "Filters: " + filterDetailsText;
+                    ws.Cells[r, 1].Style.Font.Italic = true;
+                    r++;
+                }
+                if (r > 1) r++;
+
+                int headStart = r, headCount = m.HeaderRowCount;
+                var corner = ws.Cells[headStart, 1, headStart + headCount - 1, 1];
+                if (headCount > 1) corner.Merge = true;
+                corner.Value = string.IsNullOrEmpty(m.ValueCaption) ? m.RowHeader : m.RowHeader + "\n" + m.ValueCaption;
+                corner.Style.WrapText = !string.IsNullOrEmpty(m.ValueCaption);
+                corner.Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+                StyleCell(corner, m.RowHeaderStyle, HeaderBack, true, OfficeOpenXml.Style.ExcelHorizontalAlignment.Left);
+
+                int valueRowIndex = m.ValueHeaders.Count > 0 ? m.HeaderRows.Count : -1;
+                foreach (var (row, col, h) in PlaceHeaders(m))
+                {
+                    int top = headStart + row, left = 2 + col;
+                    var range = ws.Cells[top, left, top + Math.Max(1, h.Rowspan) - 1, left + Math.Max(1, h.Colspan) - 1];
+                    if (h.Rowspan > 1 || h.Colspan > 1) range.Merge = true;
+                    range.Value = h.Label;
+                    range.Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+                    StyleCell(range, h.Style, h.IsTotal ? TotalBack : HeaderBack, true,
+                        row == valueRowIndex ? OfficeOpenXml.Style.ExcelHorizontalAlignment.Right : OfficeOpenXml.Style.ExcelHorizontalAlignment.Center);
+                }
+
+                int bodyStart = headStart + headCount;
+                r = bodyStart;
+                int valueCount = Math.Max(1, m.ValueCount);
+                foreach (var row in m.Rows)
+                {
+                    string rowBack = row.IsGrandTotal ? GrandBack : row.IsSubtotal ? SubtotalBack : null;
+                    bool rowBold = row.IsGrandTotal || row.IsSubtotal;
+                    var labelCell = ws.Cells[r, 1];
+                    labelCell.Value = row.Label;
+                    if (row.Depth > 1) labelCell.Style.Indent = Math.Min(15, (row.Depth - 1) * 2);
+                    StyleCell(labelCell, row.LabelStyle, rowBack, rowBold, OfficeOpenXml.Style.ExcelHorizontalAlignment.Left);
+                    for (int i = 0; i < row.Cells.Count; i++)
+                    {
+                        var cell = row.Cells[i];
+                        var target = ws.Cells[r, 2 + i];
+                        if (cell.Value.HasValue)
+                        {
+                            target.Value = cell.Value.Value;
+                            var fmt = m.ValueFormats != null && m.ValueFormats.Count > 0 ? m.ValueFormats[i % valueCount] : null;
+                            if (!string.IsNullOrEmpty(fmt)) target.Style.Numberformat.Format = fmt;
+                        }
+                        else if (!string.IsNullOrEmpty(cell.Text)) target.Value = cell.Text;
+                        StyleCell(target, cell.Style, rowBack ?? (cell.IsTotal ? TotalBack : null), rowBold || cell.IsTotal, OfficeOpenXml.Style.ExcelHorizontalAlignment.Right);
+                    }
+                    if (row.IsGrandTotal) ws.Cells[r, 1, r, lastCol].Style.Border.Top.Style = OfficeOpenXml.Style.ExcelBorderStyle.Medium;
+                    // Excel's own row grouping, so levels can be collapsed in the spreadsheet too
+                    else if (row.Depth > 1) ws.Row(r).OutlineLevel = Math.Min(7, row.Depth - 1);
+                    r++;
+                }
+                // subtotal rows sit above their detail rows, so the +/- buttons go at the top
+                try
+                {
+                    var xml = ws.WorksheetXml; var ns = xml.DocumentElement.NamespaceURI;
+                    var sheetPr = xml.DocumentElement["sheetPr", ns] ?? (System.Xml.XmlElement)xml.DocumentElement.PrependChild(xml.CreateElement("sheetPr", ns));
+                    var outlinePr = sheetPr["outlinePr", ns] ?? (System.Xml.XmlElement)sheetPr.PrependChild(xml.CreateElement("outlinePr", ns));
+                    outlinePr.SetAttribute("summaryBelow", "0");
+                }
+                catch { }
+                ws.View.FreezePanes(bodyStart, 2);
+                try { ws.Cells[headStart, 1, Math.Max(headStart, r - 1), lastCol].AutoFitColumns(8, 60); } catch { }
+                // auto-fit skips merged cells, so size the row label column from its text
+                var labelWidth = m.Rows.Select(x => (x.Label ?? "").Length + Math.Max(0, x.Depth - 1) * 2)
+                    .Concat(new[] { (m.RowHeader ?? "").Length, (m.ValueCaption ?? "").Length }).DefaultIfEmpty(10).Max();
+                ws.Column(1).Width = Math.Min(60, Math.Max(12, labelWidth * 1.15 + 3));
+                return xp.GetAsByteArray();
+            }
+        }
+
+        #endregion
+
+        #region CSV
+
+        public static byte[] ToCsv(MatrixExportModel m)
+        {
+            string Q(string v)
+            {
+                v = v ?? "";
+                return v.IndexOfAny(new[] { ',', '"', '\n', '\r' }) >= 0 ? "\"" + v.Replace("\"", "\"\"") + "\"" : v;
+            }
+            int levels = Math.Max(1, m.RowFieldLabels?.Count ?? 0);
+            int cols = m.ColumnCount;
+            // each data column is named by its header path, e.g. "2024 / January / Sales"
+            var names = new List<string>[cols];
+            for (int i = 0; i < cols; i++) names[i] = new List<string>();
+            foreach (var (row, col, h) in PlaceHeaders(m).OrderBy(p => p.row))
+                for (int j = 0; j < Math.Max(1, h.Colspan) && col + j < cols; j++)
+                    if (!string.IsNullOrEmpty(h.Label)) names[col + j].Add(h.Label);
+            if (m.ValueHeaders.Count == 0 && !string.IsNullOrEmpty(m.ValueCaption))
+                foreach (var n in names) n.Add(m.ValueCaption);
+
+            var sb = new StringBuilder();
+            var head = Enumerable.Range(0, levels).Select(i => m.RowFieldLabels != null && i < m.RowFieldLabels.Count ? m.RowFieldLabels[i] : "Row");
+            sb.AppendLine(string.Join(",", head.Concat(names.Select(n => string.Join(" / ", n))).Select(Q)));
+
+            var path = new string[levels];
+            foreach (var row in m.Rows)
+            {
+                if (row.IsGrandTotal)
+                {
+                    path = new string[levels];
+                    path[0] = row.Label;
+                }
+                else
+                {
+                    int d = Math.Min(levels, Math.Max(1, row.Depth)) - 1;
+                    path[d] = row.Label;
+                    for (int i = d + 1; i < levels; i++) path[i] = "";
+                }
+                var values = row.Cells.Select(c => c.Value.HasValue ? c.Value.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : (c.Text ?? ""));
+                sb.AppendLine(string.Join(",", path.Select(p => p ?? "").Concat(values).Select(Q)));
+            }
+            return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
+        }
+
+        #endregion
     }
 }

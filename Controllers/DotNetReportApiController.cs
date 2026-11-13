@@ -2276,7 +2276,54 @@ namespace ReportBuilder.Web.Controllers
             Response.Headers.Add("content-disposition", "attachment; filename=" + reportName + ".docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             return File(word, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", reportName + ".docx");
-        }       
+        }
+
+        // Matrix exports: the browser sends the table as shown (or fully expanded); no query runs here
+        [HttpPost]
+        public async Task<IActionResult> DownloadMatrix(
+            [FromForm] string format,
+            [FromForm] string matrixModel,
+            [FromForm] string reportName,
+            [FromForm] string reportDescription = null,
+            [FromForm] bool hideReportName = false,
+            [FromForm] string filterDetailsText = null,
+            [FromForm] string pageSize = "",
+            [FromForm] string pageOrientation = "",
+            [FromForm] string headerHtml = null,
+            [FromForm] string footerHtml = null,
+            [FromForm] bool headerEveryPage = false,
+            [FromForm] bool footerEveryPage = false,
+            [FromForm] string currentUserName = null,
+            [FromForm] string currentUserRoles = null)
+        {
+            GetSettings();
+            var model = JsonConvert.DeserializeObject<MatrixExportModel>(matrixModel ?? "") ?? new MatrixExportModel();
+            reportName = string.IsNullOrWhiteSpace(reportName) ? "Matrix" : reportName;
+            headerHtml = DotNetReportHelper.SanitizeReportHtml(string.IsNullOrEmpty(headerHtml) ? null : HttpUtility.UrlDecode(headerHtml));
+            footerHtml = DotNetReportHelper.SanitizeReportHtml(string.IsNullOrEmpty(footerHtml) ? null : HttpUtility.UrlDecode(footerHtml));
+
+            switch ((format ?? "").ToLowerInvariant())
+            {
+                case "xlsx":
+                    return File(MatrixExporter.ToExcel(model, reportName, reportDescription, filterDetailsText, hideReportName), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", reportName + ".xlsx");
+                case "csv":
+                    return File(MatrixExporter.ToCsv(model), "text/csv", reportName + ".csv");
+                case "docx":
+                    var (wordOrientation, wordHtml) = MatrixExporter.ToWordHtml(model, pageSize, pageOrientation);
+                    var word = await DotNetReportHelper.GetWordFile(null, null, reportName, pageSize: pageSize, pageOrientation: wordOrientation, filterDetailsText: filterDetailsText,
+                        headerHtml: headerHtml, footerHtml: footerHtml, headerEveryPage: headerEveryPage, footerEveryPage: footerEveryPage,
+                        currentUserName: currentUserName, currentUserRoles: currentUserRoles,
+                        customHtml: wordHtml, hideReportName: hideReportName);
+                    return File(word, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", reportName + ".docx");
+                case "pdf":
+                    var html = MatrixExporter.ToPdfHtml(model, reportName, reportDescription, filterDetailsText, hideReportName,
+                        DotNetReportHelper.SubstituteHtmlPlaceholders(headerHtml, currentUserName, currentUserRoles, 1, 1, reportName: reportName),
+                        DotNetReportHelper.SubstituteHtmlPlaceholders(footerHtml, currentUserName, currentUserRoles, 1, 1, reportName: reportName));
+                    return File(await DotNetReportHelper.GetPdfFromHtml(html, pageSize, pageOrientation), "application/pdf", reportName + ".pdf");
+                default:
+                    return BadRequest("Unknown export format");
+            }
+        }
 
         [HttpPost]
         public async Task<IActionResult> DownloadCsv(
