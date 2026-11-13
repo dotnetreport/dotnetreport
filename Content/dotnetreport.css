@@ -2916,7 +2916,9 @@ th .dropdown > [data-bs-toggle="dropdown"].show { visibility: visible; }
 .dr-matrix-table td { white-space: nowrap; }
 .dr-matrix-table .dr-matrix-rowhead { text-align: left; position: sticky; left: 0; background: #fff; z-index: 2; }
 .dr-matrix-table thead .dr-matrix-rowhead { background: #f6f8fa; z-index: 3; }
-.dr-matrix-value-head { cursor: pointer; user-select: none; }
+.dr-matrix-value-head, .dr-matrix-sortable { cursor: pointer; user-select: none; }
+.dr-matrix-sortable .fa { font-size: .7rem; margin-left: .2rem; }
+.dr-matrix-chip-gear { font-size: .75rem; padding: 0 .15rem; }
 .dr-matrix-table .dr-matrix-total { background: #f1f4f8; font-weight: 600; }
 .dr-matrix-table tr.dr-matrix-subtotal td { font-weight: 600; background: #fafbfc; }
 .dr-matrix-table tr.dr-matrix-subtotal .dr-matrix-rowhead { background: #fafbfc; }

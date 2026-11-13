@@ -7509,11 +7509,61 @@ var reportViewModel = function (options) {
 		self.matrixLayoutChanged(!!self._matrixSaved && matrixLayoutKey(self._matrixSaved) !== matrixLayoutKey(matrixLayout()));
 	};
 	_.forEach(self.matrixOptions, function (o) { o.subscribe(function () { self.updateMatrixLayoutChanged(); }); });
-	self.saveMatrixLayout = function () {
-		self.RunReport(true, true).done(function () {
+	// Each user can keep their own layout (stored per user like their filters); editors change the report's in the designer
+	self.usingUserLayout = ko.observable(false);
+	var matrixFieldKey = function (field, counts) {
+		if (!field._matrixKey) field._matrixKey = field.fieldId + '|' + (counts[field.fieldId] = (counts[field.fieldId] || 0) + 1);
+		return field._matrixKey;
+	};
+	var saveUserSettings = function (settings) {
+		return ajaxcall({
+			url: options.apiUrl.replace('CallReportApi', 'CallPostReportApi'),
+			type: 'POST',
+			data: JSON.stringify({
+				method: '/ReportApi/SaveReportUserSettings',
+				model: JSON.stringify({ reportId: self.ReportID(), settings: settings })
+			})
+		});
+	};
+	self.applyUserMatrixLayout = function (userSettings) {
+		self.usingUserLayout(false);
+		var counts = {};
+		_.forEach(self.SelectedFields(), function (x) { delete x._matrixKey; matrixFieldKey(x, counts); });
+		var saved = null;
+		try { saved = userSettings ? JSON.parse(userSettings) : null; } catch (e) { saved = null; }
+		var m = saved && saved.matrix;
+		if (!m || !m.fields) return;
+		_.forEach(self.SelectedFields(), function (x) {
+			var s = m.fields[x._matrixKey];
+			if (!s) return;
+			x.matrixRole(s.role || '');
+			if (s.agg) x.selectedAggregate(s.agg);
+		});
+		_.forEach(m.options || {}, function (v, k) { if (self.matrixOptions[k]) self.matrixOptions[k](v); });
+		var order = m.order || [];
+		self.SelectedFields(_.sortBy(self.SelectedFields(), function (x) { var i = order.indexOf(x._matrixKey); return i < 0 ? 9999 : i; }));
+		self.syncMatrixZones();
+		self.usingUserLayout(true);
+	};
+	self.saveMyMatrixLayout = function () {
+		var counts = {}, fields = {};
+		_.forEach(self.SelectedFields(), function (x) { fields[matrixFieldKey(x, counts)] = { role: x.matrixRole(), agg: x.selectedAggregate() }; });
+		var settings = JSON.stringify({ matrix: { fields: fields, order: _.map(self.SelectedFields(), '_matrixKey'), options: ko.toJS(self.matrixOptions) } });
+		saveUserSettings(settings).done(function () {
 			self._matrixSaved = matrixLayout();
 			self.matrixLayoutChanged(false);
-			toastr.success('Layout saved');
+			self.usingUserLayout(true);
+			toastr.success('Your layout is saved');
+		});
+	};
+	self.useReportMatrixLayout = function () {
+		saveUserSettings('').done(function () {
+			self._skipPopulateReportRun = true;
+			self.LoadReport(self.ReportID(), true, '').always(function () {
+				self._skipPopulateReportRun = false;
+			}).done(function () {
+				self.ExecuteReport();
+			});
 		});
 	};
 	self.resetMatrixLayout = function () {
@@ -7649,6 +7699,10 @@ var reportViewModel = function (options) {
 		if (result && !expand) walk(result.Rows);
 		self.matrixCollapsed(collapsed);
 	};
+	self.sortMatrixByLabel = function () {
+		var current = self.matrixSort();
+		self.matrixSort({ byLabel: true, desc: !!(current && current.byLabel && !current.desc) });
+	};
 	self.sortMatrixBy = function (header) {
 		if (!header.sortable) return;
 		var current = self.matrixSort();
@@ -7665,6 +7719,27 @@ var reportViewModel = function (options) {
 		var rowDepth = (result.RowFields || []).length;
 		var sort = self.matrixSort();
 		var collapsed = self.matrixCollapsed();
+		var rowFields = self.matrixRows(), colFields = self.matrixColumns(), valueFields = self.matrixValues();
+		// one value field: its name would repeat under every column, so the column headers carry the sort instead
+		var showValueRow = valueCount > 1 || colDepth === 0;
+
+		// Field options from the designer: header style on headers, cell style and alignment on cells
+		var styleOf = function (field, header) {
+			var s = {};
+			if (!field) return s;
+			var color = header ? field.headerFontColor && field.headerFontColor() : field.fontColor && field.fontColor();
+			var back = header ? field.headerBackColor && field.headerBackColor() : field.backColor && field.backColor();
+			var bold = header ? field.headerFontBold && field.headerFontBold() : field.fontBold && field.fontBold();
+			if (color) s.color = color;
+			if (back) s.backgroundColor = back;
+			if (bold) s.fontWeight = 'bold';
+			var align = !header && field.fieldAlign ? field.fieldAlign() : '';
+			if (align && align !== 'Auto') s.textAlign = align.toLowerCase();
+			return s;
+		};
+		var sortIcon = function (colId, vi) {
+			return sort && !sort.byLabel && sort.colId === colId && sort.valueIndex === vi ? (sort.desc ? 'fa-sort-desc' : 'fa-sort-asc') : '';
+		};
 
 		// Display columns: data columns, each group followed by its total, then the grand total
 		var opts = ko.toJS(self.matrixOptions);
@@ -7683,37 +7758,53 @@ var reportViewModel = function (options) {
 		};
 		var headerRows = [];
 		for (var i = 0; i < colDepth; i++) headerRows.push([]);
+		var headerCell = function (label, colspan, rowspan, isTotal, colId, depth) {
+			return {
+				label: label, colspan: colspan, rowspan: rowspan, isTotal: isTotal,
+				colId: colId, valueIndex: 0, sortable: true, sortIcon: sortIcon(colId, 0),
+				style: styleOf(colFields[depth - 1], true)
+			};
+		};
 		var emit = function (node) {
 			var d = node.Depth;
 			if (!node.Children || !node.Children.length) {
-				headerRows[d - 1].push({ label: node.Label, colspan: valueCount, rowspan: 1, isTotal: false });
+				headerRows[d - 1].push(headerCell(node.Label, valueCount, 1, false, node.Id, d));
 				return;
 			}
-			headerRows[d - 1].push({ label: node.Label, colspan: (countDisplay(node) - (showColTotal(node) ? 1 : 0)) * valueCount, rowspan: 1, isTotal: false });
+			var group = headerCell(node.Label, (countDisplay(node) - (showColTotal(node) ? 1 : 0)) * valueCount, 1, false, node.Id, d);
+			group.sortable = false;
+			group.sortIcon = '';
+			headerRows[d - 1].push(group);
 			_.forEach(node.Children, emit);
-			if (showColTotal(node)) headerRows[d - 1].push({ label: node.Label + ' Total', colspan: valueCount, rowspan: colDepth - d + 1, isTotal: true });
+			if (showColTotal(node)) headerRows[d - 1].push(headerCell(node.Label + ' Total', valueCount, colDepth - d + 1, true, node.Id, d));
 		};
 		if (colDepth > 0) {
 			_.forEach(result.Columns.Children, emit);
-			if (opts.columnGrandTotal) headerRows[0].push({ label: 'Total', colspan: valueCount, rowspan: colDepth, isTotal: true });
+			if (opts.columnGrandTotal) headerRows[0].push(headerCell('Total', valueCount, colDepth, true, result.Columns.Id, 1));
 		}
+		// sorting from a column header is only offered when it maps to one value column
+		if (showValueRow) _.forEach(headerRows, function (row) { _.forEach(row, function (h) { h.sortable = false; h.sortIcon = ''; }); });
+
 		var valueHeaders = [];
-		_.forEach(displayCols, function (col) {
-			_.forEach(result.ValueFields.length ? result.ValueFields : [''], function (name, vi) {
-				var active = sort && sort.colId === col.node.Id && sort.valueIndex === vi;
-				valueHeaders.push({ label: name, colId: col.node.Id, valueIndex: vi, isTotal: col.isTotal, sortable: true, sortIcon: active ? (sort.desc ? 'fa-sort-desc' : 'fa-sort-asc') : '' });
+		if (showValueRow) {
+			_.forEach(displayCols, function (col) {
+				_.forEach(result.ValueFields.length ? result.ValueFields : [''], function (name, vi) {
+					valueHeaders.push({ label: name, colId: col.node.Id, valueIndex: vi, isTotal: col.isTotal, sortable: true, sortIcon: sortIcon(col.node.Id, vi), style: styleOf(valueFields[vi], true) });
+				});
 			});
-		});
+		}
 
 		var cellValue = function (node, colId, vi) {
 			var cell = node.Cells ? node.Cells[colId] : null;
 			return cell ? cell[vi] : null;
 		};
+		var cellStyles = _.map(_.range(valueCount), function (vi) { return styleOf(valueFields[vi], false); });
 		var bodyRows = [];
 		var walkRows = function (node) {
 			var children = node.Children || [];
 			if (sort && children.length) {
 				children = _.sortBy(children.slice(), function (child) {
+					if (sort.byLabel) return (child.Label || '').toLowerCase();
 					var v = cellValue(child, sort.colId, sort.valueIndex);
 					return v === null || v === undefined ? (sort.desc ? -Infinity : Infinity) : v;
 				});
@@ -7729,8 +7820,11 @@ var reportViewModel = function (options) {
 					collapsed: !!collapsed[child.Id],
 					isSubtotal: hasChildren,
 					isGrandTotal: false,
+					labelStyle: styleOf(rowFields[child.Depth - 1], false),
 					cells: _.flatMap(displayCols, function (col) {
-						return _.map(_.range(valueCount), function (vi) { return { text: hasChildren && !opts.rowSubtotals ? '' : self.formatMatrixValue(vi, cellValue(child, col.node.Id, vi)), isTotal: col.isTotal }; });
+						return _.map(_.range(valueCount), function (vi) {
+							return { text: hasChildren && !opts.rowSubtotals ? '' : self.formatMatrixValue(vi, cellValue(child, col.node.Id, vi)), isTotal: col.isTotal, style: cellStyles[vi] };
+						});
 					})
 				});
 				if (hasChildren && !collapsed[child.Id]) walkRows(child);
@@ -7738,17 +7832,20 @@ var reportViewModel = function (options) {
 		};
 		walkRows(result.Rows);
 		if (opts.rowGrandTotal) bodyRows.push({
-			id: result.Rows.Id, label: 'Grand Total', depth: 0, hasChildren: false, collapsed: false, isSubtotal: false, isGrandTotal: true,
+			id: result.Rows.Id, label: 'Grand Total', depth: 0, hasChildren: false, collapsed: false, isSubtotal: false, isGrandTotal: true, labelStyle: {},
 			cells: _.flatMap(displayCols, function (col) {
-				return _.map(_.range(valueCount), function (vi) { return { text: self.formatMatrixValue(vi, cellValue(result.Rows, col.node.Id, vi)), isTotal: true }; });
+				return _.map(_.range(valueCount), function (vi) { return { text: self.formatMatrixValue(vi, cellValue(result.Rows, col.node.Id, vi)), isTotal: true, style: cellStyles[vi] }; });
 			})
 		});
 
 		return {
 			rowHeader: (result.RowFields || []).join(' / '),
+			rowHeaderStyle: styleOf(rowFields[0], true),
+			rowHeaderSortIcon: sort && sort.byLabel ? (sort.desc ? 'fa-sort-desc' : 'fa-sort-asc') : '',
 			headerRows: headerRows,
 			valueHeaders: valueHeaders,
-			headerRowCount: colDepth + 1,
+			showValueRow: showValueRow,
+			headerRowCount: colDepth + (showValueRow ? 1 : 0),
 			bodyRows: bodyRows,
 			hasNestedRows: rowDepth > 1
 		};
@@ -8323,7 +8420,7 @@ var reportViewModel = function (options) {
 
 	// Edit from the run view: the designer saves the report's filters, so show those, not the user's
 	self.editLoadedReport = function () {
-		if (!self.userIdForFilter || self.usingUserFilters() === false || !self.ReportID()) {
+		if (!self.userIdForFilter || (self.usingUserFilters() === false && !self.usingUserLayout()) || !self.ReportID()) {
 			self.SaveReport(true);
 			return true;
 		}
@@ -13135,6 +13232,7 @@ var reportViewModel = function (options) {
 		});
 
 		self.SelectedFields(report.SelectedFields);
+		self.applyUserMatrixLayout(report.UserSettings);
 		self.lastPickedField(null);
 	}
 
