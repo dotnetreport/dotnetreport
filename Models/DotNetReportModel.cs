@@ -8491,17 +8491,24 @@ namespace ReportBuilder.Web.Models
         static void SortTree(MatrixHeaderNode node)
         {
             if (node.Children.Count == 0) return;
-            var values = node.Children.Select(x => x.Value).ToList();
-            Comparison<MatrixHeaderNode> comparison;
-            if (values.All(v => double.TryParse(v, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out _)))
-                comparison = (a, b) => double.Parse(a.Value, System.Globalization.CultureInfo.InvariantCulture).CompareTo(double.Parse(b.Value, System.Globalization.CultureInfo.InvariantCulture));
-            else if (values.All(v => MonthIndex(v) >= 0))
-                comparison = (a, b) => MonthIndex(a.Value).CompareTo(MonthIndex(b.Value));
-            else if (values.All(v => DateTime.TryParse(v, out _)))
-                comparison = (a, b) => DateTime.Parse(a.Value).CompareTo(DateTime.Parse(b.Value));
+            // blanks don't decide the order (so months still sort as months) and always go last
+            var values = node.Children.Select(x => x.Value).Where(v => !string.IsNullOrEmpty(v)).ToList();
+            Comparison<MatrixHeaderNode> compareValues;
+            var invariant = System.Globalization.CultureInfo.InvariantCulture;
+            if (values.Count > 0 && values.All(v => double.TryParse(v, System.Globalization.NumberStyles.Any, invariant, out _)))
+                compareValues = (a, b) => double.Parse(a.Value, invariant).CompareTo(double.Parse(b.Value, invariant));
+            else if (values.Count > 0 && values.All(v => MonthIndex(v.Trim()) >= 0))
+                compareValues = (a, b) => MonthIndex(a.Value.Trim()).CompareTo(MonthIndex(b.Value.Trim()));
+            else if (values.Count > 0 && values.All(v => DateTime.TryParse(v, out _)))
+                compareValues = (a, b) => DateTime.Parse(a.Value).CompareTo(DateTime.Parse(b.Value));
             else
-                comparison = (a, b) => string.Compare(a.Value, b.Value, StringComparison.OrdinalIgnoreCase);
-            node.Children.Sort(comparison);
+                compareValues = (a, b) => string.Compare(a.Value, b.Value, StringComparison.OrdinalIgnoreCase);
+            node.Children.Sort((a, b) =>
+            {
+                bool blankA = string.IsNullOrEmpty(a.Value), blankB = string.IsNullOrEmpty(b.Value);
+                if (blankA || blankB) return blankA == blankB ? 0 : (blankA ? 1 : -1);
+                return compareValues(a, b);
+            });
             foreach (var child in node.Children) SortTree(child);
         }
 

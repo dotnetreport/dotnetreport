@@ -7406,7 +7406,8 @@ var reportViewModel = function (options) {
 		rowSubtotals: ko.observable(true),
 		columnSubtotals: ko.observable(true),
 		rowGrandTotal: ko.observable(true),
-		columnGrandTotal: ko.observable(true)
+		columnGrandTotal: ko.observable(true),
+		allowRearrange: ko.observable(true)
 	};
 	self._matrixSaved = null;
 
@@ -7485,6 +7486,14 @@ var reportViewModel = function (options) {
 		self.matrixRefresh();
 	};
 
+	self.matrixUnplace = function (field) {
+		self.matrixRows.remove(field);
+		self.matrixColumns.remove(field);
+		self.matrixValues.remove(field);
+		if (self.matrixAvailable.indexOf(field) < 0) self.matrixAvailable.push(field);
+		self.matrixFieldMoved();
+	};
+
 	self.matrixRefresh = function () {
 		self.matrixSort(null);
 		if (!(self.ReportMode() == 'execute' || self.ReportMode() == 'dashboard' || self.ReportMode() == 'linked' || self.activeDesign())) return;
@@ -7539,7 +7548,7 @@ var reportViewModel = function (options) {
 			x.matrixRole(s.role || '');
 			if (s.agg) x.selectedAggregate(s.agg);
 		});
-		_.forEach(m.options || {}, function (v, k) { if (self.matrixOptions[k]) self.matrixOptions[k](v); });
+		_.forEach(m.options || {}, function (v, k) { if (self.matrixOptions[k] && k !== 'allowRearrange') self.matrixOptions[k](v); });
 		var order = m.order || [];
 		self.SelectedFields(_.sortBy(self.SelectedFields(), function (x) { var i = order.indexOf(x._matrixKey); return i < 0 ? 9999 : i; }));
 		self.syncMatrixZones();
@@ -7682,6 +7691,42 @@ var reportViewModel = function (options) {
 		return text;
 	};
 
+	// bumped when field options are saved, since fieldConditionVal is a plain array
+	self.matrixFormatVersion = ko.observable(0);
+	self.matrixConditionStyle = function (field, value) {
+		var conditions = field && field.fieldConditionVal && field.fieldConditionVal.length ? field.fieldConditionVal : [];
+		var s = {};
+		var isNum = value !== null && value !== undefined && value !== '' && !isNaN(value);
+		var num = isNum ? parseFloat(value) : null;
+		var text = value === null || value === undefined ? '' : String(value);
+		_.forEach(conditions, function (c) {
+			var a = parseFloat(c.value), b = parseFloat(c.value2), hit = false;
+			var list = typeof c.value === 'string' ? _.map(c.value.split(','), _.trim) : [String(c.value)];
+			switch (c.operator) {
+				case '=': hit = isNum && !isNaN(a) ? num === a : text == c.value; break;
+				case 'not equal': hit = isNum && !isNaN(a) ? num !== a : text != c.value; break;
+				case 'in': hit = list.indexOf(text) >= 0; break;
+				case 'not in': hit = list.indexOf(text) < 0; break;
+				case 'all': hit = true; break;
+				case 'like': hit = !isNum && text.indexOf(c.value) >= 0; break;
+				case 'not like': hit = !isNum && text.indexOf(c.value) < 0; break;
+				case 'is blank': hit = text === ''; break;
+				case 'is not blank': hit = text !== ''; break;
+				case '>': hit = isNum && num > a; break;
+				case '<': hit = isNum && num < a; break;
+				case '>=': hit = isNum && num >= a; break;
+				case '<=': hit = isNum && num <= a; break;
+				case 'between': hit = isNum && num >= a && num <= b; break;
+			}
+			if (hit) {
+				if (c.backColor) s.backgroundColor = c.backColor;
+				if (c.fontColor) s.color = c.fontColor;
+				if (c.fontBold) s.fontWeight = 'bold';
+			}
+		});
+		return s;
+	};
+
 	self.toggleMatrixRow = function (row) {
 		var collapsed = _.clone(self.matrixCollapsed());
 		if (collapsed[row.id]) delete collapsed[row.id]; else collapsed[row.id] = true;
@@ -7720,12 +7765,37 @@ var reportViewModel = function (options) {
 		var sort = self.matrixSort();
 		var collapsed = self.matrixCollapsed();
 		var rowFields = self.matrixRows(), colFields = self.matrixColumns(), valueFields = self.matrixValues();
+		self.matrixFormatVersion();
+		var fieldLabel = function (field, fallback) { return field ? (field.fieldLabel() || field.fieldName) : (fallback || ''); };
 		// one value field: its name would repeat under every column, so the column headers carry the sort instead
 		var showValueRow = valueCount > 1 || colDepth === 0;
 
-		// Field options from the designer: header style on headers, cell style and alignment on cells
-		var styleOf = function (field, header) {
+		// Report Settings (header and row styles) first, then each field's own options on top
+		var tableHeader = (function () {
+			var h = self.headerStyle, s = {};
+			if (h.fontColor()) s.color = h.fontColor();
+			if (h.backColor()) s.backgroundColor = h.backColor();
+			if (h.bold()) s.fontWeight = 'bold';
+			if (h.align() && h.align() !== 'Auto') s.textAlign = h.align().toLowerCase();
+			if (self.headerBorderCss()) s.border = self.headerBorderCss();
+			return s;
+		})();
+		var rowBorder = self.rowBorderCss();
+		var rowAlign = self.rowAlign() && self.rowAlign() !== 'Auto' ? self.rowAlign().toLowerCase() : '';
+		var tableRow = function (rowIndex) {
 			var s = {};
+			if (rowIndex < 0) return s;
+			var alt = rowIndex % 2 === 1;
+			var back = (alt && self.altRowBackColor()) || self.rowBackColor();
+			var font = (alt && self.altRowFontColor()) || self.rowFontColor();
+			if (back) s.backgroundColor = back;
+			if (font) s.color = font;
+			if (rowAlign) s.textAlign = rowAlign;
+			if (rowBorder) s.border = rowBorder;
+			return s;
+		};
+		var styleOf = function (field, header, rowIndex) {
+			var s = header ? _.clone(tableHeader) : tableRow(rowIndex || 0);
 			if (!field) return s;
 			var color = header ? field.headerFontColor && field.headerFontColor() : field.fontColor && field.fontColor();
 			var back = header ? field.headerBackColor && field.headerBackColor() : field.backColor && field.backColor();
@@ -7789,7 +7859,7 @@ var reportViewModel = function (options) {
 		if (showValueRow) {
 			_.forEach(displayCols, function (col) {
 				_.forEach(result.ValueFields.length ? result.ValueFields : [''], function (name, vi) {
-					valueHeaders.push({ label: name, colId: col.node.Id, valueIndex: vi, isTotal: col.isTotal, sortable: true, sortIcon: sortIcon(col.node.Id, vi), style: styleOf(valueFields[vi], true) });
+					valueHeaders.push({ label: fieldLabel(valueFields[vi], name), colId: col.node.Id, valueIndex: vi, isTotal: col.isTotal, sortable: true, sortIcon: sortIcon(col.node.Id, vi), style: styleOf(valueFields[vi], true) });
 				});
 			});
 		}
@@ -7798,7 +7868,6 @@ var reportViewModel = function (options) {
 			var cell = node.Cells ? node.Cells[colId] : null;
 			return cell ? cell[vi] : null;
 		};
-		var cellStyles = _.map(_.range(valueCount), function (vi) { return styleOf(valueFields[vi], false); });
 		var bodyRows = [];
 		var walkRows = function (node) {
 			var children = node.Children || [];
@@ -7812,6 +7881,7 @@ var reportViewModel = function (options) {
 			}
 			_.forEach(children, function (child) {
 				var hasChildren = child.Children && child.Children.length > 0;
+				var rowIndex = bodyRows.length;
 				bodyRows.push({
 					id: child.Id,
 					label: child.Label,
@@ -7820,10 +7890,14 @@ var reportViewModel = function (options) {
 					collapsed: !!collapsed[child.Id],
 					isSubtotal: hasChildren,
 					isGrandTotal: false,
-					labelStyle: styleOf(rowFields[child.Depth - 1], false),
+					labelStyle: styleOf(rowFields[child.Depth - 1], false, rowIndex),
 					cells: _.flatMap(displayCols, function (col) {
 						return _.map(_.range(valueCount), function (vi) {
-							return { text: hasChildren && !opts.rowSubtotals ? '' : self.formatMatrixValue(vi, cellValue(child, col.node.Id, vi)), isTotal: col.isTotal, style: cellStyles[vi] };
+							var raw = cellValue(child, col.node.Id, vi);
+							var style = styleOf(valueFields[vi], false, rowIndex);
+							// rules apply to the data cells, not subtotals or totals
+							if (!hasChildren && !col.isTotal) _.assign(style, self.matrixConditionStyle(valueFields[vi], raw));
+							return { text: hasChildren && !opts.rowSubtotals ? '' : self.formatMatrixValue(vi, raw), isTotal: col.isTotal, style: style };
 						});
 					})
 				});
@@ -7834,12 +7908,14 @@ var reportViewModel = function (options) {
 		if (opts.rowGrandTotal) bodyRows.push({
 			id: result.Rows.Id, label: 'Grand Total', depth: 0, hasChildren: false, collapsed: false, isSubtotal: false, isGrandTotal: true, labelStyle: {},
 			cells: _.flatMap(displayCols, function (col) {
-				return _.map(_.range(valueCount), function (vi) { return { text: self.formatMatrixValue(vi, cellValue(result.Rows, col.node.Id, vi)), isTotal: true, style: cellStyles[vi] }; });
+				return _.map(_.range(valueCount), function (vi) { return { text: self.formatMatrixValue(vi, cellValue(result.Rows, col.node.Id, vi)), isTotal: true, style: styleOf(valueFields[vi], false, -1) }; });
 			})
 		});
 
 		return {
-			rowHeader: (result.RowFields || []).join(' / '),
+			rowHeader: _.map(result.RowFields || [], function (name, i) { return fieldLabel(rowFields[i], name); }).join(' / '),
+			// with one value field there's no value header row, so its label goes in the corner
+			valueCaption: showValueRow ? '' : fieldLabel(valueFields[0], (result.ValueFields || [])[0]),
 			rowHeaderStyle: styleOf(rowFields[0], true),
 			rowHeaderSortIcon: sort && sort.byLabel ? (sort.desc ? 'fa-sort-desc' : 'fa-sort-asc') : '',
 			headerRows: headerRows,
@@ -12869,6 +12945,7 @@ var reportViewModel = function (options) {
 					operator: f.Operator()
 				});
 			});
+			if (self.matrixFormatVersion) self.matrixFormatVersion(self.matrixFormatVersion() + 1);
 
 			if (options.fieldOptionsModal) options.fieldOptionsModal.modal('hide');
 		}
