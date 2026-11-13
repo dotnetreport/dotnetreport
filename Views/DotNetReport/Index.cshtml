@@ -552,7 +552,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                 <div class="container-fluid">
                                     <div class="row fw-bold border-bottom py-2 w-100">
                                         <div class="col-md-3">Name</div>
-                                        <div class="col-md-1"></div>
+                                        <div class="col-md-1 dr-name-gap"></div>
                                         <div class="col-md-8" data-bind="visible: canManageAccess">Access</div>
                                     </div>
                                     <div class="" data-bind="foreach: rootFolders">
@@ -622,7 +622,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <div data-bind="if: searchReports() && foldersInSearch().length > 0">
                                         <div class="row fw-bold py-1 border-bottom mt-2 w-100">
                                             <div class="col-md-3"><span class="fa fa-folder"></span> Matching Folders</div>
-                                            <div class="col-md-1"></div>
+                                            <div class="col-md-1 dr-name-gap"></div>
                                             <div class="col-md-8" data-bind="visible: $root.canManageAccess">Access</div>
                                         </div>
                                         <div data-bind="foreach: foldersInSearch">
@@ -676,7 +676,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                     <div data-bind="if: (!searchReports() && subFoldersInFolder().length > 0) || reportsInFolder().length > 0 || reportsInSearch().length > 0">
                                         <div class="row fw-bold border-bottom py-2 w-100">
                                             <div class="col-md-3">Name</div>
-                                            <div class="col-md-1"></div>
+                                            <div class="col-md-1 dr-name-gap"></div>
                                             <div class="col-md-2">Modified</div>
                                             <div class="col-md-2">Modified By</div>
                                             <div class="col-md-2" data-bind="visible: searchReports()">Folder</div>

@@ -1021,19 +1021,29 @@ var accessBadges = function (item, root) {
         return _.map(String(value).split(','), function (id) { return nameOf(list, id.trim()); }).join(', ');
     };
     var badges = [];
-    var add = function (icons, title, value, list, anyText) {
+    // tooltips read as plain sentences: who can do what with this report, folder or dashboard
+    var thing = item && (item.reportId !== undefined || item.ReportId !== undefined) ? 'report' : item && item.FolderName !== undefined ? 'folder' : 'dashboard';
+    var add = function (icons, title, value, list, anyText, anyTitle) {
         if (!value && !anyText) return;
-        badges.push({ icons: icons, title: title, text: value ? names(value, list) : anyText, restricted: !!value });
+        var text = value ? names(value, list) : anyText;
+        badges.push({ icons: icons, title: value ? title(text) : anyTitle, text: text, restricted: !!value });
     };
     var users = access ? access.users : null, roles = access ? access.userRoles : null;
     var clients = root ? root.clientIdOptions : null;
-    add('fa-user', 'Manage by User', read('UserId', 'userId'), users, 'Any User');
-    add('fa-lock fa-user', 'View only by User', read('ViewOnlyUserId', 'viewOnlyUserId'), users);
-    add('fa-trash fa-user', 'Delete by User', read('DeleteOnlyUserId', 'deleteOnlyUserId'), users);
-    add('fa-key', 'Manage by Role', read('UserRoles', 'userRole', 'userRoles'), roles, 'Any Role');
-    add('fa-lock fa-key', 'View only by Role', read('ViewOnlyUserRoles', 'viewOnlyUserRole', 'viewOnlyUserRoles'), roles);
-    add('fa-trash fa-key', 'Delete by Role', read('DeleteOnlyUserRoles', 'deleteOnlyUserRole', 'deleteOnlyUserRoles'), roles);
-    add('fa-building-o', root && root.clientIdLabelText ? ko.unwrap(root.clientIdLabelText) : 'Client Id', read('ClientId', 'clientId'), clients);
+    var inRoles = function (text) { return 'Users in the ' + text + (text.indexOf(',') >= 0 ? ' roles' : ' role'); };
+    // once any user or role is picked only they have access, so "everyone" shows only when nothing is picked
+    var anyPicked = _.some(['UserId', 'userId', 'ViewOnlyUserId', 'viewOnlyUserId', 'DeleteOnlyUserId', 'deleteOnlyUserId',
+        'UserRoles', 'userRole', 'userRoles', 'ViewOnlyUserRoles', 'viewOnlyUserRole', 'viewOnlyUserRoles',
+        'DeleteOnlyUserRoles', 'deleteOnlyUserRole', 'deleteOnlyUserRoles'], function (k) { return item && ko.unwrap(item[k]); });
+    if (!anyPicked) badges.push({ icons: 'fa-globe', title: 'Anyone can view, edit or delete this ' + thing, text: 'Everyone', restricted: false });
+    add('fa-user', function (t) { return t + ' can view and edit this ' + thing; }, read('UserId', 'userId'), users);
+    add('fa-lock fa-user', function (t) { return t + ' can view this ' + thing + ', but not edit or delete it'; }, read('ViewOnlyUserId', 'viewOnlyUserId'), users);
+    add('fa-trash fa-user', function (t) { return t + ' can delete this ' + thing; }, read('DeleteOnlyUserId', 'deleteOnlyUserId'), users);
+    add('fa-key', function (t) { return inRoles(t) + ' can view and edit this ' + thing; }, read('UserRoles', 'userRole', 'userRoles'), roles);
+    add('fa-lock fa-key', function (t) { return inRoles(t) + ' can view this ' + thing + ', but not edit or delete it'; }, read('ViewOnlyUserRoles', 'viewOnlyUserRole', 'viewOnlyUserRoles'), roles);
+    add('fa-trash fa-key', function (t) { return inRoles(t) + ' can delete this ' + thing; }, read('DeleteOnlyUserRoles', 'deleteOnlyUserRole', 'deleteOnlyUserRoles'), roles);
+    var clientLabel = root && root.clientIdLabelText ? ko.unwrap(root.clientIdLabelText) : 'Client Id';
+    add('fa-building-o', function (t) { return 'Only available to ' + clientLabel + ' ' + t; }, read('ClientId', 'clientId'), clients);
     return badges;
 };
 
@@ -1152,6 +1162,92 @@ var manageAccess = function (options) {
     }
 
     access.applyDefaultSettings();
+
+    // Share-dialog view: one row per user or role with its highest permission, written back to the view/manage/delete lists
+    var shareSets = {
+        user: { view: access.viewOnlyUsers, edit: access.users, del: access.deleteOnlyUsers },
+        role: { view: access.viewOnlyUserRoles, edit: access.userRoles, del: access.deleteOnlyUserRoles }
+    };
+    var findShareItem = function (list, value) { return _.find(list(), function (x) { return x.value() === value; }); };
+    var isShared = function (list, value) { var item = findShareItem(list, value); return !!(item && item.selected()); };
+    var setShared = function (list, value, text, on) {
+        var item = findShareItem(list, value);
+        if (!item) {
+            if (!on) return;
+            item = { selected: ko.observable(false), value: ko.observable(value), text: text || value, category: null };
+            list.push(item);
+        }
+        item.selected(on);
+    };
+    access.setShareLevel = function (kind, value, text, level) {
+        var set = shareSets[kind];
+        setShared(set.view, value, text, level === 'view');
+        setShared(set.edit, value, text, level === 'edit' || level === 'delete');
+        setShared(set.del, value, text, level === 'delete');
+    };
+    access.shareLevels = function () {
+        var levels = [{ id: 'view', text: 'Can view' }, { id: 'edit', text: 'Can edit' }];
+        if (!access.isDashboard()) levels.push({ id: 'delete', text: 'Can edit & delete' });
+        return levels;
+    };
+    access.members = ko.pureComputed(function () {
+        var members = [];
+        _.forEach(['user', 'role'], function (kind) {
+            var set = shareSets[kind], seen = {};
+            _.forEach([set.del, set.edit, set.view], function (list) {
+                _.forEach(list(), function (x) {
+                    var value = x.value();
+                    if (!x.selected() || seen[value]) return;
+                    seen[value] = true;
+                    var current = isShared(set.del, value) ? 'delete' : isShared(set.edit, value) ? 'edit' : 'view';
+                    members.push({
+                        kind: kind, value: value, text: x.text,
+                        level: ko.pureComputed({ read: function () { return current; }, write: function (level) { access.setShareLevel(kind, value, x.text, level); } })
+                    });
+                });
+            });
+        });
+        return members;
+    });
+    access.removeMember = function (member) {
+        var set = shareSets[member.kind];
+        _.forEach([set.view, set.edit, set.del], function (list) { setShared(list, member.value, member.text, false); });
+    };
+    access.shareQuery = ko.observable('');
+    access.shareLevel = ko.observable('view');
+    access.shareMatches = ko.pureComputed(function () {
+        var q = (access.shareQuery() || '').trim().toLowerCase();
+        if (!q) return [];
+        var taken = {};
+        _.forEach(access.members(), function (m) { taken[m.kind + '|' + m.value] = true; });
+        var candidates = _.map(access.users(), function (x) { return { kind: 'user', value: x.value(), text: x.text, category: x.category }; })
+            .concat(_.map(access.userRoles(), function (x) { return { kind: 'role', value: x.value(), text: x.text, category: null }; }));
+        return _.take(_.filter(candidates, function (c) {
+            return !taken[c.kind + '|' + c.value] && String(c.text || '').toLowerCase().indexOf(q) >= 0;
+        }), 8);
+    });
+    access.addMember = function (candidate) {
+        access.setShareLevel(candidate.kind, candidate.value, candidate.text, access.shareLevel());
+        access.shareQuery('');
+    };
+    access.shareKeydown = function (data, e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            var first = access.shareMatches()[0];
+            if (first) access.addMember(first);
+            return false;
+        }
+        if (e.key === 'Escape') { access.shareQuery(''); return false; }
+        return true;
+    };
+    var wantRestricted = ko.observable(false);
+    access.generalAccess = ko.pureComputed({
+        read: function () { return access.members().length || wantRestricted() ? 'restricted' : 'everyone'; },
+        write: function (v) {
+            wantRestricted(v === 'restricted');
+            if (v === 'everyone') _.forEach(access.members(), access.removeMember);
+        }
+    });
 
     access.groupedUsers = ko.computed(function () {
         var hasCategory = access.users().some(function (u) { return u.category; });

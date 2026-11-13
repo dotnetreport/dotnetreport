@@ -900,15 +900,59 @@
 </script>
 <script type="text/html" id="manage-access-template">
     <h5 class="manage-access-heading"><span class="fa fa-key"></span>Manage Access</h5>
-    <div class="panel panel-default panel-body" style="margin-left: 20px;">
+    <div class="panel panel-default panel-body dr-share" style="margin-left: 20px;">
+        <!-- Add a user or role, Google Docs style -->
+        <div class="position-relative mb-3">
+            <div class="input-group">
+                <span class="input-group-text bg-white"><i class="fa fa-user-plus text-muted"></i></span>
+                <input type="text" class="form-control" placeholder="Add users or roles" autocomplete="off" data-bind="textInput: shareQuery, event: { keydown: shareKeydown }" />
+                <select class="form-select dr-share-level-pick" data-bind="options: shareLevels(), optionsText: 'text', optionsValue: 'id', value: shareLevel"></select>
+            </div>
+            <div class="list-group position-absolute w-100 shadow dr-share-suggest" data-bind="visible: shareMatches().length > 0, foreach: shareMatches">
+                <button type="button" class="list-group-item list-group-item-action d-flex align-items-center" data-bind="click: $parent.addMember">
+                    <i class="fa me-2 text-muted" data-bind="css: kind === 'role' ? 'fa-users' : 'fa-user'"></i>
+                    <span data-bind="text: text"></span>
+                    <span class="ms-auto small text-muted" data-bind="text: kind === 'role' ? 'Role' : (category || 'User')"></span>
+                </button>
+            </div>
+            <div class="small text-muted mt-1" data-bind="visible: shareQuery() && shareMatches().length === 0">No matching users or roles</div>
+        </div>
 
-        <div class="form-group row">
-            <label class="col-md-3 col-sm-3 control-label" data-bind="text: ($root.clientIdLabelText ? $root.clientIdLabelText() : 'Client Id') + ' to Restrict Access'"></label>
-            <div class="col-md-6 col-sm-6">
+        <div class="fw-semibold mb-1">Users and roles with access</div>
+        <div class="dr-share-list mb-3">
+            <!-- ko foreach: members -->
+            <div class="d-flex align-items-center py-1">
+                <span class="dr-share-avatar me-2"><i class="fa" data-bind="css: kind === 'role' ? 'fa-users' : 'fa-user'"></i></span>
+                <div class="me-auto text-truncate">
+                    <div class="text-truncate" data-bind="text: text, attr: { title: text }"></div>
+                    <div class="small text-muted" data-bind="text: kind === 'role' ? 'Role' : 'User'"></div>
+                </div>
+                <select class="form-select form-select-sm dr-share-level" data-bind="options: $parent.shareLevels(), optionsText: 'text', optionsValue: 'id', value: level"></select>
+                <button type="button" class="btn btn-sm btn-link text-muted" title="Remove access" data-bind="click: $parent.removeMember"><i class="fa fa-times"></i></button>
+            </div>
+            <!-- /ko -->
+            <div class="small text-muted py-1" data-bind="visible: members().length === 0">No users or roles added.</div>
+        </div>
+
+        <div class="fw-semibold mb-1">General access</div>
+        <div class="d-flex align-items-start mb-2">
+            <span class="dr-share-avatar me-2"><i class="fa" data-bind="css: members().length ? 'fa-lock' : 'fa-globe'"></i></span>
+            <div>
+                <select class="form-select form-select-sm dr-share-general" data-bind="value: generalAccess">
+                    <option value="everyone">Everyone</option>
+                    <option value="restricted">Restricted</option>
+                </select>
+                <div class="small text-muted" data-bind="text: members().length ? 'Only the users and roles above have access. User rights override role rights.' : (generalAccess() === 'restricted' ? 'Add users or roles above. Until then everyone has access.' : 'Anyone who can see reports has access.')"></div>
+            </div>
+        </div>
+        <div class="d-flex align-items-start">
+            <span class="dr-share-avatar me-2"><i class="fa fa-building"></i></span>
+            <div class="flex-grow-1">
+                <div class="small fw-semibold" data-bind="text: ($root.clientIdLabelText ? $root.clientIdLabelText() : 'Client Id') + ' Access'"></div>
                 <!-- ko if: $root.adminMode && !$root.adminMode() -->
                 <!-- Without Admin Mode the item stays with the user's own Client Id; the server enforces this -->
-                <div class="form-control-plaintext py-1" data-bind="text: clientId() || '-'"></div>
-                <div class="form-text">Only an admin can change this.</div>
+                <div class="small" data-bind="text: clientId() || '-'"></div>
+                <div class="small text-muted">Only an admin can change this.</div>
                 <!-- /ko -->
                 <!-- ko ifnot: $root.adminMode && !$root.adminMode() -->
                 <!-- ko if: $root.clientIdOptions && $root.clientIdOptions().length > 0 -->
@@ -916,235 +960,25 @@
                         data-bind="options: $root.clientIdOptions().filter(function(c){ return selectedClientIds().indexOf(c.id) < 0; }),
                             optionsText: 'text', optionsValue: 'id', optionsCaption: 'Add to restrict access',
                             value: clientIdToAdd, event: { change: function(){ addClientId(clientIdToAdd()); } }"></select>
-                <!-- ko if: selectedClientIds().length > 0 -->
-                <div class="d-flex flex-wrap gap-1 mt-2">
-                    <!-- ko foreach: selectedClientIds() -->
-                    <span class="badge bg-secondary d-inline-flex align-items-center">
-                        <span data-bind="text: (function(){ var m = _.find($root.clientIdOptions(), function(c){ return c.id == $data; }); return m ? m.text : $data; })()"></span>
-                        <button type="button" class="btn btn-sm btn-link text-white p-0 ms-2 lh-1" title="Remove" data-bind="click: function(){ $parent.removeClientId($data); }"><i class="fa fa-times"></i></button>
-                    </span>
-                    <!-- /ko -->
-                </div>
-                <!-- /ko -->
-                <div class="form-text" data-bind="visible: selectedClientIds().length === 0">Not restricted, available to all.</div>
                 <!-- /ko -->
                 <!-- ko ifnot: $root.clientIdOptions && $root.clientIdOptions().length > 0 -->
-                <input class="form-control text-box single-line" type="text" placeholder="Comma separated, leave blank for all" data-bind="value: clientId">
+                <input class="form-control form-control-sm" type="text" placeholder="Comma separated, leave blank for all" data-bind="value: clientId">
+                <!-- /ko -->
                 <!-- ko if: selectedClientIds().length > 0 -->
                 <div class="d-flex flex-wrap gap-1 mt-2">
                     <!-- ko foreach: selectedClientIds() -->
                     <span class="badge bg-secondary d-inline-flex align-items-center">
-                        <span data-bind="text: $data"></span>
+                        <span data-bind="text: (function(){ var m = $root.clientIdOptions && _.find($root.clientIdOptions(), function(c){ return c.id == $data; }); return m ? m.text : $data; })()"></span>
                         <button type="button" class="btn btn-sm btn-link text-white p-0 ms-2 lh-1" title="Remove" data-bind="click: function(){ $parent.removeClientId($data); }"><i class="fa fa-times"></i></button>
                     </span>
                     <!-- /ko -->
                 </div>
                 <!-- /ko -->
-                <div class="form-text" data-bind="visible: selectedClientIds().length === 0">Not restricted, available to all.</div>
+                <div class="small text-muted" data-bind="visible: selectedClientIds().length === 0">Not restricted, available to all.</div>
                 <!-- /ko -->
-                <!-- /ko -->
-            </div>
-            <div class="col-md-1 col-sm-1">
-                <span data-bs-toggle="tooltip" data-placement="right" class="fa fa-question-circle helptip" title="Leave blank to give Global access"></span>
-            </div>
-        </div>
-        <div class="alert alert-info py-1 px-2 small mb-2">
-            <span class="fa fa-lightbulb-o"></span>&nbsp;If no users or roles are selected, everyone has access. Once any user or role is selected, only the selected users and roles have access. User level rights override Role level rights.
-        </div>
-
-        <div class="row small">
-            <div class="col-md-6">
-                <span class="clickable" data-bind="click: toggleManageUsers"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showManageUsers(), 'fa-chevron-right': !showManageUsers() }"></i> <b>Manage by User</b> (allow edit)</span>
-                <div data-bind="template: { name: 'access-selected-pills', data: { list: users, open: showManageUsers, userList: true } }"></div>
-                <div class="row container-fluid" data-bind="visible: showManageUsers">
-                    <!-- ko if: groupedUsers().length > 0 -->
-                    <!-- ko foreach: groupedUsers -->
-                    <div class="col-md-12">
-                      <div class="category-header" style="cursor: pointer;" data-bind="click: function() { show(!show()); }">
-                        <i class="fa toggle-icon" data-bind="css: { 'fa-chevron-down': show(), 'fa-chevron-right': !show() }"></i>
-                        <strong data-bind="text: category"></strong>
-                      </div>
-                      <div class="row container-fluid" data-bind="visible: show">
-                        <!-- ko foreach: users -->
-                        <div class="pull-left">
-                          <div class="checkbox">
-                            <label class="label label-info">
-                              <input type="checkbox" data-bind="checked: selected"> &nbsp; <span data-bind="text: text"></span>&nbsp; </label>
-                          </div>
-                        </div>
-                        <!-- /ko -->
-                      </div>
-                    </div>
-                    <!-- /ko -->
-                    <!-- /ko -->
-                    <!-- ko if: groupedUsers().length == 0 && users().length > 0 -->
-                    <!-- ko foreach: users -->
-                    <div class="pull-left">
-                        <div class="checkbox">
-                            <label class="label label-info">
-                                <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
-                            </label>
-                        </div>
-                    </div>
-                    <!-- /ko -->
-                    <!-- /ko -->
-                    <div data-bind="if: groupedUsers().length == 0 && users().length == 0">
-                        Users list not populated or not applicable
-                    </div>
-                </div>
-                <br />
-                <span class="clickable" data-bind="click: toggleViewUsers"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showViewUsers(), 'fa-chevron-right': !showViewUsers() }"></i> <b>View only by User</b> (no edit/delete)</span>
-                <div data-bind="template: { name: 'access-selected-pills', data: { list: viewOnlyUsers, open: showViewUsers, userList: true } }"></div>
-                <div class="row container-fluid" data-bind="visible: showViewUsers">
-                    <!-- ko if: groupedViewOnlyUsers().length > 0 -->
-                    <!-- ko foreach: groupedViewOnlyUsers -->
-                    <div class="col-md-12">
-                      <div class="category-header" style="cursor: pointer;" data-bind="click: function() { show(!show()); }">
-                        <i class="fa toggle-icon" data-bind="css: { 'fa-chevron-down': show(), 'fa-chevron-right': !show() }"></i>
-                        <strong data-bind="text: category"></strong>
-                      </div>
-                      <div class="row container-fluid" data-bind="visible: show">
-                        <!-- ko foreach: viewOnlyUsers -->
-                        <div class="pull-left">
-                          <div class="checkbox">
-                            <label class="label label-info">
-                              <input type="checkbox" data-bind="checked: selected"> &nbsp; <span data-bind="text: text"></span>&nbsp; </label>
-                          </div>
-                        </div>
-                        <!-- /ko -->
-                      </div>
-                    </div>
-                    <!-- /ko -->
-                    <!-- /ko -->
-                    <!-- ko if: groupedViewOnlyUsers().length == 0 && viewOnlyUsers().length > 0 -->
-                    <!-- ko foreach: viewOnlyUsers -->
-                    <div class="pull-left">
-                        <div class="checkbox">
-                            <label class="label label-info">
-                                <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
-                            </label>
-                        </div>
-                    </div>
-                    <!-- /ko -->
-                    <!-- /ko -->
-                    <div data-bind="if: groupedViewOnlyUsers().length == 0 && viewOnlyUsers().length == 0">
-                        Users list not populated or not applicable
-                    </div>
-                </div>
-                <br />
-                <div data-bind="ifnot: isDashboard">
-                    <span class="clickable" data-bind="click: toggleDeleteUsers"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showDeleteUsers(), 'fa-chevron-right': !showDeleteUsers() }"></i> <b>Delete by User</b> (allow delete)</span>
-                    <div data-bind="template: { name: 'access-selected-pills', data: { list: deleteOnlyUsers, open: showDeleteUsers, userList: true } }"></div>
-                    <div class="row container-fluid" data-bind="visible: showDeleteUsers">
-                    <!-- ko if: groupedDeleteOnlyUsers().length > 0 -->
-                    <!-- ko foreach: groupedDeleteOnlyUsers -->
-                    <div class="col-md-12">
-                      <div class="category-header" style="cursor: pointer;" data-bind="click: function() { show(!show()); }">
-                        <i class="fa toggle-icon" data-bind="css: { 'fa-chevron-down': show(), 'fa-chevron-right': !show() }"></i>
-                        <strong data-bind="text: category"></strong>
-                      </div>
-                      <div class="row container-fluid" data-bind="visible: show">
-                        <!-- ko foreach: deleteOnlyUsers -->
-                        <div class="pull-left">
-                          <div class="checkbox">
-                            <label class="label label-info">
-                              <input type="checkbox" data-bind="checked: selected"> &nbsp; <span data-bind="text: text"></span>&nbsp; </label>
-                          </div>
-                        </div>
-                        <!-- /ko -->
-                      </div>
-                    </div>
-                    <!-- /ko -->
-                    <!-- /ko -->
-                    <!-- ko if: groupedDeleteOnlyUsers().length == 0 && deleteOnlyUsers().length > 0 -->
-                    <!-- ko foreach: deleteOnlyUsers -->
-                        <div class="pull-left">
-                            <div class="checkbox">
-                                <label class="label label-info">
-                                    <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
-                                </label>
-                            </div>
-                        </div>
-                        <!-- /ko -->
-                        <!-- /ko -->
-                        <div data-bind="if: groupedDeleteOnlyUsers().length == 0 && deleteOnlyUsers().length == 0">
-                            Users list not populated or not applicable
-                        </div>
-                    </div>
-                    <br />
-                </div>
-            </div>
-            <div class="col-md-6">
-                <span class="clickable" data-bind="click: toggleManageRoles"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showManageRoles(), 'fa-chevron-right': !showManageRoles() }"></i> <b>Manage by User Role</b> (allow edit)</span>
-                <div data-bind="template: { name: 'access-selected-pills', data: { list: userRoles, open: showManageRoles } }"></div>
-                <div class="row container-fluid" data-bind="visible: showManageRoles">
-                    <!-- ko foreach: userRoles -->
-                    <div class="pull-left">
-                        <div class="checkbox">
-                            <label class="label label-info">
-                                <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
-                            </label>
-                        </div>
-                    </div>
-                    <!-- /ko -->
-                    <div data-bind="if: userRoles().length == 0">
-                        User Roles list not populated or not applicable
-                    </div>
-                </div>
-                <br />
-                <span class="clickable" data-bind="click: toggleViewRoles"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showViewRoles(), 'fa-chevron-right': !showViewRoles() }"></i> <b>View only by User Role</b> (no edit/delete)</span>
-                <div data-bind="template: { name: 'access-selected-pills', data: { list: viewOnlyUserRoles, open: showViewRoles } }"></div>
-                <div class="row container-fluid" data-bind="visible: showViewRoles">
-                    <!-- ko foreach: viewOnlyUserRoles -->
-                    <div class="pull-left">
-                        <div class="checkbox">
-                            <label class="label label-info">
-                                <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
-                            </label>
-                        </div>
-                    </div>
-                    <!-- /ko -->
-                    <div data-bind="if: viewOnlyUserRoles().length == 0">
-                        User Roles list not populated or not applicable
-                    </div>
-                </div>
-                <div data-bind="ifnot: isDashboard">
-                    <span class="clickable" data-bind="click: toggleDeleteRoles"><i class="toggle-icon fa" data-bind="css: { 'fa-chevron-down': showDeleteRoles(), 'fa-chevron-right': !showDeleteRoles() }"></i> <b>Delete by User Role</b> (allow delete)</span>
-                    <div data-bind="template: { name: 'access-selected-pills', data: { list: deleteOnlyUserRoles, open: showDeleteRoles } }"></div>
-                    <div class="row container-fluid" data-bind="visible: showDeleteRoles">
-                        <!-- ko foreach: deleteOnlyUserRoles -->
-                        <div class="pull-left">
-                            <div class="checkbox">
-                                <label class="label label-info">
-                                    <input type="checkbox" data-bind="checked: selected">&nbsp;<span data-bind="text: text"></span>&nbsp;
-                                </label>
-                            </div>
-                        </div>
-                        <!-- /ko -->
-                        <div data-bind="if: deleteOnlyUserRoles().length == 0">
-                            User Roles list not populated or not applicable
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
-</script>
-
-<!-- Collapsed view of one access rule: who is selected, or that it is open to everyone. Hidden while the checkboxes are open. -->
-<script type="text/html" id="access-selected-pills">
-    <!-- ko ifnot: ko.unwrap(open) -->
-    <div class="d-flex flex-wrap gap-1 align-items-center my-1 ms-3">
-        <!-- ko foreach: _.filter(list(), function (x) { return x.selected(); }) -->
-        <span class="badge bg-secondary d-inline-flex align-items-center">
-            <span data-bind="text: text"></span>
-            <button type="button" class="btn btn-sm btn-link text-white p-0 ms-2 lh-1" title="Remove" data-bind="click: function(){ selected(false); }"><i class="fa fa-times"></i></button>
-        </span>
-        <!-- /ko -->
-        <span class="text-muted small" data-bind="visible: !_.some(list(), function (x) { return x.selected(); }) && !($data.userList && $parent.isUserRestricted())"><i class="fa fa-globe"></i> Everyone, not restricted</span>
-        <span class="text-muted small" data-bind="visible: !_.some(list(), function (x) { return x.selected(); }) && $data.userList && $parent.isUserRestricted()"><i class="fa fa-lock"></i> Only selected users have access</span>
-    </div>
-    <!-- /ko -->
 </script>
 <!-- Access summary badges for a report/folder/dashboard row (admin mode). Grey = restricted, outlined = open to all. -->
 <script type="text/html" id="access-badges">
