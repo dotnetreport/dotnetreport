@@ -699,7 +699,7 @@
         <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
             <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
             <div data-bind="with: ReportResult" class="small">
-                <div data-bind="visible: !ReportData()">
+                <div data-bind="visible: !ReportData() && !($parent.matrixReady && $parent.matrixReady())">
                     <div class="report-spinner"></div>
                 </div>
                 <!-- ko if: !$parent._isPlaceholder -->
@@ -751,7 +751,11 @@
     <div data-bind="template: {name: 'report-render', data: $data }"></div>
     <!-- /ko -->
 
-    <!-- ko if: $parent.ReportType() != 'Pivot' && $parent.ReportType() != 'Html' && (!$parent.isChart() || $parent.ShowDataWithGraph()) -->
+    <!-- ko if: $parent.ReportType() == 'Matrix' -->
+    <div data-bind="template: {name: 'report-matrix', data: $parent }"></div>
+    <!-- /ko -->
+
+    <!-- ko if: $parent.ReportType() != 'Pivot' && $parent.ReportType() != 'Html' && $parent.ReportType() != 'Matrix' && (!$parent.isChart() || $parent.ShowDataWithGraph()) -->
     <div class="pull-right" data-bind="if: $parent.OuterGroupColumns().length > 0 && (!$parent.CanEdit || $parent.CanEdit())">
         <a href="#" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
             Manage Groups <span class="fa fa-ellipsis-v"></span>
@@ -1966,6 +1970,127 @@
     </div>
 </script>
 
+<script type="text/html" id="matrix-fields">
+    <div class="dr-matrix-fields">
+        <div class="dr-matrix-zone-box">
+            <div class="dr-matrix-zone-title"><i class="fa fa-list"></i> Fields</div>
+            <ul class="dr-matrix-zone" data-bind="sortable: { data: matrixAvailable, connectClass: 'dr-matrix-zone', afterMove: matrixFieldMoved, options: { placeholder: 'dr-matrix-drop', cursor: 'move' } }">
+                <li class="dr-matrix-chip" data-bind="attr: { title: selectedFieldName() }"><i class="fa fa-ellipsis-v me-1 text-muted"></i><span data-bind="text: fieldLabel() || fieldName"></span></li>
+            </ul>
+        </div>
+        <div class="dr-matrix-zone-box">
+            <div class="dr-matrix-zone-title"><i class="fa fa-bars"></i> Rows</div>
+            <ul class="dr-matrix-zone" data-bind="sortable: { data: matrixRows, connectClass: 'dr-matrix-zone', afterMove: matrixFieldMoved, options: { placeholder: 'dr-matrix-drop', cursor: 'move' } }">
+                <li class="dr-matrix-chip">
+                    <i class="fa fa-ellipsis-v me-1 text-muted"></i><span data-bind="text: fieldLabel() || fieldName"></span>
+                    <!-- ko if: $parent.matrixGroupAggregates($data).length > 1 -->
+                    <select class="form-select form-select-sm dr-matrix-agg" data-bind="options: $parent.matrixGroupAggregates($data), value: selectedAggregate, event: { change: $parent.matrixRefresh }"></select>
+                    <!-- /ko -->
+                </li>
+            </ul>
+        </div>
+        <div class="dr-matrix-zone-box">
+            <div class="dr-matrix-zone-title"><i class="fa fa-columns"></i> Columns</div>
+            <ul class="dr-matrix-zone" data-bind="sortable: { data: matrixColumns, connectClass: 'dr-matrix-zone', afterMove: matrixFieldMoved, options: { placeholder: 'dr-matrix-drop', cursor: 'move' } }">
+                <li class="dr-matrix-chip">
+                    <i class="fa fa-ellipsis-v me-1 text-muted"></i><span data-bind="text: fieldLabel() || fieldName"></span>
+                    <!-- ko if: $parent.matrixGroupAggregates($data).length > 1 -->
+                    <select class="form-select form-select-sm dr-matrix-agg" data-bind="options: $parent.matrixGroupAggregates($data), value: selectedAggregate, event: { change: $parent.matrixRefresh }"></select>
+                    <!-- /ko -->
+                </li>
+            </ul>
+        </div>
+        <div class="dr-matrix-zone-box">
+            <div class="dr-matrix-zone-title"><i class="fa fa-calculator"></i> Values</div>
+            <ul class="dr-matrix-zone" data-bind="sortable: { data: matrixValues, connectClass: 'dr-matrix-zone', afterMove: matrixFieldMoved, options: { placeholder: 'dr-matrix-drop', cursor: 'move' } }">
+                <li class="dr-matrix-chip">
+                    <i class="fa fa-ellipsis-v me-1 text-muted"></i><span data-bind="text: fieldLabel() || fieldName"></span>
+                    <select class="form-select form-select-sm dr-matrix-agg" data-bind="options: $parent.matrixValueAggregates($data), value: selectedAggregate, event: { change: $parent.matrixRefresh }"></select>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-3 mt-2 small">
+        <span class="text-muted">Show totals:</span>
+        <label class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" data-bind="checked: matrixOptions.rowSubtotals" /> Row subtotals</label>
+        <label class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" data-bind="checked: matrixOptions.rowGrandTotal" /> Row grand total</label>
+        <label class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" data-bind="checked: matrixOptions.columnSubtotals" /> Column subtotals</label>
+        <label class="form-check form-check-inline mb-0"><input class="form-check-input" type="checkbox" data-bind="checked: matrixOptions.columnGrandTotal" /> Column grand total</label>
+    </div>
+    <div class="small text-muted mt-1">Drag fields between the boxes to group rows and columns, and choose how each value is totalled.</div>
+</script>
+
+<script type="text/html" id="report-matrix">
+    <div class="dr-matrix">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2 dr-matrix-toolbar">
+            <button type="button" class="dr-filter-toggle" data-bind="visible: ReportMode() != 'generate', click: function() { showMatrixFields(!showMatrixFields()); }, attr: { 'aria-expanded': showMatrixFields() ? 'true' : 'false' }">
+                <i class="fa fa-th text-primary"></i> Fields
+                <span class="dr-filter-count" data-bind="text: matrixRows().length + matrixColumns().length + matrixValues().length"></span>
+                <i class="fa fa-chevron-down dr-filter-chevron"></i>
+            </button>
+            <!-- ko if: matrixView() && matrixView().hasNestedRows -->
+            <button type="button" class="btn btn-sm btn-link text-decoration-none" data-bind="click: function() { matrixExpandAll(true); }"><i class="fa fa-plus-square-o"></i> Expand all</button>
+            <button type="button" class="btn btn-sm btn-link text-decoration-none" data-bind="click: function() { matrixExpandAll(false); }"><i class="fa fa-minus-square-o"></i> Collapse all</button>
+            <!-- /ko -->
+        </div>
+        <div data-bind="visible: showMatrixFields() && ReportMode() != 'generate'" class="mb-2">
+            <div data-bind="template: 'matrix-fields'"></div>
+            <!-- ko if: matrixLayoutChanged -->
+            <div class="d-flex align-items-center gap-2 mt-2 small">
+                <span class="text-muted">You changed the layout.</span>
+                <button type="button" class="btn btn-sm btn-link text-decoration-none p-0" data-bind="click: resetMatrixLayout" title="Go back to the report's saved layout"><i class="fa fa-undo"></i> Reset</button>
+                <!-- ko if: CanEdit() -->
+                <button type="button" class="btn btn-sm btn-outline-primary py-0" data-bind="click: saveMatrixLayout" title="Make this layout the report's default for everyone"><i class="fa fa-save"></i> Save as default</button>
+                <!-- /ko -->
+            </div>
+            <!-- /ko -->
+        </div>
+        <div class="alert alert-info small py-1" data-bind="visible: matrixMessage, text: matrixMessage"></div>
+        <!-- ko with: matrixView -->
+        <div class="dr-matrix-scroll">
+            <table class="table table-sm table-bordered dr-matrix-table">
+                <thead>
+                    <!-- ko foreach: headerRows -->
+                    <tr>
+                        <!-- ko if: $index() === 0 -->
+                        <th class="dr-matrix-rowhead" data-bind="text: $parent.rowHeader, attr: { rowspan: $parent.headerRowCount }"></th>
+                        <!-- /ko -->
+                        <!-- ko foreach: $data -->
+                        <th class="text-center" data-bind="text: label, attr: { colspan: colspan, rowspan: rowspan }, css: { 'dr-matrix-total': isTotal }"></th>
+                        <!-- /ko -->
+                    </tr>
+                    <!-- /ko -->
+                    <tr>
+                        <!-- ko if: headerRows.length === 0 -->
+                        <th class="dr-matrix-rowhead" data-bind="text: rowHeader"></th>
+                        <!-- /ko -->
+                        <!-- ko foreach: valueHeaders -->
+                        <th class="text-end dr-matrix-value-head" data-bind="click: $parents[1].sortMatrixBy, css: { 'dr-matrix-total': isTotal }" title="Sort by this column">
+                            <span data-bind="text: label"></span>
+                            <i class="fa" data-bind="css: sortIcon || 'fa-sort text-muted opacity-50'"></i>
+                        </th>
+                        <!-- /ko -->
+                    </tr>
+                </thead>
+                <tbody data-bind="foreach: bodyRows">
+                    <tr data-bind="css: { 'dr-matrix-subtotal': isSubtotal, 'dr-matrix-grand': isGrandTotal }">
+                        <td class="dr-matrix-rowhead" data-bind="style: { paddingLeft: (Math.max(depth - 1, 0) * 18 + 8) + 'px' }">
+                            <!-- ko if: hasChildren -->
+                            <a href="#" class="text-decoration-none me-1" data-bind="click: $parents[1].toggleMatrixRow"><i class="fa" data-bind="css: collapsed ? 'fa-plus-square-o' : 'fa-minus-square-o'"></i></a>
+                            <!-- /ko -->
+                            <span data-bind="text: label"></span>
+                        </td>
+                        <!-- ko foreach: cells -->
+                        <td class="text-end" data-bind="text: text, css: { 'dr-matrix-total': isTotal }"></td>
+                        <!-- /ko -->
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <!-- /ko -->
+    </div>
+</script>
+
 <script type="text/html" id="designer-selected-data">
     <div data-bind="visible: SelectedFields().length == 0">
         Please choose data
@@ -2168,6 +2293,9 @@
             </div>
         </div>
     </div>
+    <!-- ko if: ReportType() == 'Matrix' -->
+    <div class="card card-body mb-2" data-bind="template: 'matrix-fields'"></div>
+    <!-- /ko -->
     <ul class="list-group" data-bind="sortable: { data: SelectedFields, options: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight' }, strategyMove: true }">
         <li class="list-group-item">
             <div class="row">
@@ -3698,7 +3826,7 @@
                                     </div>
                                     <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
                                     <div data-bind="with: ReportResult" class="small">
-                                        <div data-bind="visible: !ReportData()">
+                                        <div data-bind="visible: !ReportData() && !($parent.matrixReady && $parent.matrixReady())">
                                             <div class="report-spinner"></div>
                                         </div>
                                         <div data-bind="template: 'report-template', data: $data"></div>

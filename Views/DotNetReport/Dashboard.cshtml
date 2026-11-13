@@ -489,7 +489,7 @@
                                     <div class="card-header py-1 small fw-semibold" data-bind="text: ReportName"></div>
                                     <div class="card-body p-2 small dash-preview-body">
                                         <div data-bind="with: ReportResult">
-                                            <div data-bind="visible: !ReportData()"><div class="report-spinner"></div></div>
+                                            <div data-bind="visible: !ReportData() && !($parent.matrixReady && $parent.matrixReady())"><div class="report-spinner"></div></div>
                                             <div data-bind="template: 'report-template', data: $data"></div>
                                         </div>
                                     </div>
@@ -645,7 +645,7 @@
                 <div data-bind="template: 'filter-details-summary'"></div>
                 <div data-bind="template: {name: 'fly-filter-template'}, visible: showFlyFilters"></div>
                 <div data-bind="with: ReportResult" class="small">
-                    <div data-bind="visible: !ReportData()">
+                    <div data-bind="visible: !ReportData() && !($parent.matrixReady && $parent.matrixReady())">
                         <div class="report-spinner"></div>
                     </div>
                     <div data-bind="template: 'report-template', data: $data"></div>

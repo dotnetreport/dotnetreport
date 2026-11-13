@@ -415,7 +415,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <div class="row">
                                             <div class="col-sm-7">
                                                 <input type="checkbox" data-bind="visible: $root.selectMode, checked: isSelected" class="pull-left me-2" />
-                                                <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType.indexOf('Map')==0, 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot', 'fa-window-restore': reportType=='Treemap', 'fa-signal': reportType == 'Combo', 'fa-code': reportType == 'Html', 'fa-map': reportType == 'HeatMap'}"></div>
+                                                <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType.indexOf('Map')==0, 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot', 'fa-th': reportType=='Matrix', 'fa-window-restore': reportType=='Treemap', 'fa-signal': reportType == 'Combo', 'fa-code': reportType == 'Html', 'fa-map': reportType == 'HeatMap'}"></div>
                                                 <div class="pull-left">
                                                     <h4>
                                                         <a data-bind="click: runReport" style="cursor: pointer">
@@ -753,7 +753,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                                     'fa-signal': reportType=='Combo',
                                                     'fa-globe': reportType.indexOf('Map')==0,
                                                     'fa-window-maximize': reportType=='Single',
-                                                    'fa-random': reportType=='Pivot',
+                                                    'fa-random': reportType=='Pivot', 'fa-th': reportType=='Matrix',
                                                     'fa-window-restore': reportType=='Treemap',
                                                     'fa-code': reportType == 'Html',
                                                     'fa-map': reportType == 'HeatMap'
@@ -1114,7 +1114,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <div data-bind="template: 'filter-details-summary'"></div>
 
                                             <div data-bind="with: ReportResult" class="report-expanded-scroll">
-                                                <div data-bind="visible: !ReportData()">
+                                                <div data-bind="visible: !ReportData() && !($parent.matrixReady && $parent.matrixReady())">
                                                     <div class="report-spinner"></div>
                                                 </div>
                                                 <div data-bind="template: 'report-template', data: $data"></div>

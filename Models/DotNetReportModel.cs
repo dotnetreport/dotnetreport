@@ -8260,3 +8260,278 @@ namespace ReportBuilder.Web.Models
         }
     }
 }
+
+namespace ReportBuilder.Web.Models
+{
+    // Matrix report: row fields x column fields with aggregated values, subtotals and grand totals.
+    // Every query result has the same layout: row fields, then column fields, then value fields.
+
+    public class MatrixLevelSql
+    {
+        public int rows { get; set; }
+        public int cols { get; set; }
+        public string sql { get; set; }
+    }
+
+    public class MatrixRunParameters
+    {
+        public string reportSql { get; set; }
+        public string connectKey { get; set; }
+        public int rowCount { get; set; }
+        public int colCount { get; set; }
+        public List<string> valueAggregates { get; set; } = new List<string>();
+        public List<MatrixLevelSql> levels { get; set; } = new List<MatrixLevelSql>();
+        public bool adminmode { get; set; }
+    }
+
+    public class MatrixHeaderNode
+    {
+        public int Id { get; set; }
+        public string Label { get; set; }
+        public string Value { get; set; }
+        public int Depth { get; set; }
+        public List<MatrixHeaderNode> Children { get; set; } = new List<MatrixHeaderNode>();
+        // [column node id][value index]; only on row nodes
+        public object[][] Cells { get; set; }
+
+        [System.Text.Json.Serialization.JsonIgnore]
+        internal string Key { get; set; } = "";
+        [System.Text.Json.Serialization.JsonIgnore]
+        internal DotNetReportDataRowItemModel Sample { get; set; }
+    }
+
+    public class MatrixResultModel
+    {
+        public List<string> RowFields { get; set; } = new List<string>();
+        public List<string> ColumnFields { get; set; } = new List<string>();
+        public List<string> ValueFields { get; set; } = new List<string>();
+        public MatrixHeaderNode Rows { get; set; }
+        public MatrixHeaderNode Columns { get; set; }
+        public int ColumnCount { get; set; }
+        public bool Truncated { get; set; }
+        public string Message { get; set; } = "";
+        public bool HasError { get; set; }
+        public string Exception { get; set; }
+        public string ReportSql { get; set; }
+    }
+
+    public static class MatrixBuilder
+    {
+        public const int MaxSourceRows = 20000;
+        public const int MaxColumnLeaves = 500;
+        const char Sep = '\u001f';
+
+        // Aggregates whose subtotals can be worked out from the finest rows; anything else needs a query per level
+        public static bool CanRollUp(string aggregate)
+        {
+            return aggregate == "Sum" || aggregate == "Count" || aggregate == "Max" || aggregate == "Min";
+        }
+
+        public static MatrixResultModel Build(DotNetReportDataModel main, int rowCount, int colCount, List<string> aggregates,
+            Dictionary<(int rows, int cols), DotNetReportDataModel> levels)
+        {
+            var result = new MatrixResultModel();
+            var columns = main?.Columns ?? new List<DotNetReportDataColumnModel>();
+            var valueCount = Math.Max(0, columns.Count - rowCount - colCount);
+            result.RowFields = columns.Take(rowCount).Select(c => c.ColumnName).ToList();
+            result.ColumnFields = columns.Skip(rowCount).Take(colCount).Select(c => c.ColumnName).ToList();
+            result.ValueFields = columns.Skip(rowCount + colCount).Select(c => c.ColumnName).ToList();
+
+            var rowRoot = new MatrixHeaderNode { Label = "Grand Total" };
+            var colRoot = new MatrixHeaderNode { Label = "Total" };
+            var rows = main?.Rows ?? new List<DotNetReportDataRowModel>();
+
+            // cell values by level and keys: "r|c|rowKey|colKey"
+            var cells = new Dictionary<string, object[]>();
+            foreach (var row in rows)
+            {
+                var items = row.Items;
+                var rowNode = AddPath(rowRoot, items, 0, rowCount);
+                var colNode = AddPath(colRoot, items, rowCount, colCount);
+                var values = items.Skip(rowCount + colCount).Take(valueCount).ToArray();
+                for (int r = 0; r <= rowCount; r++)
+                {
+                    var rk = KeyOf(items, 0, r);
+                    for (int c = 0; c <= colCount; c++)
+                    {
+                        var key = $"{r}|{c}|{rk}|{KeyOf(items, rowCount, c)}";
+                        if (r == rowCount && c == colCount)
+                        {
+                            cells[key] = values.Select(CellValue).ToArray();
+                            continue;
+                        }
+                        if (levels != null && levels.ContainsKey((r, c))) continue;
+                        cells.TryGetValue(key, out var acc);
+                        cells[key] = Accumulate(acc, values, aggregates, valueCount);
+                    }
+                }
+            }
+
+            // Subtotal levels that came from their own queries
+            if (levels != null)
+            {
+                foreach (var level in levels)
+                {
+                    int r = level.Key.rows, c = level.Key.cols;
+                    foreach (var row in level.Value?.Rows ?? new List<DotNetReportDataRowModel>())
+                    {
+                        var items = row.Items;
+                        var key = $"{r}|{c}|{KeyOf(items, 0, r)}|{KeyOf(items, r, c)}";
+                        cells[key] = items.Skip(r + c).Take(valueCount).Select(CellValue).ToArray();
+                    }
+                }
+            }
+
+            SortTree(rowRoot);
+            SortTree(colRoot);
+
+            var nextId = 0;
+            AssignIds(colRoot, ref nextId);
+            result.ColumnCount = nextId;
+            var leafCount = CountLeaves(colRoot);
+            if (leafCount > MaxColumnLeaves)
+            {
+                result.Truncated = true;
+                result.Message = $"There are {leafCount} column groups, which is too many to show. Move a field from Columns to Rows, or add a filter.";
+                colRoot.Children.Clear();
+                nextId = 0;
+                AssignIds(colRoot, ref nextId);
+                result.ColumnCount = nextId;
+            }
+
+            var colNodes = new List<MatrixHeaderNode>();
+            Flatten(colRoot, colNodes);
+            var rowId = 0;
+            FillCells(rowRoot, colNodes, cells, ref rowId);
+
+            result.Rows = rowRoot;
+            result.Columns = colRoot;
+            return result;
+        }
+
+        static MatrixHeaderNode AddPath(MatrixHeaderNode root, DotNetReportDataRowItemModel[] items, int start, int count)
+        {
+            var node = root;
+            for (int i = 0; i < count; i++)
+            {
+                var item = items[start + i];
+                var value = item?.Value ?? "";
+                var child = node.Children.FirstOrDefault(x => x.Value == value);
+                if (child == null)
+                {
+                    var label = !string.IsNullOrEmpty(item?.FormattedValue) ? item.FormattedValue : (!string.IsNullOrEmpty(item?.LabelValue) ? item.LabelValue : value);
+                    child = new MatrixHeaderNode
+                    {
+                        Value = value,
+                        Label = string.IsNullOrEmpty(label) ? "(Blank)" : label,
+                        Depth = i + 1,
+                        Key = (node.Key == "" && i == 0 ? "" : node.Key + Sep) + value,
+                        Sample = item
+                    };
+                    node.Children.Add(child);
+                }
+                node = child;
+            }
+            return node;
+        }
+
+        static string KeyOf(DotNetReportDataRowItemModel[] items, int start, int count)
+        {
+            return string.Join(Sep.ToString(), items.Skip(start).Take(count).Select(x => x?.Value ?? ""));
+        }
+
+        static object CellValue(DotNetReportDataRowItemModel item)
+        {
+            if (item == null) return null;
+            if (item.NumericValue.HasValue) return item.NumericValue.Value;
+            if (double.TryParse(item.Value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var d)) return d;
+            return string.IsNullOrEmpty(item.Value) ? null : item.Value;
+        }
+
+        static object[] Accumulate(object[] acc, DotNetReportDataRowItemModel[] values, List<string> aggregates, int valueCount)
+        {
+            acc ??= new object[valueCount];
+            for (int v = 0; v < valueCount; v++)
+            {
+                var agg = v < aggregates.Count ? aggregates[v] : "Sum";
+                var value = CellValue(v < values.Length ? values[v] : null);
+                if (value == null || !CanRollUp(agg)) continue;
+                var current = acc[v];
+                if (current == null) { acc[v] = value; continue; }
+                if (agg == "Sum" || agg == "Count")
+                {
+                    if (current is double a && value is double b) acc[v] = a + b;
+                }
+                else
+                {
+                    var cmp = Compare(current, value);
+                    if ((agg == "Max" && cmp < 0) || (agg == "Min" && cmp > 0)) acc[v] = value;
+                }
+            }
+            return acc;
+        }
+
+        static int Compare(object a, object b)
+        {
+            if (a is double x && b is double y) return x.CompareTo(y);
+            if (DateTime.TryParse(a?.ToString(), out var da) && DateTime.TryParse(b?.ToString(), out var db)) return da.CompareTo(db);
+            return string.Compare(a?.ToString(), b?.ToString(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        static readonly string[] Months = System.Globalization.CultureInfo.InvariantCulture.DateTimeFormat.MonthNames;
+        static readonly string[] ShortMonths = System.Globalization.CultureInfo.InvariantCulture.DateTimeFormat.AbbreviatedMonthNames;
+
+        static int MonthIndex(string s)
+        {
+            var i = Array.FindIndex(Months, m => m != "" && string.Equals(m, s, StringComparison.OrdinalIgnoreCase));
+            if (i < 0) i = Array.FindIndex(ShortMonths, m => m != "" && string.Equals(m, s, StringComparison.OrdinalIgnoreCase));
+            return i;
+        }
+
+        static void SortTree(MatrixHeaderNode node)
+        {
+            if (node.Children.Count == 0) return;
+            var values = node.Children.Select(x => x.Value).ToList();
+            Comparison<MatrixHeaderNode> comparison;
+            if (values.All(v => double.TryParse(v, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out _)))
+                comparison = (a, b) => double.Parse(a.Value, System.Globalization.CultureInfo.InvariantCulture).CompareTo(double.Parse(b.Value, System.Globalization.CultureInfo.InvariantCulture));
+            else if (values.All(v => MonthIndex(v) >= 0))
+                comparison = (a, b) => MonthIndex(a.Value).CompareTo(MonthIndex(b.Value));
+            else if (values.All(v => DateTime.TryParse(v, out _)))
+                comparison = (a, b) => DateTime.Parse(a.Value).CompareTo(DateTime.Parse(b.Value));
+            else
+                comparison = (a, b) => string.Compare(a.Value, b.Value, StringComparison.OrdinalIgnoreCase);
+            node.Children.Sort(comparison);
+            foreach (var child in node.Children) SortTree(child);
+        }
+
+        static void AssignIds(MatrixHeaderNode node, ref int nextId)
+        {
+            node.Id = nextId++;
+            foreach (var child in node.Children) AssignIds(child, ref nextId);
+        }
+
+        static int CountLeaves(MatrixHeaderNode node)
+        {
+            return node.Children.Count == 0 ? 1 : node.Children.Sum(CountLeaves);
+        }
+
+        static void Flatten(MatrixHeaderNode node, List<MatrixHeaderNode> list)
+        {
+            list.Add(node);
+            foreach (var child in node.Children) Flatten(child, list);
+        }
+
+        static void FillCells(MatrixHeaderNode rowNode, List<MatrixHeaderNode> colNodes, Dictionary<string, object[]> cells, ref int rowId)
+        {
+            rowNode.Id = rowId++;
+            rowNode.Cells = new object[colNodes.Count][];
+            foreach (var col in colNodes)
+            {
+                cells.TryGetValue($"{rowNode.Depth}|{col.Depth}|{rowNode.Key}|{col.Key}", out var values);
+                rowNode.Cells[col.Id] = values;
+            }
+            foreach (var child in rowNode.Children) FillCells(child, colNodes, cells, ref rowId);
+        }
+    }
+}

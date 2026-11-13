@@ -581,6 +581,59 @@ namespace ReportBuilder.Web.Controllers
             return await ExecuteRunReport(data, data.adminmode || GetUserPermissions(settings).Contains(DotNetReportPermissions.ViewSql));
         }
 
+        // Matrix report: runs the grouped query and any subtotal level queries, then builds the row x column matrix
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<IActionResult> RunMatrixReport([FromBody] MatrixRunParameters data)
+        {
+            var settings = GetSettings();
+            if (!settings.CanUseAdminMode) data.adminmode = false;
+            var showSql = data.adminmode || GetUserPermissions(settings).Contains(DotNetReportPermissions.ViewSql);
+            DotNetReportHelper.CurrentDataFilters = JsonSerializer.Serialize(settings.DataFilters ?? new { });
+
+            MatrixResultModel result;
+            try
+            {
+                async Task<DotNetReportResultModel> Run(string reportSql)
+                {
+                    await ValidateAccess(settings.UserId, HttpUtility.HtmlDecode(reportSql ?? ""), adminMode: data.adminmode);
+                    var response = await ExecuteRunReport(new RunReportParameters
+                    {
+                        reportSql = reportSql,
+                        connectKey = data.connectKey,
+                        reportType = "Matrix",
+                        pageNumber = 1,
+                        pageSize = MatrixBuilder.MaxSourceRows,
+                        sortBy = "",
+                        adminmode = data.adminmode
+                    }, showSql) as JsonResult;
+                    var model = response?.Value as DotNetReportResultModel;
+                    if (model == null || model.HasError) throw new Exception(model?.Exception ?? "The report could not be run");
+                    return model;
+                }
+
+                var main = await Run(data.reportSql);
+                var levels = new Dictionary<(int rows, int cols), DotNetReportDataModel>();
+                foreach (var level in data.levels ?? new List<MatrixLevelSql>())
+                {
+                    levels[(level.rows, level.cols)] = (await Run(level.sql)).ReportData;
+                }
+
+                result = MatrixBuilder.Build(main.ReportData, data.rowCount, data.colCount, data.valueAggregates ?? new List<string>(), levels);
+                result.ReportSql = main.ReportSql;
+                if ((main.Pager?.TotalRecords ?? 0) > MatrixBuilder.MaxSourceRows)
+                {
+                    result.Truncated = true;
+                    result.Message = $"Only the first {MatrixBuilder.MaxSourceRows:N0} groups are shown. Add a filter or use fewer fields in Rows and Columns.";
+                }
+            }
+            catch (Exception ex)
+            {
+                result = new MatrixResultModel { HasError = true, Exception = ex.Message };
+            }
+            return new JsonResult(result, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+        }
+
         [HttpPost]
         [AllowAnonymous]
         public async Task<IActionResult> RunReportUnAuth([FromQuery] string exportId, [FromBody] RunReportParameters data)

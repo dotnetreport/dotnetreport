@@ -4236,6 +4236,11 @@ var reportViewModel = function (options) {
 			bestFor: 'Sales by product AND by month, region vs category matrix',
 			needs: '1 field set to "Group" (rows) + 1 field set to "Transpose" (columns)',
 			svg: _svgPivot },
+		{ category: 'Tables & KPI', id: 'Matrix', name: 'Matrix', icon: 'fa-th', desc: 'Rows x columns with totals, drag fields to rearrange', available: true,
+			detail: 'Cross-tab of row fields by column fields with aggregated values, subtotals and grand totals. Drag fields between Rows, Columns and Values, also while viewing the report.',
+			bestFor: 'Sales by region and month, counts by status and owner, any two-way breakdown',
+			needs: 'At least 1 field in Rows or Columns + 1 field in Values (Sum, Count, Avg, etc.)',
+			svg: _svgPivot },
 		{ category: 'Geographic', id: 'Map', name: 'Map', icon: 'fa-globe', desc: 'Plot data on a geographic map', available: true,
 			detail: 'Plots data points on an interactive map using latitude/longitude or region names. Supports choropleth coloring.',
 			bestFor: 'Store locations, sales by state/country, geographic distribution',
@@ -7379,9 +7384,374 @@ var reportViewModel = function (options) {
 		if (!Array.isArray(selectedFields) || selectedFields.length === 0) return false;
 		return selectedFields.every(field => field?.fieldId === 0 && field?.dynamicTableId != null);
 	};
-	self.chartTypes = ["List", "Summary", "Single", "Pivot", "Html"];
+	self.chartTypes = ["List", "Summary", "Single", "Pivot", "Html", "Matrix"];
 	self.isChart = ko.computed(function () {
 		return self.chartTypes.indexOf(self.ReportType()) < 0;
+	});
+
+	// ── Matrix report: fields dragged into Rows, Columns and Values; the server returns the row x column matrix ──
+	var matrixRollUpAggregates = ['Sum', 'Count', 'Max', 'Min'];
+	var isGroupAggregate = function (agg) { return !!agg && agg.indexOf('Group') === 0 && agg !== 'Group in Detail'; };
+	self.matrixRows = ko.observableArray([]);
+	self.matrixColumns = ko.observableArray([]);
+	self.matrixValues = ko.observableArray([]);
+	self.matrixAvailable = ko.observableArray([]);
+	self.matrixResult = ko.observable(null);
+	self.matrixMessage = ko.observable('');
+	self.matrixCollapsed = ko.observable({});
+	self.matrixSort = ko.observable(null);
+	self.showMatrixFields = ko.observable(false);
+	self.matrixReady = ko.observable(false);
+	self.matrixOptions = {
+		rowSubtotals: ko.observable(true),
+		columnSubtotals: ko.observable(true),
+		rowGrandTotal: ko.observable(true),
+		columnGrandTotal: ko.observable(true)
+	};
+	self._matrixSaved = null;
+
+	self.isMatrix = ko.pureComputed(function () { return self.ReportType() == 'Matrix'; });
+
+	self.matrixValueAggregates = function (field) {
+		var aggs = _.filter(field.fieldAggregate || [], function (a) {
+			return !isGroupAggregate(a) && ['Only in Detail', 'Do Not Display', 'Pivot', 'Csv', 'Outer Group'].indexOf(a) < 0;
+		});
+		// Min and Max work on text and dates too (first and last value)
+		return _.uniq(aggs.concat(['Min', 'Max']));
+	};
+	self.matrixGroupAggregates = function (field) {
+		var groups = _.filter(field.fieldAggregate || [], isGroupAggregate);
+		return groups.length ? groups : ['Group'];
+	};
+
+	// Group functions sent for a field; level = { rows, cols } runs a subtotal level with fewer group fields
+	self.matrixGroupFunc = function (field, level) {
+		if (!self.isMatrix()) return field.selectedAggregate();
+		var role = field.matrixRole ? field.matrixRole() : '';
+		if (!role) return 'Do Not Display';
+		if (level && role !== 'value') {
+			var zone = role === 'row' ? self.matrixRows() : self.matrixColumns();
+			var keep = role === 'row' ? level.rows : level.cols;
+			if (zone.indexOf(field) >= keep) return 'Do Not Display';
+		}
+		return field.selectedAggregate();
+	};
+
+	self.syncMatrixZones = function () {
+		var fields = _.uniq(self.SelectedFields());
+		var byRole = function (role) { return _.filter(fields, function (x) { return x.matrixRole && x.matrixRole() === role; }); };
+		self.matrixRows(byRole('row'));
+		self.matrixColumns(byRole('column'));
+		self.matrixValues(byRole('value'));
+		self.matrixAvailable(_.filter(fields, function (x) { return !x.matrixRole || !x.matrixRole(); }));
+	};
+
+	// First time a report becomes a Matrix: groups go to Rows (the second to Columns), aggregates to Values
+	self.autoAssignMatrix = function () {
+		var fields = self.SelectedFields();
+		if (_.some(fields, function (x) { return x.matrixRole && x.matrixRole(); })) return;
+		var groups = 0;
+		_.forEach(fields, function (x) {
+			var agg = x.selectedAggregate();
+			if (isGroupAggregate(agg)) { x.matrixRole(groups === 1 ? 'column' : 'row'); groups++; }
+			else if (agg && self.matrixValueAggregates(x).indexOf(agg) >= 0) x.matrixRole('value');
+			else x.matrixRole('');
+		});
+	};
+
+	// Query order is rows, then columns, then values; unplaced fields go last and are not queried
+	self.applyMatrixOrder = function () {
+		var ordered = _.uniq(self.matrixRows().concat(self.matrixColumns(), self.matrixValues(), self.matrixAvailable()));
+		var others = _.filter(self.SelectedFields(), function (x) { return ordered.indexOf(x) < 0; });
+		self.SelectedFields(ordered.concat(others));
+	};
+
+	self.matrixFieldMoved = function () {
+		var setRole = function (list, role) {
+			_.forEach(list, function (x) {
+				x.matrixRole(role);
+				var agg = x.selectedAggregate();
+				if ((role === 'row' || role === 'column') && !isGroupAggregate(agg)) x.selectedAggregate('Group');
+				if (role === 'value' && self.matrixValueAggregates(x).indexOf(agg) < 0) {
+					x.selectedAggregate(self.matrixValueAggregates(x).indexOf('Sum') >= 0 && ['Int', 'Money', 'Double', 'Decimal', 'Numeric', 'Integer'].indexOf(x.fieldType) >= 0 ? 'Sum' : 'Count');
+				}
+			});
+		};
+		setRole(self.matrixRows(), 'row');
+		setRole(self.matrixColumns(), 'column');
+		setRole(self.matrixValues(), 'value');
+		setRole(self.matrixAvailable(), '');
+		self.applyMatrixOrder();
+		self.matrixRefresh();
+	};
+
+	self.matrixRefresh = function () {
+		self.matrixSort(null);
+		if (!(self.ReportMode() == 'execute' || self.ReportMode() == 'dashboard' || self.ReportMode() == 'linked' || self.activeDesign())) return;
+		var keepSave = self.SaveReport();
+		self.SaveReport(false);
+		if (self.activeDesign()) self.activeDesignRunning = true;
+		var run = self.RunReport(false, true, self.ReportMode() == 'dashboard');
+		var restore = function () { self.SaveReport(keepSave); };
+		if (run && run.always) run.always(restore); else restore();
+	};
+
+	var matrixLayout = function () {
+		var layout = _.map(self.SelectedFields(), function (x) { return { field: x, role: x.matrixRole(), agg: x.selectedAggregate() }; });
+		layout.options = ko.toJS(self.matrixOptions);
+		return layout;
+	};
+	var matrixLayoutKey = function (layout) {
+		return JSON.stringify([_.map(layout, function (s) { return [s.role, s.agg]; }), layout.options]);
+	};
+	self.matrixLayoutChanged = ko.observable(false);
+	self.updateMatrixLayoutChanged = function () {
+		self.matrixLayoutChanged(!!self._matrixSaved && matrixLayoutKey(self._matrixSaved) !== matrixLayoutKey(matrixLayout()));
+	};
+	_.forEach(self.matrixOptions, function (o) { o.subscribe(function () { self.updateMatrixLayoutChanged(); }); });
+	self.saveMatrixLayout = function () {
+		self.RunReport(true, true).done(function () {
+			self._matrixSaved = matrixLayout();
+			self.matrixLayoutChanged(false);
+			toastr.success('Layout saved');
+		});
+	};
+	self.resetMatrixLayout = function () {
+		if (!self._matrixSaved) return;
+		var order = _.map(self._matrixSaved, 'field');
+		_.forEach(self._matrixSaved, function (s) { s.field.matrixRole(s.role); s.field.selectedAggregate(s.agg); });
+		_.forEach(self._matrixSaved.options || {}, function (v, k) { if (self.matrixOptions[k]) self.matrixOptions[k](v); });
+		self.SelectedFields(order.concat(_.filter(self.SelectedFields(), function (x) { return order.indexOf(x) < 0; })));
+		self.syncMatrixZones();
+		self.matrixRefresh();
+	};
+
+	self.SelectedFields.subscribe(function () { if (self.isMatrix()) self.syncMatrixZones(); });
+	self.ReportType.subscribe(function (type) {
+		if (type !== 'Matrix') return;
+		self.autoAssignMatrix();
+		self.syncMatrixZones();
+		self.applyMatrixOrder();
+	});
+
+	self.ExecuteMatrixQuery = function (reportSql, connectKey) {
+		var rows = self.matrixRows().length, cols = self.matrixColumns().length;
+		var values = self.matrixValues();
+		self.ReportResult().HasError(false);
+		self.matrixMessage('');
+		self.matrixReady(false);
+		if (!values.length) {
+			self.matrixResult(null);
+			self.matrixMessage('Drag a field into Values to see the matrix.');
+			self.matrixReady(true);
+			return $.Deferred().resolve().promise();
+		}
+		var aggregates = _.map(values, function (x) { return x.selectedAggregate(); });
+		var needsLevels = _.some(aggregates, function (a) { return matrixRollUpAggregates.indexOf(a) < 0; });
+		var levels = [];
+		var levelCalls = [];
+		if (needsLevels) {
+			for (var r = 0; r <= rows; r++) {
+				for (var c = 0; c <= cols; c++) {
+					if (r === rows && c === cols) continue;
+					(function (level) {
+						levelCalls.push(ajaxcall({
+							url: options.runReportApiUrl,
+							type: "POST",
+							data: JSON.stringify({
+								method: "/ReportApi/RunReport",
+								SaveReport: false,
+								ReportJson: JSON.stringify(self.BuildReportData([], false, 0, level)),
+								adminMode: self.adminMode(),
+								applyClientInAdmin: self.appSettings.useClientIdInAdmin,
+								userIdForFilter: self.userIdForFilter,
+								SubTotalMode: false
+							}),
+							noBlocking: true
+						}).done(function (result) {
+							if (result.d) { result = result.d; }
+							if (result.result) { result = result.result; }
+							levels.push({ rows: level.rows, cols: level.cols, sql: result.sql });
+						}));
+					})({ rows: r, cols: c });
+				}
+			}
+		}
+		var noBlocking = self.ReportMode() == 'dashboard' || self.activeDesign() || self.ReportMode() == 'subreport';
+		return $.when.apply($, levelCalls).then(function () {
+			return ajaxcall({
+				url: (options.execReportUrl || '').replace(/RunReport(\?.*)?$/, 'RunMatrixReport$1'),
+				type: "POST",
+				data: JSON.stringify({
+					reportSql: reportSql,
+					connectKey: connectKey,
+					rowCount: rows,
+					colCount: cols,
+					valueAggregates: aggregates,
+					levels: levels,
+					adminmode: self.adminMode()
+				}),
+				noBlocking: noBlocking
+			}).always(function () {
+				self.matrixReady(true);
+				self.activeDesignRunning = false;
+			}).done(function (result) {
+				if (result.d) { result = result.d; }
+				if (result.HasError) {
+					self.ReportResult().HasError(true);
+					self.ReportResult().Exception(result.Exception);
+					self.matrixResult(null);
+					return;
+				}
+				self.ReportResult().ReportSql(result.ReportSql);
+				self.matrixCollapsed({});
+				self.matrixMessage(result.Message || '');
+				self.matrixResult(result);
+				if (!self._matrixSaved) self._matrixSaved = matrixLayout();
+				self.updateMatrixLayoutChanged();
+			});
+		});
+	};
+
+	self.formatMatrixValue = function (valueIndex, value) {
+		if (value === null || value === undefined) return '';
+		if (typeof value !== 'number') return value;
+		var field = self.matrixValues()[valueIndex];
+		var ff = field && field.fieldFormat ? field.fieldFormat() : '';
+		var dp = field && field.decimalPlaces ? field.decimalPlaces() : null;
+		var agg = field ? field.selectedAggregate() : '';
+		var text;
+		if (self.decimalFormatTypes.indexOf(ff) >= 0) text = self.formatNumber(value, dp);
+		else if (agg === 'Count' || agg === 'Count Distinct' || Number.isInteger(value)) text = value.toLocaleString();
+		else text = self.formatNumber(value, dp !== null && dp !== '' && dp !== undefined ? dp : 2);
+		if (ff === 'Percentage') text += '%';
+		if (ff === 'Currency') {
+			var symbol = field.currencyFormat ? field.currencyFormat() : '';
+			text = (['€', '£', '₹', 'Rs'].indexOf(symbol) >= 0 ? symbol : '$') + text;
+		}
+		return text;
+	};
+
+	self.toggleMatrixRow = function (row) {
+		var collapsed = _.clone(self.matrixCollapsed());
+		if (collapsed[row.id]) delete collapsed[row.id]; else collapsed[row.id] = true;
+		self.matrixCollapsed(collapsed);
+	};
+	self.matrixExpandAll = function (expand) {
+		var collapsed = {};
+		var walk = function (node) {
+			if (node.Children && node.Children.length) {
+				if (!expand && node.Depth > 0) collapsed[node.Id] = true;
+				_.forEach(node.Children, walk);
+			}
+		};
+		var result = self.matrixResult();
+		if (result && !expand) walk(result.Rows);
+		self.matrixCollapsed(collapsed);
+	};
+	self.sortMatrixBy = function (header) {
+		if (!header.sortable) return;
+		var current = self.matrixSort();
+		var desc = current && current.colId === header.colId && current.valueIndex === header.valueIndex ? !current.desc : true;
+		self.matrixSort({ colId: header.colId, valueIndex: header.valueIndex, desc: desc });
+	};
+
+	// Header rows and body rows for the table
+	self.matrixView = ko.pureComputed(function () {
+		var result = self.matrixResult();
+		if (!result || !result.Rows) return null;
+		var valueCount = Math.max(1, (result.ValueFields || []).length);
+		var colDepth = (result.ColumnFields || []).length;
+		var rowDepth = (result.RowFields || []).length;
+		var sort = self.matrixSort();
+		var collapsed = self.matrixCollapsed();
+
+		// Display columns: data columns, each group followed by its total, then the grand total
+		var opts = ko.toJS(self.matrixOptions);
+		var showColTotal = function (node) { return node.Depth > 0 ? opts.columnSubtotals : opts.columnGrandTotal; };
+		var displayCols = [];
+		var walkCols = function (node) {
+			if (!node.Children || !node.Children.length) { displayCols.push({ node: node, isTotal: node.Depth < colDepth }); return; }
+			_.forEach(node.Children, walkCols);
+			if (showColTotal(node)) displayCols.push({ node: node, isTotal: true });
+		};
+		walkCols(result.Columns);
+
+		var countDisplay = function (node) {
+			if (!node.Children || !node.Children.length) return 1;
+			return _.sumBy(node.Children, countDisplay) + (showColTotal(node) ? 1 : 0);
+		};
+		var headerRows = [];
+		for (var i = 0; i < colDepth; i++) headerRows.push([]);
+		var emit = function (node) {
+			var d = node.Depth;
+			if (!node.Children || !node.Children.length) {
+				headerRows[d - 1].push({ label: node.Label, colspan: valueCount, rowspan: 1, isTotal: false });
+				return;
+			}
+			headerRows[d - 1].push({ label: node.Label, colspan: (countDisplay(node) - (showColTotal(node) ? 1 : 0)) * valueCount, rowspan: 1, isTotal: false });
+			_.forEach(node.Children, emit);
+			if (showColTotal(node)) headerRows[d - 1].push({ label: node.Label + ' Total', colspan: valueCount, rowspan: colDepth - d + 1, isTotal: true });
+		};
+		if (colDepth > 0) {
+			_.forEach(result.Columns.Children, emit);
+			if (opts.columnGrandTotal) headerRows[0].push({ label: 'Total', colspan: valueCount, rowspan: colDepth, isTotal: true });
+		}
+		var valueHeaders = [];
+		_.forEach(displayCols, function (col) {
+			_.forEach(result.ValueFields.length ? result.ValueFields : [''], function (name, vi) {
+				var active = sort && sort.colId === col.node.Id && sort.valueIndex === vi;
+				valueHeaders.push({ label: name, colId: col.node.Id, valueIndex: vi, isTotal: col.isTotal, sortable: true, sortIcon: active ? (sort.desc ? 'fa-sort-desc' : 'fa-sort-asc') : '' });
+			});
+		});
+
+		var cellValue = function (node, colId, vi) {
+			var cell = node.Cells ? node.Cells[colId] : null;
+			return cell ? cell[vi] : null;
+		};
+		var bodyRows = [];
+		var walkRows = function (node) {
+			var children = node.Children || [];
+			if (sort && children.length) {
+				children = _.sortBy(children.slice(), function (child) {
+					var v = cellValue(child, sort.colId, sort.valueIndex);
+					return v === null || v === undefined ? (sort.desc ? -Infinity : Infinity) : v;
+				});
+				if (sort.desc) children.reverse();
+			}
+			_.forEach(children, function (child) {
+				var hasChildren = child.Children && child.Children.length > 0;
+				bodyRows.push({
+					id: child.Id,
+					label: child.Label,
+					depth: child.Depth,
+					hasChildren: hasChildren,
+					collapsed: !!collapsed[child.Id],
+					isSubtotal: hasChildren,
+					isGrandTotal: false,
+					cells: _.flatMap(displayCols, function (col) {
+						return _.map(_.range(valueCount), function (vi) { return { text: hasChildren && !opts.rowSubtotals ? '' : self.formatMatrixValue(vi, cellValue(child, col.node.Id, vi)), isTotal: col.isTotal }; });
+					})
+				});
+				if (hasChildren && !collapsed[child.Id]) walkRows(child);
+			});
+		};
+		walkRows(result.Rows);
+		if (opts.rowGrandTotal) bodyRows.push({
+			id: result.Rows.Id, label: 'Grand Total', depth: 0, hasChildren: false, collapsed: false, isSubtotal: false, isGrandTotal: true,
+			cells: _.flatMap(displayCols, function (col) {
+				return _.map(_.range(valueCount), function (vi) { return { text: self.formatMatrixValue(vi, cellValue(result.Rows, col.node.Id, vi)), isTotal: true }; });
+			})
+		});
+
+		return {
+			rowHeader: (result.RowFields || []).join(' / '),
+			headerRows: headerRows,
+			valueHeaders: valueHeaders,
+			headerRowCount: colDepth + 1,
+			bodyRows: bodyRows,
+			hasNestedRows: rowDepth > 1
+		};
 	});
 
 	self.isFieldValidForSubGroup = function (i, fieldType) {
@@ -7713,7 +8083,7 @@ var reportViewModel = function (options) {
 
 		return groups;
 	};
-	self.BuildReportData = function (drilldown, isComparison, index) {
+	self.BuildReportData = function (drilldown, isComparison, index, matrixLevel) {
 		self.syncCustomHeaderFromEditor();
 		drilldown = _.compact(_.map(drilldown || [], function (x) {
 			if (x.isJsonColumn || x.isRuleSet || x.Column.FormatType == 'Csv' || x.Column.FormatType == 'Json' || x.Value.indexOf('/>') >= 0 || x.Column.SqlField == '__') return;
@@ -7783,6 +8153,7 @@ var reportViewModel = function (options) {
 				customJoinsBaseTableId: self.baseTableIdOverride(),
 				ShowFilterDetails: self.ShowFilterDetails(),
 				HideReportName: self.HideReportName(),
+				matrixOptions: self.isMatrix() ? ko.toJS(self.matrixOptions) : undefined,
 				dateSlicers: _.map(self.dateSlicerFilters(), function (f) { return { fieldId: f.Field().fieldId, options: f.slicerOptions() }; }),
 				ReportHeaderId: self.ReportHeaderId() || 0,
 				UseCustomReportHeader: self.UseCustomReportHeader(),
@@ -7811,7 +8182,7 @@ var reportViewModel = function (options) {
 				var effectiveDrillDataFormat = (x.fieldType == 'Date' || x.fieldType == 'DateTime') ? x.drillDataFormat() : '';
 				return {
 					FieldID: x.fieldId,
-					GroupFunc: x.selectedAggregate(),
+					GroupFunc: self.matrixGroupFunc(x, matrixLevel),
 					FilterOnFly: x.filterOnFly(),
 					Disabled: x.disabled(),
 					GroupInGraph: x.groupInGraph(),
@@ -7849,7 +8220,9 @@ var reportViewModel = function (options) {
 						groupSlicer: x.groupSlicer ? x.groupSlicer() : false,
 						groupSlicerOptions: x.groupSlicerOptions ? x.groupSlicerOptions() : [],
 						totalRowAggregate: x.totalRowAggregate(),
-						headerAlign: x.headerAlign ? x.headerAlign() : ''
+						headerAlign: x.headerAlign ? x.headerAlign() : '',
+						matrixRole: self.isMatrix() ? x.matrixRole() : undefined,
+						matrixAgg: self.isMatrix() ? x.selectedAggregate() : undefined
 					}),
 					DrillDataFormat: effectiveDrillDataFormat,
 					FieldAlign: x.fieldAlign(),
@@ -9982,6 +10355,7 @@ var reportViewModel = function (options) {
 
 	self.ExecuteReportQuery = function (reportSql, connectKey, reportSeries, isPageSizeClick=false, previewOnly=false) {
 		if (!reportSql || !connectKey) return;
+		if (self.isMatrix()) return self.ExecuteMatrixQuery(reportSql, connectKey);
 		self.ChartData('');
 		var _prevReportData = self.ReportResult().ReportData();
 		if (_prevReportData) {
@@ -12162,7 +12536,8 @@ var reportViewModel = function (options) {
 		} else {
 			e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Pivot').concat('Max').concat('Csv');
 		}
-		e.selectedAggregate = ko.observable(e.aggregateFunction);
+		e.selectedAggregate = ko.observable(e.fieldSettings.matrixAgg || e.aggregateFunction);
+		e.matrixRole = ko.observable(e.fieldSettings.matrixRole || '');
 		e.filterOnFly = ko.observable(e.filterOnFly);
 		e.disabled = ko.observable(e.disabled);
 		e.groupInGraph = ko.observable(e.groupInGraph);
@@ -12513,6 +12888,8 @@ var reportViewModel = function (options) {
 		self.DontExecuteOnRun(reportSettings.DontExecuteOnRun === true ? true : false);
 		self.ShowFilterDetails(reportSettings.ShowFilterDetails === true ? true : false);
 		self.HideReportName(reportSettings.HideReportName === true);
+		_.forEach(self.matrixOptions, function (o, k) { o(!reportSettings.matrixOptions || reportSettings.matrixOptions[k] !== false); });
+		self._matrixSaved = null;
 		self._dateSlicerConfig = reportSettings.dateSlicers || [];
 		self.barChartHorizontal(reportSettings.barChartHorizontal === true ? true : false);
 		self.barChartStacked(reportSettings.barChartStacked === true ? true : false);
