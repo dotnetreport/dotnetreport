@@ -1919,7 +1919,7 @@
                 <select class="form-control" data-bind="select2Value: {dropdownParent: $root.activeDesign() ? $('#choose-data-design') : $('#choose-data-card')}, options: Procs, optionsCaption: 'Choose Section...', optionsText: 'DisplayName', value: SelectedProc, visible: useStoredProc"></select>
             </div>
         </div>
-        <div class="col-md-12" data-bind="hidden: useStoredProc">
+        <div class="col-md-12 dr-tree-col" data-bind="hidden: useStoredProc">
             <div class="d-flex justify-content-between align-items-center mb-2" style="padding-top: 15px;">
                 <span>
                     Select Data to use in Report
@@ -3383,7 +3383,7 @@
             <div class="modal-body needs-validation" style="overflow-y: hidden; flex-grow: 1; display: flex; flex-direction: column;">
                <div class="row flex-grow-1" style="min-height: 0;">
                     <!-- LEFT PANEL -->
-                    <div class="col-md-4 h-100" style="overflow-y: auto;">
+                    <div class="col-md-4 h-100 dr-designer-col" style="overflow-y: auto;">
 
                         <!-- Designer Toolbar Toggles -->
                         <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
@@ -3476,8 +3476,8 @@
                         </div>
 
                         <!-- ==================== STANDARD MODE (activeDesign OFF) ==================== -->
-                        <div data-bind="visible: !activeDesign()">
-                            <div class="card card-body" id="choose-data-card" style="min-height: calc(100vh - 200px);">
+                        <div class="dr-standard-design" data-bind="visible: !activeDesign()">
+                            <div class="card card-body" id="choose-data-card">
                                 <div class="form-group row align-items-center">
                                     <label class="col-sm-4 col-form-label h6">
                                         <i class="fa fa-file"></i> Report Name
@@ -3488,44 +3488,7 @@
                                 </div>
                                 <hr />
                                 <h5><span class="fa fa-database"></span>&nbsp;Choose Data for Report</h5>
-                                <div data-bind="template: 'designer-choose-data'"></div>
-                            </div>
-                            <br />
-                            <div class="card card-body">
-                                <div class="form-group row">
-                                    <label class="control-label h6">
-                                        <i class="fa fa-info-circle"></i> Report Description
-                                    </label>
-                                    <div>
-                                        <textarea class="form-control" style="width: 100%;" rows="3" placeholder="Additional details (optional)" data-bind="value: ReportDescription"></textarea>
-                                    </div>
-                                </div>
-                                <div class="checkbox" data-bind="visible: canSaveCurrentReport()">
-                                    <label>
-                                        <input type="checkbox" data-bind="checked: SaveReport">
-                                        Save Report
-                                    </label>
-                                </div>
-                                <div class="checkbox" data-bind="visible: adminMode() && ReportID()">
-                                    <label>
-                                        <input type="checkbox" data-bind="checked: isSubReportOnly, click: function() { setTimeout(function() { toggleIsSubReportOnly(); }, 0); return true; }">
-                                        Only use as sub report
-                                    </label>
-                                </div>
-                                <div class="checkbox" data-bind="visible: adminMode()">
-                                    <label>
-                                        <input type="checkbox" data-bind="checked: ShowAdminOnly">
-                                        Hide from reports unless Admin Mode is enabled
-                                    </label>
-                                </div>
-                                <div class="form-group row" data-bind="visible: SaveReport">
-                                    <label class="control-label h6">
-                                        <i class="fa fa-folder-open"></i> Choose Folder
-                                    </label>
-                                    <div>
-                                        <select class="form-select" style="width: 100%;" data-bind="options: Folders, optionsText: function(f) { return f.FolderPath || f.FolderName; }, optionsValue: 'Id', value: FolderID, valueAllowUnset: true"></select>
-                                    </div>
-                                </div>
+                                <div class="dr-choose-data-body" data-bind="template: 'designer-choose-data'"></div>
                             </div>
                         </div>
 
@@ -3645,6 +3608,10 @@
                                     <i class="fa fa-chevron-down float-end panel-chevron" data-bind="css: {'fa-chevron-right': panels.isCollapsed('lp-settingsPanel')}"></i>
                                 </div>
                                 <div class="card-body p-2 designer-options-wrap" data-bind="visible: !panels.isCollapsed('lp-settingsPanel')">
+                                    <div data-bind="visible: !useStoredProc()">
+                                        <div data-bind="template: 'designer-options'"></div>
+                                        <hr class="my-1" />
+                                    </div>
                                     <div class="form-group row mb-2">
                                         <label class="control-label"><i class="fa fa-info-circle"></i> Description</label>
                                         <div>
@@ -3658,18 +3625,13 @@
                                         <label><input type="checkbox" data-bind="checked: isSubReportOnly, click: function() { setTimeout(function() { toggleIsSubReportOnly(); }, 0); return true; }"> Only use as sub report</label>
                                     </div>
                                     <div class="checkbox" data-bind="visible: adminMode()">
-                                       <label><input type="checkbox" data-bind="checked: ShowAdminOnly"> </label>
-                                        Hide from reports unless Admin Mode is enabled
+                                        <label><input type="checkbox" data-bind="checked: ShowAdminOnly"> Hide from reports unless Admin Mode is enabled</label>
                                     </div>
                                     <div class="form-group row mb-2" data-bind="visible: SaveReport">
                                         <label class="control-label"><i class="fa fa-folder-open"></i> Folder</label>
                                         <div>
                                             <select class="form-select form-select-sm" style="width: 100%;" data-bind="options: Folders, optionsText: function(f) { return f.FolderPath || f.FolderName; }, optionsValue: 'Id', value: FolderID, valueAllowUnset: true"></select>
                                         </div>
-                                    </div>
-                                    <hr class="my-1" />
-                                    <div data-bind="visible: !useStoredProc()">
-                                        <div data-bind="template: 'designer-options'"></div>
                                     </div>
                                 </div>
                             </div>
@@ -3810,9 +3772,32 @@
                                 </div>
                             </div>
                             <br />
-                            <div data-bind="visible: !useStoredProc()">
-                                <div class="card card-body">
+                            <div class="card card-body">
+                                <h5><span class="fa fa-gear"></span>&nbsp;Options</h5>
+                                <div data-bind="visible: !useStoredProc()">
                                     <div data-bind="template: 'designer-options'"></div>
+                                    <hr />
+                                </div>
+                                <div class="form-group row mb-2">
+                                    <label class="control-label"><i class="fa fa-info-circle"></i> Description</label>
+                                    <div>
+                                        <textarea class="form-control" rows="2" placeholder="Optional" data-bind="value: ReportDescription"></textarea>
+                                    </div>
+                                </div>
+                                <div class="checkbox" data-bind="visible: canSaveCurrentReport()">
+                                    <label><input type="checkbox" data-bind="checked: SaveReport"> Save Report</label>
+                                </div>
+                                <div class="checkbox" data-bind="visible: adminMode() && ReportID()">
+                                    <label><input type="checkbox" data-bind="checked: isSubReportOnly, click: function() { setTimeout(function() { toggleIsSubReportOnly(); }, 0); return true; }"> Only use as sub report</label>
+                                </div>
+                                <div class="checkbox" data-bind="visible: adminMode()">
+                                    <label><input type="checkbox" data-bind="checked: ShowAdminOnly"> Hide from reports unless Admin Mode is enabled</label>
+                                </div>
+                                <div class="form-group row mb-2" data-bind="visible: SaveReport">
+                                    <label class="control-label"><i class="fa fa-folder-open"></i> Folder</label>
+                                    <div>
+                                        <select class="form-select" style="width: 100%;" data-bind="options: Folders, optionsText: function(f) { return f.FolderPath || f.FolderName; }, optionsValue: 'Id', value: FolderID, valueAllowUnset: true"></select>
+                                    </div>
                                 </div>
                             </div>
                             <br />

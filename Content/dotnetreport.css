@@ -1962,6 +1962,15 @@ tfoot tr.sub-total {
     overflow-y: auto;
 }
 
+/* standard designer: the data card fills the left column and only the table list scrolls */
+.dr-designer-col { display: flex; flex-direction: column; }
+.dr-designer-col > .dr-standard-design { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+#choose-data-card { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }
+#choose-data-card > .dr-choose-data-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+#choose-data-card .dr-choose-data-body > .row { flex: 1 1 auto; min-height: 0; flex-direction: column; flex-wrap: nowrap; }
+#choose-data-card .dr-tree-col { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+#choose-data-card .data-select-tree { flex: 1 1 auto; min-height: 8rem; max-height: none; }
+
 .compact-designer .data-select-tree {
     max-height: 250px;
 }
