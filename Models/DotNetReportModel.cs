@@ -8736,6 +8736,7 @@ namespace ReportBuilder.Web.Models
         public int Colspan { get; set; } = 1;
         public int Rowspan { get; set; } = 1;
         public bool IsTotal { get; set; }
+        public bool IsGrandTotal { get; set; }
         public MatrixExportStyle Style { get; set; }
     }
 
@@ -8767,6 +8768,8 @@ namespace ReportBuilder.Web.Models
         public List<MatrixExportRow> Rows { get; set; } = new List<MatrixExportRow>();
         public int ValueCount { get; set; } = 1;
         public List<string> ValueFormats { get; set; } = new List<string>();
+        // aggregate per value; Sum/Count/Min/Max totals become Excel formulas
+        public List<string> ValueAggregates { get; set; } = new List<string>();
         public List<string> RowFieldLabels { get; set; } = new List<string>();
 
         public int HeaderRowCount => Math.Max(1, HeaderRows.Count + (ValueHeaders.Count > 0 ? 1 : 0));
@@ -8948,7 +8951,7 @@ namespace ReportBuilder.Web.Models
             if (colDepth > 0)
             {
                 foreach (var child in result.Columns.Children) Emit(child);
-                if (columnGrandTotal) headerRows[0].Add(Header("Total", valueCount, colDepth, true, 1));
+                if (columnGrandTotal) { var grand = Header("Total", valueCount, colDepth, true, 1); grand.IsGrandTotal = true; headerRows[0].Add(grand); }
             }
 
             var valueHeaders = new List<MatrixExportHeader>();
@@ -9024,6 +9027,7 @@ namespace ReportBuilder.Web.Models
                 Rows = rows,
                 ValueCount = valueCount,
                 ValueFormats = Enumerable.Range(0, valueCount).Select(vi => ExcelFormat(At(valueFields, vi))).ToList(),
+                ValueAggregates = Enumerable.Range(0, valueCount).Select(vi => At(valueFields, vi)?.Aggregate ?? "").ToList(),
                 RowFieldLabels = rowFieldLabels
             };
         }
@@ -9341,6 +9345,110 @@ namespace ReportBuilder.Web.Models
             border.Right.Color.SetColor(System.Drawing.Color.FromArgb(201, 206, 214));
         }
 
+        // Totals as formulas over the cells they add up, for values that can be rebuilt that way (Sum, Count, Min, Max)
+        private static void AddTotalFormulas(MatrixExportModel m, ExcelWorksheet ws, int bodyStart)
+        {
+            int valueCount = Math.Max(1, m.ValueCount);
+            string Function(int col)
+            {
+                var agg = m.ValueAggregates != null && m.ValueAggregates.Count > 0 ? m.ValueAggregates[col % valueCount] : null;
+                return agg == "Sum" || agg == "Count" ? "SUM" : agg == "Min" ? "MIN" : agg == "Max" ? "MAX" : null;
+            }
+            bool HasValue(int row, int col) => row >= 0 && row < m.Rows.Count && col >= 0 && col < m.Rows[row].Cells.Count && m.Rows[row].Cells[col].Value.HasValue;
+
+            // rows a total row is made of: its direct children, or theirs when a subtotal row is left blank
+            var rowKids = new List<int>[m.Rows.Count];
+            for (int i = 0; i < m.Rows.Count; i++)
+            {
+                var row = m.Rows[i];
+                if (row.IsGrandTotal)
+                    rowKids[i] = Enumerable.Range(0, i).Where(j => m.Rows[j].Depth == 1 && !m.Rows[j].IsGrandTotal).ToList();
+                else if (row.IsSubtotal)
+                {
+                    var kids = new List<int>();
+                    for (int j = i + 1; j < m.Rows.Count && !m.Rows[j].IsGrandTotal && m.Rows[j].Depth > row.Depth; j++)
+                        if (m.Rows[j].Depth == row.Depth + 1) kids.Add(j);
+                    rowKids[i] = kids;
+                }
+            }
+            IEnumerable<int> RowSources(int row, int col)
+            {
+                foreach (var kid in rowKids[row] ?? new List<int>())
+                {
+                    if (HasValue(kid, col)) yield return kid;
+                    else if (rowKids[kid] != null) foreach (var k in RowSources(kid, col)) yield return k;
+                }
+            }
+
+            // columns a total column is made of: each child's total column, or its columns when it has no total
+            int colDepth = m.HeaderRows.Count;
+            var placed = PlaceHeaders(m).Where(x => x.row < colDepth).ToList();
+            List<int> Groups(int r, int from, int to)
+            {
+                var groups = new List<int>();
+                foreach (var cell in placed.Where(x => x.row == r && !x.h.IsTotal && x.col >= from && x.col < to).OrderBy(x => x.col))
+                {
+                    int start = cell.col, end = cell.col + Math.Max(1, cell.h.Colspan);
+                    if (r == colDepth - 1) { for (int g = start; g < end; g += valueCount) groups.Add(g); continue; }
+                    if (placed.Any(x => x.row == r && x.h.IsTotal && !x.h.IsGrandTotal && x.col == end)) groups.Add(end);
+                    else groups.AddRange(Groups(r + 1, start, end));
+                }
+                return groups;
+            }
+            var colKids = new Dictionary<int, List<int>>();
+            foreach (var t in placed.Where(x => x.h.IsTotal))
+            {
+                if (t.h.IsGrandTotal) { colKids[t.col] = Groups(0, 0, t.col); continue; }
+                var owner = placed.FirstOrDefault(x => x.row == t.row && !x.h.IsTotal && x.col + Math.Max(1, x.h.Colspan) == t.col);
+                if (owner.h != null) colKids[t.col] = Groups(t.row + 1, owner.col, t.col);
+            }
+            IEnumerable<int> ColSources(int row, int col)
+            {
+                int vi = col % valueCount;
+                if (!colKids.TryGetValue(col - vi, out var groups)) yield break;
+                foreach (var g in groups)
+                {
+                    if (HasValue(row, g + vi)) yield return g + vi;
+                    else foreach (var c in ColSources(row, g + vi)) yield return c;
+                }
+            }
+
+            for (int i = 0; i < m.Rows.Count; i++)
+                for (int c = 0; c < m.Rows[i].Cells.Count; c++)
+                {
+                    var fn = Function(c);
+                    if (fn == null || !HasValue(i, c)) continue;
+                    List<string> refs = null;
+                    if (rowKids[i] != null)
+                    {
+                        // consecutive rows collapse into one range
+                        var rows = RowSources(i, c).ToList();
+                        if (rows.Count > 0)
+                        {
+                            refs = new List<string>();
+                            for (int k = 0; k < rows.Count;)
+                            {
+                                int end = k;
+                                while (end + 1 < rows.Count && rows[end + 1] == rows[end] + 1) end++;
+                                var a = ExcelCellBase.GetAddress(bodyStart + rows[k], 2 + c);
+                                refs.Add(end > k ? a + ":" + ExcelCellBase.GetAddress(bodyStart + rows[end], 2 + c) : a);
+                                k = end + 1;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var cols = ColSources(i, c).ToList();
+                        if (cols.Count > 0) refs = cols.Select(x => ExcelCellBase.GetAddress(bodyStart + i, 2 + x)).ToList();
+                    }
+                    if (refs == null) continue;
+                    // Excel functions take at most 255 arguments
+                    while (refs.Count > 255) refs = refs.Select((x, n) => (x, n)).GroupBy(x => x.n / 255).Select(g => $"{fn}({string.Join(",", g.Select(x => x.x))})").ToList();
+                    ws.Cells[bodyStart + i, 2 + c].Formula = $"{fn}({string.Join(",", refs)})";
+                }
+            try { ws.Calculate(); } catch { }
+        }
+
         public static byte[] ToExcel(MatrixExportModel m, string reportName, string reportDescription, string filterDetailsText, bool hideReportName)
         {
             using (var xp = new ExcelPackage())
@@ -9415,6 +9523,7 @@ namespace ReportBuilder.Web.Models
                     else if (row.Depth > 1) ws.Row(r).OutlineLevel = Math.Min(7, row.Depth - 1);
                     r++;
                 }
+                AddTotalFormulas(m, ws, bodyStart);
                 // subtotal rows sit above their detail rows, so the +/- buttons go at the top
                 try
                 {

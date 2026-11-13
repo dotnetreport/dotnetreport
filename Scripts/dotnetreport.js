@@ -8009,7 +8009,7 @@ var reportViewModel = function (options) {
 		};
 		if (colDepth > 0) {
 			_.forEach(result.Columns.Children, emit);
-			if (opts.columnGrandTotal) headerRows[0].push(headerCell('Total', valueCount, colDepth, true, result.Columns.Id, 1));
+			if (opts.columnGrandTotal) headerRows[0].push(_.assign(headerCell('Total', valueCount, colDepth, true, result.Columns.Id, 1), { isGrandTotal: true }));
 		}
 		// sorting from a column header is only offered when it maps to one value column
 		if (showValueRow) _.forEach(headerRows, function (row) { _.forEach(row, function (h) { h.sortable = false; h.sortIcon = ''; }); });
@@ -8117,7 +8117,7 @@ var reportViewModel = function (options) {
 			valueCaption: view.valueCaption,
 			rowHeaderStyle: cleanStyle(view.rowHeaderStyle),
 			headerRows: _.map(view.headerRows, function (row) {
-				return _.map(row, function (h) { return { label: h.label, colspan: h.colspan, rowspan: h.rowspan, isTotal: h.isTotal, style: cleanStyle(h.style) }; });
+				return _.map(row, function (h) { return { label: h.label, colspan: h.colspan, rowspan: h.rowspan, isTotal: h.isTotal, isGrandTotal: !!h.isGrandTotal, style: cleanStyle(h.style) }; });
 			}),
 			valueHeaders: view.showValueRow ? _.map(view.valueHeaders, function (h) { return { label: h.label, isTotal: h.isTotal, style: cleanStyle(h.style) }; }) : [],
 			rows: _.map(view.bodyRows, function (r) {
@@ -8128,6 +8128,7 @@ var reportViewModel = function (options) {
 			}),
 			valueCount: view.valueCount,
 			valueFormats: _.map(_.range(view.valueCount), self.matrixExcelFormat),
+			valueAggregates: _.map(_.range(view.valueCount), function (vi) { var f = self.matrixValues()[vi]; return f ? f.selectedAggregate() : ''; }),
 			rowFieldLabels: view.rowFieldLabels
 		};
 	};
