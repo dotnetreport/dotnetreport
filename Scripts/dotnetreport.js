@@ -16705,6 +16705,12 @@ var dashboardViewModel = function (options) {
 		$('#textWidgetModal').modal('hide');
 	};
 
+	// matrix reports go as the table built on screen; Excel always gets every level with +/- grouping
+	var dashboardMatrixModel = function (report, expandAll) {
+		if (!report.isMatrix || !report.isMatrix()) return null;
+		var model = report.getMatrixExportModel(expandAll);
+		return model ? JSON.stringify(model) : null;
+	};
 	self.ExportAllPdfReportsWithPageOption = function () {
 		if (self.dashboard.PdfPage) {
 			self.dashboard.PdfPage.download = function () {
@@ -16739,6 +16745,8 @@ var dashboardViewModel = function (options) {
 				pageOrientation: pageOrientation,
 				includeSubTotal: report.IncludeSubTotal(),
 				includeColumnTotal: report.IncludeColumnTotal(),
+				reportDescription: typeof report.ReportDescription === 'function' ? (report.ReportDescription() || '') : '',
+				matrixModel: dashboardMatrixModel(report, false)
 			});
 		});
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
@@ -16785,7 +16793,8 @@ var dashboardViewModel = function (options) {
 				pivotFunction: pivotData.pivotFunction,
 				pageSize: pageSize,
 				pageOrientation: pageOrientation,
-				reportType: report.ReportType()
+				reportType: report.ReportType(),
+				matrixModel: dashboardMatrixModel(report, false)
 			});
 		});
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
@@ -16807,7 +16816,7 @@ var dashboardViewModel = function (options) {
 	}
 	self.ExportAllExpendedPdfAltReports = function (pageSize, pageOrientation) {
 		const reports = self.reports();
-		var expandedReport = _.filter(self.reports(), function (x) { return x.canDrilldown() == true });
+		var expandedReport = _.filter(self.reports(), function (x) { return x.canDrilldown() == true || x.isMatrix() });
 		const allreports = [];
 		_.forEach(expandedReport, function (report) {
 			const reportData = report.BuildReportData();
@@ -16833,7 +16842,8 @@ var dashboardViewModel = function (options) {
 				pivotFunction: pivotData.pivotFunction,
 				pageSize: pageSize,
 				pageOrientation: pageOrientation,
-				reportType: report.ReportType()
+				reportType: report.ReportType(),
+				matrixModel: dashboardMatrixModel(report, true)
 			});
 		});
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
@@ -16861,6 +16871,7 @@ var dashboardViewModel = function (options) {
 				pivot: report.ReportType() == 'Pivot',
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
+				matrixModel: dashboardMatrixModel(report, true)
 			});
 		});
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
@@ -16872,7 +16883,7 @@ var dashboardViewModel = function (options) {
 	}
 	self.ExportAllExcelExpandedReports = function () {
 		const reports = self.reports();
-		var expandedReport = _.filter(self.reports(), function (x) { return x.canDrilldown() == true});
+		var expandedReport = _.filter(self.reports(), function (x) { return x.canDrilldown() == true || x.isMatrix() });
 		const allreports = [];
 		_.forEach(expandedReport, function (report) {
 			const reportData = report.BuildReportData();
@@ -16893,6 +16904,7 @@ var dashboardViewModel = function (options) {
 				pivotColumn: pivotData.pivotColumn,
 				pivotFunction: pivotData.pivotFunction,
 				onlyAndGroupInColumnDetail: hasOnlyAndGroupInDetail ? JSON.stringify(onlyAndGroupInDetailColumnDetails) : null,
+				matrixModel: dashboardMatrixModel(report, true)
 			});
 		});
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';
@@ -16936,7 +16948,8 @@ var dashboardViewModel = function (options) {
 				pivotFunction: pivotData.pivotFunction,
 				pageSize: pageSize,
 				pageOrientation: pageOrientation,
-				reportType: report.ReportType()
+				reportType: report.ReportType(),
+				matrixModel: dashboardMatrixModel(report, false)
 			});
 		});
 		var dashboardName = self.currentDashboard() ? self.currentDashboard().name : 'CombinedReport';

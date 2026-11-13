@@ -2384,6 +2384,7 @@ namespace ReportBuilder.Web.Controllers
             var reports = reportdata != null ? JsonConvert.DeserializeObject<List<ExportReportModel>>(reportdata) : null;
             foreach (var report in reports)
             {
+                if (!string.IsNullOrEmpty(report.matrixModel)) { pdfBytesList.Add(await MatrixDashboardFile(report, "pdf")); continue; }
                 var pdf = await DotNetReportHelper.GetPdfFile(report.printUrl, report.reportId, HttpUtility.HtmlDecode(report.reportSql), HttpUtility.UrlDecode(report.connectKey), HttpUtility.UrlDecode(report.reportName), settings.UserId,
                     settings.ClientId, string.Join(",", settings.CurrentUserRole), JsonConvert.SerializeObject(settings.DataFilters), report.expandAll, report.expandSqls, report.pivotColumn, report.pivotFunction,pageSize:report.pageSize,pageOrientation:report.pageOrientation,subTotalMode:report.includeSubTotal,includeColumnTotal:report.includeColumnTotal);
                 pdfBytesList.Add(pdf);
@@ -2403,6 +2404,7 @@ namespace ReportBuilder.Web.Controllers
 
             foreach (var report in reports)
             {
+                if (!string.IsNullOrEmpty(report.matrixModel)) { pdfBytesList.Add(await MatrixDashboardFile(report, "pdf")); continue; }
                 report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
                 await ValidateAccess(report.userId, report.reportSql);
@@ -2426,6 +2428,7 @@ namespace ReportBuilder.Web.Controllers
 
             foreach (var report in reports)
             {
+                if (!string.IsNullOrEmpty(report.matrixModel)) { excelbyteList.Add(await MatrixDashboardFile(report, "xlsx")); continue; }
                 report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
                 await ValidateAccess(report.userId, report.reportSql);
@@ -2452,6 +2455,7 @@ namespace ReportBuilder.Web.Controllers
 
             foreach (var report in ListofReports)
             {
+                if (!string.IsNullOrEmpty(report.matrixModel)) { wordbyteList.Add(await MatrixDashboardFile(report, "docx")); continue; }
                 report.reportSql = HttpUtility.HtmlDecode(report.reportSql);
                 report.chartData = HttpUtility.UrlDecode(report.chartData)?.Replace(" ", " +");
                 await ValidateAccess(report.userId, report.reportSql);
@@ -2464,6 +2468,25 @@ namespace ReportBuilder.Web.Controllers
             Response.Headers.Add("content-disposition", $"attachment; filename={fileName}.docx");
             Response.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             return File(combinedWord, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", $"{fileName}.docx");
+        }
+
+        // A matrix report in a dashboard export, rendered from the table the browser built
+        private async Task<byte[]> MatrixDashboardFile(ExportReportModel report, string format)
+        {
+            var model = JsonConvert.DeserializeObject<MatrixExportModel>(report.matrixModel) ?? new MatrixExportModel();
+            var name = HttpUtility.UrlDecode(report.reportName ?? "");
+            if (string.IsNullOrWhiteSpace(name)) name = "Matrix";
+            var description = HttpUtility.UrlDecode(report.reportDescription ?? "");
+            switch (format)
+            {
+                case "xlsx":
+                    return MatrixExporter.ToExcel(model, name, description, null, false);
+                case "docx":
+                    var (orientation, wordHtml) = MatrixExporter.ToWordHtml(model, report.pageSize, report.pageOrientation);
+                    return await DotNetReportHelper.GetWordFile(null, null, name, pageSize: report.pageSize, pageOrientation: orientation, customHtml: wordHtml);
+                default:
+                    return await DotNetReportHelper.GetPdfFromHtml(MatrixExporter.ToPdfHtml(model, name, description, null, false, null, null), report.pageSize, report.pageOrientation);
+            }
         }
 
     }

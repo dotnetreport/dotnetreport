@@ -60,6 +60,8 @@ namespace ReportBuilder.Web.Models
         public string ReportSettings { get; set; }
         public bool HideReportHeader { get; set; }
         public bool HideReportFooter { get; set; }
+        // Matrix subtotal queries for values that can't be added up (Avg, Count Distinct...)
+        public List<MatrixLevelSql> MatrixLevels { get; set; }
     }
 
     public class DotNetReportPrintModel : DotNetReportModel
@@ -553,7 +555,33 @@ namespace ReportBuilder.Web.Models
         public string customDateFormat { get; set; }
         public string fieldType { get; set; }
         public string selectedAggregate { get; set; }
+        [JsonConverter(typeof(FieldConditionListConverter))]
         public List<FieldConditionFormat> fieldConditionVal { get; set; }
+    }
+    // fieldConditionVal is an array from the browser but a JSON string from the API (saved reports, schedules)
+    public class FieldConditionListConverter : JsonConverter<List<FieldConditionFormat>>
+    {
+        public static List<FieldConditionFormat> Parse(JToken token)
+        {
+            try
+            {
+                if (token == null || token.Type == JTokenType.Null) return null;
+                if (token.Type == JTokenType.String)
+                {
+                    var text = token.ToString();
+                    if (string.IsNullOrWhiteSpace(text)) return null;
+                    token = JToken.Parse(text);
+                }
+                return token.Type == JTokenType.Array ? token.ToObject<List<FieldConditionFormat>>() : null;
+            }
+            catch { return null; }
+        }
+
+        public override List<FieldConditionFormat> ReadJson(JsonReader reader, Type objectType, List<FieldConditionFormat> existingValue, bool hasExistingValue, JsonSerializer serializer)
+            => Parse(JToken.Load(reader));
+
+        public override void WriteJson(JsonWriter writer, List<FieldConditionFormat> value, JsonSerializer serializer)
+            => JToken.FromObject(value ?? new List<FieldConditionFormat>()).WriteTo(writer);
     }
     public class FieldConditionFormat
     {
@@ -600,6 +628,8 @@ namespace ReportBuilder.Web.Models
         public bool includeColumnTotal { get; set; }
         public bool pivot { get; set; }
         public string reportType { get; set; }
+        // Matrix reports send the table as built on screen
+        public string matrixModel { get; set; }
     }
     public interface IDnrDataConnection
     {
@@ -2936,6 +2966,13 @@ namespace ReportBuilder.Web.Models
             dt = await DotNetReportHelper.ExecuteCustomFunction(dt, sql);
 
             return (dt, qry, sqlFields);
+        }
+
+        // Runs an encrypted report query and returns rows the way the report API does
+        public static async Task<DotNetReportDataModel> GetReportData(string reportSql, string connectKey)
+        {
+            var data = await GetDataTable(reportSql, connectKey);
+            return DataTableToDotNetReportDataModel(data.dt, data.sqlFields);
         }
 
         /// <summary>
@@ -7042,35 +7079,52 @@ namespace ReportBuilder.Web.Models
                     mainPart.Document = new Document(new Body());
                     for (int i = 0; i < wordFiles.Count; i++)
                     {
-                        byte[] wordFile = wordFiles[i];
-                        using (MemoryStream tempStream = new MemoryStream(wordFile))
+                        using (MemoryStream tempStream = new MemoryStream(wordFiles[i]))
                         using (WordprocessingDocument tempDoc = WordprocessingDocument.Open(tempStream, false))
                         {
-                            // Copy each image part to the main document
-                            foreach (var imagePart in tempDoc.MainDocumentPart.ImageParts)
+                            var source = tempDoc.MainDocumentPart;
+                            if (i == 0)
                             {
-                                var newImagePart = mainPart.AddImagePart(imagePart.ContentType);
-                                newImagePart.FeedData(imagePart.GetStream());
-                                string newRelId = mainPart.GetIdOfPart(newImagePart);
-                                // Update references in the body to the new image part ID
-                                foreach (var drawing in tempDoc.MainDocumentPart.Document.Body.Descendants<Drawing>())
-                                {
-                                    var blip = drawing.Descendants<A.Blip>().FirstOrDefault();
-                                    if (blip != null && blip.Embed.HasValue)
-                                    {
-                                        blip.Embed = newRelId;
-                                    }
-                                }
+                                if (source.StyleDefinitionsPart != null) mainPart.AddPart(source.StyleDefinitionsPart);
+                                if (source.NumberingDefinitionsPart != null) mainPart.AddPart(source.NumberingDefinitionsPart);
                             }
-                            // Copy the document body elements
-                            Body tempBody = tempDoc.MainDocumentPart.Document.Body.CloneNode(true) as Body;
-                            foreach (var element in tempBody.Elements())
+
+                            // Images, embedded html (altChunk), headers and footers come along with new relationship ids
+                            var ids = new Dictionary<string, string>();
+                            foreach (var pair in source.Parts.ToList())
                             {
-                                mainPart.Document.Body.AppendChild(element.CloneNode(true));
+                                var part = pair.OpenXmlPart;
+                                if (part is ImagePart || part is AlternativeFormatImportPart || part is HeaderPart || part is FooterPart)
+                                    ids[pair.RelationshipId] = mainPart.GetIdOfPart(mainPart.AddPart(part));
                             }
-                            if (i < wordFiles.Count - 1)
+                            string Map(string id) => id != null && ids.TryGetValue(id, out var mapped) ? mapped : id;
+
+                            var body = source.Document.Body.CloneNode(true) as Body;
+                            foreach (var blip in body.Descendants<A.Blip>()) if (blip.Embed?.HasValue == true) blip.Embed = Map(blip.Embed.Value);
+                            foreach (var chunk in body.Descendants<AltChunk>()) if (chunk.Id?.HasValue == true) chunk.Id = Map(chunk.Id.Value);
+                            foreach (var header in body.Descendants<HeaderReference>()) if (header.Id?.HasValue == true) header.Id = Map(header.Id.Value);
+                            foreach (var footer in body.Descendants<FooterReference>()) if (footer.Id?.HasValue == true) footer.Id = Map(footer.Id.Value);
+
+                            // Each report keeps its own page setup: its section ends with a section break, the last one closes the body
+                            var sectPr = body.Elements<SectionProperties>().LastOrDefault();
+                            sectPr?.Remove();
+                            foreach (var element in body.Elements().ToList())
                             {
-                                mainPart.Document.Body.AppendChild(new Paragraph(new Run(new Break() { Type = BreakValues.Page })));
+                                element.Remove();
+                                mainPart.Document.Body.AppendChild(element);
+                            }
+                            bool last = i == wordFiles.Count - 1;
+                            if (sectPr == null)
+                            {
+                                if (!last) mainPart.Document.Body.AppendChild(new Paragraph(new Run(new Break() { Type = BreakValues.Page })));
+                            }
+                            else if (last)
+                            {
+                                mainPart.Document.Body.AppendChild(sectPr);
+                            }
+                            else
+                            {
+                                mainPart.Document.Body.AppendChild(new Paragraph(new ParagraphProperties(sectPr)));
                             }
                         }
                     }
@@ -8717,6 +8771,262 @@ namespace ReportBuilder.Web.Models
 
         public int HeaderRowCount => Math.Max(1, HeaderRows.Count + (ValueHeaders.Count > 0 ? 1 : 0));
         public int ColumnCount => Rows.Count > 0 ? Rows.Max(r => r.Cells.Count) : ValueHeaders.Count;
+    }
+
+    // A matrix field as saved with the report, so the table can be built without the browser (scheduled exports)
+    public class MatrixFieldInfo
+    {
+        public string Name { get; set; }
+        public string Label { get; set; }
+        public string Role { get; set; }
+        public string Aggregate { get; set; }
+        public string FieldFormat { get; set; }
+        public int? DecimalPlaces { get; set; }
+        public string CurrencySymbol { get; set; }
+        public string FontColor { get; set; }
+        public string BackColor { get; set; }
+        public bool FontBold { get; set; }
+        public string HeaderFontColor { get; set; }
+        public string HeaderBackColor { get; set; }
+        public bool HeaderFontBold { get; set; }
+        public string FieldAlign { get; set; }
+        public List<FieldConditionFormat> Conditions { get; set; }
+    }
+
+    // Server copy of the browser's matrix view (buildMatrixView, fully expanded) for scheduled exports
+    public static class MatrixScheduledView
+    {
+        static readonly string[] CurrencySymbols = { "€", "£", "₹", "Rs" };
+        static readonly string[] DecimalFormats = { "Number", "Decimal", "Currency", "Percentage" };
+
+        static string S(JToken t) => t == null || t.Type == JTokenType.Null ? null : t.ToString();
+        static string Nz(string s) => string.IsNullOrWhiteSpace(s) ? null : s;
+        static bool B(JToken t) => t != null && t.Type == JTokenType.Boolean && t.Value<bool>();
+
+        public static List<MatrixFieldInfo> FieldsFromColumns(JArray columns)
+        {
+            var fields = new List<MatrixFieldInfo>();
+            foreach (var c in columns ?? new JArray())
+            {
+                JToken fs = null;
+                try { fs = c["fieldSettings"]?.Type == JTokenType.String ? JToken.Parse(S(c["fieldSettings"]) ?? "{}") : c["fieldSettings"]; } catch { }
+                if (fs != null && fs.Type != JTokenType.Object) fs = null;
+                fields.Add(new MatrixFieldInfo
+                {
+                    Name = S(c["fieldName"]),
+                    Label = Nz(S(c["fieldLabel"])) ?? S(c["fieldName"]),
+                    Role = S(fs?["matrixRole"]) ?? "",
+                    Aggregate = Nz(S(fs?["matrixAgg"])) ?? S(c["aggregateFunction"]),
+                    FieldFormat = S(c["fieldFormat"]),
+                    DecimalPlaces = int.TryParse(S(c["decimalPlaces"]), out var dp) ? dp : (int?)null,
+                    CurrencySymbol = S(fs?["currencyFormat"]),
+                    FontColor = S(c["fontColor"]),
+                    BackColor = S(c["backColor"]),
+                    FontBold = B(c["fontBold"]),
+                    HeaderFontColor = S(c["headerFontColor"]),
+                    HeaderBackColor = S(c["headerBackColor"]),
+                    HeaderFontBold = B(c["headerFontBold"]),
+                    FieldAlign = S(c["fieldAlign"]),
+                    Conditions = FieldConditionListConverter.Parse(c["fieldConditionVal"])
+                });
+            }
+            return fields;
+        }
+
+        // Runs the report's grouped query (and subtotal level queries) and lays the matrix out like the screen does
+        public static async Task<MatrixExportModel> BuildAsync(string reportSql, string connectKey, List<MatrixLevelSql> levelSqls, JArray columns, string reportSettings, NestedBandStyle table)
+        {
+            var fields = FieldsFromColumns(columns);
+            var rowFields = fields.Where(f => f.Role == "row").ToList();
+            var colFields = fields.Where(f => f.Role == "column").ToList();
+            var valueFields = fields.Where(f => f.Role == "value").ToList();
+            if (valueFields.Count == 0) throw new Exception("The matrix report has no fields in Values");
+
+            var main = await DotNetReportHelper.GetReportData(reportSql, connectKey);
+            var levels = new Dictionary<(int rows, int cols), DotNetReportDataModel>();
+            foreach (var level in levelSqls ?? new List<MatrixLevelSql>())
+                levels[(level.rows, level.cols)] = await DotNetReportHelper.GetReportData(level.sql, connectKey);
+
+            var result = MatrixBuilder.Build(main, rowFields.Count, colFields.Count, valueFields.Select(v => v.Aggregate).ToList(), levels);
+            return FromResult(result, rowFields, colFields, valueFields, reportSettings, table);
+        }
+
+        public static string FormatValue(MatrixFieldInfo field, object value)
+        {
+            if (value == null) return "";
+            if (!(value is double v)) return value.ToString();
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            string Fixed(int places) => v.ToString("#,##0" + (places > 0 ? "." + new string('0', places) : ""), inv);
+            var ff = field?.FieldFormat ?? "";
+            var agg = field?.Aggregate ?? "";
+            string text;
+            if (DecimalFormats.Contains(ff)) text = Fixed(field.DecimalPlaces ?? 2);
+            else if (agg == "Count" || agg == "Count Distinct" || v == Math.Floor(v)) text = v.ToString("#,##0.###", inv);
+            else text = Fixed(field?.DecimalPlaces ?? 2);
+            if (ff == "Percentage") text += "%";
+            if (ff == "Currency") text = (CurrencySymbols.Contains(field.CurrencySymbol) ? field.CurrencySymbol : "$") + text;
+            return text;
+        }
+
+        public static string ExcelFormat(MatrixFieldInfo field)
+        {
+            if (field == null) return "#,##0.##";
+            var places = field.DecimalPlaces ?? (field.Aggregate == "Count" || field.Aggregate == "Count Distinct" ? 0 : 2);
+            var fmt = "#,##0" + (places > 0 ? "." + new string('0', places) : "");
+            if (field.FieldFormat == "Percentage") fmt += "\"%\"";
+            if (field.FieldFormat == "Currency") fmt = "\"" + (CurrencySymbols.Contains(field.CurrencySymbol) ? field.CurrencySymbol : "$") + "\"" + fmt;
+            return fmt;
+        }
+
+        public static MatrixExportModel FromResult(MatrixResultModel result, List<MatrixFieldInfo> rowFields, List<MatrixFieldInfo> colFields, List<MatrixFieldInfo> valueFields, string reportSettings, NestedBandStyle table)
+        {
+            // Report Settings matrix options; anything not saved as false is on
+            JToken saved = null;
+            try { saved = string.IsNullOrEmpty(reportSettings) ? null : JObject.Parse(reportSettings)["matrixOptions"]; } catch { }
+            bool Opt(string key) => !(saved?[key]?.Type == JTokenType.Boolean && !saved[key].Value<bool>());
+            bool rowSubtotals = Opt("rowSubtotals"), columnSubtotals = Opt("columnSubtotals"), rowGrandTotal = Opt("rowGrandTotal"), columnGrandTotal = Opt("columnGrandTotal");
+
+            var resultValues = result.ValueFields ?? new List<string>();
+            int valueCount = Math.Max(1, resultValues.Count);
+            int colDepth = (result.ColumnFields ?? new List<string>()).Count;
+            bool showValueRow = valueCount > 1 || colDepth == 0;
+            MatrixFieldInfo At(List<MatrixFieldInfo> list, int i) => i >= 0 && i < list.Count ? list[i] : null;
+            string Label(MatrixFieldInfo f, string fallback) => Nz(f?.Label) ?? fallback ?? "";
+            string Align(string a) => !string.IsNullOrEmpty(a) && a != "Auto" ? a.ToLowerInvariant() : null;
+
+            // Report Settings (header and row styles) first, then each field's own options on top
+            MatrixExportStyle StyleOf(MatrixFieldInfo field, bool header, int rowIndex)
+            {
+                var s = new MatrixExportStyle();
+                if (header)
+                {
+                    s.Color = Nz(table?.fontColor);
+                    s.BackgroundColor = Nz(table?.backColor);
+                    if (table?.bold == true) s.FontWeight = "bold";
+                    s.TextAlign = Align(table?.align);
+                }
+                else if (rowIndex >= 0)
+                {
+                    bool alt = rowIndex % 2 == 1;
+                    s.BackgroundColor = (alt ? Nz(table?.altRowBackColor) : null) ?? Nz(table?.rowBackColor);
+                    s.Color = (alt ? Nz(table?.altRowFontColor) : null) ?? Nz(table?.rowFontColor);
+                    s.TextAlign = Align(table?.rowAlign);
+                }
+                if (field == null) return s;
+                var color = header ? field.HeaderFontColor : field.FontColor;
+                var back = header ? field.HeaderBackColor : field.BackColor;
+                if (Nz(color) != null) s.Color = color;
+                if (Nz(back) != null) s.BackgroundColor = back;
+                if (header ? field.HeaderFontBold : field.FontBold) s.FontWeight = "bold";
+                if (!header && Align(field.FieldAlign) != null) s.TextAlign = Align(field.FieldAlign);
+                return s;
+            }
+
+            // Display columns: data columns, each group followed by its total, then the grand total
+            bool ShowColTotal(MatrixHeaderNode node) => node.Depth > 0 ? columnSubtotals : columnGrandTotal;
+            var displayCols = new List<(MatrixHeaderNode node, bool isTotal)>();
+            void WalkCols(MatrixHeaderNode node)
+            {
+                if (node.Children.Count == 0) { displayCols.Add((node, node.Depth < colDepth)); return; }
+                foreach (var child in node.Children) WalkCols(child);
+                if (ShowColTotal(node)) displayCols.Add((node, true));
+            }
+            WalkCols(result.Columns);
+
+            int CountDisplay(MatrixHeaderNode node) => node.Children.Count == 0 ? 1 : node.Children.Sum(CountDisplay) + (ShowColTotal(node) ? 1 : 0);
+            var headerRows = Enumerable.Range(0, colDepth).Select(_ => new List<MatrixExportHeader>()).ToList();
+            MatrixExportHeader Header(string label, int colspan, int rowspan, bool isTotal, int depth) =>
+                new MatrixExportHeader { Label = label, Colspan = colspan, Rowspan = rowspan, IsTotal = isTotal, Style = StyleOf(At(colFields, depth - 1), true, 0) };
+            void Emit(MatrixHeaderNode node)
+            {
+                int d = node.Depth;
+                if (node.Children.Count == 0) { headerRows[d - 1].Add(Header(node.Label, valueCount, 1, false, d)); return; }
+                headerRows[d - 1].Add(Header(node.Label, (CountDisplay(node) - (ShowColTotal(node) ? 1 : 0)) * valueCount, 1, false, d));
+                foreach (var child in node.Children) Emit(child);
+                if (ShowColTotal(node)) headerRows[d - 1].Add(Header(node.Label + " Total", valueCount, colDepth - d + 1, true, d));
+            }
+            if (colDepth > 0)
+            {
+                foreach (var child in result.Columns.Children) Emit(child);
+                if (columnGrandTotal) headerRows[0].Add(Header("Total", valueCount, colDepth, true, 1));
+            }
+
+            var valueHeaders = new List<MatrixExportHeader>();
+            if (showValueRow)
+            {
+                var names = resultValues.Count > 0 ? resultValues : new List<string> { "" };
+                foreach (var col in displayCols)
+                    for (int vi = 0; vi < names.Count; vi++)
+                        valueHeaders.Add(new MatrixExportHeader { Label = Label(At(valueFields, vi), names[vi]), IsTotal = col.isTotal, Style = StyleOf(At(valueFields, vi), true, 0) });
+            }
+
+            object CellValue(MatrixHeaderNode node, int colId, int vi)
+            {
+                var cell = node.Cells != null && colId < node.Cells.Length ? node.Cells[colId] : null;
+                return cell != null && vi < cell.Length ? cell[vi] : null;
+            }
+            void ApplyConditions(MatrixExportStyle style, MatrixFieldInfo field, object raw)
+            {
+                foreach (var rule in field?.Conditions ?? new List<FieldConditionFormat>())
+                {
+                    if (DotNetReportHelper.MatchFieldCondition(new ReportHeaderColumn { fieldConditionVal = new List<FieldConditionFormat> { rule } }, raw) == null) continue;
+                    if (Nz(rule.backColor) != null) style.BackgroundColor = rule.backColor;
+                    if (Nz(rule.fontColor) != null) style.Color = rule.fontColor;
+                    if (rule.fontBold == true) style.FontWeight = "bold";
+                }
+            }
+
+            var rows = new List<MatrixExportRow>();
+            void WalkRows(MatrixHeaderNode node)
+            {
+                foreach (var child in node.Children)
+                {
+                    bool hasChildren = child.Children.Count > 0;
+                    int rowIndex = rows.Count;
+                    var row = new MatrixExportRow { Label = child.Label, Depth = child.Depth, IsSubtotal = hasChildren, LabelStyle = StyleOf(At(rowFields, child.Depth - 1), false, rowIndex) };
+                    foreach (var col in displayCols)
+                        for (int vi = 0; vi < valueCount; vi++)
+                        {
+                            var field = At(valueFields, vi);
+                            var raw = CellValue(child, col.node.Id, vi);
+                            var style = StyleOf(field, false, rowIndex);
+                            // rules apply to the data cells, not subtotals or totals
+                            if (!hasChildren && !col.isTotal) ApplyConditions(style, field, raw);
+                            bool hide = hasChildren && !rowSubtotals;
+                            row.Cells.Add(new MatrixExportCell { Text = hide ? "" : FormatValue(field, raw), Value = hide ? null : raw as double?, IsTotal = col.isTotal, Style = style });
+                        }
+                    rows.Add(row);
+                    if (hasChildren) WalkRows(child);
+                }
+            }
+            WalkRows(result.Rows);
+            if (rowGrandTotal)
+            {
+                var total = new MatrixExportRow { Label = "Grand Total", Depth = 0, IsGrandTotal = true, LabelStyle = new MatrixExportStyle() };
+                foreach (var col in displayCols)
+                    for (int vi = 0; vi < valueCount; vi++)
+                    {
+                        var raw = CellValue(result.Rows, col.node.Id, vi);
+                        total.Cells.Add(new MatrixExportCell { Text = FormatValue(At(valueFields, vi), raw), Value = raw as double?, IsTotal = true, Style = StyleOf(At(valueFields, vi), false, -1) });
+                    }
+                rows.Add(total);
+            }
+
+            var rowFieldLabels = (result.RowFields ?? new List<string>()).Select((name, i) => Label(At(rowFields, i), name)).ToList();
+            return new MatrixExportModel
+            {
+                RowHeader = string.Join(" / ", rowFieldLabels),
+                // with one value field there's no value header row, so its label goes in the corner
+                ValueCaption = showValueRow ? "" : Label(At(valueFields, 0), resultValues.FirstOrDefault()),
+                RowHeaderStyle = StyleOf(At(rowFields, 0), true, 0),
+                HeaderRows = headerRows,
+                ValueHeaders = valueHeaders,
+                Rows = rows,
+                ValueCount = valueCount,
+                ValueFormats = Enumerable.Range(0, valueCount).Select(vi => ExcelFormat(At(valueFields, vi))).ToList(),
+                RowFieldLabels = rowFieldLabels
+            };
+        }
     }
 
     public static class MatrixExporter

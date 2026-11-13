@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Quartz;
 using Quartz.Impl;
 using ReportBuilder.Web.Models;
@@ -330,6 +331,8 @@ namespace ReportBuilder.Web.Jobs
 
                                 DotNetReportScheduleModel reportToRun = null;
                                 List<DotNetReportScheduleModel> reportsToRun = null;
+                                var contentToken = JToken.Parse(content);
+                                JArray ColumnsOf(DotNetReportScheduleModel r) => (isDashboard ? contentToken[reportsToRun.IndexOf(r)] : contentToken)?["Columns"] as JArray;
 
                                 if (isDashboard)
                                 {
@@ -350,6 +353,20 @@ namespace ReportBuilder.Web.Jobs
                                 string imageData = "";
 
                                 (string PivotColumn, string PivotFunction) pivotInfo;
+                                // Matrix reports are laid out here and rendered like the on-screen matrix export
+                                async Task<byte[]> MatrixFile(DotNetReportScheduleModel r)
+                                {
+                                    var format = MatrixFormat(schedule.Format);
+                                    var hdr = format == "pdf" || format == "docx" ? await ResolveScheduledReportHeader(client, apiUrl, accountApiKey, databaseApiKey, clientId, schedule.UserId, r) : (null, false);
+                                    return await GetMatrixFile(format, r, ColumnsOf(r), schedule, hdr, r.HideReportFooter ? null : hfFooterHtml, hfFooterEveryPage);
+                                }
+                                var singleMatrix = !isDashboard && IsMatrix(reportToRun);
+                                if (singleMatrix)
+                                {
+                                    fileExt = "." + MatrixFormat(schedule.Format);
+                                    fileData = schedule.Format == "Link" ? null : await MatrixFile(reportToRun);
+                                }
+                                else
                                 switch ((schedule.Format ?? "Excel").ToUpper())
                                 {
                                     case "PDF":
@@ -357,6 +374,7 @@ namespace ReportBuilder.Web.Jobs
                                         {
                                             foreach (var r in reportsToRun)
                                             {
+                                                if (IsMatrix(r)) { files.Add(await MatrixFile(r)); continue; }
                                                 pivotInfo = PreparePivotData(r.Columns);
                                                 fileData = await DotNetReportHelper.GetPdfFile(JobScheduler.WebAppRootUrl + "/DotnetReport/ReportPrint", r.ReportId, r.ReportSql, r.ConnectKey, r.ReportName, schedule.UserId, clientId, dataFilters: schedule.DataFilters ?? "", expandSqls: r.ReportData, pivotColumn: pivotInfo.PivotColumn, pivotFunction: pivotInfo.PivotFunction,pageSize:schedule.SelectedPageSize,pageOrientation:schedule.SelectedPageOrientation);
                                                 files.Add(fileData);
@@ -383,6 +401,7 @@ namespace ReportBuilder.Web.Jobs
                                         {
                                             foreach (var r in reportsToRun)
                                             {
+                                                if (IsMatrix(r)) { files.Add(await MatrixFile(r)); continue; }
                                                 pivotInfo = PreparePivotData(r.Columns);
                                                 if (HasChart(r))
                                                 {
@@ -453,6 +472,7 @@ namespace ReportBuilder.Web.Jobs
                                         {
                                             foreach (var r in reportsToRun)
                                             {
+                                                if (IsMatrix(r)) { files.Add(await MatrixFile(r)); continue; }
                                                 pivotInfo = PreparePivotData(r.Columns);
                                                 if (HasChart(r))
                                                 {
@@ -543,6 +563,45 @@ namespace ReportBuilder.Web.Jobs
                         }
                     }
                 }
+            }
+        }
+
+        private static bool IsMatrix(DotNetReportScheduleModel r) => string.Equals(r?.ReportType, "Matrix", StringComparison.OrdinalIgnoreCase);
+
+        private static string MatrixFormat(string scheduleFormat)
+        {
+            switch ((scheduleFormat ?? "").ToUpperInvariant())
+            {
+                case "PDF": return "pdf";
+                case "WORD": return "docx";
+                case "CSV": return "csv";
+                default: return "xlsx";
+            }
+        }
+
+        private static async Task<byte[]> GetMatrixFile(string format, DotNetReportScheduleModel r, JArray columns, ReportSchedule schedule, (string html, bool everyPage) header, string footerHtml, bool footerEveryPage)
+        {
+            var settings = ExcelSettings(r.ReportSettings);
+            var model = await MatrixScheduledView.BuildAsync(r.ReportSql, r.ConnectKey, r.MatrixLevels, columns, r.ReportSettings, settings.header);
+            var name = string.IsNullOrWhiteSpace(r.ReportName) ? "Matrix" : r.ReportName;
+            var headerHtml = DotNetReportHelper.SanitizeReportHtml(header.html);
+            footerHtml = DotNetReportHelper.SanitizeReportHtml(footerHtml);
+            switch (format)
+            {
+                case "pdf":
+                    var html = MatrixExporter.ToPdfHtml(model, name, r.ReportDescription, null, settings.hideName,
+                        DotNetReportHelper.SubstituteHtmlPlaceholders(headerHtml, schedule.UserId, null, 1, 1, reportName: name),
+                        DotNetReportHelper.SubstituteHtmlPlaceholders(footerHtml, schedule.UserId, null, 1, 1, reportName: name));
+                    return await DotNetReportHelper.GetPdfFromHtml(html, schedule.SelectedPageSize, schedule.SelectedPageOrientation);
+                case "docx":
+                    var (orientation, wordHtml) = MatrixExporter.ToWordHtml(model, schedule.SelectedPageSize, schedule.SelectedPageOrientation);
+                    return await DotNetReportHelper.GetWordFile(null, null, name, pageSize: schedule.SelectedPageSize, pageOrientation: orientation,
+                        headerHtml: headerHtml, footerHtml: footerHtml, headerEveryPage: header.everyPage, footerEveryPage: footerEveryPage,
+                        currentUserName: schedule.UserId, customHtml: wordHtml, hideReportName: settings.hideName);
+                case "csv":
+                    return MatrixExporter.ToCsv(model);
+                default:
+                    return MatrixExporter.ToExcel(model, name, r.ReportDescription, null, settings.hideName);
             }
         }
 
