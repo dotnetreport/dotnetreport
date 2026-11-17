@@ -8870,6 +8870,7 @@ var reportViewModel = function (options) {
 				var i = 0;
 				var isComparison = false;
 				var isExecuteReportQuery = false;
+				var listReloaded = false;
 				var _result = null;
 				var isAutoRun = (self.activeDesign() && skipValidation) || dashboardRun;
 				var _saveReport = self.canSaveCurrentReport() && !isComparison && previewOnly !== true && (saveOnly || !isAutoRun) ? (saveOnly || self.SaveReport()) : false;
@@ -8987,6 +8988,9 @@ var reportViewModel = function (options) {
 						_resetSaving();
 						if (_saveReport) {
 							toastr.success((self.ReportName() || 'Report') + ' Saved');
+							// the list shows folder, name and access, so pick up what was just saved
+							self.LoadAllSavedReports(true);
+							listReloaded = true;
 							if (self.editingSubReportParentId() && self._userInitiatedSave) {
 								self._userInitiatedSave = false;
 								self._subReportReturnTimer = setTimeout(function () {
@@ -9045,7 +9049,7 @@ var reportViewModel = function (options) {
 							self.ReportMode('start');
 							return;
 						}
-						if (!self.activeDesign()) {
+						if (!self.activeDesign() && !listReloaded) {
 							self.LoadAllSavedReports(true);
 						}
 						if (options.samePageOnRun || dashboardRun || self.activeDesign()) {
