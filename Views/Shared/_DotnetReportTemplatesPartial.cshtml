@@ -284,6 +284,9 @@
                         KPI
                     </a>
                 </li>
+                <li class="nav-item" data-bind="visible: ReportMode() === 'dashboard'">
+                    <a class="nav-link" data-bs-toggle="tab" data-bind="attr: { href: '#kpiWidgetTab-' + ReportID() }">Widget</a>
+                </li>
             </ul>
             <div class="tab-content small">
                 <!-- KPI Tab -->
@@ -383,6 +386,25 @@
                                 title="Clear">
                                 <i class="fa fa-close"></i>
                         </button>
+                    </div>
+                </div>
+                <div class="tab-pane fade" data-bind="attr: { id: 'kpiWidgetTab-' + ReportID() }">
+                    <div class="field-quick-menu dr-format-tab">
+                        <div class="dr-format-section">Dashboard Widget</div>
+                        <div class="field-quick-row">
+                            <span class="field-quick-label">Fill</span>
+                            <input type="color" class="dr-swatch" title="Background color" data-bind="value: pageBackColor, valueUpdate: 'input', css: { 'dr-color-unset': !pageBackColor() }" />
+                        </div>
+                        <div class="field-quick-row">
+                            <span class="field-quick-label">Border</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="No border" data-bind="click: function () { setWidgetBorder('none'); }, css: { active: widgetBorderStyle() === 'none' }"><i class="fa fa-ban"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Thin border" data-bind="click: function () { setWidgetBorder('thin'); }, css: { active: widgetBorderStyle() === 'thin' }"><i class="fa fa-square-o"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Thick border" data-bind="click: function () { setWidgetBorder('thick'); }, css: { active: widgetBorderStyle() === 'thick' }"><i class="fa fa-square-o" style="-webkit-text-stroke: 1.2px;"></i></button>
+                            <input type="color" class="dr-swatch ms-1" title="Border color" data-bind="value: widgetBorderColor, valueUpdate: 'input', visible: widgetBorderStyle() !== 'none', css: { 'dr-color-unset': !widgetBorderColor() }" />
+                        </div>
+                        <div class="dr-format-footer">
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" data-bind="click: clearWidgetStyle" title="Clear"><i class="fa fa-eraser"></i></button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2594,12 +2616,6 @@
                     No Header Row
                 </label>
             </div>
-            <div class="checkbox">
-                <label>
-                    <input type="checkbox" data-bind="checked: noDashboardBorders" />
-                    Borderless on Dashboard
-                </label>
-            </div>
             <div class="checkbox" data-bind="if: ReportType() == 'Single'">
                 <label>
                     <input type="checkbox" data-bind="checked: showPriorInKpi" />
@@ -3733,7 +3749,7 @@
                 <button class="btn btn-sm btn-close" data-bind="click: toggleChartSettings"></button>
                 <h6 class="mb-0">Report Settings</h6>
             </div>
-             <ul class="nav nav-tabs nav-sm mb-2 small" data-bind="visible: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line'">
+             <ul class="nav nav-tabs nav-sm mb-2 small" data-bind="visible: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line' || ReportMode() === 'dashboard'">
                 <li class="nav-item">
                     <a class="nav-link"
                        data-bs-toggle="tab"
@@ -3747,6 +3763,9 @@
                        data-bind="attr: { href: '#tableTab-' + ReportID() }, css: { active: !(ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line') }">
                         Table
                     </a>
+                </li>
+                <li class="nav-item" data-bind="visible: ReportMode() === 'dashboard'">
+                    <a class="nav-link" data-bs-toggle="tab" data-bind="attr: { href: '#widgetTab-' + ReportID() }">Widget</a>
                 </li>
             </ul>
             <div class="tab-content small">
@@ -3972,7 +3991,7 @@
                             <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Thick border" data-bind="click: function () { rowBorder('thick'); }, css: { active: rowBorder() === 'thick' }"><i class="fa fa-square-o" style="-webkit-text-stroke: 1.2px;"></i></button>
                             <input type="color" class="dr-swatch ms-1" title="Row border color" data-bind="value: rowBorderColor, valueUpdate: 'input', visible: rowBorder() != 'none'" />
                         </div>
-                        <div class="field-quick-row">
+                        <div class="field-quick-row" data-bind="visible: ReportMode() !== 'dashboard'">
                             <span class="field-quick-label">Page</span>
                             <input type="color" class="dr-swatch" title="Background color" data-bind="value: pageBackColor, valueUpdate: 'input', css: { 'dr-color-unset': !pageBackColor() }" />
                         </div>
@@ -3980,6 +3999,25 @@
                             <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" data-bind="click: copyTableFormat" title="Copy format"><i class="fa fa-copy"></i></button>
                             <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" data-bind="click: pasteTableFormat" title="Paste format"><i class="fa fa-paste"></i></button>
                             <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" data-bind="click: clearTableSettings" title="Clear formatting"><i class="fa fa-eraser"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" data-bind="attr: { id: 'widgetTab-' + ReportID() }">
+                    <div class="field-quick-menu dr-format-tab">
+                        <div class="dr-format-section">Dashboard Widget</div>
+                        <div class="field-quick-row">
+                            <span class="field-quick-label">Fill</span>
+                            <input type="color" class="dr-swatch" title="Background color" data-bind="value: pageBackColor, valueUpdate: 'input', css: { 'dr-color-unset': !pageBackColor() }" />
+                        </div>
+                        <div class="field-quick-row">
+                            <span class="field-quick-label">Border</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="No border" data-bind="click: function () { setWidgetBorder('none'); }, css: { active: widgetBorderStyle() === 'none' }"><i class="fa fa-ban"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Thin border" data-bind="click: function () { setWidgetBorder('thin'); }, css: { active: widgetBorderStyle() === 'thin' }"><i class="fa fa-square-o"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Thick border" data-bind="click: function () { setWidgetBorder('thick'); }, css: { active: widgetBorderStyle() === 'thick' }"><i class="fa fa-square-o" style="-webkit-text-stroke: 1.2px;"></i></button>
+                            <input type="color" class="dr-swatch ms-1" title="Border color" data-bind="value: widgetBorderColor, valueUpdate: 'input', visible: widgetBorderStyle() !== 'none', css: { 'dr-color-unset': !widgetBorderColor() }" />
+                        </div>
+                        <div class="dr-format-footer">
+                            <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" data-bind="click: clearWidgetStyle" title="Clear"><i class="fa fa-eraser"></i></button>
                         </div>
                     </div>
                 </div>
@@ -4391,7 +4429,7 @@
     </div>
 </script>
 <script type="text/html" id="text-widget-template">
-    <div class="grid-stack-item-content position-relative p-2" data-bind="css: { card: $root.arrangeDashboard }">
+    <div class="grid-stack-item-content position-relative p-2" data-bind="css: { card: $root.arrangeDashboard }, style: { 'background-color': backColor() || '', border: borderCss() }">
         <div data-bind="html: decodeURIComponent(text())"></div>
         <div class="position-absolute" style="top:3px; right:4px; z-index:2000;" data-bind="visible: $root.arrangeDashboard">
             <div class="dropdown">

@@ -540,7 +540,7 @@
     <!-- ko foreach: dashboardItems -->
     <!-- ko if: type === 'report' -->
     <div class="grid-stack-item" data-bind="attr: {'gs-x': x, 'gs-y': y, 'gs-w': width, 'gs-h': height, 'gs-id': ReportID,'data-type':'report'}">
-        <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }, style: { border: noDashboardBorders() ? 'none' : '', 'box-shadow': noDashboardBorders() ? 'none' : '','background-color': $parent.getCardBackground($data) }" style="overflow-y: hidden;">
+        <div class="card" data-bind="attr: {class: 'card ' + panelStyle + ' grid-stack-item-content'}, css: { expanded: isExpanded }, style: { border: widgetBorderCss(), 'box-shadow': noDashboardBorders() ? 'none' : '','background-color': $parent.getCardBackground($data) }" style="overflow-y: hidden;">
             <div class="padded-div flex-row" style="padding-bottom: 0; margin-bottom: 0;">
                 <div class="pull-left">
                     <button type="button" class="btn" data-bs-toggle="dropdown" aria-haspopup="false" aria-expanded="false">
@@ -745,6 +745,20 @@
             </div>
             <div class="modal-body">
                 <textarea id="textEditor"></textarea>
+                <br />
+                <div class="field-quick-menu dr-format-tab mt-2 small" data-bind="with: textStyle">
+                    <div class="dr-format-section">Widget Settings</div>
+                    <div class="field-quick-row">
+                        <span class="field-quick-label me-1" style="width: auto;">Background</span>
+                        <input type="color" class="dr-swatch" title="Widget background color" data-bind="value: backColor, valueUpdate: 'input', css: { 'dr-color-unset': !backColor() }" />
+                        <button type="button" class="btn btn-sm btn-link text-muted p-0 ms-1" title="No background" data-bind="visible: backColor(), click: function () { backColor(''); }"><i class="fa fa-times"></i></button>
+                        <span class="field-quick-label ms-3">Border</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="No border" data-bind="click: function () { border('none'); }, css: { active: border() === 'none' }"><i class="fa fa-ban"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Thin border" data-bind="click: function () { border('thin'); }, css: { active: border() === 'thin' }"><i class="fa fa-square-o"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary field-quick-btn" title="Thick border" data-bind="click: function () { border('thick'); }, css: { active: border() === 'thick' }"><i class="fa fa-square-o" style="-webkit-text-stroke: 1.2px;"></i></button>
+                        <input type="color" class="dr-swatch ms-1" title="Widget border color" data-bind="value: borderColor, valueUpdate: 'input', visible: border() != 'none', css: { 'dr-color-unset': !borderColor() }" />
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

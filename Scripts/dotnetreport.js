@@ -2359,6 +2359,30 @@ var reportViewModel = function (options) {
 	self.changePageSize = ko.observable(false);
 	self.noHeaderRow = ko.observable(false);
 	self.noDashboardBorders = ko.observable(false);
+	// dashboard widget frame: none (borderless), thin or thick, with an optional color; the fill is pageBackColor
+	self.widgetBorder = ko.observable('');
+	self.widgetBorderColor = ko.observable('');
+	_.forEach([self.noDashboardBorders, self.widgetBorder, self.widgetBorderColor], function (o) { o.subscribe(function () { self.markFormatDirty(); }); });
+	self.widgetBorderStyle = function () {
+		if (self.noDashboardBorders()) return 'none';
+		return self.widgetBorder() === 'thick' ? 'thick' : 'thin';
+	};
+	self.setWidgetBorder = function (style) {
+		self.noDashboardBorders(style === 'none');
+		self.widgetBorder(style === 'none' ? '' : style);
+	};
+	self.widgetBorderCss = function () {
+		if (self.noDashboardBorders()) return 'none';
+		var color = self.widgetBorderColor();
+		if (self.widgetBorder() === 'thick') return '2px solid ' + (color || '#6c757d');
+		return color ? '1px solid ' + color : '';
+	};
+	self.clearWidgetStyle = function () {
+		self.setWidgetBorder('thin');
+		self.widgetBorder('');
+		self.widgetBorderColor('');
+		self.pageBackColor('');
+	};
 	self.showPriorInKpi = ko.observable(false);
 	self.OnlyTop = ko.observable();
 	self.barChartHorizontal = ko.observable();
@@ -6663,6 +6687,8 @@ var reportViewModel = function (options) {
 		self.changePageSize(false);
 		self.noHeaderRow(false);
 		self.noDashboardBorders(false);
+		self.widgetBorder('');
+		self.widgetBorderColor('');
 		self.showPriorInKpi(false);
 		self.OnlyTop(null);
 		self.lastPickedField(null);
@@ -8504,6 +8530,8 @@ var reportViewModel = function (options) {
 				DefaultPageSize: self.DefaultPageSize() || 30,
 				noHeaderRow: self.noHeaderRow(),
 				noDashboardBorders: self.noDashboardBorders(),
+				widgetBorder: self.widgetBorder() || undefined,
+				widgetBorderColor: self.widgetBorderColor() || undefined,
 				showPriorInKpi: self.showPriorInKpi(),
 				PivotColumns: self.PivotColumns(),
 				PivotColumnsWidth: _.map(self.ReportColumns(), function (column) {
@@ -13309,6 +13337,8 @@ var reportViewModel = function (options) {
 		self.setGroupHeadingStyle(reportSettings.outerGroupHeadingStyle);
 		self.noHeaderRow(reportSettings.noHeaderRow);
 		self.noDashboardBorders(reportSettings.noDashboardBorders);
+		self.widgetBorder(reportSettings.widgetBorder || '');
+		self.widgetBorderColor(reportSettings.widgetBorderColor || '');
 		self.showPriorInKpi(reportSettings.showPriorInKpi);
 		self.PivotColumns(reportSettings.PivotColumns || null);
 		self.PivotColumnsWidth(reportSettings.PivotColumnsWidth || null);
@@ -15346,7 +15376,10 @@ var dashboardViewModel = function (options) {
 							y: r.Y,
 							width: r.Width,
 							height: r.Height,
-							text: widget.text || ''
+							text: widget.text || '',
+							backColor: widget.backColor,
+							border: widget.border,
+							borderColor: widget.borderColor
 						},true);
 					}
 				}
@@ -16576,7 +16609,10 @@ var dashboardViewModel = function (options) {
 		if (text) {
 			settings.Widget = {
 				type: 'text',
-				text: ko.unwrap(text.text)
+				text: ko.unwrap(text.text),
+				backColor: ko.unwrap(text.backColor) || undefined,
+				border: ko.unwrap(text.border) || undefined,
+				borderColor: ko.unwrap(text.borderColor) || undefined
 			};
 			return settings;
 		}
@@ -16699,6 +16735,13 @@ var dashboardViewModel = function (options) {
 		const widget = {
 			id: data.id || WidgetUniqueId('text'),
 			text: ko.observable(data.text || encodeURIComponent('<p>Enter text...</p>')),
+			backColor: ko.observable(data.backColor || ''),
+			border: ko.observable(data.border || 'none'),
+			borderColor: ko.observable(data.borderColor || ''),
+			borderCss: function () {
+				var width = this.border() === 'thick' ? '2px' : this.border() === 'thin' ? '1px' : '';
+				return width ? width + ' solid ' + (this.borderColor() || '#6c757d') : '';
+			},
 			x: data.x || 0,
 			y: data.y || 0,
 			width: data.width || 4,
@@ -16742,12 +16785,20 @@ var dashboardViewModel = function (options) {
 		return items;
 	});
 	self.currentTextWidget = ko.observable(null);
+	// fill and border chosen in the text dialog, applied on Save
+	self.textStyle = { backColor: ko.observable(''), border: ko.observable('none'), borderColor: ko.observable('') };
+	var setTextStyle = function (item) {
+		self.textStyle.backColor(item ? item.backColor() : '');
+		self.textStyle.border(item ? item.border() : 'none');
+		self.textStyle.borderColor(item ? item.borderColor() : '');
+	};
 	self.textModalMode = ko.observable('add'); // add | edit
 	self.textModalTitle = ko.observable('Add Text');
 	self.openAddTextModal = function () {
 		self.textModalMode('add');
 		self.textModalTitle('Add Text');
 		self.currentTextWidget(null);
+		setTextStyle(null);
 		$('#textEditor').summernote({
 			height: 200
 		});
@@ -16759,6 +16810,7 @@ var dashboardViewModel = function (options) {
 		self.textModalMode('edit');
 		self.textModalTitle('Edit Text');
 		self.currentTextWidget(item);
+		setTextStyle(item);
 		$('#textEditor').summernote({
 			height: 200
 		});
@@ -16773,14 +16825,17 @@ var dashboardViewModel = function (options) {
 			return;
 		}
 		const encoded = encodeURIComponent(html);
+		var style = { backColor: self.textStyle.backColor(), border: self.textStyle.border(), borderColor: self.textStyle.borderColor() };
 		if (self.textModalMode() === 'add') {
-			self.addTextWidget({
-				text: encoded
-			});
+			self.addTextWidget(_.assign({ text: encoded }, style));
 		}
 		if (self.textModalMode() === 'edit' && self.currentTextWidget()) {
-			self.currentTextWidget().text(encoded);
-			self.onWidgetChange(self.currentTextWidget());
+			var current = self.currentTextWidget();
+			current.text(encoded);
+			current.backColor(style.backColor);
+			current.border(style.border);
+			current.borderColor(style.borderColor);
+			self.onWidgetChange(current);
 		}
 		$('#textWidgetModal').modal('hide');
 	};
