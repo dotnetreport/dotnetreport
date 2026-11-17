@@ -415,7 +415,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                         <div class="row">
                                             <div class="col-sm-7">
                                                 <input type="checkbox" data-bind="visible: $root.selectMode, checked: isSelected" class="pull-left me-2" />
-                                                <div class="fa fa-2x pull-left" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType.indexOf('Map')==0, 'fa-window-maximize': reportType=='Single', 'fa-random': reportType=='Pivot', 'fa-th': reportType=='Matrix', 'fa-window-restore': reportType=='Treemap', 'fa-signal': reportType == 'Combo', 'fa-code': reportType == 'Html', 'fa-map': reportType == 'HeatMap'}"></div>
+                                                <div class="fa fa-2x pull-left" data-bind="css: reportTypeIcon(reportType)"></div>
                                                 <div class="pull-left">
                                                     <h4>
                                                         <a data-bind="click: runReport" style="cursor: pointer">
@@ -744,20 +744,7 @@ Its Recommended you use it as is, and only change styling as needed to match you
                                             <div class="row border-bottom py-2 align-items-center w-100 row-hover">
                                                 <div class="col-md-3 d-flex align-items-center">
                                                     <input type="checkbox" data-bind="visible: $root.selectMode, checked: isSelected" class="me-2" />
-                                                    <span class="fa" data-bind="css: {
-                                                    'fa-file': reportType=='List',
-                                                    'fa-th-list': reportType=='Summary',
-                                                    'fa-bar-chart': reportType=='Bar',
-                                                    'fa-pie-chart': reportType=='Pie',
-                                                    'fa-line-chart': reportType=='Line',
-                                                    'fa-signal': reportType=='Combo',
-                                                    'fa-globe': reportType.indexOf('Map')==0,
-                                                    'fa-window-maximize': reportType=='Single',
-                                                    'fa-random': reportType=='Pivot', 'fa-th': reportType=='Matrix',
-                                                    'fa-window-restore': reportType=='Treemap',
-                                                    'fa-code': reportType == 'Html',
-                                                    'fa-map': reportType == 'HeatMap'
-                                                    }"></span>
+                                                    <span class="fa" data-bind="css: reportTypeIcon(reportType)"></span>
                                                     <a class="ms-2" data-bind="click: runReport, highlightedText: { text: reportName, highlight: $parent.searchReports, css: 'highlight' }" style="cursor: pointer"></a>&nbsp;
                                                     <span data-bind="text: message" class="highlight small"></span>
                                                     <span class="row-hover-actions ms-2" data-bind="css: { 'favorited': isFavorite() }, visible: !$root.selectMode()">

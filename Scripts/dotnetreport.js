@@ -4502,7 +4502,7 @@ var reportViewModel = function (options) {
 		return cats;
 	});
 
-	var stripChartTypes = ['List', 'Summary', 'Bar', 'Pie', 'Line', 'Combo', 'Html', 'Map', 'Single'];
+	var stripChartTypes = ['List', 'Summary', 'Matrix', 'Bar', 'Pie', 'Line', 'Combo', 'Html', 'Map', 'Single'];
 	var shortChartNames = { 'HeatMap': 'Heat Map', 'Radar': 'Radar', 'Polar': 'Polar', 'Gauge-half': 'Half Gauge', 'Gauge-bar': 'Progress' };
 	self.extraChartType = ko.pureComputed(function () {
 		var type = self.ReportType();
@@ -11552,7 +11552,9 @@ var reportViewModel = function (options) {
 			if (!chartDiv) return;
 		}
 		if (!chartDiv) {
-			chartDiv = _.find(document.querySelectorAll('[id="' + chartDivId + '"]'), function (el) { return !el.closest('[data-chart-scope]'); });
+			var chartDivs = _.filter(document.querySelectorAll('[id="' + chartDivId + '"]'), function (el) { return !el.closest('[data-chart-scope]'); });
+			// the closed designer's live preview holds a copy of the chart area; draw into the one on the page
+			chartDiv = _.find(chartDivs, function (el) { return !el.closest('.live-preview-area'); }) || chartDivs[0];
 		}
 		if (!chartDiv || !reportData) return;
 		if (chartDiv._echart) {
@@ -12693,6 +12695,8 @@ var reportViewModel = function (options) {
 			});
 			var funnelTop = _.max(funnelData.map(function (d) { return d.value || 0; })) || 1;
 			var funnelShowPercent = self.funnelOptions.showPercent();
+			// stage values use the value field's format (currency, decimals...) like the other charts' axes
+			var funnelValue = function (v) { return yAxisFormatter ? yAxisFormatter(v) : Number(v || 0).toLocaleString(); };
 			option.series = [{
 				name: funnelValCol.column,
 				type: 'funnel',
@@ -12710,14 +12714,15 @@ var reportViewModel = function (options) {
 					textBorderColor: 'rgba(0, 0, 0, 0.35)',
 					textBorderWidth: 2,
 					fontFamily: chartOptions.fontFamily || undefined,
+					fontSize: Number(chartOptions.fontSize) || 12,
 					formatter: function (p) {
-						return p.name + ': ' + (funnelShowPercent ? Math.round((p.value || 0) / funnelTop * 100) + '%' : p.value);
+						return p.name + ': ' + (funnelShowPercent ? Math.round((p.value || 0) / funnelTop * 100) + '%' : funnelValue(p.value));
 					}
 				},
 				itemStyle: { borderColor: '#fff', borderWidth: 1 },
 				data: funnelData
 			}];
-			option.tooltip = { trigger: 'item', formatter: '{b}: {c}' };
+			option.tooltip = { trigger: 'item', formatter: function (p) { return p.name + ': ' + funnelValue(p.value); } };
 			// each stage is already labelled inside the funnel
 			option.legend = { show: false };
 			option.xAxis = null;

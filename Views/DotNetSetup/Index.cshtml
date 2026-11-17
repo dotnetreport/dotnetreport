@@ -1101,7 +1101,7 @@
                                                 <div class="form-check">
                                                     <input class="form-check-input" type="checkbox" data-bind="checked: isSelected" />
                                                     <label class="list-group-item-heading">
-                                                        <span class="fa" data-bind="css: {'fa-file': reportType=='List', 'fa-th-list': reportType=='Summary', 'fa-bar-chart': reportType=='Bar', 'fa-pie-chart': reportType=='Pie',  'fa-line-chart': reportType=='Line', 'fa-globe': reportType =='Map'}" style="color: #808080"></span>
+                                                        <span class="fa" data-bind="css: reportTypeIcon(reportType)" style="color: #808080"></span>
                                                         <span data-bind="text: reportName"></span>
                                                     </label>
                                                 </div>

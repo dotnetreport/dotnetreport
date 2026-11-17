@@ -2984,3 +2984,28 @@ body.dark-mode .dr-matrix-zone-box, body.dark-mode .dr-matrix-table .dr-matrix-r
 body.dark-mode .dr-matrix-chip { background: #232a3b; border-color: #3a4458; color: #cdd6e0; }
 body.dark-mode .dr-matrix-table th, body.dark-mode .dr-matrix-table thead .dr-matrix-rowhead { background: #232a3b; color: #cdd6e0; }
 body.dark-mode .dr-matrix-table .dr-matrix-total, body.dark-mode .dr-matrix-table tr.dr-matrix-subtotal td, body.dark-mode .dr-matrix-table tr.dr-matrix-grand td { background: #20283a; color: #e2e8f0; }
+
+/* report type strip: same-size compact buttons; they wrap to a new line at the same size instead of stretching */
+.dr-visual-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.dr-visual-strip > .btn {
+    flex: 0 0 62px;
+    width: 62px;
+    padding: .25rem .15rem;
+    line-height: 1.1;
+    border-radius: .25rem !important;
+    margin-left: 0 !important;
+}
+.dr-visual-strip > .btn .fa-2x {
+    font-size: 1.3em;
+}
+.dr-visual-strip > .btn p {
+    margin: .2rem 0 0;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

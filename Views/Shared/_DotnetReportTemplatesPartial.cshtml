@@ -533,7 +533,7 @@
                 <!-- ko foreach: $parent.rows  -->
                 <tr>
                     <!-- ko if: $parentContext.$parentContext.$parentContext.$parent.canDrilldown() && !$parent.IsDrillDown() && !$parent.CanExpandOption() && $parentContext.$parentContext.$parentContext.$parent.ReportType() != 'Single' -->
-                    <td style="width: 30px; vertical-align: middle;" data-bind="style: {'background-color': Items[0]._backColor ?? Items[0].backColor(), 'color': Items[0]._fontColor ?? Items[0].fontColor()}">
+                    <td style="width: 30px; vertical-align: middle;" data-bind="style: {'background-color': Items[0]._backColor ?? (Items[0].cellBack ? Items[0].cellBack(Items[0], $index()) : Items[0].backColor()), 'color': Items[0]._fontColor ?? (Items[0].cellFont ? Items[0].cellFont(Items[0], $index()) : Items[0].fontColor()), 'border': Items[0].rowBorderCss ? Items[0].rowBorderCss() : ''}">
                         <a href="#" data-bind="click: function(){ toggle(); }"><span class="fa" data-bind="css: {'fa-plus': !isExpanded(), 'fa-minus': isExpanded()}"></span></a>
                     </td>
                     <!-- /ko -->
@@ -1654,42 +1654,46 @@
 </script>
 
 <script type="text/html" id="designer-choose-visual">
-    <div style="overflow-x: auto;">
-    <div class="btn-group" role="group" aria-label="Visualization Options" style="flex-wrap: nowrap; min-width: max-content;">
-        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('List'); }, css: { active: ReportType()=='List' }, attr: { 'data-chart-id': 'List' }">
+    <div>
+    <div class="btn-group dr-visual-strip" role="group" aria-label="Visualization Options">
+        <button title="List" class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('List'); }, css: { active: ReportType()=='List' }, attr: { 'data-chart-id': 'List' }">
             <span class="fa fa-2x fa-list-alt"></span>
             <p>List</p>
         </button>
-        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Summary'); }, css: { active: ReportType()=='Summary',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Summary' }">
+        <button title="Summary" class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Summary'); }, css: { active: ReportType()=='Summary',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Summary' }">
             <span class="fa fa-2x fa-table"></span>
             <p>Summary</p>
         </button>
-        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Bar'); }, css: { active: ReportType()=='Bar',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Bar' }">
+        <button title="Matrix" class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Matrix'); }, css: { active: ReportType()=='Matrix',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Matrix' }">
+            <span class="fa fa-2x fa-th"></span>
+            <p>Matrix</p>
+        </button>
+        <button title="Bar" class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Bar'); }, css: { active: ReportType()=='Bar',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Bar' }">
             <span class="fa fa-2x fa-bar-chart"></span>
             <p>Bar</p>
         </button>
-        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Pie'); }, css: { active: ReportType()=='Pie',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Pie' }">
+        <button title="Pie" class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Pie'); }, css: { active: ReportType()=='Pie',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Pie' }">
             <span class="fa fa-2x fa-pie-chart"></span>
             <p>Pie</p>
         </button>
-        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Line'); }, css: { active: ReportType()=='Line',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Line' }">
+        <button title="Line" class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Line'); }, css: { active: ReportType()=='Line',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Line' }">
             <span class="fa fa-2x fa-line-chart"></span>
             <p>Line</p>
         </button>
-        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Combo'); }, css: { active: ReportType()=='Combo',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Combo' }">
+        <button title="Combo" class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Combo'); }, css: { active: ReportType()=='Combo',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Combo' }">
             <span class="fa fa-2x fa-signal"></span>
             <p>Combo</p>
         </button>
-        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Html'); }, css: { active: ReportType()=='Html',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Html' }">
+        <button title="Custom" class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Html'); }, css: { active: ReportType()=='Html',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Html' }">
             <span class="fa fa-2x fa-code"></span>
             <p>Custom</p>
         </button>
-        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Map'); }, css: { active: ReportType().indexOf('Map')==0,disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Map' }">
+        <button title="Map" class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Map'); }, css: { active: ReportType().indexOf('Map')==0,disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Map' }">
             <span class="fa fa-2x fa-globe"></span>
             <p>Map</p>
         </button>
         <!-- ko ifnot: extraChartType -->
-        <button class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Single'); }, css: { active: ReportType()=='Single',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Single' }">
+        <button title="KPI" class="btn btn-outline-secondary chart-type-btn" data-bind="click: function(){ setReportType('Single'); }, css: { active: ReportType()=='Single',disabled: hasFunctionField() }, attr: { 'data-chart-id': 'Single' }">
             <span class="fa fa-2x fa-window-maximize"></span>
             <p>KPI</p>
         </button>
@@ -3749,18 +3753,18 @@
                 <button class="btn btn-sm btn-close" data-bind="click: toggleChartSettings"></button>
                 <h6 class="mb-0">Report Settings</h6>
             </div>
-             <ul class="nav nav-tabs nav-sm mb-2 small" data-bind="visible: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line' || ReportMode() === 'dashboard'">
+             <ul class="nav nav-tabs nav-sm mb-2 small" data-bind="visible: ['Bar', 'Pie', 'Line', 'Gauge', 'Funnel'].indexOf(ReportType()) >= 0 || ReportMode() === 'dashboard'">
                 <li class="nav-item">
                     <a class="nav-link"
                        data-bs-toggle="tab"
-                       data-bind="attr: { href: '#chartTab-' + ReportID() }, css: { active: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line' }">
+                       data-bind="attr: { href: '#chartTab-' + ReportID() }, css: { active: ['Bar', 'Pie', 'Line', 'Gauge', 'Funnel'].indexOf(ReportType()) >= 0 }">
                         Chart
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link"
                        data-bs-toggle="tab"
-                       data-bind="attr: { href: '#tableTab-' + ReportID() }, css: { active: !(ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line') }">
+                       data-bind="attr: { href: '#tableTab-' + ReportID() }, css: { active: !(['Bar', 'Pie', 'Line', 'Gauge', 'Funnel'].indexOf(ReportType()) >= 0) }">
                         Table
                     </a>
                 </li>
@@ -3770,7 +3774,7 @@
             </ul>
             <div class="tab-content small">
                 <div class="tab-pane fade"
-                     data-bind="attr: { id: 'chartTab-' + ReportID() }, css: { 'show active': ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line' }">
+                     data-bind="attr: { id: 'chartTab-' + ReportID() }, css: { 'show active': ['Bar', 'Pie', 'Line', 'Gauge', 'Funnel'].indexOf(ReportType()) >= 0 }">
                     <div class="mb-2">
                         <div class="btn-group" role="group" data-bind="visible: ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line'">
                             <button type="button" class="btn btn-light" data-bs-toggle="tooltip" title="Bar Chart"
@@ -3854,14 +3858,14 @@
                             <input type="color" class="color-picker" data-bind="value: chartOptions().backgroundColor, attr: { placeholder: 'Select' }, event: { change: updateChart }">
                         </div>
                     </div>
-                    <div class="mb-2">
+                    <div class="mb-2" data-bind="visible: ReportType() !== 'Funnel'">
                         <label class="form-label small">Font Color</label>
                         <div class="d-flex align-items-center flex-wrap">
                             <input type="color" class="color-picker" data-bind="value: chartOptions().fontColor, attr: { placeholder: 'Select' }, event: { change: updateChart }">
                         </div>
                     </div>
                     <div class="mb-2">
-                        <label class="form-label small">Series Colors</label>
+                        <label class="form-label small" data-bind="text: ReportType() === 'Gauge' ? 'Gauge Color' : ReportType() === 'Funnel' ? 'Stage Colors' : 'Series Colors'"></label>
                         <div class="d-flex flex-wrap" data-bind="foreach: chartOptions().seriesColors">
                             <div class="color-box me-2">
                                 <input type="color" class="color-picker"
@@ -3873,8 +3877,9 @@
                             <i class="fa fa-plus"></i>
                         </button>
                     </div>
+                    <!-- ko if: ReportType() !== 'Gauge' -->
                     <div class="d-flex justify-content-between mb-1">
-                        <div>
+                        <div data-bind="visible: ReportType() !== 'Funnel'">
                             <label class="form-label small">Legend Position</label>
                             <select class="form-select form-select-sm" data-bind="value: chartOptions().legendPosition, event: { change: function(data, $event) { updateLegend($event.target.value); } }">
                                 <option value="top">Top</option>
@@ -3889,7 +3894,18 @@
                             <input type="number" class="form-control form-control-sm font-size-input" data-bind="value: chartOptions().fontSize, event: { change: updateChart }">
                         </div>
                     </div>
-                    <div data-bind="visible: ReportType()!='Pie'">
+                    <!-- /ko -->
+                    <div class="form-group small mb-1" data-bind="visible: ReportType() === 'Funnel'">
+                        <label class="form-label">Value Format</label>
+                        <select class="form-select form-select-sm" data-bind="value: chartOptions().yAxisFormat, event: { change: updateYAxisFormat }">
+                            <option value="">Auto (from Field)</option>
+                            <option value="Currency">Currency</option>
+                            <option value="Percentage">Percentage</option>
+                            <option value="Decimal">Decimal</option>
+                            <option value="Number">Number</option>
+                        </select>
+                    </div>
+                    <div data-bind="visible: ['Pie', 'Gauge', 'Funnel'].indexOf(ReportType()) < 0">
                         <div class="form-check form-switch small mb-1">
                             <input class="form-check-input" type="checkbox" data-bind="checked: chartOptions().showXAxisLabel, event: { change: updateChart }">
                             <label class="form-check-label">X-Axis Label</label>
@@ -3938,7 +3954,7 @@
                 </div>
 
                 <div class="tab-pane fade"
-                     data-bind="attr: { id: 'tableTab-' + ReportID() }, css: { 'show active': !(ReportType() === 'Bar' || ReportType() === 'Pie' || ReportType() === 'Line') }">
+                     data-bind="attr: { id: 'tableTab-' + ReportID() }, css: { 'show active': !(['Bar', 'Pie', 'Line', 'Gauge', 'Funnel'].indexOf(ReportType()) >= 0) }">
                     <div class="field-quick-menu dr-format-tab">
                         <div class="dr-format-section">Header</div>
                         <div class="field-quick-row">

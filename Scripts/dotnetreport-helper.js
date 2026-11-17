@@ -1003,6 +1003,19 @@ function pagerViewModel(args) {
 
 }
 
+// Icon for a report type in report and dashboard lists, including the newer chart types
+var reportTypeIcon = function (type) {
+    type = ko.unwrap(type) || '';
+    if (type.indexOf('Map') === 0) return 'fa-globe';
+    var icons = {
+        List: 'fa-file', Summary: 'fa-th-list', Matrix: 'fa-th', Pivot: 'fa-random', Single: 'fa-window-maximize', Html: 'fa-code',
+        Bar: 'fa-bar-chart', Pie: 'fa-pie-chart', Line: 'fa-line-chart', Combo: 'fa-signal', Treemap: 'fa-window-restore', HeatMap: 'fa-map',
+        Gauge: 'fa-tachometer', Funnel: 'fa-filter', Scatter: 'fa-braille', Radar: 'fa-snowflake-o', Polar: 'fa-bullseye',
+        Sunburst: 'fa-sun-o', Waterfall: 'fa-sort-amount-desc'
+    };
+    return icons[type] || 'fa-file-o';
+};
+
 // Access summary for a report, folder or dashboard row
 var accessBadges = function (item, root) {
     var read = function () {
