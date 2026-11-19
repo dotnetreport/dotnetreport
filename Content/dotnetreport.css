@@ -1399,6 +1399,11 @@ tfoot tr.sub-total {
     z-index: 2000;
 }
 
+.select2-container--open:not(.select2) {
+    width: max-content !important;
+    max-width: min(500px, 90vw);
+}
+
 .bubble-badge {
     display: inline-flex;
     align-items: center;

@@ -363,10 +363,11 @@ ko.bindingHandlers.select2 = {
         var s2opts = $.extend(
             {
                 width: '100%',
+                dropdownAutoWidth: true,
                 dropdownParent: $(el).closest('.modal').length ? $(el).closest('.modal') : $(document.body),
                 templateResult: function (item) {
                     if (!item.text) return item.text;
-                    return $('<span style="white-space: pre;">' + item.text + '</span>');
+                    return $('<span style="white-space: pre-wrap; overflow-wrap: anywhere;">' + item.text + '</span>');
                 },
                 templateSelection: function (item) {
                     if (!item.text) return item.text;
