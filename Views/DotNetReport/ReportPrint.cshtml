@@ -97,7 +97,7 @@
                 <div data-bind="template: 'filter-details-summary'"></div>
             </div>
 
-            <div class="report-chart" data-bind="attr: {id: 'chart_div_' + ReportID()}, visible: isChart"></div>
+            <div class="report-chart" data-bind="attr: {id: 'chart_div_' + ReportID(), 'data-chart-uid': _chartUid}, visible: isChart"></div>
             <!--<div data-bind="with: $root">
                 <div class="" data-bind="ifnot: EditFiltersOnReport">
                     <div data-bind="template: {name: 'fly-filter-template'}"></div>
@@ -133,8 +133,8 @@
 
     <script type="text/html" id="report-render">
         <div data-bind="with: ReportData">
-              <div data-bind="foreach: Rows">
-          <div data-bind="html: renderedHtml, css: { 'card-view': $parents[$parents.length-1].cardView }"></div>
+              <div class="dr-render-rows" data-bind="foreach: Rows">
+          <div data-bind="html: renderedHtml, css: { 'card-view': ($parents[$parents.length-1] || {}).cardView }"></div>
 
           <div data-bind="foreach: subReportsRan">
               <!-- ko if: !_isInline -->
@@ -155,6 +155,9 @@
             <div class="clearfix"></div>
             <div class="list-overflow-auto" style="padding-top: 0; margin-top: 0;">
                 <p data-bind="html: ReportDescription, visible: ReportDescription"></p>
+                <!-- ko if: !$data._isPlaceholder -->
+                <div class="report-chart" data-bind="attr: {id: 'chart_div_' + ReportID(), 'data-chart-uid': _chartUid}, visible: isChart"></div>
+                <!-- /ko -->
                 <div data-bind="with: ReportResult" class="small">
                     <div data-bind="visible: !ReportData()">
                         <div class="report-spinner"></div>
@@ -307,13 +310,13 @@
     <script type="text/html" id="report-table">
         <div class="table-responsive">
             <table class="table table-hover table-condensed" data-bind="attr: {class: 'table table-striped table-hover table-condensed ' + $parents[2].selectedStyle()}">
-                <thead style="position: sticky; top: -1px; z-index: 2;" data-bind="if: !$parents[2].noHeaderRow(), attr: {id: 'report-table-head' + $parents[2].ReportID()}">
+                <thead style="position: sticky; top: -1px; z-index: 2;" data-bind="if: !$parents[2].noHeaderRow(), attr: {id: 'report-table-head' + $parents[2].ReportID(), 'data-table-uid': $parents[2]._chartUid}">
                     <tr class="no-highlight" data-bind="sortableColumns: { handle: '.sortable', cursor: 'move', placeholder: 'drop-highlight',selectedFields: $parents[2].SelectedFields }">                        
                         <!-- ko template: 'report-column-header', data: $data -->
                         <!-- /ko-->
                     </tr>
                 </thead>
-                <tbody data-bind="attr: {id: 'report-table-body' + $parents[2].ReportID()}">
+                <tbody data-bind="attr: {id: 'report-table-body' + $parents[2].ReportID(), 'data-table-uid': $parents[2]._chartUid}">
                     <tr style="display: none;" data-bind="visible: Rows.length < 1">
                         <td data-bind="attr:{colspan: Columns.length + 1}">
                             No records found
@@ -414,6 +417,10 @@
         a[href]:after {
             content: none !important;
         }
+        .report-chart {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
     </style>
     <script type="text/javascript">
     
@@ -509,9 +516,13 @@
 
         var checkInterval;
         var placeholdersReady = false;
+        function resizeCharts() {
+            $('.report-chart').each(function () { if (this._echart) this._echart.resize({ animation: { duration: 0 } }); });
+        }
         function showReportWhenReady() {
             if (placeholdersReady && checkReportsLoaded()) {
                 $('.report-inner').show();
+                resizeCharts();
                 if (checkInterval) {
                     clearInterval(checkInterval);
                 }
@@ -609,6 +620,7 @@
             // Safety net only. 
             setTimeout(function () {
                 $('.report-inner').show();
+                resizeCharts();
                 if (checkInterval) {
                     clearInterval(checkInterval);
                 }

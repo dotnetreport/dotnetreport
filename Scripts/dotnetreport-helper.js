@@ -587,7 +587,7 @@ ko.bindingHandlers.sortableColumns = {
 };
 
 ko.bindingHandlers.moveToInlineContainer = {
-    init: function (element, valueAccessor) {
+    init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
         var data = ko.unwrap(valueAccessor());
         if (data && data._isInline) {
             var tryMove = function (attempts) {
@@ -602,7 +602,12 @@ ko.bindingHandlers.moveToInlineContainer = {
                     searchScope = document; // fallback
                 }
                 var selector = '.subreport-inline-container[data-subreport-report-id="' + data._inlineReportId + '"][data-subreport-field-id="' + data._inlineFieldId + '"]';
-                var container = searchScope.querySelector(selector);
+                var rowSelector = selector + '[data-subreport-row="' + (data._inlineRowIndex || 0) + '"]';
+                var container = searchScope.querySelector(rowSelector) || searchScope.querySelector(selector);
+                var rowsScope = subReportsDiv ? subReportsDiv.closest('.dr-render-rows') : null;
+                if (!container && rowsScope) {
+                    container = _.find(rowsScope.querySelectorAll(rowSelector), function (c) { return c.closest('.dr-render-rows') === rowsScope; }) || null;
+                }
                 if (container) {
                     // Clear previous binding if placeholder was replaced
                     if (container._bound) {
@@ -613,12 +618,12 @@ ko.bindingHandlers.moveToInlineContainer = {
                     container._boundData = data;
                     var wrapper = document.createElement('div');
                     container.appendChild(wrapper);
-                    ko.applyBindingsToNode(wrapper, { template: { name: 'subreport-content', data: data } });
+                    ko.applyBindingsToNode(wrapper, { template: { name: 'subreport-content', data: data } }, bindingContext);
                 } else if (attempts > 0) {
                     setTimeout(function () { tryMove(attempts - 1); }, 200);
                 }
             };
-            setTimeout(function () { tryMove(8); }, 100);
+            setTimeout(function () { tryMove(20); }, 100);
         }
     }
 };

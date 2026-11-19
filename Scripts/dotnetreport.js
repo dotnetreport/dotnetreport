@@ -1852,6 +1852,7 @@ var reportViewModel = function (options) {
 	var self = this;
 
 	options = options || {};
+	self._chartUid = 'dr' + Math.random().toString(36).slice(2);
 	options.userSettings = options.userSettings || {};
 	options.userId = options.userSettings.currentUserId || "";
 	options.users = options.userSettings.users;
@@ -2810,7 +2811,7 @@ var reportViewModel = function (options) {
 			url: options.apiUrl,
 			data: {
 				method: "/ReportApi/UpdateSubReportOnly",
-				model: JSON.stringify({ reportId: reportId, isSubReportOnly: newVal })
+				model: JSON.stringify({ reportId: reportId, isSubReportOnly: newVal, adminMode: self.adminMode() })
 			}
 		}).done(function () {
 			var report = _.find(self.SavedReports(), { reportId: reportId });
@@ -7714,7 +7715,7 @@ var reportViewModel = function (options) {
 			type: 'POST',
 			data: JSON.stringify({
 				method: '/ReportApi/SaveReportUserSettings',
-				model: JSON.stringify({ reportId: self.ReportID(), settings: settings })
+				model: JSON.stringify({ reportId: self.ReportID(), settings: settings, adminMode: self.adminMode() })
 			})
 		});
 	};
@@ -9449,6 +9450,8 @@ var reportViewModel = function (options) {
 		}
 
 		function processRow(row, columns, subreportsRan, outerGroupIndicesToSuppress, outerGroupLevel) {
+			// Custom (html) tables stitch every row into the first one, so inline sub reports find their spot by row
+			var rowIndex = row.__rowIndex || 0;
 			let fullHtml = decodeHtmlEntities(self.reportHtml());
 			let header = "", body = fullHtml, footer = "";
 
@@ -9627,6 +9630,7 @@ var reportViewModel = function (options) {
 							_isInline: srIsInline,
 							_inlineFieldId: col.fieldId || 0,
 							_inlineReportId: linkItem.LinkedToReportId,
+							_inlineRowIndex: rowIndex,
 							_parentReportId: self.ReportID(),
 							_parentVM: self,
 							_isPlaceholder: true,
@@ -9702,6 +9706,7 @@ var reportViewModel = function (options) {
 							report._isInline = srIsInline;
 							report._inlineFieldId = col.fieldId || 0;
 							report._inlineReportId = linkItem.LinkedToReportId;
+							report._inlineRowIndex = rowIndex;
 
 							report.LoadReport(linkItem.LinkedToReportId, true, '', true, false);
 
@@ -9999,7 +10004,7 @@ var reportViewModel = function (options) {
 				renderedHtml = renderedHtml.replace(/<div[^>]*class="subreport-placeholder"[^>]*>[\s\S]*?\{\{subreport:([^}]+)\}\}[\s\S]*?<\/div>/g, function (match, name) {
 					var sr = findSubReport(name);
 					if (sr) {
-						return '<div class="subreport-inline-container" data-subreport-report-id="' + sr.reportId + '" data-subreport-field-id="' + (sr.fieldId || 0) + '"></div>';
+						return '<div class="subreport-inline-container" data-subreport-report-id="' + sr.reportId + '" data-subreport-field-id="' + (sr.fieldId || 0) + '" data-subreport-row="' + rowIndex + '"></div>';
 					}
 					return '';
 				});
@@ -10007,7 +10012,7 @@ var reportViewModel = function (options) {
 				renderedHtml = renderedHtml.replace(/\{\{subreport:([^}]+)\}\}/g, function (match, name) {
 					var sr = findSubReport(name);
 					if (sr) {
-						return '<div class="subreport-inline-container" data-subreport-report-id="' + sr.reportId + '" data-subreport-field-id="' + (sr.fieldId || 0) + '"></div>';
+						return '<div class="subreport-inline-container" data-subreport-report-id="' + sr.reportId + '" data-subreport-field-id="' + (sr.fieldId || 0) + '" data-subreport-row="' + rowIndex + '"></div>';
 					}
 					return '';
 				});
@@ -10325,6 +10330,7 @@ var reportViewModel = function (options) {
 				lastOuterGroupValues = levelValues;
 			}
 			e.Items.__isFirstRow = idx === 0;
+			e.Items.__rowIndex = idx;
 			e.Items.__isLastRow = idx === result.ReportData.Rows.length - 1;
 			e.renderedHtml = processRow(e.Items, result.ReportData.Columns, subReportsRanUnsorted, outerGroupIndicesToSuppress, outerGroupLevel);
 		});
@@ -10567,6 +10573,14 @@ var reportViewModel = function (options) {
 					tableBody = modal.querySelector('[id="report-table-body' + self.ReportID() + '"]');
 					tableHead = modal.querySelector('[id="report-table-head' + self.ReportID() + '"]');
 				}
+			}
+			if (!tableBody || !tableHead) {
+				var ownTable = function (prefix) {
+					var els = document.querySelectorAll('[id="' + prefix + self.ReportID() + '"][data-table-uid="' + self._chartUid + '"]');
+					return _.find(els, function (el) { return !el.closest('.live-preview-area'); }) || els[0] || null;
+				};
+				if (!tableBody) tableBody = ownTable('report-table-body');
+				if (!tableHead) tableHead = ownTable('report-table-head');
 			}
 			if (!tableBody) tableBody = document.getElementById('report-table-body' + self.ReportID());
 			if (!tableHead) tableHead = document.getElementById('report-table-head' + self.ReportID());
@@ -11554,6 +11568,10 @@ var reportViewModel = function (options) {
 			var scope = document.querySelector(options.chartContainer);
 			chartDiv = scope ? scope.querySelector('[id="' + chartDivId + '"]') : null;
 			if (!chartDiv) return;
+		}
+		if (!chartDiv) {
+			var ownDivs = _.filter(document.querySelectorAll('[data-chart-uid="' + self._chartUid + '"]'), function (el) { return !el.closest('[data-chart-scope]'); });
+			chartDiv = _.find(ownDivs, function (el) { return !el.closest('.live-preview-area'); }) || ownDivs[0] || null;
 		}
 		if (!chartDiv) {
 			var chartDivs = _.filter(document.querySelectorAll('[id="' + chartDivId + '"]'), function (el) { return !el.closest('[data-chart-scope]'); });
