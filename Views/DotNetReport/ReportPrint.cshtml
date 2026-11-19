@@ -53,9 +53,14 @@
 
             .table th,
             .table td {
-                padding: 0.75rem;
+                padding: 0.5rem;
                 vertical-align: top;
                 border: 1px solid #dee2e6;
+            }
+
+            .table-sm th,
+            .table-sm td {
+                padding: 0.25rem;
             }
 
         .table-borderless th,
@@ -236,28 +241,26 @@
     </script>
 
     <script type="text/html" id="report-widget">
-        <div style="text-align: center; width: 100%;font-size: 48px">
+        <div data-bind="style: { 'font-size': (FontSize ? FontSize : '48px'),'text-align': Alignment ? Alignment : 'center','color': FontColor ? FontColor : '#000000','background-color':BackColor ? BackColor : '#fff' }, kpiVerticalAlign: typeof VerticalAlignment !== 'undefined' ? VerticalAlignment : 'top'" style="width: 100%;">
             <span data-bind="visible: Rows.length < 1" title="No data found">/</span>
 
             <div data-bind="if: Rows.length > 0">
                 <div data-bind="with: $parent.rows[0].Items[0]">
-                    <span class="preserve-space" data-bind="html: formattedVal"></span>
+                    <span class="preserve-space" data-bind="html: $parent.formatKpiValue(Value, formattedVal())"></span>
 
-                    <!-- ko if: $parent.Rows.length > 1 && $parents[$parents.length-2].showPriorInKpi() -->
+                    <!-- ko if: $parent.Rows.length > 1 ? ($parents[$parents.length-2].showPriorInKpi != undefined ? $parents[$parents.length-2].showPriorInKpi() : $parents[$parents.length-1].showPriorInKpi()) : false -->
                     <div data-bind="style: {'font-size': '20px'}" class="text-muted">
-                        <span data-bind="text: $parent.comparisonLabel"></span>: <span class="preserve-space"data-bind="html: $parent.formatKpiValue($parent.Rows[1].Items[0].Value, $parent.Rows[1].Items[0].formattedVal)"></span>
-                        <span data-bind="style: {'color': $parent.calculateRate() > 0 ? 'green' : 'red', 'font-size': '20px'}">
+                        <span data-bind="text: $parent.comparisonLabel"></span>: <span class="preserve-space" data-bind="html: $parent.formatKpiValue($parent.Rows[1].Items[0].Value, $parent.Rows[1].Items[0].formattedVal)"></span>
+                        <span data-bind="style: {'color': $parent.calculateRate() > 0 ? $parent.PositiveColor : $parent.NegativeColor, 'font-size': '20px'}">
                             <i data-bind="css: $parent.calculateRate() > 0 ? 'fa fa-arrow-up' : 'fa fa-arrow-down'"></i>
                             <span data-bind="html: Math.abs($parent.calculateRate()) + '%'"></span>
                         </span>
-
                     </div>
                     <!-- /ko -->
 
                 </div>
             </div>
         </div>
-
     </script>
 
     <script type="text/html" id="report-column">
