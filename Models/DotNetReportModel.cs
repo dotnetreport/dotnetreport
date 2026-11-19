@@ -754,13 +754,35 @@ namespace ReportBuilder.Web.Models
 
         /// <summary>Strip executable markup from a raw HTML fragment. Null/empty passes through.</summary>
         public static string SanitizeReportHtml(string html)
-            => string.IsNullOrEmpty(html) ? html : GetReportHtmlSanitizer().Sanitize(html);
+            => string.IsNullOrEmpty(html) ? html : SanitizeKeepingStylePlaceholders(html);
 
         private static bool TrySanitizeReportHtml(string html, out string clean)
         {
             _htmlRemovedSomething = false;
-            clean = GetReportHtmlSanitizer().Sanitize(html);
+            clean = SanitizeKeepingStylePlaceholders(html);
             return _htmlRemovedSomething;
+        }
+
+        private static readonly Regex _styleAttrRegex = new Regex(@"(\bstyle\s*=\s*)(""[^""]*""|'[^']*')", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex _stylePlaceholderRegex = new Regex(@"\{\{(?:[^{}<""'();\\&]|&(?:gt|lt|amp|#\d+);)+\}\}", RegexOptions.Compiled);
+
+        // {{field}} isn't valid css, so the sanitizer drops styles like "background-color: {{Field}}"; swap in var() and restore after
+        private static string SanitizeKeepingStylePlaceholders(string html)
+        {
+            if (html.IndexOf("{{", StringComparison.Ordinal) < 0) return GetReportHtmlSanitizer().Sanitize(html);
+
+            var tokens = new Dictionary<string, string>();
+            var prefix = "--drph" + Guid.NewGuid().ToString("N").Substring(0, 8) + "-";
+            var prepared = _styleAttrRegex.Replace(html, m => m.Groups[1].Value + _stylePlaceholderRegex.Replace(m.Groups[2].Value, p =>
+            {
+                var token = "var(" + prefix + tokens.Count + ")";
+                tokens[token] = p.Value;
+                return token;
+            }));
+
+            var clean = GetReportHtmlSanitizer().Sanitize(prepared);
+            foreach (var t in tokens) clean = clean.Replace(t.Key, t.Value);
+            return clean;
         }
 
         public static string SanitizeReportModelForMethod(string method, string model)
