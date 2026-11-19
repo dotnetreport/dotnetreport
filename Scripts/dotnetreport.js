@@ -7187,9 +7187,16 @@ var reportViewModel = function (options) {
 				break;
 		}
 
-		field.fieldAggregate = field.fieldAggregate.concat(response);
-		field.fieldAggregateWithDrilldown = field.fieldAggregateWithDrilldown.concat(response);
+		field.fieldAggregate = _.uniq(field.fieldAggregate.concat(response));
+		field.fieldAggregateWithDrilldown = _.uniq(field.fieldAggregateWithDrilldown.concat(response));
 	}
+
+	self.refreshFormulaAggregates = function (field) {
+		field.fieldAggregate = ['Group', 'Count'];
+		field.fieldAggregateWithDrilldown = field.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Pivot').concat('Max').concat('Csv');
+		self.additionalAggregateOptions(field, field.fieldFormat());
+		if (field.aggregateVersion) field.aggregateVersion(field.aggregateVersion() + 1);
+	};
 
 	self.getEmptyFormulaField = function () {
 		return {
@@ -7308,6 +7315,7 @@ var reportViewModel = function (options) {
 				}
 				field.fieldFormat(self.formulaDataFormat());
 				field.decimalPlaces(self.formulaDecimalPlaces());
+				self.refreshFormulaAggregates(field);
 				result.input = input;
 				field.fieldSettings = { functionConfig: result };
 				self.SelectedFields.valueHasMutated();
@@ -7440,6 +7448,7 @@ var reportViewModel = function (options) {
 			field.fieldFormat(_formatToSave);
 			_originalFieldFormat = "";
 			field.decimalPlaces(self.formulaDecimalPlaces());
+			self.refreshFormulaAggregates(field);
 			field.formulaType = self.formulaType();
 			var formulaItems = [];
 			_.forEach(self.formulaFields() || [], function (e) {
@@ -12971,6 +12980,7 @@ var reportViewModel = function (options) {
 			e.fieldAggregateWithDrilldown = e.fieldAggregate.concat('Only in Detail').concat('Group in Detail').concat('Pivot').concat('Max').concat('Csv');
 		}
 		e.selectedAggregate = ko.observable(e.fieldSettings.matrixAgg || e.aggregateFunction);
+		e.aggregateVersion = ko.observable(0);
 		e.matrixRole = ko.observable(e.fieldSettings.matrixRole || '');
 		e.filterOnFly = ko.observable(e.filterOnFly);
 		e.disabled = ko.observable(e.disabled);

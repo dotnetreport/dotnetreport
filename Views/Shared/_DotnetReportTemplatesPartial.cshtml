@@ -2198,7 +2198,7 @@
                 <div class="col-7 d-flex flex-row-reverse">
                     <div style="margin-top: -5px;" data-bind="if: $parent.AggregateReport() && !$parent.useStoredProc()">
                         <div class="d-flex align-items-center">
-                            <select class="form-select form-control-sm" data-bind="options: $parent.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate, value: selectedAggregate"></select>
+                            <select class="form-select form-control-sm" data-bind="options: ($data.aggregateVersion && aggregateVersion(), $parent.canDrilldown() && $index()>0 ? fieldAggregateWithDrilldown : fieldAggregate), value: selectedAggregate"></select>
                             <i class="fa fa-info-circle ms-1 text-muted aggregate-help-tip" style="cursor:help; font-size:12px;"
                                data-bind="visible: $parent.showHints(), attr: { 'data-agg-tooltip': $parent.getAggregateTooltip($data) }"></i>
                         </div>
