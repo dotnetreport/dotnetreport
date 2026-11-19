@@ -10061,22 +10061,26 @@ var reportViewModel = function (options) {
 				return applyCustomFormat(v, pattern);
 			}
 			const useCurrency = settings.numberFormat() === "currency";
+			let kpiCol = result.ReportData.Columns[0];
+			let dp = kpiCol && ko.unwrap(kpiCol.decimalPlaces);
+			dp = dp === null || dp === undefined || dp === '' || isNaN(dp) ? null : Math.max(0, Math.min(20, parseInt(dp)));
+			const fmt = function (n) { return dp === null ? n.toLocaleString() : n.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp }); };
 			if (settings.shortFormat() === "thousand") {
 				v = v / 1000;
-				return (useCurrency ? (symbol + " ") : "") + v.toLocaleString() + "K";
+				return (useCurrency ? (symbol + " ") : "") + fmt(v) + "K";
 			}
 			if (settings.shortFormat() === "million") {
 				v = v / 1000000;
-				return (useCurrency ? (symbol + " ") : "") + v.toLocaleString() + "M";
+				return (useCurrency ? (symbol + " ") : "") + fmt(v) + "M";
 			}
 			if (settings.shortFormat() === "billion") {
 				v = v / 1000000000;
-				return (useCurrency ? (symbol + " ") : "") + v.toLocaleString() + "B";
+				return (useCurrency ? (symbol + " ") : "") + fmt(v) + "B";
 			}
 			if (useCurrency) {
-				return symbol + " " + v.toLocaleString();
+				return symbol + " " + fmt(v);
 			}
-			return v.toLocaleString();
+			return fmt(v);
 		};
 
 		if (self.ReportType() == 'Single' && self.kpiSettings() && Object.keys(self.kpiSettings()).length > 0) {
