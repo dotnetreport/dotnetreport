@@ -662,8 +662,8 @@ namespace ReportBuilder.Web.Controllers
             return await ExecuteCallReportApi(data.Method, JsonSerializer.Serialize(data), data.userId, settings);
         }
 
-        // matches the SqlField the grid sends when a column header is clicked
-        private static bool IsReportSortField(string sortBy, List<string> sqlFields)
+        // returns the report's own SQL for the column the grid asked to sort by, or "" if it isn't one
+        private static string GetReportSortField(string sortBy, List<string> sqlFields)
         {
             var sort = sortBy.Trim();
             foreach (var field in sqlFields)
@@ -671,10 +671,10 @@ namespace ReportBuilder.Web.Controllers
                 var asPos = field.LastIndexOf(" AS ", StringComparison.Ordinal);
                 var expr = (asPos >= 0 ? field.Substring(0, asPos) : field).Trim().Replace("__jsonc__", "");
                 var alias = asPos >= 0 ? field.Substring(asPos + 4).Trim() : "";
-                if (sort == expr || (alias != "" && (sort == alias || sort == alias.Trim('[', ']', '`', '"'))))
-                    return true;
+                if (sort == expr) return expr;
+                if (alias != "" && (sort == alias || sort == alias.Trim('[', ']', '`', '"'))) return alias;
             }
-            return false;
+            return "";
         }
 
         // SQL only for Admin Mode or View SQL
@@ -773,9 +773,9 @@ namespace ReportBuilder.Web.Controllers
                             sqlCount = "SELECT COUNT(*) FROM (" + countInner + ") AS countQry";
 
                         // sortBy is posted by the browser, so it can only name one of the report's own columns
-                        if (!String.IsNullOrEmpty(sortBy) && !IsReportSortField(sortBy, sqlFields))
+                        if (!String.IsNullOrEmpty(sortBy))
                         {
-                            sortBy = "";
+                            sortBy = GetReportSortField(sortBy, sqlFields);
                         }
 
                         if (!String.IsNullOrEmpty(sortBy))
