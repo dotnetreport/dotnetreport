@@ -2186,6 +2186,8 @@ namespace ReportBuilder.Web.Models
                 : drilldownSql + " " + GetWhereClause(sql);
 
             var baseDataTable = databaseConnection.ExecuteQuery(connectionString, baseQuery, parameters);
+            if (!baseDataTable.Columns.Contains(pivotColumn))
+                throw new Exception("Pivot column not found in the report.");
 
             var monthNames = new List<string>
             {
@@ -2195,7 +2197,7 @@ namespace ReportBuilder.Web.Models
 
             var distinctValues = baseDataTable
                 .AsEnumerable()
-                .Select(row => "[" + Convert.ToString(row[pivotColumn])?.Trim() + "]")
+                .Select(row => "[" + Convert.ToString(row[pivotColumn])?.Trim().Replace("]", "]]") + "]")
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Where(x => x != "[]" && x.Length <= 128)
                 .OrderBy(x =>
@@ -2347,7 +2349,7 @@ namespace ReportBuilder.Web.Models
             // pivot columns (distinctValues) × measures
             foreach (string dv in distinctValues)
             {
-                string cleanDv = dv.Trim('[', ']');
+                string cleanDv = dv.Substring(1, dv.Length - 2);
 
                 for (int m = 0; m < measureAliases.Count; m++)
                 {
