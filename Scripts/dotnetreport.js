@@ -562,7 +562,7 @@ function scheduleBuilder(userId, getTimeZonesUrl,appSettings, apiUrl, previewEma
 		else if (data.SelectedDates == lastDay) {
 			self.selectedDates([data.SelectedDates]);
 		} else {
-			self.selectedDates(_.map(data.SelectedDates.split(','), function (x) { return parseInt(x); }));
+			self.selectedDates(_.filter(_.map((data.SelectedDates || '').split(','), function (x) { return parseInt(x); }), function (x) { return !isNaN(x); }));
 		}
 		self.selectedHour(data.SelectedHour || '12');
 		self.selectedMinute(data.SelectedMinute || '00');

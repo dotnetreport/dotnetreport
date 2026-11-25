@@ -202,6 +202,8 @@ var manageViewModel = function (options) {
 				rows.push({
 					name: r.Name,
 					isDashboard: r.DashboardId !== 0,
+					reportId: r.ReportId,
+					dashboardId: r.DashboardId,
 					isFirst: i === 0,
 					item: item
 				});
@@ -1143,8 +1145,77 @@ var manageViewModel = function (options) {
 			if (result.d) result = result.d;
 
 			self.schedules(result);
+			// create the editor up front so time zones and email lists are loaded before the first edit
+			if (!self.scheduleEditor() && _.some(result, function (r) { return (r.Schedules || []).length; })) {
+				var builder = new scheduleBuilder('', options.getTimeZonesUrl, {}, options.reportsApiUrl, options.previewEmailListUrl);
+				self.scheduleEditor({
+					scheduleBuilder: builder,
+					canDrilldown: function () { return builder.format() === 'EXCEL-SUB'; }
+				});
+			}
 		});
 	}
+
+	// edit an existing schedule's timing, recipients and format; filters stay as saved on the schedule
+	self.scheduleEditor = ko.observable(null);
+	self.scheduleEditRow = ko.observable(null);
+	self.editSchedule = function (row) {
+		if (!self.scheduleEditor()) { toastr.error('Schedule editor is still loading, please try again'); return; }
+		// older APIs only return the cron string, not the fields the editor needs
+		if (!row.item.SelectedOption) { toastr.error('Editing schedules here needs the latest Dotnet Report API. Please edit it from the report instead.'); return; }
+		self.scheduleEditor().scheduleBuilder.fromJs(row.item);
+		self.scheduleEditRow(row);
+		$('#setup-schedule-edit-modal').modal('show');
+	};
+	self.saveScheduleEdit = function () {
+		var row = self.scheduleEditRow();
+		var builder = self.scheduleEditor().scheduleBuilder;
+		var data = builder.toJs();
+		if (!row) return;
+		if (!data) { toastr.error('Use Delete to remove a schedule'); return; }
+
+		if (data.UseEmailQuery) {
+			if (!(data.EmailQueryId > 0)) { toastr.error('Please choose an Email List'); return; }
+		} else {
+			var emails = (data.EmailTo || '').split(',').map(function (e) { return e.trim(); }).filter(function (e) { return e; });
+			if (!emails.length || !emails.every(function (e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); })) {
+				toastr.error('Please enter valid email address(es)');
+				return;
+			}
+		}
+
+		// keep what this editor doesn't change
+		data.UserId = row.item.UserId || '';
+		data.DataFilters = row.item.DataFilters || '';
+		data.Filters = row.item.Filters || '';
+		data.Timezone = data.TimeZone || '';
+		data.ScheduleStart = data.ScheduleStart || null;
+		data.ScheduleEnd = data.ScheduleEnd || null;
+		var fmt = JSON.parse(data.Format);
+		if (fmt.exportFormat === 'PDF' || fmt.exportFormat === 'WORD') {
+			fmt.size = fmt.size || builder.selectedPageSize() || null;
+			fmt.orientation = fmt.orientation || builder.selectedPageOrientation() || null;
+		}
+		data.Format = JSON.stringify(fmt);
+
+		var model = row.isDashboard
+			? { adminMode: true, dashboardId: row.dashboardId, scheduleData: JSON.stringify(data) }
+			: { adminMode: true, reportId: row.reportId, scheduleData: JSON.stringify(data) };
+		ajaxcall({
+			url: options.apiUrl,
+			type: 'POST',
+			data: JSON.stringify({
+				method: row.isDashboard ? '/ReportApi/SaveDashboardSchedule' : '/ReportApi/SaveReportSchedule',
+				model: JSON.stringify(model)
+			})
+		}).done(function (x) {
+			if (x && x.d) x = x.d;
+			if (x && x.Message) { toastr.error(x.Message); return; }
+			toastr.success('Schedule saved');
+			$('#setup-schedule-edit-modal').modal('hide');
+			self.LoadSchedules();
+		});
+	};
 
 	// Clean display of a schedule's export format (stored as JSON: {exportFormat, size, orientation}).
 	self.formatDisplay = function (fmt) {
@@ -1161,13 +1232,49 @@ var manageViewModel = function (options) {
 	};
 
 	self.sentHistory = ko.observableArray([]);
-	self.sentHistoryPage = ko.observable(1);
-	self.sentHistoryPageSize = ko.observable(25);
-	self.sentHistoryTotal = ko.observable(0);
-	self.sentHistoryTotalPages = ko.observable(0);
+	self.sentHistoryPager = new pagerViewModel({ pageSize: 25 });
+	self.sentHistoryPager.pageSizeOptions([10, 25, 50, 100, 200]);
 	self.sentHistoryLoading = ko.observable(false);
 	self.sentHistoryStartDate = ko.observable('');
 	self.sentHistoryEndDate = ko.observable('');
+	self.sentHistoryReport = ko.observable('');
+	self.sentHistoryResult = ko.observable('');
+	self.sentHistorySearched = ko.observable(false);
+	self.sentHistoryLocalTime = ko.observable(false);
+	self.sentHistoryTimeZone = ko.pureComputed(function () {
+		if (!self.sentHistoryLocalTime()) return 'Times are in the report server\'s time zone.';
+		var tz = '';
+		try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { }
+		return 'Shown in your local time' + (tz ? ' (' + tz + ')' : '') + '. Hover a time to see the server time.';
+	});
+
+	// server-side paging: page or page size changes re-query, but not while results are being applied
+	var sentHistoryApplying = false, sentHistoryTimer = null;
+	var queueSentHistory = function () {
+		if (sentHistoryApplying || !self.sentHistorySearched()) return;
+		clearTimeout(sentHistoryTimer);
+		sentHistoryTimer = setTimeout(function () { self.loadSentHistory(self.sentHistoryPager.currentPage()); }, 0);
+	};
+	self.sentHistoryPager.currentPage.subscribe(queueSentHistory);
+	self.sentHistoryPager.pageSize.subscribe(queueSentHistory);
+
+	var setSentHistoryPaging = function (page, totalPages, total) {
+		sentHistoryApplying = true;
+		self.sentHistoryPager.pages(Math.max(totalPages, 1));
+		self.sentHistoryPager.totalRecords(total);
+		self.sentHistoryPager.currentPage(page);
+		sentHistoryApplying = false;
+	};
+
+	self.clearSentHistory = function () {
+		self.sentHistoryStartDate('');
+		self.sentHistoryEndDate('');
+		self.sentHistoryReport('');
+		self.sentHistoryResult('');
+		self.sentHistory([]);
+		self.sentHistorySearched(false);
+		setSentHistoryPaging(1, 1, 0);
+	}
 
 	self.loadSentHistory = function (page) {
 		if (!page || page < 1) page = 1;
@@ -1176,10 +1283,15 @@ var manageViewModel = function (options) {
 			account: self.keys.AccountApiKey,
 			dataConnect: self.keys.DatabaseApiKey,
 			page: page,
-			pageSize: self.sentHistoryPageSize()
+			pageSize: self.sentHistoryPager.pageSize()
 		};
 		if (self.sentHistoryStartDate()) model.startDate = self.sentHistoryStartDate();
 		if (self.sentHistoryEndDate()) model.endDate = self.sentHistoryEndDate();
+		var report = $.trim(self.sentHistoryReport() || '');
+		if (/^\d+$/.test(report)) model.reportId = parseInt(report, 10);
+		else if (report) model.reportName = report;
+		if (self.sentHistoryResult()) model.result = self.sentHistoryResult();
+		self.sentHistorySearched(true);
 		ajaxcall({
 			url: options.apiUrl,
 			type: 'POST',
@@ -1190,10 +1302,16 @@ var manageViewModel = function (options) {
 		}).done(function (result) {
 			if (result && result.d) result = result.d;
 			if (!result) result = { items: [], page: 1, total: 0, totalPages: 0 };
-			self.sentHistory(result.items || []);
-			self.sentHistoryPage(result.page || 1);
-			self.sentHistoryTotal(result.total || 0);
-			self.sentHistoryTotalPages(result.totalPages || 0);
+			var items = result.items || [];
+			var local = items.length > 0 && !!items[0].createdOn;
+			self.sentHistoryLocalTime(local);
+			self.sentHistory(_.map(items, function (x) {
+				// older APIs only send server time without an offset, so format it as-is
+				var d = local ? new Date(x.createdOn) : new Date(String(x.created || '').replace(' ', 'T'));
+				x.createdDisplay = !isNaN(d) ? d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : x.created;
+				return x;
+			}));
+			setSentHistoryPaging(result.page || 1, result.totalPages || 0, result.total || 0);
 		}).always(function () {
 			self.sentHistoryLoading(false);
 		});
