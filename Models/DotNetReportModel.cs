@@ -1484,17 +1484,24 @@ namespace ReportBuilder.Web.Models
                     int increment = rowstart == headerRow ? 1 : 0;
                     for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
                     {
-                        var cellValue = dt.Rows[rowIndex][dc.ColumnName]?.ToString();
-                        if (!string.IsNullOrEmpty(cellValue))
+                        var raw = dt.Rows[rowIndex][dc.ColumnName];
+                        var cellValue = raw?.ToString();
+                        // conditional formatting rule wins over the column's own colors, same as on screen
+                        var cond = MatchFieldCondition(formatColumn, raw);
+                        if (!string.IsNullOrEmpty(cellValue) || cond != null)
                         {
                             var cell = ws.Cells[rowIndex + rowstart + increment, i];
-                            if (!string.IsNullOrEmpty(formatColumn.fontColor))
-                                cell.Style.Font.Color.SetColor(ColorTranslator.FromHtml(formatColumn.fontColor));
-                            if (!string.IsNullOrEmpty(formatColumn.backColor))
+                            var fontColor = !string.IsNullOrEmpty(cond?.fontColor) ? cond.fontColor : formatColumn.fontColor;
+                            var backColor = !string.IsNullOrEmpty(cond?.backColor) ? cond.backColor : formatColumn.backColor;
+                            if (!string.IsNullOrEmpty(fontColor))
+                                cell.Style.Font.Color.SetColor(ColorTranslator.FromHtml(fontColor));
+                            if (!string.IsNullOrEmpty(backColor))
                             {
                                 cell.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
-                                cell.Style.Fill.BackgroundColor.SetColor(ColorTranslator.FromHtml(formatColumn.backColor));
+                                cell.Style.Fill.BackgroundColor.SetColor(ColorTranslator.FromHtml(backColor));
                             }
+                            if (cond?.fontBold == true)
+                                cell.Style.Font.Bold = true;
                         }
                     }
                 }
