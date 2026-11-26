@@ -260,7 +260,21 @@ namespace ReportBuilder.Web.Controllers
             {
                 throw new Exception("User context mismatch");
             }
-            return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Ok() : await ExecuteCallReportApi(method, model, userId);
+            try
+            {
+                return string.IsNullOrEmpty(method) || string.IsNullOrEmpty(model) ? Ok() : await ExecuteCallReportApi(method, model, userId);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == null)
+            {
+                return ApiUnavailable();
+            }
+        }
+
+        // no response at all, so the API service isn't running or the url is wrong
+        private IActionResult ApiUnavailable()
+        {
+            var settings = GetSettings();
+            return StatusCode(503, new { Message = "Can't reach the Dotnet Report API service" + (settings.CanUseAdminMode ? " at " + settings.ApiUrl : "") + ". Please make sure it's running." });
         }
 
         // Account level changes are only available in Admin Mode, the front end flag can be tampered with so check it here too
@@ -1160,8 +1174,15 @@ namespace ReportBuilder.Web.Controllers
         [HttpGet]
         public async Task<IActionResult> GetDashboards(bool adminMode = false)
         {
-            var model = await GetDashboardsData(adminMode);
-            return Ok(model);
+            try
+            {
+                var model = await GetDashboardsData(adminMode);
+                return Ok(model);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == null)
+            {
+                return ApiUnavailable();
+            }
         }
 
 
@@ -1902,6 +1923,10 @@ namespace ReportBuilder.Web.Controllers
             };
 
                 return new JsonResult(model, new JsonSerializerOptions() { PropertyNamingPolicy = null });
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == null)
+            {
+                return ApiUnavailable();
             }
             catch (Exception ex)
             {

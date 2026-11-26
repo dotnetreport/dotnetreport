@@ -19,6 +19,7 @@ namespace ReportBuilder.Web.Controllers
             var api = new DotNetReportApiController(_configuration) { ControllerContext = ControllerContext };
             var settings = api.GetSettings();
             ViewBag.AllowAdminMode = settings.CanUseAdminMode;
+            ViewBag.ApiUrl = settings.ApiUrl;
             ViewBag.ShowUsersPage = CanOpenUsersPage(settings, api.GetUserPermissions(settings));
         }
 

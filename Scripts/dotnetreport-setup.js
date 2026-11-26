@@ -349,6 +349,11 @@ var manageViewModel = function (options) {
 
 
 	self.currentConnectionKey = ko.observable(self.keys.DatabaseApiKey);
+	
+	self.currentAppConnectionKey = ko.pureComputed(function () {
+		var dc = _.find(self.DataConnections(), function (x) { return x.DataConnectGuid == self.currentConnectionKey(); });
+		return dc ? (dc.ConnectionKey || '') : '';
+	});
 	self.canSwitchConnection = ko.computed(function () {
 		return self.currentConnectionKey() != self.keys.DatabaseApiKey;
 	});

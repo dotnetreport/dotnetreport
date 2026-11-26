@@ -109,6 +109,10 @@
                 ko.applyBindings(vm);
                 vm.LoadDataConnections();
                 vm.customSql.textQuery.setupQuery();
+            }).fail(function (x) {
+                var r = x.responseJSON || {};
+                $('#setup-loading').removeClass().addClass('alert alert-danger')
+                    .text(r.message || r.Message || 'Setup could not be loaded. Please check that the Dotnet Report API service is running.');
             });
         });
 
@@ -129,7 +133,7 @@
         </button>
     </div>
 
-    <div data-bind="visible: false;">
+    <div id="setup-loading" data-bind="visible: false;">
         Loading...
     </div>
 
@@ -256,9 +260,13 @@
                                         <!-- /ko -->
                                         <!-- ko ifnot: savedType() -->
                                         <div class="text-muted">
-                                            No connection saved for this Workspace, so your app's connection string in appsettings.json is used.
+                                            Using <b data-bind="text: $root.currentAppConnectionKey() || 'Default'"></b> connection string in appsettings.json by default.<br />
+                                            To use a different database, click Connect to Database.
                                         </div>
                                         <!-- /ko -->
+                                        <div class="mt-3 mb-1"><b><i class="fa fa-server me-1 text-primary"></i> Report API Service</b></div>
+                                        <div class="text-muted text-break">Backend API Service URL connected to:</div>
+                                        <div class="text-muted text-break">@ViewBag.ApiUrl</div>
                                     </div>
                                     <div class="col-md-5 text-center">
                                         <div class="m-2 card p-4" style="background:#dcf5ff;cursor:pointer" data-bind="click: open">

@@ -196,6 +196,9 @@ function handleAjaxError(jqxhr, status, error) {
         case "Internal Server Error":
             toastr.error("The system was unable to complete your request. <br>Service Response: " + msg);
             break;
+        case "Service Unavailable":
+            toastr.error(msg, "", { preventDuplicates: true });
+            break;
         default:
             toastr.error(status + ": " + msg);
     }
