@@ -2880,6 +2880,8 @@ th .dropdown > [data-bs-toggle="dropdown"].show { visibility: visible; }
 .dr-filter-pill-line { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 2px 0; }
 .dr-filter-andor { font-size: 11px; font-weight: 600; text-transform: uppercase; color: #6c757d; cursor: pointer; padding: 0 4px; }
 .dr-filter-andor:hover { color: #0d6efd; }
+.dr-fly-andor { width: 28px; flex: 0 0 28px; text-align: right; font-size: 11px; font-weight: 600; text-transform: uppercase; color: #6c757d; }
+.dr-fly-paren { font-size: 18px; line-height: 1; color: #6c757d; }
 .dr-filter-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border: 1px solid #ced4da; border-radius: 999px; background: #f8f9fa; font-size: 12px; cursor: pointer; max-width: 100%; }
 .dr-filter-pill:hover { border-color: #0d6efd; background: #eef4ff; }
 .dr-filter-pill-field { font-weight: 600; }

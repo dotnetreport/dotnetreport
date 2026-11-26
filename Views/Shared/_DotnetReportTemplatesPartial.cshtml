@@ -1069,13 +1069,18 @@
                 <!-- ko foreach: FlyFilters -->
                 <div class="dr-fly-row" data-bind="attr: { 'data-fly-filter-id': uiId }, css: { 'dr-fly-row-editing': flyEditing }">
                     <div class="dr-filter-pill-line">
+                        <!-- ko if: $data.flyAndOr && $parent.FlyFilters().length > 1 -->
+                        <span class="dr-fly-andor" data-bind="text: flyAndOr()"></span>
+                        <!-- /ko -->
                         <input type="checkbox" class="form-check-input mt-0" title="Apply this filter" data-bind="checked: Apply, disable: Field() && Field().forced, event: { change: function () { if (!$parent.DontExecuteOnRun()) $parent.ExecuteReport(); } }" />
+                        <span class="dr-fly-paren" data-bind="visible: $data.flyOpen && flyOpen(), text: $data.flyOpen ? flyOpen() : ''"></span>
                         <span class="dr-filter-pill" tabindex="0" title="Click to change this filter" data-bind="click: function () { openFlyEditor($parent.DontExecuteOnRun() ? null : $parent.ExecuteReport); }, css: { 'dr-filter-pill-empty': Apply() && !hasValue(), 'dr-filter-pill-off': !Apply() }">
                             <span class="dr-filter-pill-field" data-bind="text: flyFieldText()"></span>
                             <span class="dr-filter-pill-op" data-bind="text: operatorText()"></span>
                             <span class="dr-filter-pill-value" data-bind="text: valueText()"></span>
                             <i class="fa fa-pencil dr-filter-pill-edit"></i>
                         </span>
+                        <span class="dr-fly-paren" data-bind="visible: $data.flyClose && flyClose(), text: $data.flyClose ? flyClose() : ''"></span>
                     </div>
                     <div class="dr-fly-editor" data-bind="visible: flyEditing">
                         <div class="d-flex flex-wrap align-items-start gap-2" data-bind="if: Apply">
@@ -1114,7 +1119,7 @@
                                     <i class="fa fa-pencil dr-filter-pill-edit"></i>
                                 </span>
                                 <span class="badge bg-info" data-bind="visible: Field() && Field().forced">Required</span>
-                                <span class="dr-filter-pill-flag" title="Users can change this filter on the report" data-bind="visible: Field() && Field().filterOnFly && Field().filterOnFly()"><i class="fa fa-filter"></i></span>
+                                <span class="dr-filter-pill-flag" title="Users can change this filter on the report" data-bind="visible: Field() && Field().filterOnFly && Field().filterOnFly() && !$parent.editFiltersOnReport()"><i class="fa fa-filter"></i></span>
                                 <span class="dr-filter-pill-flag" title="Shown as a slicer on the report" data-bind="visible: $data.slicer && slicer()"><i class="fa fa-sliders"></i></span>
                                 <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-1" title="Remove" data-bind="click: $parent.RemoveFilter, hidden: Field() && Field().forced"><i class="fa fa-trash"></i></button>
                             </div>
@@ -1189,7 +1194,7 @@
                                             <i class="fa fa-trash"></i>
                                         </button>
                                     </div>
-                                    <div class="form-group" data-bind="with: Field, hidden: document.querySelector('#filter-panel.card-body.collapse') || ($root.scheduleFilterEditing && $root.scheduleFilterEditing())">
+                                    <div class="form-group" data-bind="with: Field, hidden: $parent.editFiltersOnReport() || ($root.scheduleFilterEditing && $root.scheduleFilterEditing())">
                                         <span class="btn btn-sm" tabindex="0" data-bind="click: function(){ filterOnFly(!filterOnFly()); }, css: {'btn-success': filterOnFly()==true, 'btn-secondary': !filterOnFly()}">
                                             <span class="fa fa-filter" aria-hidden="true" title="Filter on Report"></span>
                                         </span>

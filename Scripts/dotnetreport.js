@@ -859,6 +859,10 @@ function filterGroupViewModel(args) {
 	self.Filters = ko.observableArray([]);
 	self.FilterGroups = ko.observableArray([]);
 
+	self.editFiltersOnReport = function () {
+		return !!(args.parent && ko.unwrap(args.parent.EditFiltersOnReport));
+	};
+
 	self.AddFilterGroup = function (e) {
 		var newGroup = new filterGroupViewModel({ parent: args.parent, AndOr: ko.unwrap(e.AndOr), options: args.options, isSchedule: args.isSchedule });
 		self.FilterGroups.push(newGroup);
@@ -5470,13 +5474,37 @@ var reportViewModel = function (options) {
 
 	self.setFlyFilters = function () {
 		var flyfilters = [];
-		_.forEach(self.FilterGroups(), function (e) {
-			_.forEach(e.Filters(), function (x) { if (x.Field()?.filterOnFly()) flyfilters.push(x); });
-		});
-		// ── NEW ──
+
+		// And/Or before each filter and brackets around groups, so the filter bar reads like the designer
+		var addFly = function (x, andOr) {
+			x.flyAndOr = x.flyAndOr || ko.observable('');
+			x.flyOpen = x.flyOpen || ko.observable('');
+			x.flyClose = x.flyClose || ko.observable('');
+			x.flyAndOr(flyfilters.length ? (andOr || 'And') : '');
+			x.flyOpen('');
+			x.flyClose('');
+			flyfilters.push(x);
+		};
+		var collect = function (groups, depth) {
+			_.forEach(groups, function (g) {
+				var start = flyfilters.length;
+				_.forEach(g.Filters(), function (x) {
+					// first filter shown from a group is joined by the group's And/Or
+					if (x.Field()?.filterOnFly()) addFly(x, ko.unwrap(depth > 0 && flyfilters.length == start ? g.AndOr : x.AndOr));
+				});
+				collect(g.FilterGroups(), depth + 1);
+				if (depth > 0 && flyfilters.length > start) {
+					flyfilters[start].flyOpen(flyfilters[start].flyOpen() + '(');
+					var last = flyfilters[flyfilters.length - 1];
+					last.flyClose(last.flyClose() + ')');
+				}
+			});
+		};
+		collect(self.FilterGroups(), 0);
+
 		if (self.useStoredProc()) {
 			_.forEach(self.Parameters(), function (p) {
-				if (p.filterOnFly && p.filterOnFly()) flyfilters.push(p);
+				if (p.filterOnFly && p.filterOnFly()) addFly(p, 'And');
 			});
 		}
 		self.FlyFilters(flyfilters);
